@@ -1,0 +1,33 @@
+[
+  {
+    "id": "ot-20260824-001",
+    "userId": "usr-kry-01",
+    "userNik": "MBI-1001",
+    "userName": "Budi Santoso",
+    "warehouse": "MBI",
+    "date": "2026-08-24",
+    "startTime": "17:00",
+    "endTime": "20:00",
+    "durationHours": 3,
+    "reason": "Bongkar muat kontainer suplai farmasi medika batch 88",
+    "status": "approved",
+    "reviewedBy": "Super Admin Medika",
+    "reviewedAt": "2026-08-24T17:30:00.000Z",
+    "notes": "Disetujui untuk lembur 3 jam",
+    "createdAt": "2026-08-24T16:30:00.000Z"
+  },
+  {
+    "id": "ot-20260824-002",
+    "userId": "usr-kry-02",
+    "userNik": "MAI-2001",
+    "userName": "Siti Rahmawati",
+    "warehouse": "MAI",
+    "date": "2026-08-24",
+    "startTime": "17:00",
+    "endTime": "19:30",
+    "durationHours": 2.5,
+    "reason": "Packing darurat pesanan alkes RS rujukan",
+    "status": "pending",
+    "createdAt": "2026-08-24T16:45:00.000Z"
+  }
+]

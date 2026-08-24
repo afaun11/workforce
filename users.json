@@ -1,0 +1,54 @@
+[
+  {
+    "id": "usr-admin-01",
+    "nik": "ADM001",
+    "name": "Super Admin Medika",
+    "email": "admin@medika.com",
+    "password": "password123",
+    "role": "admin",
+    "warehouse": "MBI",
+    "position": "WFM Supervisor & Admin",
+    "phone": "081234567890",
+    "barcodeValue": "ADM001",
+    "createdAt": "2026-01-01T08:00:00.000Z"
+  },
+  {
+    "id": "usr-kry-01",
+    "nik": "MBI-1001",
+    "name": "Budi Santoso",
+    "email": "budi@medika.com",
+    "password": "password123",
+    "role": "karyawan",
+    "warehouse": "MBI",
+    "position": "Staf Logistik & Gudang",
+    "phone": "081298765432",
+    "barcodeValue": "MBI-1001",
+    "createdAt": "2026-01-10T08:00:00.000Z"
+  },
+  {
+    "id": "usr-kry-02",
+    "nik": "MAI-2001",
+    "name": "Siti Rahmawati",
+    "email": "siti@medika.com",
+    "password": "password123",
+    "role": "karyawan",
+    "warehouse": "MAI",
+    "position": "Operator Suplai & Packaging",
+    "phone": "081345678901",
+    "barcodeValue": "MAI-2001",
+    "createdAt": "2026-01-15T08:00:00.000Z"
+  },
+  {
+    "id": "usr-kry-03",
+    "nik": "MBI-1002",
+    "name": "Ahmad Fauzi",
+    "email": "ahmad@medika.com",
+    "password": "password123",
+    "role": "karyawan",
+    "warehouse": "MBI",
+    "position": "Staf Penerimaan Barang",
+    "phone": "081512349876",
+    "barcodeValue": "MBI-1002",
+    "createdAt": "2026-02-01T08:00:00.000Z"
+  }
+]

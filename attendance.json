@@ -1,0 +1,35 @@
+[
+  {
+    "id": "att-20260824-001",
+    "userId": "usr-kry-01",
+    "userNik": "MBI-1001",
+    "userName": "Budi Santoso",
+    "warehouse": "MBI",
+    "date": "2026-08-24",
+    "checkInTime": "2026-08-24T07:55:00.000Z",
+    "checkOutTime": "2026-08-24T17:05:00.000Z",
+    "checkInStatus": "on_time",
+    "checkOutStatus": "normal",
+    "workDurationMinutes": 550,
+    "checkInMethod": "barcode_camera",
+    "checkOutMethod": "barcode_camera",
+    "locationScanCode": "MEDIKA-WH-MBI-LOC-01",
+    "notes": "Hadir tepat waktu di shift pagi",
+    "createdAt": "2026-08-24T07:55:00.000Z"
+  },
+  {
+    "id": "att-20260824-002",
+    "userId": "usr-kry-02",
+    "userNik": "MAI-2001",
+    "userName": "Siti Rahmawati",
+    "warehouse": "MAI",
+    "date": "2026-08-24",
+    "checkInTime": "2026-08-24T08:12:00.000Z",
+    "checkOutTime": null,
+    "checkInStatus": "late",
+    "checkInMethod": "barcode_camera",
+    "locationScanCode": "MEDIKA-WH-MAI-LOC-02",
+    "notes": "Terlambat 12 menit karena kendala lalu lintas",
+    "createdAt": "2026-08-24T08:12:00.000Z"
+  }
+]
