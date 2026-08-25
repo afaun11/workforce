@@ -672,6 +672,9 @@
                 <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
+                <button onclick="deleteAllEmployees()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition flex items-center gap-1 shadow-xs" title="Kosongkan Semua Data Karyawan untuk Upload Ulang">
+                  <i data-lucide="trash" class="w-3.5 h-3.5"></i> Kosongkan
+                </button>
               </div>
             </div>
 
@@ -2933,8 +2936,8 @@
 
     function downloadEmployeeTemplate() {
       const templateData = [
-        { "Nama Karyawan": "Afuani Huyan", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "", "Posisi": "staff" },
-        { "Nama Karyawan": "Budi Santoso", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "NIK": "", "Posisi": "staff" }
+        { "No": 1, "Nama Karyawan": "Afuani Huyan", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
+        { "No": 2, "Nama Karyawan": "Budi Santoso", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "Posisi": "staff" }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -2963,12 +2966,19 @@
     }
 
     // Helper pencari nilai kolom fleksibel pada baris Excel
-    function getExcelVal(row, keywords, defaultVal = '') {
+    function getExcelVal(row, keywords, defaultVal = '', excludeKeywords = []) {
       const keys = Object.keys(row);
       for (const k of keys) {
         const cleanK = k.trim().toLowerCase();
+        
+        // Lewati jika kolom mengandung kata yang dikecualikan (misal: 'telp', 'phone' saat cari NIK)
+        if (excludeKeywords.length > 0 && excludeKeywords.some(ex => cleanK.includes(ex.toLowerCase()))) {
+          continue;
+        }
+
         for (const kw of keywords) {
-          if (cleanK.includes(kw.toLowerCase())) {
+          const cleanKw = kw.toLowerCase();
+          if (cleanK === cleanKw || cleanK.includes(cleanKw)) {
             const val = row[k];
             if (val !== undefined && val !== null && String(val).trim() !== '') {
               return String(val).trim();
@@ -2980,7 +2990,7 @@
     }
 
     // =========================================================
-    // IMPORT EXCEL SUPER ROBUST (SEMUA BARIS DIJAMIN TERSIMPAN)
+    // IMPORT EXCEL SUPER ROBUST (SEMUA BARIS DIJAMIN TERSIMPAN & NIK OTOMATIS DIBUAT DARI KODE UNIK)
     // =========================================================
     function handleExcelUpload(e) {
       const file = e.target.files[0];
@@ -3015,16 +3025,23 @@
             const phone = getExcelVal(r, ['telp', 'phone', 'hp', 'wa', 'kontak'], '-');
             const joinDate = getExcelVal(r, ['join', 'masuk', 'date', 'tanggal'], new Date().toISOString().split('T')[0]);
             
-            let rawNik = getExcelVal(r, ['nik', 'id', 'nomer', 'nomor', 'no'], '');
-            let nik = rawNik ? rawNik.toUpperCase() : '';
-
-            if (!nik) {
-              nik = generateUniqueNIK(targetWh, name);
+            // Kolom NIK: Hanya jika ada kolom khusus NIK (abaikan nomor telepon atau nomor urut)
+            let rawNik = getExcelVal(r, ['nik karyawan', 'id karyawan', 'nik', 'kode karyawan'], '', ['telp', 'phone', 'hp', 'wa', 'kontak', 'urut', 'no.', 'no ']);
+            
+            // Validasi NIK: Jika isinya nomor HP (awalan 08 / 62 / digit panjang) atau nomor urut 1, 2, 3, ABAIKAN!
+            if (rawNik) {
+              const cleanDigits = rawNik.replace(/\D/g, '');
+              if (rawNik.startsWith('08') || rawNik.startsWith('62') || cleanDigits.length >= 8 || /^\d{1,4}$/.test(rawNik.trim())) {
+                rawNik = '';
+              }
             }
+
+            // Selalu buatkan NIK otomatis dari inisial nama jika tidak ada NIK khusus (misal MBI-AFU1, MBI-BUD1)
+            let nik = rawNik ? rawNik.toUpperCase() : generateUniqueNIK(targetWh, name);
 
             const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff').toLowerCase();
 
-            // Cek apakah NIK atau Nama sudah ada
+            // Cek apakah NIK atau Nama sudah ada di database
             const existingIdx = users.findIndex(u => (u.nik && u.nik.toUpperCase() === nik) || (u.name && u.name.toLowerCase() === name.toLowerCase()));
 
             if (existingIdx !== -1) {
@@ -3037,7 +3054,7 @@
               users[existingIdx].role = role;
               countUpdated++;
             } else {
-              // Tambah karyawan baru
+              // Tambah karyawan baru dengan NIK Kode Unik
               users.push({
                 id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}`,
                 name, dept, outsource, phone, joinDate, nik, role, password: 'medika123', isFirstLogin: true, warehouse: targetWh
@@ -3053,13 +3070,15 @@
           refreshAllDashboardData();
           renderAccountLookupList();
           
-          alert(`✅ Import Excel Sukses ke Gudang ${targetWh}!\n- ${countAdded} Akun Baru Ditambahkan\n- ${countUpdated} Akun Diperbarui\n\nSeluruh karyawan langsung aktif dan dapat login dengan NIK / Nama masing-masing (Password default: medika123).`);
+          alert(`🎉 Selesai memproses Excel:\n- ${countAdded} Karyawan Baru berhasil dibuat dengan NIK KODE UNIK (Contoh: ${users[users.length-1]?.nik})\n- ${countUpdated} Data Karyawan diperbarui.\n\nSemua akun telah siap digunakan login!`);
         } catch (err) {
-          alert('Gagal membaca file Excel: ' + err.message);
+          console.error('Excel parse error:', err);
+          alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
+        } finally {
+          e.target.value = '';
         }
       };
       reader.readAsArrayBuffer(file);
-      e.target.value = '';
     }
 
     // =========================================================
