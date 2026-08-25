@@ -335,6 +335,129 @@
   </div>
 
   <!-- ========================================================= -->
+  <!-- MODAL EDIT DATA KARYAWAN (SUPERVISOR, COORD, ADMIN) -->
+  <!-- ========================================================= -->
+  <div id="edit-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-black text-sm text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="edit" class="w-4 h-4 text-amber-600"></i>
+            Edit Data Karyawan
+          </h3>
+          <p class="text-[11px] text-slate-500">Perbarui profil atau reset password karyawan</p>
+        </div>
+        <button onclick="closeEditEmployeeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="handleSaveEditEmployee(event)" class="space-y-3">
+        <input type="hidden" id="edit-emp-id">
+        <input type="hidden" id="edit-emp-wh">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap *</label>
+          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
+            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
+            <select id="edit-emp-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+              <option value="staff">Staff</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
+            <select id="edit-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+              <option value="inbound">inbound</option>
+              <option value="packer">packer</option>
+              <option value="packing">packing</option>
+              <option value="picking plan">picking plan</option>
+              <option value="admin so">admin so</option>
+              <option value="dispatch">dispatch</option>
+              <option value="driver">driver</option>
+              <option value="staff office">staff office</option>
+              <option value="coordinator">coordinator</option>
+              <option value="supervisor">supervisor</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource / Vendor</label>
+            <input type="text" id="edit-emp-outsource" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon</label>
+            <input type="text" id="edit-emp-phone" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE</label>
+            <input type="date" id="edit-emp-joindate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+          <label class="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">Reset Password Akun (Opsional)</label>
+          <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tidak diubah" class="w-full px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button type="button" onclick="closeEditEmployeeModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">Batal</button>
+          <button type="submit" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-amber-600/30">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL PENGATURAN / GANTI PASSWORD MANDIRI -->
+  <!-- ========================================================= -->
+  <div id="setting-password-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-black text-sm text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="key" class="w-4 h-4 text-teal-600"></i>
+            Ubah Kata Sandi
+          </h3>
+          <p class="text-[11px] text-slate-500">Ubah kata sandi akun Anda</p>
+        </div>
+        <button onclick="closeChangePasswordSettingModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div id="setting-pwd-alert" class="hidden p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200"></div>
+
+      <form onsubmit="handleSaveSelfPassword(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Baru *</label>
+          <input type="password" id="self-new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ulangi Password Baru *</label>
+          <input type="password" id="self-new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-teal-600/30">
+          Simpan Password Baru
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
   <!-- 2. MAIN APPLICATION DASHBOARD SCREEN -->
   <!-- ========================================================= -->
   <div id="app-container" class="hidden flex-1 flex flex-col min-h-screen">
@@ -372,6 +495,9 @@
             <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
             <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
           </div>
+          <button onclick="openChangePasswordSettingModal()" class="p-2 rounded-xl text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition" title="Ubah Kata Sandi Akun">
+            <i data-lucide="key-round" class="w-4 h-4"></i>
+          </button>
           <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="Logout">
             <i data-lucide="log-out" class="w-4 h-4"></i>
           </button>
@@ -528,29 +654,23 @@
                 <p class="text-xs text-slate-500">Kelola daftar karyawan, download akun & password, serta upload Excel</p>
               </div>
 
-              <!-- Action Buttons -->
+              <!-- Action Buttons Bersih & Sederhana -->
               <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="openAddEmployeeModal()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Manual
-                </button>
-                <button onclick="downloadAccountsExcel()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download Daftar Akun & Password">
-                  <i data-lucide="key" class="w-4 h-4"></i> Download Akun & Password
-                </button>
-                <button onclick="downloadEmployeeTemplate()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-300">
-                  <i data-lucide="file-down" class="w-4 h-4"></i> Format Template
+                  <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Karyawan
                 </button>
                 <label class="cursor-pointer px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="exportEmployeesExcel()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="download" class="w-4 h-4"></i> Download Data
+                <button onclick="downloadAccountsExcel()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download Daftar Akun & Password">
+                  <i data-lucide="key" class="w-4 h-4"></i> Download Akun
+                </button>
+                <button onclick="downloadEmployeeTemplate()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1 border border-slate-300">
+                  <i data-lucide="file-down" class="w-3.5 h-3.5"></i> Template
                 </button>
                 <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
-                </button>
-                <button onclick="deleteAllEmployees()" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Hapus Semua Data Karyawan">
-                  <i data-lucide="trash" class="w-4 h-4"></i> Hapus Semua Data
                 </button>
               </div>
             </div>
@@ -1312,37 +1432,37 @@
 
     const SEED_MBI_USERS = [
       { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
-      { id: 'mbi-2', name: 'Agus Setiawan', dept: 'coordinator', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-COR-01', role: 'coordinator', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-3', name: 'Budi Santoso', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-4', name: 'Emha Riyanda Tasrifin', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081311112222', joinDate: '2023-04-01', nik: 'MBI-1004', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-5', name: 'Hardian Nur Rahman', dept: 'inbound', outsource: 'PT Medika Daya', phone: '081322223333', joinDate: '2023-04-05', nik: 'MBI-1005', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-6', name: 'Anggi Rinaldi', dept: 'dispatch', outsource: 'Internal', phone: '081333334444', joinDate: '2023-04-10', nik: 'MBI-1006', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-7', name: 'Ilham Maulana', dept: 'packing', outsource: 'PT Cahaya Mitra', phone: '081344445555', joinDate: '2023-04-12', nik: 'MBI-1007', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-8', name: 'Zaky Sofyan Hadi M', dept: 'picking plan', outsource: 'PT Medika Daya', phone: '081355556666', joinDate: '2023-04-15', nik: 'MBI-1008', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-9', name: 'Ahmad Maulana', dept: 'driver', outsource: 'Internal', phone: '081366667777', joinDate: '2023-04-18', nik: 'MBI-1009', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
+      { id: 'mbi-2', name: 'Agus Setiawan', dept: 'coordinator', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-AGU1', role: 'coordinator', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-3', name: 'Budi Santoso', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-BUD1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-4', name: 'Emha Riyanda Tasrifin', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081311112222', joinDate: '2023-04-01', nik: 'MBI-EMH1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-5', name: 'Hardian Nur Rahman', dept: 'inbound', outsource: 'PT Medika Daya', phone: '081322223333', joinDate: '2023-04-05', nik: 'MBI-HAR1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-6', name: 'Anggi Rinaldi', dept: 'dispatch', outsource: 'Internal', phone: '081333334444', joinDate: '2023-04-10', nik: 'MBI-ANG1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-7', name: 'Ilham Maulana', dept: 'packing', outsource: 'PT Cahaya Mitra', phone: '081344445555', joinDate: '2023-04-12', nik: 'MBI-ILH1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-8', name: 'Zaky Sofyan Hadi M', dept: 'picking plan', outsource: 'PT Medika Daya', phone: '081355556666', joinDate: '2023-04-15', nik: 'MBI-ZAK1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-9', name: 'Ahmad Maulana', dept: 'driver', outsource: 'Internal', phone: '081366667777', joinDate: '2023-04-18', nik: 'MBI-AHM1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
-      { id: 'mai-1', name: 'Dewi Lestari', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-05', nik: 'MAI-SUP-01', role: 'supervisor', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
-      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'packing', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
-      { id: 'mai-3', name: 'Rifaldi', dept: 'inbound', outsource: 'Internal', phone: '081377778888', joinDate: '2023-04-01', nik: 'MAI-1003', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
+      { id: 'mai-1', name: 'Dewi Lestari', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-05', nik: 'MAI-DEW1', role: 'supervisor', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
+      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'packing', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-SIT1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-3', name: 'Rifaldi', dept: 'inbound', outsource: 'Internal', phone: '081377778888', joinDate: '2023-04-01', nik: 'MAI-RIF1', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
     ];
 
     const SEED_MBI_ATTENDANCE = [
-      { id: 'att-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
+      { id: 'att-mbi-1', userId: 'mbi-3', userNik: 'MBI-BUD1', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
     ];
 
     const SEED_MAI_ATTENDANCE = [
-      { id: 'att-mai-1', userId: 'mai-2', userNik: 'MAI-STF-01', userName: 'Siti Rahmawati', warehouse: 'MAI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
+      { id: 'att-mai-1', userId: 'mai-2', userNik: 'MAI-SIT1', userName: 'Siti Rahmawati', warehouse: 'MAI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
     ];
 
     const SEED_MBI_LEAVES = [
-      { id: 'lv-mbi-1', userNik: 'MBI-COR-01', userName: 'Agus Setiawan', type: 'sakit', startDate: '2026-08-20', endDate: '2026-08-20', reason: 'Surat dokter terlampir', status: 'approved' }
+      { id: 'lv-mbi-1', userNik: 'MBI-AGU1', userName: 'Agus Setiawan', type: 'sakit', startDate: '2026-08-20', endDate: '2026-08-20', reason: 'Surat dokter terlampir', status: 'approved' }
     ];
 
     const SEED_MBI_OVERTIMES = [
-      { id: 'ot-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', dept: 'packer', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], dayType: 'hari_kerja', startTime: '17:00', endTime: '22:00', totalHours: 5, effectiveHours: 4, nominal: 125000, reason: 'Bongkar muat kontainer obat', status: 'pending' },
-      { id: 'ot-mbi-2', userId: 'mbi-4', userNik: 'MBI-1004', userName: 'Emha Riyanda Tasrifin', dept: 'packer', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], dayType: 'hari_kerja', startTime: '17:00', endTime: '22:00', totalHours: 5, effectiveHours: 4, nominal: 125000, reason: 'Bongkar muat kontainer obat', status: 'approved' }
+      { id: 'ot-mbi-1', userId: 'mbi-3', userNik: 'MBI-BUD1', userName: 'Budi Santoso', dept: 'packer', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], dayType: 'hari_kerja', startTime: '17:00', endTime: '22:00', totalHours: 5, effectiveHours: 4, nominal: 125000, reason: 'Bongkar muat kontainer obat', status: 'pending' },
+      { id: 'ot-mbi-2', userId: 'mbi-4', userNik: 'MBI-EMH1', userName: 'Emha Riyanda Tasrifin', dept: 'packer', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], dayType: 'hari_kerja', startTime: '17:00', endTime: '22:00', totalHours: 5, effectiveHours: 4, nominal: 125000, reason: 'Bongkar muat kontainer obat', status: 'approved' }
     ];
 
     // State Variables
@@ -1493,36 +1613,26 @@
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const existingNiks = new Set(users.map(u => (u.nik || '').toUpperCase()));
 
-      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-      let attempts = 0;
-      while (attempts < 100) {
-        attempts++;
-        let code = '';
-        if (name && name.trim().length > 0) {
-          const words = name.trim().split(/\s+/).filter(Boolean);
-          let initials = '';
-          if (words.length >= 2) {
-            initials = (words[0].substring(0, 2) + words[1].substring(0, 2)).toUpperCase();
-          } else {
-            initials = words[0].substring(0, 3).toUpperCase();
-          }
-          initials = initials.replace(/[^A-Z]/g, '');
-          let randomPart = '';
-          for (let i = 0; i < 3; i++) {
-            randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-          code = `${initials}${randomPart}`;
-        } else {
-          for (let i = 0; i < 5; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-        }
-        const fullNik = `${prefix}${code}`;
-        if (!existingNiks.has(fullNik)) {
-          return fullNik;
+      let cleanName = (name || '').trim().replace(/[^a-zA-Z]/g, '').toUpperCase();
+      let baseCode = cleanName.length >= 3 ? cleanName.substring(0, 3) : 'KRY';
+
+      // Coba urutan angka mudah dihafal: MBI-AFU1, MBI-AFU2, dst.
+      for (let num = 1; num <= 99; num++) {
+        const candidate = `${prefix}${baseCode}${num}`;
+        if (!existingNiks.has(candidate)) {
+          return candidate;
         }
       }
-      return `${prefix}${Date.now().toString(36).toUpperCase()}`;
+
+      // Fallback alfanumerik singkat
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      for (let i = 0; i < 50; i++) {
+        const candidate = `${prefix}${baseCode}${chars[Math.floor(Math.random() * chars.length)]}`;
+        if (!existingNiks.has(candidate)) {
+          return candidate;
+        }
+      }
+      return `${prefix}${baseCode}${Date.now().toString().slice(-3)}`;
     }
 
     async function syncWhToGitHub(warehouse, key, data) {
@@ -1612,8 +1722,10 @@
       const isLogin = tab === 'login';
       document.getElementById('form-login-box').classList.toggle('hidden', !isLogin);
       document.getElementById('form-register-box').classList.toggle('hidden', isLogin);
-      document.getElementById('btn-tab-login').className = isLogin ? 'py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition' : 'py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
-      document.getElementById('btn-tab-register').className = !isLogin ? 'py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition' : 'py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
+      const btnTabLogin = document.getElementById('btn-tab-login');
+      const btnTabReg = document.getElementById('btn-tab-register');
+      if (btnTabLogin) btnTabLogin.className = isLogin ? 'py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition' : 'py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
+      if (btnTabReg) btnTabReg.className = !isLogin ? 'py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition' : 'py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
       document.getElementById('auth-alert').classList.add('hidden');
     }
 
@@ -1696,20 +1808,31 @@
         updateLoginWhStyle();
       }
 
-      // Validasi Password (fleksibel: password tersimpan / default medika123 / admin password123)
-      const isPasswordCorrect = (user.password && user.password.trim() === inputPass) || 
-                                (inputPass === 'medika123') || 
-                                (inputPass === 'password123' && (user.role === 'admin' || user.role === 'supervisor'));
+      // Validasi Password Ketat:
+      // Jika akun sudah pernah ubah password (isFirstLogin === false), maka wajib pakai password barunya!
+      const storedPass = (user.password || '').trim();
+      const isCustomized = (user.isFirstLogin === false) && storedPass && storedPass !== 'medika123';
+      let isPasswordCorrect = false;
+
+      if (isCustomized) {
+        isPasswordCorrect = (inputPass === storedPass);
+      } else {
+        isPasswordCorrect = (inputPass === storedPass) || 
+                            (inputPass === 'medika123') || 
+                            (inputPass === 'password123' && (user.role === 'admin' || user.role === 'supervisor'));
+      }
 
       if (!isPasswordCorrect) {
         alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
-        alertEl.innerHTML = `<span>❌ Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default akun baru: <code class="font-bold text-teal-700">medika123</code></span>`;
+        alertEl.innerHTML = isCustomized ? 
+          `<span>❌ Kata sandi untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Akun ini sudah memiliki kata sandi baru. Silakan login menggunakan password baru Anda.</span>` :
+          `<span>❌ Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default: <code class="font-bold text-teal-700">medika123</code></span>`;
         alertEl.classList.remove('hidden');
         return;
       }
 
-      // First time login force change
-      if (user.isFirstLogin === true || user.password === 'medika123') {
+      // First time login force change jika masih default
+      if (user.isFirstLogin === true && user.password === 'medika123') {
         pendingUserForPasswordChange = user;
         document.getElementById('first-login-modal').classList.remove('hidden');
         lucide.createIcons();
@@ -2538,7 +2661,10 @@
           <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-purple-100 text-purple-800' : (emp.role === 'coordinator' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800')}">${emp.role.toUpperCase()}</span></td>
           <td class="p-3.5 text-right">
             <div class="flex items-center justify-end gap-1.5">
-              <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
+              <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+              </button>
+              <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
                 <i data-lucide="contact" class="w-3.5 h-3.5 text-sky-600"></i> ID Card
               </button>
               <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition">
@@ -2550,6 +2676,117 @@
         tbody.appendChild(tr);
       });
       lucide.createIcons();
+    }
+
+    function openEditEmployeeModal(nik) {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const user = users.find(u => u.nik === nik);
+      if (!user) return;
+
+      document.getElementById('edit-emp-id').value = user.id;
+      document.getElementById('edit-emp-wh').value = user.warehouse || activeWarehouse;
+      document.getElementById('edit-emp-name').value = user.name || '';
+      document.getElementById('edit-emp-nik').value = user.nik || '';
+      document.getElementById('edit-emp-position').value = user.role || 'staff';
+      document.getElementById('edit-emp-dept').value = user.dept || 'inbound';
+      document.getElementById('edit-emp-outsource').value = user.outsource || '';
+      document.getElementById('edit-emp-phone').value = user.phone || '';
+      document.getElementById('edit-emp-joindate').value = user.joinDate || '';
+      document.getElementById('edit-emp-pass').value = '';
+
+      document.getElementById('edit-emp-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeEditEmployeeModal() {
+      document.getElementById('edit-emp-modal').classList.add('hidden');
+    }
+
+    function handleSaveEditEmployee(e) {
+      e.preventDefault();
+      const id = document.getElementById('edit-emp-id').value;
+      const name = document.getElementById('edit-emp-name').value.trim();
+      const nik = document.getElementById('edit-emp-nik').value.trim().toUpperCase();
+      const role = document.getElementById('edit-emp-position').value;
+      const dept = document.getElementById('edit-emp-dept').value;
+      const outsource = document.getElementById('edit-emp-outsource').value.trim();
+      const phone = document.getElementById('edit-emp-phone').value.trim();
+      const joinDate = document.getElementById('edit-emp-joindate').value;
+      const customPass = document.getElementById('edit-emp-pass').value.trim();
+
+      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const idx = users.findIndex(u => u.id === id || u.nik === nik);
+
+      if (idx !== -1) {
+        users[idx].name = name;
+        users[idx].nik = nik;
+        users[idx].role = role;
+        users[idx].dept = dept;
+        users[idx].outsource = outsource;
+        users[idx].phone = phone;
+        users[idx].joinDate = joinDate;
+        if (customPass) {
+          users[idx].password = customPass;
+          users[idx].isFirstLogin = false;
+        }
+
+        setWhDB(activeWarehouse, 'users', users);
+        closeEditEmployeeModal();
+        renderEmployeeTable();
+        populateDropdownEmployees();
+        renderOvertimeEmployeeGrid();
+        refreshAllDashboardData();
+        renderAccountLookupList();
+        alert(`✅ Data karyawan ${name} (${nik}) berhasil diperbarui!`);
+      }
+    }
+
+    function openChangePasswordSettingModal() {
+      document.getElementById('self-new-pwd-1').value = '';
+      document.getElementById('self-new-pwd-2').value = '';
+      const alertEl = document.getElementById('setting-pwd-alert');
+      if (alertEl) alertEl.classList.add('hidden');
+      document.getElementById('setting-password-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeChangePasswordSettingModal() {
+      document.getElementById('setting-password-modal').classList.add('hidden');
+    }
+
+    function handleSaveSelfPassword(e) {
+      e.preventDefault();
+      const p1 = document.getElementById('self-new-pwd-1').value.trim();
+      const p2 = document.getElementById('self-new-pwd-2').value.trim();
+      const alertEl = document.getElementById('setting-pwd-alert');
+
+      if (p1.length < 6) {
+        alertEl.innerText = 'Password minimal 6 karakter!';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+      if (p1 !== p2) {
+        alertEl.innerText = 'Password baru dan konfirmasi tidak cocok!';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      if (!currentUser) return;
+
+      const wh = currentUser.warehouse || activeWarehouse;
+      let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const idx = users.findIndex(u => u.nik === currentUser.nik || u.id === currentUser.id);
+
+      if (idx !== -1) {
+        users[idx].password = p1;
+        users[idx].isFirstLogin = false;
+        currentUser.password = p1;
+        currentUser.isFirstLogin = false;
+        setWhDB(wh, 'users', users);
+        localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+        closeChangePasswordSettingModal();
+        alert('✅ Kata sandi akun Anda berhasil diubah!\nUntuk login berikutnya, wajib gunakan kata sandi baru ini.');
+      }
     }
 
     function toggleSelectAllEmployees(checked) {
