@@ -13,8 +13,6 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <!-- SheetJS (Excel .XLSX Reader & Writer) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- QRCode.js -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -31,10 +29,37 @@
   </script>
 
   <style>
+    /* STANDAR UKURAN ID CARD RESMI CR80 (54mm x 85.6mm) SAAT DICETAK */
     @media print {
-      body * { visibility: hidden; }
-      #printable-area, #printable-area * { visibility: visible; }
-      #printable-area { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); width: 360px !important; }
+      @page {
+        size: auto;
+        margin: 5mm;
+      }
+      body * {
+        visibility: hidden !important;
+      }
+      #printable-area, #printable-area * {
+        visibility: visible !important;
+      }
+      #printable-area {
+        position: fixed;
+        left: 50%;
+        top: 20mm;
+        transform: translateX(-50%);
+        width: 54mm !important;
+        height: 85.6mm !important;
+        max-width: 54mm !important;
+        max-height: 85.6mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: 1px solid #1e293b !important;
+        border-radius: 4mm !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       .no-print { display: none !important; }
     }
     .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
@@ -131,7 +156,6 @@
             <input type="text" id="reg-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
-          <!-- Departemen Dropdown List 10 Opsi -->
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
             <select id="reg-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
@@ -260,6 +284,11 @@
           <span>Form Izin / Sakit / Cuti</span>
         </button>
 
+        <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+          <span>Pengajuan Lembur</span>
+        </button>
+
         <!-- Menu Manajemen (Khusus Coordinator, Supervisor, Admin) -->
         <div id="admin-menu-section" class="space-y-1.5 pt-2 border-t border-slate-800">
           <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Gudang</p>
@@ -277,11 +306,6 @@
           <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
             <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
             <span>Laporan & Rekap Absensi</span>
-          </button>
-
-          <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-            <span>Pengajuan Lembur</span>
           </button>
 
           <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
@@ -308,7 +332,7 @@
               <div>
                 <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 25 Agustus 2026</span>
                 <h2 class="text-2xl font-black mt-2">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
-                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode 2-Step (Lokasi & ID), Record Absen Harian & Rekap Matriks</p>
+                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi GPS & Barcode 2-Step, Record Absen Harian & Rekap Matriks</p>
               </div>
               <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center gap-3.5">
                 <div class="p-3 bg-teal-500/20 text-teal-300 rounded-xl"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
@@ -375,7 +399,7 @@
               <button onclick="switchView('idcard')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-teal-500 hover:shadow-md transition">
                 <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3"><i data-lucide="qr-code" class="w-5 h-5"></i></div>
                 <h4 class="font-extrabold text-sm text-slate-900">Cetak QR Lokasi & ID Card</h4>
-                <p class="text-xs text-slate-500 mt-1">Cetak Barcode Lokasi Gudang dan ID Card barcode karyawan.</p>
+                <p class="text-xs text-slate-500 mt-1">Cetak Barcode Lokasi Gudang dan ID Card ukuran standar.</p>
               </button>
             </div>
           </div>
@@ -449,7 +473,7 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 3: ABSENSI BARCODE KAMERA (2-STEP: LOKASI DULU -> ID CARD) -->
+          <!-- VIEW 3: ABSENSI BARCODE KAMERA + GPS RADIUS GUDANG -->
           <!-- ========================================================= -->
           <div id="view-attendance" class="view-panel space-y-6">
             <div class="flex items-center justify-between">
@@ -458,7 +482,7 @@
                   <i data-lucide="qr-code" class="w-6 h-6 text-teal-600"></i>
                   Absensi Barcode Kamera (<span id="att-wh-label">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Sistem 2-Step: Scan Barcode Lokasi Gudang terlebih dahulu, kemudian scan ID Card Karyawan</p>
+                <p class="text-xs text-slate-500">Wajib aktifkan GPS & Scan Barcode Lokasi Gudang terlebih dahulu, kemudian scan ID Card Karyawan</p>
               </div>
               <div class="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-teal-700" id="live-clock">00:00:00 WIB</div>
             </div>
@@ -483,15 +507,15 @@
 
                 <!-- 2-Step Scan Status Tracker -->
                 <div class="space-y-2.5">
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tahapan Verifikasi Barcode:</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tahapan Validasi Presensi:</label>
                   
-                  <!-- Step 1: Lokasi -->
+                  <!-- Step 1: Lokasi GPS & Barcode Lokasi -->
                   <div id="step-1-card" class="p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition">
                     <div class="flex items-center gap-3">
                       <div id="step-1-icon" class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">1</div>
                       <div>
-                        <h4 class="font-bold text-xs text-slate-900">Scan Barcode Lokasi Gudang</h4>
-                        <p id="step-1-status" class="text-[11px] text-amber-800 font-semibold">Menunggu scan QR lokasi di pintu masuk...</p>
+                        <h4 class="font-bold text-xs text-slate-900">Validasi GPS & QR Lokasi Gudang</h4>
+                        <p id="step-1-status" class="text-[11px] text-amber-800 font-semibold">Menunggu scan barcode lokasi di pintu gudang...</p>
                       </div>
                     </div>
                     <span id="step-1-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900">WAJIB</span>
@@ -532,7 +556,6 @@
                 <!-- Video / Scanner Container -->
                 <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-800">
                   <div id="qr-reader" class="w-full h-full"></div>
-                  <video id="native-video-feed" class="hidden w-full h-full object-cover"></video>
                   
                   <!-- Kotak Target Overlay -->
                   <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -550,12 +573,15 @@
                   <button onclick="stopScanner()" class="px-4 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300 transition">
                     Matikan
                   </button>
-                  <button onclick="simulateScanLocation()" class="px-3.5 py-2.5 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition flex items-center gap-1" title="Untuk Pengujian Tanpa Kamera Fisik">
-                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Tes Validasi Lokasi
-                  </button>
+                  <label class="cursor-pointer px-4 py-2.5 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="image" class="w-4 h-4"></i> Scan dari Gambar / File
+                    <input type="file" id="qr-input-file" accept="image/*" onchange="scanQRFromFile(event)" class="sr-only">
+                  </label>
                 </div>
                 
-                <p id="cam-status-msg" class="text-[11px] text-slate-400 mt-2 text-center">Klik 'Nyalakan Kamera' & beri izin akses webcam / kamera HP Anda</p>
+                <p id="cam-status-msg" class="text-[11px] text-slate-500 mt-2 text-center">
+                  Pastikan mengizinkan akses kamera & GPS browser saat tombol 'Nyalakan Kamera' ditekan
+                </p>
               </div>
             </div>
           </div>
@@ -575,13 +601,20 @@
             <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Form Pengajuan Bersih -->
+              <!-- Form Pengajuan -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
                 <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                   <i data-lucide="plus-circle" class="w-4 h-4 text-rose-600"></i> Buat Pengajuan Baru
                 </h3>
 
                 <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
+                    <select id="leave-employee" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                      <!-- Rendered by JS -->
+                    </select>
+                  </div>
+
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jenis Ketidakhadiran *</label>
                     <select id="leave-type" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
@@ -706,7 +739,7 @@
               </div>
             </div>
 
-            <!-- TAB 2: REKAP ABSEN MATRIKS (Format Grid Bersih) -->
+            <!-- TAB 2: REKAP ABSEN MATRIKS -->
             <div id="tab-content-matrix" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
@@ -754,22 +787,36 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 6: INPUT LEMBUR -->
+          <!-- VIEW 6: INPUT & APPROVAL LEMBUR (PILIH KARYAWAN) -->
           <!-- ========================================================= -->
           <div id="view-overtime" class="view-panel hidden space-y-6">
-            <div>
-              <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                <i data-lucide="clock" class="w-6 h-6 text-amber-600"></i>
-                Input & Pengajuan Lembur (<span id="ot-wh-label">Gudang MBI</span>)
-              </h2>
-              <p class="text-xs text-slate-500">Formulir pengajuan jam lembur dan persetujuan supervisor</p>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <i data-lucide="clock" class="w-6 h-6 text-amber-600"></i>
+                  Pengajuan & Approval Lembur (<span id="ot-wh-label">Gudang MBI</span>)
+                </h2>
+                <p class="text-xs text-slate-500">Pilih karyawan yang akan lembur serta persetujuan langsung supervisor</p>
+              </div>
             </div>
 
             <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <!-- Form Pengajuan dengan Pilihan Karyawan -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+                <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  <i data-lucide="plus-circle" class="w-4 h-4 text-amber-600"></i> Input Lembur Karyawan
+                </h3>
+
                 <form onsubmit="handleOvertimeSubmit(event)" class="space-y-3.5">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Karyawan yang Lembur *</label>
+                    <select id="ot-employee-select" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                      <!-- Rendered by JS -->
+                    </select>
+                  </div>
+
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
                     <input type="date" id="ot-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
@@ -787,18 +834,23 @@
                   </div>
 
                   <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan Lembur *</label>
-                    <textarea id="ot-reason" required rows="3" placeholder="Masukkan alasan lembur" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Alasan Lembur *</label>
+                    <textarea id="ot-reason" required rows="3" placeholder="Contoh: Packing pengiriman batch darurat" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
                   </div>
 
                   <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-amber-600/30">
-                    Kirim Pengajuan Lembur
+                    Simpan Pengajuan Lembur
                   </button>
                 </form>
               </div>
 
+              <!-- List Pengajuan dengan Tombol Approve & Reject -->
               <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
-                <h3 class="font-extrabold text-sm text-slate-900 mb-4">Daftar Pengajuan Lembur</h3>
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="font-extrabold text-sm text-slate-900">Daftar Pengajuan Lembur</h3>
+                  <span class="text-xs text-slate-500 font-medium">Supervisor dapat Approve / Reject</span>
+                </div>
+
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
@@ -807,7 +859,7 @@
                         <th class="p-3">Tanggal & Jam</th>
                         <th class="p-3">Uraian</th>
                         <th class="p-3">Status</th>
-                        <th class="p-3 text-right">Aksi</th>
+                        <th class="p-3 text-right min-w-[130px]">Aksi</th>
                       </tr>
                     </thead>
                     <tbody id="ot-table-body" class="divide-y divide-slate-100">
@@ -820,7 +872,7 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 7: KARTU ID BARCODE & CETAK QR LOKASI GUDANG -->
+          <!-- VIEW 7: KARTU ID UKURAN STANDAR & CETAK QR LOKASI GUDANG -->
           <!-- ========================================================= -->
           <div id="view-idcard" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
@@ -829,7 +881,7 @@
                   <i data-lucide="contact" class="w-6 h-6 text-sky-600"></i>
                   Kartu Identitas Karyawan & Barcode Lokasi Gudang
                 </h2>
-                <p class="text-xs text-slate-500">Pilih karyawan untuk melihat/mencetak ID Card atau cetak QR Lokasi Resmi</p>
+                <p class="text-xs text-slate-500">Ukuran kartu disesuaikan standar ID Card resmi (CR80: 54mm × 85.6mm)</p>
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
@@ -838,7 +890,7 @@
                   <!-- Rendered by JS -->
                 </select>
                 <button onclick="printCard('idcard')" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card
+                  <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card (Ukuran Standar)
                 </button>
                 <button onclick="printCard('location')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="map-pin" class="w-4 h-4"></i> Cetak QR Lokasi
@@ -848,74 +900,79 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <!-- 1. KARTU IDENTITAS KARYAWAN -->
+              <!-- 1. KARTU IDENTITAS KARYAWAN (UKURAN STANDAR CR80: 54mm x 85.6mm) -->
               <div class="flex flex-col items-center p-6 bg-slate-200/60 rounded-3xl border border-slate-200">
-                <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan</span>
+                <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan (Ukuran Standar)</span>
                 
-                <div id="printable-id-card" class="w-[330px] bg-white rounded-3xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-800 select-none">
-                  <div id="idcard-header" class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900">
+                <!-- Container Card Dimensi Standar -->
+                <div id="printable-id-card" style="width: 54mm; min-height: 85.6mm; max-width: 54mm;" class="bg-white rounded-2xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                  
+                  <!-- Card Header -->
+                  <div id="idcard-header" class="p-2.5 text-white flex items-center justify-between bg-sky-700">
                     <div>
-                      <span class="text-[9px] uppercase font-bold tracking-widest text-sky-200 block">WORKFORCE MANAGEMENT</span>
-                      <h3 class="font-black text-sm">MEDIKA GROUP</h3>
+                      <span class="text-[7px] uppercase font-bold tracking-widest text-sky-200 block leading-none">WORKFORCE</span>
+                      <h3 class="font-black text-[10px] leading-tight mt-0.5">MEDIKA GROUP</h3>
                     </div>
-                    <span id="idcard-wh-badge" class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white">MBI</span>
+                    <span id="idcard-wh-badge" class="text-[8px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded text-white">MBI</span>
                   </div>
 
-                  <div class="p-5 flex flex-col items-center text-center">
-                    <div class="w-16 h-16 rounded-full bg-slate-100 border-4 border-white shadow-md flex items-center justify-center -mt-9 overflow-hidden mb-2 text-slate-400">
-                      <i data-lucide="user" class="w-8 h-8"></i>
+                  <!-- Card Body -->
+                  <div class="px-2 py-1 flex flex-col items-center text-center">
+                    <div class="w-11 h-11 rounded-full bg-slate-100 border-2 border-white shadow flex items-center justify-center -mt-5 overflow-hidden mb-1 text-slate-400">
+                      <i data-lucide="user" class="w-6 h-6"></i>
                     </div>
-                    <h4 id="idcard-name" class="font-extrabold text-base text-slate-900">Nama Karyawan</h4>
-                    <p id="idcard-dept" class="text-xs text-slate-500 font-semibold uppercase">Departemen</p>
-                    <span id="idcard-nik" class="mt-1 text-xs font-mono font-bold bg-slate-100 px-3 py-0.5 rounded-md border text-slate-800">MBI-1001</span>
+                    <h4 id="idcard-name" class="font-extrabold text-[11px] leading-tight text-slate-900 max-w-[48mm] truncate">Nama Karyawan</h4>
+                    <p id="idcard-dept" class="text-[8px] text-slate-500 font-semibold uppercase leading-tight mt-0.5">Departemen</p>
+                    <span id="idcard-nik" class="mt-1 text-[8px] font-mono font-bold bg-slate-100 px-2 py-0.5 rounded border text-slate-800 leading-none">MBI-1001</span>
 
-                    <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
-
-                    <!-- QR Code Karyawan Image / Canvas Fallback -->
-                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
-                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
-                      <span class="text-[10px] font-mono font-bold text-slate-500 mt-1.5">BARCODE ID PRESENSI</span>
+                    <!-- QR Code Karyawan -->
+                    <div class="my-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 flex flex-col items-center">
+                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-24 h-24 bg-white p-0.5 rounded shadow-xs object-contain">
                     </div>
-                    <p id="idcard-footer-text" class="text-[9px] text-slate-400 mt-2">Medika Bina Investama &bull; Official ID Card</p>
+                  </div>
+
+                  <!-- Card Footer -->
+                  <div class="pb-1.5 text-center">
+                    <p id="idcard-footer-text" class="text-[7px] font-medium text-slate-400">Official Employee ID Card</p>
                   </div>
                 </div>
               </div>
 
-              <!-- 2. QR CODE LOKASI RESMI GUDANG (UNTUK DITEMPEL DI PINTU GUDANG) -->
+              <!-- 2. QR CODE LOKASI RESMI GUDANG -->
               <div class="flex flex-col items-center p-6 bg-amber-50/80 rounded-3xl border border-amber-200">
-                <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-3">Barcode QR Lokasi Resmi (Pintu Gudang)</span>
+                <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-3">Barcode QR Lokasi Resmi (Pintu Masuk)</span>
 
-                <div id="printable-location-card" class="w-[330px] bg-white rounded-3xl border-2 border-amber-600 shadow-2xl overflow-hidden text-slate-800 select-none">
-                  <div class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-amber-600 to-amber-800">
+                <div id="printable-location-card" style="width: 54mm; min-height: 85.6mm; max-width: 54mm;" class="bg-white rounded-2xl border-2 border-amber-600 shadow-2xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                  
+                  <div class="p-2.5 text-white flex items-center justify-between bg-amber-700">
                     <div>
-                      <span class="text-[9px] uppercase font-bold tracking-widest text-amber-200 block">TITIK LOKASI PRESENSI</span>
-                      <h3 class="font-black text-sm">GUDANG MEDIKA</h3>
+                      <span class="text-[7px] uppercase font-bold tracking-widest text-amber-200 block leading-none">TITIK LOKASI</span>
+                      <h3 class="font-black text-[10px] leading-tight mt-0.5">GUDANG MEDIKA</h3>
                     </div>
-                    <span class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white">RESMI</span>
+                    <span class="text-[8px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded text-white">RESMI</span>
                   </div>
 
-                  <div class="p-5 flex flex-col items-center text-center">
-                    <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center -mt-9 shadow-md border-2 border-white mb-2">
-                      <i data-lucide="map-pin" class="w-7 h-7"></i>
+                  <div class="px-2 py-1 flex flex-col items-center text-center">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center -mt-5 shadow border-2 border-white mb-1">
+                      <i data-lucide="map-pin" class="w-5 h-5"></i>
                     </div>
-                    <h4 class="font-extrabold text-base text-slate-900">QR CODE LOKASI</h4>
-                    <p class="text-xs text-slate-500 font-medium">Scan QR ini sebelum scan ID Card</p>
+                    <h4 class="font-extrabold text-[11px] text-slate-900 leading-tight">QR CODE LOKASI</h4>
+                    <p class="text-[8px] text-slate-500 leading-tight mt-0.5">Scan sebelum scan ID Card</p>
                     
-                    <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
-
-                    <!-- QR Code Lokasi Gudang -->
-                    <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200 flex flex-col items-center">
-                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
-                      <span class="text-[9px] font-mono font-bold text-amber-800 mt-1.5">MAPS LOKASI TERVERIFIKASI</span>
+                    <div class="my-1.5 p-1 bg-amber-50 rounded-lg border border-amber-200 flex flex-col items-center">
+                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" class="w-24 h-24 bg-white p-0.5 rounded shadow-xs object-contain">
                     </div>
-                    <p class="text-[9px] text-slate-400 mt-2">Tempel barcode ini di area pintu masuk gudang</p>
+                  </div>
+
+                  <div class="pb-1.5 text-center">
+                    <p class="text-[7px] font-medium text-slate-400">Tempel di pintu masuk gudang</p>
                   </div>
                 </div>
               </div>
 
             </div>
 
-            <!-- Hidden container for printing -->
+            <!-- Hidden container for printing CR80 Standard -->
             <div id="printable-area" class="hidden"></div>
           </div>
 
@@ -1039,10 +1096,17 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (2-STEP QR LOKASI & ID CARD + CAMERA) -->
+  <!-- JAVASCRIPT ENGINE (GPS RADIUS + KAMERA + LEMBUR APPROVAL) -->
   <!-- ========================================================= -->
   <script>
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
+    
+    // Koordinat Resmi Titik Gudang Medika
+    const OFFICIAL_COORDS = {
+      lat: -6.2088,
+      lng: 106.8456,
+      maxRadiusMeters: 500 // Radius toleransi 500 meter
+    };
 
     const SEED_MBI_USERS = [
       { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
@@ -1067,13 +1131,16 @@
       { id: 'lv-mbi-1', userNik: 'MBI-COR-01', userName: 'Agus Setiawan', type: 'sakit', startDate: '2026-08-20', endDate: '2026-08-20', reason: 'Surat dokter terlampir', status: 'approved' }
     ];
 
+    const SEED_MBI_OVERTIMES = [
+      { id: 'ot-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], startTime: '17:00', endTime: '20:00', durationHours: 3, reason: 'Bongkar muat kontainer obat', status: 'pending' }
+    ];
+
     // State Variables
     let currentUser = null;
     let activeWarehouse = 'MBI';
     let selectedAttendanceType = 'check_in';
     let activeReportTab = 'records';
     let html5QrScanner = null;
-    let mediaStream = null;
     let pendingUserForPasswordChange = null;
 
     // 2-Step Verification State
@@ -1164,7 +1231,6 @@
         if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
       }, 1000);
 
-      // Pre-render Location QR Code
       renderLocationQRCode();
 
       const savedUser = localStorage.getItem('wfm_active_session');
@@ -1327,7 +1393,7 @@
 
       resetVerificationState();
       refreshAllDashboardData();
-      populateIDCardEmployeeSelect();
+      populateDropdownEmployees();
       lucide.createIcons();
     }
 
@@ -1351,7 +1417,8 @@
       renderRecordsTable();
       renderMatrixTable();
       renderLeavesTable();
-      populateIDCardEmployeeSelect();
+      renderOvertimeTable();
+      populateDropdownEmployees();
       resetVerificationState();
       lucide.createIcons();
     }
@@ -1389,7 +1456,7 @@
       }
       if (viewName === 'leaves') renderLeavesTable();
       if (viewName === 'idcard') {
-        populateIDCardEmployeeSelect();
+        populateDropdownEmployees();
         renderSelectedIDCard();
         renderLocationQRCode();
       }
@@ -1409,7 +1476,7 @@
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
-      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
 
       const todayAtt = attendances.filter(a => a.date === todayStr);
       const todayLeaves = leaves.filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr);
@@ -1426,6 +1493,52 @@
       } else {
         statusEl.innerText = 'Belum Absen Masuk';
       }
+    }
+
+    // =========================================================
+    // HITUNG JARAK GPS (HAVERSINE FORMULA)
+    // =========================================================
+    function getDistanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // meters
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return Math.round(R * c);
+    }
+
+    function verifyGPSLocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+          resolve({ valid: false, error: 'GPS Geolocation tidak didukung di perangkat ini.' });
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const userLat = pos.coords.latitude;
+            const userLng = pos.coords.longitude;
+            const dist = getDistanceMeters(userLat, userLng, OFFICIAL_COORDS.lat, OFFICIAL_COORDS.lng);
+            
+            // Jarak radius toleransi
+            if (dist <= OFFICIAL_COORDS.maxRadiusMeters || dist <= 1000) {
+              resolve({ valid: true, distance: dist });
+            } else {
+              resolve({ valid: false, distance: dist, error: `Anda berada ${dist} meter dari titik lokasi gudang resmi!` });
+            }
+          },
+          (err) => {
+            // Jika GPS tidak diizinkan / tidak aktif
+            resolve({ valid: false, error: 'GPS lokasi wajib dinyalakan dan diizinkan pada browser/HP Anda: ' + err.message });
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
     }
 
     // =========================================================
@@ -1452,7 +1565,7 @@
         s1Card.className = 'p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition';
         s1Icon.className = 'w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm';
         s1Icon.innerText = '1';
-        s1Status.innerText = 'Menunggu scan QR lokasi di pintu masuk...';
+        s1Status.innerText = 'Menunggu scan QR lokasi di pintu gudang...';
         s1Status.className = 'text-[11px] text-amber-800 font-semibold';
         s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900';
         s1Badge.innerText = 'WAJIB';
@@ -1505,7 +1618,7 @@
         s1Card.className = 'p-3.5 rounded-2xl border border-emerald-300 bg-emerald-50 flex items-center justify-between transition';
         s1Icon.className = 'w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm';
         s1Icon.innerHTML = '✓';
-        s1Status.innerText = 'Lokasi Fisik Terverifikasi!';
+        s1Status.innerText = 'GPS & Lokasi Fisik Terverifikasi!';
         s1Status.className = 'text-[11px] text-emerald-800 font-bold';
         s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-200 text-emerald-900';
         s1Badge.innerText = 'SELESAI';
@@ -1536,43 +1649,44 @@
 
       const alertEl = document.getElementById('att-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = '✅ Barcode Lokasi Gudang Valid! Silakan scan ID Card Karyawan.';
+      alertEl.innerText = '✅ Lokasi Gudang Valid & Terverifikasi! Silakan scan ID Card Karyawan.';
       alertEl.classList.remove('hidden');
 
       lucide.createIcons();
     }
 
-    function simulateScanLocation() {
-      processScannedText(OFFICIAL_WAREHOUSE_MAPS_URL);
-    }
-
     // =========================================================
-    // PARSING & LOGIKA SCAN REALTIME
+    // PARSING & LOGIKA SCAN REALTIME (VALIDASI GPS & LOKASI)
     // =========================================================
-    function processScannedText(decodedText) {
+    async function processScannedText(decodedText) {
       const trimmed = decodedText.trim();
       const alertEl = document.getElementById('att-alert');
       alertEl.classList.remove('hidden');
 
-      // Cek apakah barcode yang discan adalah Barcode Lokasi Gudang
       const isLocationBarcode = trimmed.includes("maps.app.goo.gl") || 
                                  trimmed.includes("maps.google.com") || 
                                  trimmed.includes("rDZysrj5TJ1NmdGD7") || 
                                  trimmed.toUpperCase().includes("LOKASI-GUDANG");
 
       if (isLocationBarcode) {
+        // Cek GPS fisik pengguna saat scan barcode lokasi
+        const gpsCheck = await verifyGPSLocation();
+        if (!gpsCheck.valid) {
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+          alertEl.innerText = '❌ Lokasi Tidak Valid: ' + (gpsCheck.error || 'GPS Anda tidak berada di titik lokasi gudang resmi!');
+          return;
+        }
+
         setLocationVerifiedSuccess();
         return;
       }
 
-      // Jika bukan barcode lokasi, periksa apakah lokasi sudah diverifikasi
       if (!isLocationVerified) {
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
         alertEl.innerText = '❌ Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
         return;
       }
 
-      // Jika lokasi sudah diverifikasi -> Proses Absensi ID Card Karyawan
       processAttendanceScan(trimmed);
     }
 
@@ -1639,59 +1753,41 @@
 
       refreshAllDashboardData();
 
-      // Reset verification state setelah 5 detik untuk karyawan berikutnya
       setTimeout(() => {
         resetVerificationState();
       }, 4000);
     }
 
     // =========================================================
-    // KAMERA ENGINE (DUAL BACKEND: HTML5-QRCODE + GETUSERMEDIA)
+    // KAMERA ENGINE LANGSUNG
     // =========================================================
     async function startScanner() {
       stopScanner();
       const statusMsg = document.getElementById('cam-status-msg');
-      if (statusMsg) statusMsg.innerText = 'Mengaktifkan kamera...';
+      if (statusMsg) statusMsg.innerText = 'Meminta izin kamera browser...';
 
       try {
         if (typeof Html5Qrcode !== 'undefined') {
           html5QrScanner = new Html5Qrcode("qr-reader");
-          const config = { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 };
           
+          // Request camera with permission prompt
           await html5QrScanner.start(
             { facingMode: "environment" },
-            config,
+            { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
             (decodedText) => {
               processScannedText(decodedText);
             },
             () => {}
           );
-          if (statusMsg) statusMsg.innerText = 'Kamera Aktif. Silakan scan Barcode QR.';
+          if (statusMsg) statusMsg.innerText = 'Kamera Aktif. Silakan arahkan ke Barcode.';
           return;
         }
       } catch (err) {
-        console.warn('Html5Qrcode direct start error, trying fallback:', err);
-      }
-
-      // Fallback: Direct Video Stream (MediaDevices)
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
-        });
-        mediaStream = stream;
-        const videoEl = document.getElementById('native-video-feed');
-        const qrDiv = document.getElementById('qr-reader');
-        if (videoEl) {
-          videoEl.srcObject = stream;
-          videoEl.setAttribute('playsinline', 'true');
-          videoEl.classList.remove('hidden');
-          videoEl.play();
-          if (qrDiv) qrDiv.classList.add('hidden');
-          if (statusMsg) statusMsg.innerText = 'Kamera Aktif (Native Mode).';
+        console.error('Html5Qrcode error:', err);
+        if (statusMsg) {
+          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera diblokir browser.</span> Pastikan mengizinkan akses kamera di ikon gembok URL atau gunakan tombol 'Scan dari Gambar / File'.`;
         }
-      } catch (err2) {
-        if (statusMsg) statusMsg.innerText = 'Gagal mengakses kamera. Pastikan izin kamera telah diaktifkan di browser: ' + err2.message;
-        alert('Izin kamera ditolak atau perangkat kamera tidak ditemukan.\n\nTips: Klik ikon gembok di sebelah URL browser dan pilih "Allow Camera".');
+        alert('Izin akses kamera diperlukan.\n\nJika menggunakan browser laptop, klik ikon Gembok / Izin di samping alamat URL browser dan pilih "Allow Camera" (Izinkan Kamera).');
       }
     }
 
@@ -1702,21 +1798,26 @@
           html5QrScanner = null;
         });
       }
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
-        mediaStream = null;
-      }
-      const videoEl = document.getElementById('native-video-feed');
-      const qrDiv = document.getElementById('qr-reader');
-      if (videoEl) {
-        videoEl.pause();
-        videoEl.srcObject = null;
-        videoEl.classList.add('hidden');
-      }
-      if (qrDiv) qrDiv.classList.remove('hidden');
-
       const statusMsg = document.getElementById('cam-status-msg');
       if (statusMsg) statusMsg.innerText = 'Kamera dimatikan.';
+    }
+
+    function scanQRFromFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!html5QrScanner) {
+        html5QrScanner = new Html5Qrcode("qr-reader");
+      }
+
+      html5QrScanner.scanFile(file, true)
+        .then(decodedText => {
+          processScannedText(decodedText);
+        })
+        .catch(err => {
+          alert('Barcode tidak terdeteksi pada gambar: ' + err);
+        });
+      e.target.value = '';
     }
 
     function setAttendanceType(type) {
@@ -1727,10 +1828,10 @@
     }
 
     // =========================================================
-    // FITUR KARTU ID DIGITAL & QR CODE GENERATOR MANDIRI
+    // FITUR KARTU ID DIGITAL (CR80: 54mm x 85.6mm STANDAR)
     // =========================================================
     function getQrCodeUrl(text) {
-      return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(text)}&margin=1`;
+      return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(text)}&margin=1`;
     }
 
     function renderLocationQRCode() {
@@ -1740,18 +1841,46 @@
       }
     }
 
-    function populateIDCardEmployeeSelect() {
-      const select = document.getElementById('idcard-select-emp');
-      if (!select) return;
+    function populateDropdownEmployees() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      select.innerHTML = '';
-      users.forEach(u => {
-        const opt = document.createElement('option');
-        opt.value = u.nik;
-        opt.innerText = `${u.name} (${u.nik})`;
-        if (currentUser && u.nik === currentUser.nik) opt.selected = true;
-        select.appendChild(opt);
-      });
+      
+      // 1. Dropdown di ID Card
+      const idSelect = document.getElementById('idcard-select-emp');
+      if (idSelect) {
+        idSelect.innerHTML = '';
+        users.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.nik;
+          opt.innerText = `${u.name} (${u.nik})`;
+          if (currentUser && u.nik === currentUser.nik) opt.selected = true;
+          idSelect.appendChild(opt);
+        });
+      }
+
+      // 2. Dropdown di Pengajuan Lembur
+      const otSelect = document.getElementById('ot-employee-select');
+      if (otSelect) {
+        otSelect.innerHTML = '';
+        users.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.nik;
+          opt.innerText = `${u.name} - ${u.dept.toUpperCase()} (${u.nik})`;
+          otSelect.appendChild(opt);
+        });
+      }
+
+      // 3. Dropdown di Izin
+      const leaveSelect = document.getElementById('leave-employee');
+      if (leaveSelect) {
+        leaveSelect.innerHTML = '';
+        users.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.nik;
+          opt.innerText = `${u.name} (${u.nik})`;
+          if (currentUser && u.nik === currentUser.nik) opt.selected = true;
+          leaveSelect.appendChild(opt);
+        });
+      }
     }
 
     function renderSelectedIDCard() {
@@ -1765,13 +1894,12 @@
     function renderIDCard(user) {
       if (!user) return;
       document.getElementById('idcard-name').innerText = user.name;
-      document.getElementById('idcard-dept').innerText = `${user.dept.toUpperCase()} • ${user.outsource || 'Medika'}`;
+      document.getElementById('idcard-dept').innerText = `${user.dept.toUpperCase()}`;
       document.getElementById('idcard-nik').innerText = user.nik;
       document.getElementById('idcard-wh-badge').innerText = user.warehouse;
 
       const isMBI = user.warehouse === 'MBI';
-      document.getElementById('idcard-header').className = isMBI ? 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900' : 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-purple-700 to-purple-900';
-      document.getElementById('idcard-footer-text').innerText = isMBI ? 'Medika Bina Investama • Official ID Card' : 'Medika Akses Investama • Official ID Card';
+      document.getElementById('idcard-header').className = isMBI ? 'p-2.5 text-white flex items-center justify-between bg-sky-700' : 'p-2.5 text-white flex items-center justify-between bg-purple-700';
 
       const img = document.getElementById('img-qrcode-emp');
       if (img) {
@@ -1871,7 +1999,7 @@
 
       closeAddEmployeeModal();
       renderEmployeeTable();
-      populateIDCardEmployeeSelect();
+      populateDropdownEmployees();
       refreshAllDashboardData();
       alert(`Karyawan ${name} berhasil ditambahkan!\nNIK: ${autoNik}\nPassword Default: ${defaultPass}`);
     }
@@ -1966,7 +2094,7 @@
 
           setWhDB(activeWarehouse, 'users', users);
           renderEmployeeTable();
-          populateIDCardEmployeeSelect();
+          populateDropdownEmployees();
           refreshAllDashboardData();
           alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!`);
         } catch (err) {
@@ -1978,7 +2106,7 @@
     }
 
     // =========================================================
-    // FITUR PENGELOMPOKAN LAPORAN (RECORD HARIAN + MATRIKS)
+    // FITUR LAPORAN (RECORD HARIAN + MATRIKS)
     // =========================================================
     function switchReportTab(tabName) {
       activeReportTab = tabName;
@@ -2187,16 +2315,20 @@
     // =========================================================
     function handleLeaveSubmit(e) {
       e.preventDefault();
+      const targetNik = document.getElementById('leave-employee').value;
       const type = document.getElementById('leave-type').value;
       const startDate = document.getElementById('leave-start-date').value;
       const endDate = document.getElementById('leave-end-date').value;
       const reason = document.getElementById('leave-reason').value.trim();
 
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const emp = users.find(u => u.nik === targetNik) || currentUser;
+
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
       const newLeave = {
         id: `lv-${activeWarehouse.toLowerCase()}-${Date.now()}`,
-        userNik: currentUser.nik,
-        userName: currentUser.name,
+        userNik: emp.nik,
+        userName: emp.name,
         type, startDate, endDate, reason,
         status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending',
         warehouse: activeWarehouse
@@ -2208,7 +2340,7 @@
       document.getElementById('leave-reason').value = '';
       const alertEl = document.getElementById('leave-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = `Pengajuan ${type.toUpperCase()} berhasil dikirim!`;
+      alertEl.innerText = `Pengajuan ${type.toUpperCase()} untuk ${emp.name} berhasil dikirim!`;
       alertEl.classList.remove('hidden');
 
       renderLeavesTable();
@@ -2241,9 +2373,11 @@
           <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
           <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (lv.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${lv.status.toUpperCase()}</span></td>
           <td class="p-3 text-right">
-            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') && lv.status === 'pending' ? `
-              <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Setujui</button>
-              <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Tolak</button>
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? `
+              <div class="flex items-center justify-end gap-1">
+                <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold">Setujui</button>
+                <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold">Tolak</button>
+              </div>
             ` : '-'}
           </td>
         `;
@@ -2264,14 +2398,18 @@
     }
 
     // =========================================================
-    // FITUR LEMBUR (OVERTIME)
+    // FITUR LEMBUR (PILIH KARYAWAN & APPROVAL SUPERVISOR)
     // =========================================================
     function handleOvertimeSubmit(e) {
       e.preventDefault();
+      const targetNik = document.getElementById('ot-employee-select').value;
       const date = document.getElementById('ot-date').value;
       const startTime = document.getElementById('ot-start').value;
       const endTime = document.getElementById('ot-end').value;
       const reason = document.getElementById('ot-reason').value;
+
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const emp = users.find(u => u.nik === targetNik) || currentUser;
 
       const [sh, sm] = startTime.split(':').map(Number);
       const [eh, em] = endTime.split(':').map(Number);
@@ -2279,14 +2417,15 @@
       if (diff < 0) diff += 24 * 60;
       const durationHours = Math.round((diff / 60) * 10) / 10;
 
-      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       overtimes.unshift({
         id: `ot-${activeWarehouse.toLowerCase()}-${Date.now()}`,
-        userId: currentUser.id,
-        userNik: currentUser.nik,
-        userName: currentUser.name,
+        userId: emp.id,
+        userNik: emp.nik,
+        userName: emp.name,
         warehouse: activeWarehouse,
-        date, startTime, endTime, durationHours, reason, status: 'pending'
+        date, startTime, endTime, durationHours, reason, 
+        status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending'
       });
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
@@ -2294,7 +2433,7 @@
       
       const alertEl = document.getElementById('ot-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = `Pengajuan lembur ${durationHours} jam berhasil dikirim!`;
+      alertEl.innerText = `Pengajuan lembur ${durationHours} jam untuk ${emp.name} berhasil disimpan!`;
       alertEl.classList.remove('hidden');
 
       renderOvertimeTable();
@@ -2302,7 +2441,7 @@
     }
 
     function renderOvertimeTable() {
-      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const tbody = document.getElementById('ot-table-body');
       tbody.innerHTML = '';
 
@@ -2320,9 +2459,11 @@
           <td class="p-3 text-slate-600 max-w-xs truncate">${ot.reason}</td>
           <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ot.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (ot.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${ot.status.toUpperCase()}</span></td>
           <td class="p-3 text-right">
-            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') && ot.status === 'pending' ? `
-              <button onclick="updateOtStatus('${ot.id}', 'approved')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Setujui</button>
-              <button onclick="updateOtStatus('${ot.id}', 'rejected')" class="px-2 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Tolak</button>
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? `
+              <div class="flex items-center justify-end gap-1">
+                <button onclick="updateOtStatus('${ot.id}', 'approved')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-sm">Setujui</button>
+                <button onclick="updateOtStatus('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold shadow-sm">Tolak</button>
+              </div>
             ` : '-'}
           </td>
         `;
@@ -2331,7 +2472,7 @@
     }
 
     function updateOtStatus(id, newStatus) {
-      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const item = overtimes.find(o => o.id === id);
       if (item) {
         item.status = newStatus;
@@ -2377,7 +2518,7 @@
       await syncWhToGitHub('MBI', 'users', getWhDB('MBI', 'users', SEED_MBI_USERS));
       await syncWhToGitHub('MBI', 'attendance', getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE));
       await syncWhToGitHub('MBI', 'leaves', getWhDB('MBI', 'leaves', SEED_MBI_LEAVES));
-      await syncWhToGitHub('MBI', 'overtime', getWhDB('MBI', 'overtime', []));
+      await syncWhToGitHub('MBI', 'overtime', getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES));
 
       await syncWhToGitHub('MAI', 'users', getWhDB('MAI', 'users', SEED_MAI_USERS));
       await syncWhToGitHub('MAI', 'attendance', getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE));
