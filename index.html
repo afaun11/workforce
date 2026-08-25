@@ -130,14 +130,14 @@
               </button>
             </div>
 
-            <button type="button" onclick="openAccountLookupModal()" class="text-xs font-bold text-sky-600 hover:text-sky-800 underline">
-              🔍 Cek Daftar Akun / Lupa NIK Karyawan
-            </button>
-            <label class="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition shadow-xs">
-              <i data-lucide="file-up" class="w-3.5 h-3.5 text-emerald-600"></i>
-              <span>Upload File Excel Karyawan (.xlsx)</span>
-              <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
-            </label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="openAccountLookupModal()" class="py-1.5 px-2 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 rounded-xl text-[11px] font-bold transition">
+                🔍 Cek Daftar Akun
+              </button>
+              <button type="button" onclick="openDirectSyncModal()" class="py-1.5 px-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-[11px] font-bold transition">
+                📲 Kirim Data ke HP
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -239,6 +239,45 @@
       </div>
 
       <p class="text-[11px] text-slate-500 text-center font-medium">Password default seluruh akun: <code class="font-bold text-teal-700">medika123</code></p>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL TRANSFER & SINKRON KODE DATABASE LANGSUNG (HP & LAPTOP) -->
+  <!-- ========================================================= -->
+  <div id="direct-sync-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-black text-sm text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="smartphone" class="w-4 h-4 text-teal-600"></i>
+            Transfer Data Admin ke HP Instan
+          </h3>
+          <p class="text-[11px] text-slate-500">Salin kode data dari laptop admin dan tempel di HP</p>
+        </div>
+        <button onclick="closeDirectSyncModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <!-- Opsi 1: Salin dari Laptop Admin -->
+        <div class="p-3 bg-teal-50 border border-teal-200 rounded-2xl space-y-2">
+          <p class="text-xs font-bold text-teal-900">1. Jika Anda di LAPTOP ADMIN:</p>
+          <p class="text-[11px] text-teal-700">Klik tombol di bawah untuk menyalin seluruh data akun karyawan yang sudah diupload.</p>
+          <button onclick="copyAdminSyncCode()" class="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Salin Kode Database Admin
+          </button>
+        </div>
+
+        <!-- Opsi 2: Tempel di HP Pengguna -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+          <p class="text-xs font-bold text-slate-800">2. Jika Anda di HP PENGGUNA:</p>
+          <p class="text-[11px] text-slate-600">Tempel (*paste*) kode database yang dikirim dari admin di sini:</p>
+          <textarea id="sync-code-input" rows="3" placeholder="Tempel kode data database di sini..." class="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"></textarea>
+          <button onclick="applyAdminSyncCode()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Terapkan Data ke HP Ini
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1348,7 +1387,10 @@
       }
     }
 
-    const CLOUD_SYNC_URL = 'https://kvdb.io/8qWfM2k9MedikaGroupDB/wfm_medika_database';
+    const CLOUD_ENDPOINTS = [
+      'https://wfm-medika-group-default-rtdb.asia-southeast1.firebasedatabase.app/database.json',
+      'https://kvdb.io/8qWfM2k9MedikaGroupDB/wfm_medika_database'
+    ];
 
     function updateCloudSyncStatusBadge(status) {
       const authStatus = document.getElementById('auth-cloud-status');
@@ -1359,7 +1401,7 @@
       if (status === 'syncing') {
         if (authStatus) authStatus.innerText = 'Cloud Sync: Mengunduh Data Admin...';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-spin';
-        if (navLabel) navLabel.innerText = 'Cloud: Sinkronisasi...';
+        if (navLabel) navLabel.innerText = 'Cloud: Mengunduh...';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-spin';
       } else if (status === 'uploading') {
         if (authStatus) authStatus.innerText = 'Cloud Sync: Menyimpan ke Cloud...';
@@ -1392,54 +1434,68 @@
         updatedAt: new Date().toISOString()
       };
 
-      try {
-        updateCloudSyncStatusBadge('uploading');
-        await fetch(CLOUD_SYNC_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        updateCloudSyncStatusBadge('synced');
-      } catch (e) {
-        console.warn('Cloud sync post error:', e);
-        updateCloudSyncStatusBadge('local');
+      updateCloudSyncStatusBadge('uploading');
+      let success = false;
+
+      for (const endpoint of CLOUD_ENDPOINTS) {
+        try {
+          const method = endpoint.includes('firebase') ? 'PUT' : 'POST';
+          await fetch(endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          success = true;
+          break;
+        } catch (e) {
+          console.warn('Cloud upload failed on endpoint:', endpoint, e);
+        }
       }
+
+      updateCloudSyncStatusBadge(success ? 'synced' : 'local');
     }
 
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
-      try {
-        updateCloudSyncStatusBadge('syncing');
-        const res = await fetch(CLOUD_SYNC_URL + '?t=' + Date.now());
-        if (res.ok) {
-          const db = await res.json();
-          if (db && (db.mbi_users || db.mai_users)) {
-            if (db.mbi_users && db.mbi_users.length > 0) {
-              localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
-            }
-            if (db.mai_users && db.mai_users.length > 0) {
-              localStorage.setItem('wfm_mai_users', JSON.stringify(db.mai_users));
-            }
-            if (db.mbi_attendance) localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
-            if (db.mai_attendance) localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
-            if (db.mbi_leaves) localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
-            if (db.mai_leaves) localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
-            if (db.mbi_overtime) localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
-            if (db.mai_overtime) localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
+      updateCloudSyncStatusBadge('syncing');
+      let loaded = false;
 
-            renderAccountLookupList();
-            renderEmployeeTable();
-            populateDropdownEmployees();
-            renderOvertimeEmployeeGrid();
-            refreshAllDashboardData();
-            updateCloudSyncStatusBadge('synced');
-            if (forceAlert) alert('✅ Sinkronisasi Berhasil!\nData akun karyawan terbaru dari Admin telah dimuat dari Cloud Server.');
-            return;
+      for (const endpoint of CLOUD_ENDPOINTS) {
+        try {
+          const res = await fetch(endpoint + '?t=' + Date.now());
+          if (res.ok) {
+            const db = await res.json();
+            if (db && (db.mbi_users || db.mai_users)) {
+              if (db.mbi_users && db.mbi_users.length > 0) {
+                localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
+              }
+              if (db.mai_users && db.mai_users.length > 0) {
+                localStorage.setItem('wfm_mai_users', JSON.stringify(db.mai_users));
+              }
+              if (db.mbi_attendance) localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
+              if (db.mai_attendance) localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
+              if (db.mbi_leaves) localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
+              if (db.mai_leaves) localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
+              if (db.mbi_overtime) localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
+              if (db.mai_overtime) localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
+
+              renderAccountLookupList();
+              renderEmployeeTable();
+              populateDropdownEmployees();
+              renderOvertimeEmployeeGrid();
+              refreshAllDashboardData();
+              loaded = true;
+              break;
+            }
           }
+        } catch (e) {
+          console.warn('Cloud fetch failed on endpoint:', endpoint, e);
         }
-        updateCloudSyncStatusBadge('synced');
-      } catch (e) {
-        console.warn('Fetch cloud db error:', e);
-        updateCloudSyncStatusBadge('local');
+      }
+
+      updateCloudSyncStatusBadge(loaded ? 'synced' : 'local');
+      if (forceAlert) {
+        if (loaded) alert('✅ Sinkronisasi Berhasil!\nData akun karyawan terbaru dari Admin telah dimuat dari Cloud Server.');
+        else alert('ℹ️ Menggunakan database lokal aktif.');
       }
     }
 
@@ -1765,6 +1821,73 @@
         `;
         container.appendChild(div);
       });
+    }
+
+    function openDirectSyncModal() {
+      document.getElementById('direct-sync-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeDirectSyncModal() {
+      document.getElementById('direct-sync-modal').classList.add('hidden');
+    }
+
+    function copyAdminSyncCode() {
+      const payload = {
+        mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
+        mai_users: getWhDB('MAI', 'users', SEED_MAI_USERS),
+        mbi_attendance: getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE),
+        mai_attendance: getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE),
+        mbi_leaves: getWhDB('MBI', 'leaves', SEED_MBI_LEAVES),
+        mai_leaves: getWhDB('MAI', 'leaves', []),
+        mbi_overtime: getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES),
+        mai_overtime: getWhDB('MAI', 'overtime', []),
+        updatedAt: new Date().toISOString()
+      };
+
+      const jsonStr = JSON.stringify(payload);
+      const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+      
+      navigator.clipboard.writeText(encoded).then(() => {
+        alert('📋 Kode Database Admin Berhasil Disalin!\n\nKirimkan kode ini ke WhatsApp / Chat, lalu buka di HP dan pilih "Tempel Kode" untuk mengaktifkan seluruh akun karyawan seketika.');
+      }).catch(() => {
+        prompt('Salin teks kode database di bawah ini:', encoded);
+      });
+    }
+
+    function applyAdminSyncCode() {
+      const raw = document.getElementById('sync-code-input').value.trim();
+      if (!raw) {
+        alert('Silakan tempel kode database terlebih dahulu.');
+        return;
+      }
+
+      try {
+        let jsonStr = raw;
+        if (!raw.startsWith('{')) {
+          jsonStr = decodeURIComponent(escape(atob(raw)));
+        }
+        const db = JSON.parse(jsonStr);
+        if (db.mbi_users) localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
+        if (db.mai_users) localStorage.setItem('wfm_mai_users', JSON.stringify(db.mai_users));
+        if (db.mbi_attendance) localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
+        if (db.mai_attendance) localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
+        if (db.mbi_leaves) localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
+        if (db.mai_leaves) localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
+        if (db.mbi_overtime) localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
+        if (db.mai_overtime) localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
+
+        renderAccountLookupList();
+        renderEmployeeTable();
+        populateDropdownEmployees();
+        renderOvertimeEmployeeGrid();
+        refreshAllDashboardData();
+        closeDirectSyncModal();
+
+        alert(`✅ Sukses!\nData karyawan dari Admin telah berhasil diterapkan ke HP ini.\nTotal: ${(db.mbi_users?.length || 0) + (db.mai_users?.length || 0)} akun aktif dan siap login!`);
+      } catch (err) {
+        alert('Kode database tidak valid: ' + err.message);
+      }
     }
 
     // =========================================================
