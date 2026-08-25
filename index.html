@@ -29,18 +29,10 @@
   </script>
 
   <style>
-    /* STANDAR UKURAN ID CARD RESMI CR80 (54mm x 85.6mm) SAAT DICETAK */
     @media print {
-      @page {
-        size: auto;
-        margin: 5mm;
-      }
-      body * {
-        visibility: hidden !important;
-      }
-      #printable-area, #printable-area * {
-        visibility: visible !important;
-      }
+      @page { size: auto; margin: 5mm; }
+      body * { visibility: hidden !important; }
+      #printable-area, #printable-area * { visibility: visible !important; }
       #printable-area {
         position: fixed;
         left: 50%;
@@ -286,7 +278,7 @@
 
         <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-          <span>Pengajuan Lembur</span>
+          <span>Input & Rekap Lembur</span>
         </button>
 
         <!-- Menu Manajemen (Khusus Coordinator, Supervisor, Admin) -->
@@ -390,16 +382,16 @@
                 <p class="text-xs text-slate-500 mt-1">Tambah data, download akun & password, dan upload Excel.</p>
               </button>
 
+              <button onclick="switchView('overtime')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-amber-500 hover:shadow-md transition">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3"><i data-lucide="clock" class="w-5 h-5"></i></div>
+                <h4 class="font-extrabold text-sm text-slate-900">Input & Rekap Lembur</h4>
+                <p class="text-xs text-slate-500 mt-1">Pilih massal karyawan (grid), hitung upah otomatis & approval supervisor.</p>
+              </button>
+
               <button onclick="switchView('reports-group')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-emerald-500 hover:shadow-md transition">
                 <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>
                 <h4 class="font-extrabold text-sm text-slate-900">Laporan & Rekap Absensi</h4>
                 <p class="text-xs text-slate-500 mt-1">Lihat Record Absen Harian dan Rekap Matriks Hari Kerja.</p>
-              </button>
-
-              <button onclick="switchView('idcard')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-teal-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3"><i data-lucide="qr-code" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Cetak QR Lokasi & ID Card</h4>
-                <p class="text-xs text-slate-500 mt-1">Cetak Barcode Lokasi Gudang dan ID Card ukuran standar.</p>
               </button>
             </div>
           </div>
@@ -762,7 +754,6 @@
                   </button>
                 </div>
 
-                <!-- Matriks Table Display -->
                 <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
                   <table id="table-matrix-display" class="w-full text-center text-xs border-collapse border border-slate-300">
                     <thead id="matrix-thead" class="bg-amber-100/70 text-slate-900 font-bold border-b border-slate-300">
@@ -787,88 +778,149 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 6: INPUT & APPROVAL LEMBUR (PILIH KARYAWAN) -->
+          <!-- VIEW 6: INPUT & REKAP LEMBUR (BATCH GRID MULTI-SELECT SESUAI GAMBAR) -->
           <!-- ========================================================= -->
           <div id="view-overtime" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                   <i data-lucide="clock" class="w-6 h-6 text-amber-600"></i>
-                  Pengajuan & Approval Lembur (<span id="ot-wh-label">Gudang MBI</span>)
+                  Input & Rekapitulasi Lembur (<span id="ot-wh-label">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Pilih karyawan yang akan lembur serta persetujuan langsung supervisor</p>
+                <p class="text-xs text-slate-500">Pilih karyawan secara massal (grid), hitung upah otomatis (Hari Kerja Rp 125.000 / Hari Libur Rp 120.000), & approval supervisor</p>
+              </div>
+
+              <!-- Filter & Download Rekap Lembur -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="exportOvertimeToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="download" class="w-4 h-4"></i> Download Rekap Lembur (Excel)
+                </button>
               </div>
             </div>
 
             <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Form Pengajuan dengan Pilihan Karyawan -->
-              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+            <!-- 1. FORM INPUT LEMBUR MASSAL DENGAN GRID CHECKBOX (PERSIS GAMBAR) -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
+              <div class="flex items-center justify-between border-b pb-3">
                 <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <i data-lucide="plus-circle" class="w-4 h-4 text-amber-600"></i> Input Lembur Karyawan
+                  <i data-lucide="user-check" class="w-4 h-4 text-amber-600"></i> Form Penugasan Lembur Karyawan
                 </h3>
+                <div id="ot-calc-summary-badge" class="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl text-xs font-extrabold">
+                  Estimasi: Rp 125.000 / orang (4 Jam Kerja Efektif)
+                </div>
+              </div>
 
-                <form onsubmit="handleOvertimeSubmit(event)" class="space-y-3.5">
+              <form onsubmit="handleBatchOvertimeSubmit(event)" class="space-y-4">
+                <!-- Row 1: Parameter Tanggal, Jenis Hari & Jam -->
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Karyawan yang Lembur *</label>
-                    <select id="ot-employee-select" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                      <!-- Rendered by JS -->
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
+                    <input type="date" id="ot-date" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kategori Hari *</label>
+                    <select id="ot-day-type" onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                      <option value="hari_kerja">Hari Kerja (5 Jam Total = 4 Jam Kerja / Rp 125.000)</option>
+                      <option value="hari_libur">Hari Libur (Flat Rp 120.000)</option>
                     </select>
                   </div>
 
                   <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
-                    <input type="date" id="ot-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Mulai *</label>
-                      <input type="time" id="ot-start" value="17:00" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold">
-                    </div>
-                    <div>
-                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Selesai *</label>
-                      <input type="time" id="ot-end" value="20:00" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold">
-                    </div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Mulai *</label>
+                    <input type="time" id="ot-start" value="17:00" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold">
                   </div>
 
                   <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Alasan Lembur *</label>
-                    <textarea id="ot-reason" required rows="3" placeholder="Contoh: Packing pengiriman batch darurat" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Selesai *</label>
+                    <input type="time" id="ot-end" value="22:00" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold">
+                  </div>
+                </div>
+
+                <!-- Row 2: Grid Pemilihan Karyawan Massal (Sesuai Gambar) -->
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <button type="button" onclick="selectAllOvertimeEmployees(true)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-xs transition">
+                        Pilih Semua
+                      </button>
+                      <button type="button" onclick="selectAllOvertimeEmployees(false)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-xs transition">
+                        Batal Semua
+                      </button>
+                    </div>
+                    <span id="ot-selected-count-badge" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg border">
+                      0 dipilih
+                    </span>
                   </div>
 
-                  <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-amber-600/30">
-                    Simpan Pengajuan Lembur
+                  <!-- Container Scrollable Grid (Persis Gambar) -->
+                  <div class="bg-amber-50/40 border border-amber-200/80 rounded-2xl p-4 max-h-56 overflow-y-auto custom-scroll shadow-inner">
+                    <div id="ot-employee-checkbox-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      <!-- Rendered by JS -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Row 3: Alasan & Tombol Submit -->
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                  <div class="sm:col-span-9">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Alasan Lembur *</label>
+                    <input type="text" id="ot-reason" required placeholder="Contoh: Bongkar muat kontainer obat batch darurat" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                  </div>
+                  <div class="sm:col-span-3">
+                    <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5">
+                      <i data-lucide="check-circle" class="w-4 h-4"></i> Ajukan Lembur
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <!-- 2. TABEL REKAP & DAFTAR PENGAJUAN LEMBUR (DENGAN FILTER TANGGAL & APPROVAL TERKUNCI) -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                    <input type="date" id="ot-filter-start" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                    <input type="date" id="ot-filter-end" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                  </div>
+                  <button onclick="renderOvertimeTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
+                    <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filter Data
                   </button>
-                </form>
+                </div>
+                <span id="ot-total-badge" class="text-xs font-bold text-slate-700">Total: 0 Data Lembur</span>
               </div>
 
-              <!-- List Pengajuan dengan Tombol Approve & Reject -->
-              <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="font-extrabold text-sm text-slate-900">Daftar Pengajuan Lembur</h3>
-                  <span class="text-xs text-slate-500 font-medium">Supervisor dapat Approve / Reject</span>
-                </div>
-
-                <div class="overflow-x-auto">
-                  <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
-                      <tr>
-                        <th class="p-3">Karyawan</th>
-                        <th class="p-3">Tanggal & Jam</th>
-                        <th class="p-3">Uraian</th>
-                        <th class="p-3">Status</th>
-                        <th class="p-3 text-right min-w-[130px]">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody id="ot-table-body" class="divide-y divide-slate-100">
-                      <!-- Rendered by JS -->
-                    </tbody>
-                  </table>
-                </div>
+              <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
+                    <tr>
+                      <th class="p-3.5 border-r border-slate-200">No</th>
+                      <th class="p-3.5 border-r border-slate-200">Tanggal</th>
+                      <th class="p-3.5 border-r border-slate-200">NIK</th>
+                      <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                      <th class="p-3.5 border-r border-slate-200">Departemen</th>
+                      <th class="p-3.5 border-r border-slate-200">Kategori</th>
+                      <th class="p-3.5 border-r border-slate-200">Jam Lembur</th>
+                      <th class="p-3.5 border-r border-slate-200">Jam Efektif</th>
+                      <th class="p-3.5 border-r border-slate-200">Upah Lembur</th>
+                      <th class="p-3.5 border-r border-slate-200">Alasan</th>
+                      <th class="p-3.5 border-r border-slate-200">Status</th>
+                      <th class="p-3.5 text-center min-w-[140px]">Aksi Supervisor</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ot-table-body" class="divide-y divide-slate-100">
+                    <!-- Rendered by JS -->
+                  </tbody>
+                </table>
               </div>
             </div>
+
           </div>
 
           <!-- ========================================================= -->
@@ -904,10 +956,8 @@
               <div class="flex flex-col items-center p-6 bg-slate-200/60 rounded-3xl border border-slate-200">
                 <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan (Ukuran Standar)</span>
                 
-                <!-- Container Card Dimensi Standar -->
                 <div id="printable-id-card" style="width: 54mm; min-height: 85.6mm; max-width: 54mm;" class="bg-white rounded-2xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
-                  <!-- Card Header -->
                   <div id="idcard-header" class="p-2.5 text-white flex items-center justify-between bg-sky-700">
                     <div>
                       <span class="text-[7px] uppercase font-bold tracking-widest text-sky-200 block leading-none">WORKFORCE</span>
@@ -916,7 +966,6 @@
                     <span id="idcard-wh-badge" class="text-[8px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded text-white">MBI</span>
                   </div>
 
-                  <!-- Card Body -->
                   <div class="px-2 py-1 flex flex-col items-center text-center">
                     <div class="w-11 h-11 rounded-full bg-slate-100 border-2 border-white shadow flex items-center justify-center -mt-5 overflow-hidden mb-1 text-slate-400">
                       <i data-lucide="user" class="w-6 h-6"></i>
@@ -925,13 +974,11 @@
                     <p id="idcard-dept" class="text-[8px] text-slate-500 font-semibold uppercase leading-tight mt-0.5">Departemen</p>
                     <span id="idcard-nik" class="mt-1 text-[8px] font-mono font-bold bg-slate-100 px-2 py-0.5 rounded border text-slate-800 leading-none">MBI-1001</span>
 
-                    <!-- QR Code Karyawan -->
                     <div class="my-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 flex flex-col items-center">
                       <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-24 h-24 bg-white p-0.5 rounded shadow-xs object-contain">
                     </div>
                   </div>
 
-                  <!-- Card Footer -->
                   <div class="pb-1.5 text-center">
                     <p id="idcard-footer-text" class="text-[7px] font-medium text-slate-400">Official Employee ID Card</p>
                   </div>
@@ -1096,27 +1143,33 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (GPS RADIUS + KAMERA + LEMBUR APPROVAL) -->
+  <!-- JAVASCRIPT ENGINE (BATCH OVERTIME + STRICT APPROVAL + GPS) -->
   <!-- ========================================================= -->
   <script>
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
-    // Koordinat Resmi Titik Gudang Medika
     const OFFICIAL_COORDS = {
       lat: -6.2088,
       lng: 106.8456,
-      maxRadiusMeters: 500 // Radius toleransi 500 meter
+      maxRadiusMeters: 500
     };
 
     const SEED_MBI_USERS = [
       { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
       { id: 'mbi-2', name: 'Agus Setiawan', dept: 'coordinator', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-COR-01', role: 'coordinator', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-3', name: 'Budi Santoso', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
+      { id: 'mbi-3', name: 'Budi Santoso', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-4', name: 'Emha Riyanda Tasrifin', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081311112222', joinDate: '2023-04-01', nik: 'MBI-1004', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-5', name: 'Hardian Nur Rahman', dept: 'inbound', outsource: 'PT Medika Daya', phone: '081322223333', joinDate: '2023-04-05', nik: 'MBI-1005', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-6', name: 'Anggi Rinaldi', dept: 'dispatch', outsource: 'Internal', phone: '081333334444', joinDate: '2023-04-10', nik: 'MBI-1006', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-7', name: 'Ilham Maulana', dept: 'packing', outsource: 'PT Cahaya Mitra', phone: '081344445555', joinDate: '2023-04-12', nik: 'MBI-1007', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-8', name: 'Zaky Sofyan Hadi M', dept: 'picking plan', outsource: 'PT Medika Daya', phone: '081355556666', joinDate: '2023-04-15', nik: 'MBI-1008', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-9', name: 'Ahmad Maulana', dept: 'driver', outsource: 'Internal', phone: '081366667777', joinDate: '2023-04-18', nik: 'MBI-1009', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
       { id: 'mai-1', name: 'Dewi Lestari', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-05', nik: 'MAI-SUP-01', role: 'supervisor', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
-      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'packing', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
+      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'packing', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-3', name: 'Rifaldi', dept: 'inbound', outsource: 'Internal', phone: '081377778888', joinDate: '2023-04-01', nik: 'MAI-1003', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
     ];
 
     const SEED_MBI_ATTENDANCE = [
@@ -1132,7 +1185,8 @@
     ];
 
     const SEED_MBI_OVERTIMES = [
-      { id: 'ot-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], startTime: '17:00', endTime: '20:00', durationHours: 3, reason: 'Bongkar muat kontainer obat', status: 'pending' }
+      { id: 'ot-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', dept: 'packer', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], dayType: 'hari_kerja', startTime: '17:00', endTime: '22:00', totalHours: 5, effectiveHours: 4, nominal: 125000, reason: 'Bongkar muat kontainer obat', status: 'pending' },
+      { id: 'ot-mbi-2', userId: 'mbi-4', userNik: 'MBI-1004', userName: 'Emha Riyanda Tasrifin', dept: 'packer', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], dayType: 'hari_kerja', startTime: '17:00', endTime: '22:00', totalHours: 5, effectiveHours: 4, nominal: 125000, reason: 'Bongkar muat kontainer obat', status: 'approved' }
     ];
 
     // State Variables
@@ -1142,8 +1196,6 @@
     let activeReportTab = 'records';
     let html5QrScanner = null;
     let pendingUserForPasswordChange = null;
-
-    // 2-Step Verification State
     let isLocationVerified = false;
 
     function getWhDB(warehouse, key, defaultVal) {
@@ -1221,6 +1273,8 @@
       document.getElementById('matrix-end-date').value = lastDayStr;
       document.getElementById('record-start-date').value = firstDayStr;
       document.getElementById('record-end-date').value = todayStr;
+      document.getElementById('ot-filter-start').value = firstDayStr;
+      document.getElementById('ot-filter-end').value = todayStr;
       document.getElementById('ot-date').value = todayStr;
       document.getElementById('leave-start-date').value = todayStr;
       document.getElementById('leave-end-date').value = todayStr;
@@ -1394,6 +1448,8 @@
       resetVerificationState();
       refreshAllDashboardData();
       populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      calculateOvertimeNominal();
       lucide.createIcons();
     }
 
@@ -1419,6 +1475,7 @@
       renderLeavesTable();
       renderOvertimeTable();
       populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
       resetVerificationState();
       lucide.createIcons();
     }
@@ -1455,12 +1512,16 @@
         renderMatrixTable();
       }
       if (viewName === 'leaves') renderLeavesTable();
+      if (viewName === 'overtime') {
+        renderOvertimeEmployeeGrid();
+        renderOvertimeTable();
+        calculateOvertimeNominal();
+      }
       if (viewName === 'idcard') {
         populateDropdownEmployees();
         renderSelectedIDCard();
         renderLocationQRCode();
       }
-      if (viewName === 'overtime') renderOvertimeTable();
       if (viewName === 'github') renderGitHubConfig();
 
       if (viewName !== 'attendance') {
@@ -1496,10 +1557,10 @@
     }
 
     // =========================================================
-    // HITUNG JARAK GPS (HAVERSINE FORMULA)
+    // HITUNG JARAK GPS
     // =========================================================
     function getDistanceMeters(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // meters
+      const R = 6371e3;
       const φ1 = lat1 * Math.PI / 180;
       const φ2 = lat2 * Math.PI / 180;
       const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -1515,7 +1576,7 @@
     function verifyGPSLocation() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) {
-          resolve({ valid: false, error: 'GPS Geolocation tidak didukung di perangkat ini.' });
+          resolve({ valid: false, error: 'GPS Geolocation tidak didukung di browser ini.' });
           return;
         }
 
@@ -1525,7 +1586,6 @@
             const userLng = pos.coords.longitude;
             const dist = getDistanceMeters(userLat, userLng, OFFICIAL_COORDS.lat, OFFICIAL_COORDS.lng);
             
-            // Jarak radius toleransi
             if (dist <= OFFICIAL_COORDS.maxRadiusMeters || dist <= 1000) {
               resolve({ valid: true, distance: dist });
             } else {
@@ -1533,8 +1593,7 @@
             }
           },
           (err) => {
-            // Jika GPS tidak diizinkan / tidak aktif
-            resolve({ valid: false, error: 'GPS lokasi wajib dinyalakan dan diizinkan pada browser/HP Anda: ' + err.message });
+            resolve({ valid: false, error: 'GPS lokasi wajib dinyalakan dan diizinkan: ' + err.message });
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
@@ -1542,7 +1601,7 @@
     }
 
     // =========================================================
-    // 2-STEP VERIFICATION STATE (LOKASI DULU -> ID CARD)
+    // 2-STEP VERIFICATION
     // =========================================================
     function resetVerificationState() {
       isLocationVerified = false;
@@ -1565,7 +1624,7 @@
         s1Card.className = 'p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition';
         s1Icon.className = 'w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm';
         s1Icon.innerText = '1';
-        s1Status.innerText = 'Menunggu scan QR lokasi di pintu gudang...';
+        s1Status.innerText = 'Menunggu scan barcode lokasi di pintu gudang...';
         s1Status.className = 'text-[11px] text-amber-800 font-semibold';
         s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900';
         s1Badge.innerText = 'WAJIB';
@@ -1586,9 +1645,7 @@
         instr.innerHTML = '<i data-lucide="map-pin" class="w-4 h-4 text-amber-700"></i> <span>Langkah 1: Arahkan kamera ke Barcode QR Lokasi Gudang</span>';
       }
 
-      if (boxBorder) {
-        boxBorder.className = 'w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
-      }
+      if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
       if (boxTag) {
         boxTag.className = 'text-[10px] text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
         boxTag.innerText = 'SCAN QR LOKASI';
@@ -1639,9 +1696,7 @@
         instr.innerHTML = '<i data-lucide="qr-code" class="w-4 h-4 text-teal-700"></i> <span>Langkah 2: Lokasi Valid! Silakan scan Barcode ID Card Karyawan</span>';
       }
 
-      if (boxBorder) {
-        boxBorder.className = 'w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
-      }
+      if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
       if (boxTag) {
         boxTag.className = 'text-[10px] text-teal-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
         boxTag.innerText = 'SCAN ID CARD';
@@ -1655,9 +1710,6 @@
       lucide.createIcons();
     }
 
-    // =========================================================
-    // PARSING & LOGIKA SCAN REALTIME (VALIDASI GPS & LOKASI)
-    // =========================================================
     async function processScannedText(decodedText) {
       const trimmed = decodedText.trim();
       const alertEl = document.getElementById('att-alert');
@@ -1669,7 +1721,6 @@
                                  trimmed.toUpperCase().includes("LOKASI-GUDANG");
 
       if (isLocationBarcode) {
-        // Cek GPS fisik pengguna saat scan barcode lokasi
         const gpsCheck = await verifyGPSLocation();
         if (!gpsCheck.valid) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
@@ -1759,7 +1810,7 @@
     }
 
     // =========================================================
-    // KAMERA ENGINE LANGSUNG
+    // KAMERA SCANNER
     // =========================================================
     async function startScanner() {
       stopScanner();
@@ -1769,8 +1820,6 @@
       try {
         if (typeof Html5Qrcode !== 'undefined') {
           html5QrScanner = new Html5Qrcode("qr-reader");
-          
-          // Request camera with permission prompt
           await html5QrScanner.start(
             { facingMode: "environment" },
             { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
@@ -1785,9 +1834,9 @@
       } catch (err) {
         console.error('Html5Qrcode error:', err);
         if (statusMsg) {
-          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera diblokir browser.</span> Pastikan mengizinkan akses kamera di ikon gembok URL atau gunakan tombol 'Scan dari Gambar / File'.`;
+          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum diizinkan.</span> Di laptop/HP, klik ikon gembok URL dan pilih "Allow Camera" atau gunakan 'Scan dari Gambar'.`;
         }
-        alert('Izin akses kamera diperlukan.\n\nJika menggunakan browser laptop, klik ikon Gembok / Izin di samping alamat URL browser dan pilih "Allow Camera" (Izinkan Kamera).');
+        alert('Izin akses kamera diperlukan.\n\nKlik ikon Gembok / Izin di sebelah alamat URL browser Anda dan pilih "Allow Camera" (Izinkan Kamera).');
       }
     }
 
@@ -1828,7 +1877,7 @@
     }
 
     // =========================================================
-    // FITUR KARTU ID DIGITAL (CR80: 54mm x 85.6mm STANDAR)
+    // FITUR KARTU ID DIGITAL (CR80: 54mm x 85.6mm)
     // =========================================================
     function getQrCodeUrl(text) {
       return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(text)}&margin=1`;
@@ -1844,7 +1893,6 @@
     function populateDropdownEmployees() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       
-      // 1. Dropdown di ID Card
       const idSelect = document.getElementById('idcard-select-emp');
       if (idSelect) {
         idSelect.innerHTML = '';
@@ -1857,19 +1905,6 @@
         });
       }
 
-      // 2. Dropdown di Pengajuan Lembur
-      const otSelect = document.getElementById('ot-employee-select');
-      if (otSelect) {
-        otSelect.innerHTML = '';
-        users.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.nik;
-          opt.innerText = `${u.name} - ${u.dept.toUpperCase()} (${u.nik})`;
-          otSelect.appendChild(opt);
-        });
-      }
-
-      // 3. Dropdown di Izin
       const leaveSelect = document.getElementById('leave-employee');
       if (leaveSelect) {
         leaveSelect.innerHTML = '';
@@ -2000,6 +2035,7 @@
       closeAddEmployeeModal();
       renderEmployeeTable();
       populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
       alert(`Karyawan ${name} berhasil ditambahkan!\nNIK: ${autoNik}\nPassword Default: ${defaultPass}`);
     }
@@ -2095,6 +2131,7 @@
           setWhDB(activeWarehouse, 'users', users);
           renderEmployeeTable();
           populateDropdownEmployees();
+          renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
           alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!`);
         } catch (err) {
@@ -2106,7 +2143,7 @@
     }
 
     // =========================================================
-    // FITUR LAPORAN (RECORD HARIAN + MATRIKS)
+    // FITUR LAPORAN ABSENSI (RECORD + MATRIKS)
     // =========================================================
     function switchReportTab(tabName) {
       activeReportTab = tabName;
@@ -2373,7 +2410,7 @@
           <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
           <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (lv.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${lv.status.toUpperCase()}</span></td>
           <td class="p-3 text-right">
-            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? `
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') && lv.status === 'pending' ? `
               <div class="flex items-center justify-end gap-1">
                 <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold">Setujui</button>
                 <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold">Tolak</button>
@@ -2398,42 +2435,130 @@
     }
 
     // =========================================================
-    // FITUR LEMBUR (PILIH KARYAWAN & APPROVAL SUPERVISOR)
+    // FITUR LEMBUR: BATCH GRID CHECKBOX + HITUNG UPAH + APPROVAL
     // =========================================================
-    function handleOvertimeSubmit(e) {
-      e.preventDefault();
-      const targetNik = document.getElementById('ot-employee-select').value;
-      const date = document.getElementById('ot-date').value;
-      const startTime = document.getElementById('ot-start').value;
-      const endTime = document.getElementById('ot-end').value;
-      const reason = document.getElementById('ot-reason').value;
-
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const emp = users.find(u => u.nik === targetNik) || currentUser;
+    function calculateOvertimeNominal() {
+      const dayType = document.getElementById('ot-day-type')?.value || 'hari_kerja';
+      const startTime = document.getElementById('ot-start')?.value || '17:00';
+      const endTime = document.getElementById('ot-end')?.value || '22:00';
 
       const [sh, sm] = startTime.split(':').map(Number);
       const [eh, em] = endTime.split(':').map(Number);
       let diff = eh * 60 + em - (sh * 60 + sm);
       if (diff < 0) diff += 24 * 60;
-      const durationHours = Math.round((diff / 60) * 10) / 10;
+      const totalHours = Math.round((diff / 60) * 10) / 10;
 
+      let effectiveHours = totalHours;
+      let nominal = 0;
+
+      if (dayType === 'hari_kerja') {
+        // Hari Kerja: 5 jam total = 4 jam kerja efektif (potong 1 jam istirahat) = Rp 125.000
+        if (totalHours >= 5) {
+          effectiveHours = totalHours - 1;
+        }
+        nominal = effectiveHours === 4 ? 125000 : Math.round(effectiveHours * (125000 / 4));
+      } else {
+        // Hari Libur: Flat Rp 120.000
+        nominal = 120000;
+      }
+
+      const badge = document.getElementById('ot-calc-summary-badge');
+      if (badge) {
+        badge.innerText = `Estimasi: Rp ${nominal.toLocaleString('id-ID')} / orang (${totalHours} Jam Total, ${effectiveHours} Jam Kerja)`;
+      }
+
+      return { totalHours, effectiveHours, nominal, dayType };
+    }
+
+    function renderOvertimeEmployeeGrid() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const container = document.getElementById('ot-employee-checkbox-grid');
+      if (!container) return;
+
+      container.innerHTML = '';
+      users.forEach(u => {
+        const div = document.createElement('label');
+        div.className = 'cursor-pointer p-2.5 rounded-xl border border-amber-200/80 bg-white hover:bg-amber-50/60 transition flex items-center justify-between gap-2 text-xs select-none shadow-xs';
+        div.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            <input type="checkbox" name="ot-emp-check" value="${u.nik}" onchange="updateSelectedOvertimeCount()" class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer">
+            <div class="min-w-0">
+              <span class="font-extrabold text-slate-900 block truncate text-[11px]">${u.name}</span>
+              <span class="text-[10px] font-mono text-slate-400 block">${u.nik} &bull; ${u.dept}</span>
+            </div>
+          </div>
+          <span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">${u.role}</span>
+        `;
+        container.appendChild(div);
+      });
+      updateSelectedOvertimeCount();
+    }
+
+    function selectAllOvertimeEmployees(select) {
+      const checkboxes = document.querySelectorAll('input[name="ot-emp-check"]');
+      checkboxes.forEach(cb => cb.checked = select);
+      updateSelectedOvertimeCount();
+    }
+
+    function updateSelectedOvertimeCount() {
+      const checkboxes = document.querySelectorAll('input[name="ot-emp-check"]:checked');
+      const count = checkboxes.length;
+      const badge = document.getElementById('ot-selected-count-badge');
+      if (badge) {
+        badge.innerText = `${count} dipilih`;
+        badge.className = count > 0 ? 'text-xs font-bold text-amber-900 bg-amber-200 px-3 py-1 rounded-lg border border-amber-300' : 'text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg border';
+      }
+    }
+
+    function handleBatchOvertimeSubmit(e) {
+      e.preventDefault();
+      const checkboxes = document.querySelectorAll('input[name="ot-emp-check"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Silakan pilih minimal 1 karyawan untuk diajukan lembur!');
+        return;
+      }
+
+      const date = document.getElementById('ot-date').value;
+      const startTime = document.getElementById('ot-start').value;
+      const endTime = document.getElementById('ot-end').value;
+      const reason = document.getElementById('ot-reason').value.trim();
+      const calc = calculateOvertimeNominal();
+
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
-      overtimes.unshift({
-        id: `ot-${activeWarehouse.toLowerCase()}-${Date.now()}`,
-        userId: emp.id,
-        userNik: emp.nik,
-        userName: emp.name,
-        warehouse: activeWarehouse,
-        date, startTime, endTime, durationHours, reason, 
-        status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending'
+
+      let countAdded = 0;
+      checkboxes.forEach(cb => {
+        const emp = users.find(u => u.nik === cb.value);
+        if (emp) {
+          overtimes.unshift({
+            id: `ot-${activeWarehouse.toLowerCase()}-${Date.now()}-${countAdded}`,
+            userId: emp.id,
+            userNik: emp.nik,
+            userName: emp.name,
+            dept: emp.dept,
+            warehouse: activeWarehouse,
+            date,
+            dayType: calc.dayType,
+            startTime,
+            endTime,
+            totalHours: calc.totalHours,
+            effectiveHours: calc.effectiveHours,
+            nominal: calc.nominal,
+            reason,
+            status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending'
+          });
+          countAdded++;
+        }
       });
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
       document.getElementById('ot-reason').value = '';
-      
+      selectAllOvertimeEmployees(false);
+
       const alertEl = document.getElementById('ot-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = `Pengajuan lembur ${durationHours} jam untuk ${emp.name} berhasil disimpan!`;
+      alertEl.innerText = `Pengajuan lembur untuk ${countAdded} karyawan berhasil disimpan! (Total Upah: Rp ${(calc.nominal * countAdded).toLocaleString('id-ID')})`;
       alertEl.classList.remove('hidden');
 
       renderOvertimeTable();
@@ -2441,37 +2566,66 @@
     }
 
     function renderOvertimeTable() {
+      const startStr = document.getElementById('ot-filter-start')?.value || '';
+      const endStr = document.getElementById('ot-filter-end')?.value || '';
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const tbody = document.getElementById('ot-table-body');
       tbody.innerHTML = '';
 
-      if (overtimes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">Belum ada pengajuan lembur di Gudang ${activeWarehouse}.</td></tr>`;
+      const filtered = overtimes.filter(o => (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr));
+      const totalBadge = document.getElementById('ot-total-badge');
+      if (totalBadge) totalBadge.innerText = `Total: ${filtered.length} Data Lembur (${activeWarehouse})`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" class="p-6 text-center text-slate-400">Belum ada data lembur pada periode ini di Gudang ${activeWarehouse}.</td></tr>`;
         return;
       }
 
-      overtimes.forEach(ot => {
+      filtered.forEach((ot, idx) => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+        const isPending = ot.status === 'pending';
+        const isApproved = ot.status === 'approved';
+        const isRejected = ot.status === 'rejected';
+
+        let statusBadge = '';
+        if (isApproved) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
+        else if (isRejected) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">PENDING</span>';
+
         tr.innerHTML = `
-          <td class="p-3 font-bold">${ot.userName}<br><span class="font-mono text-[10px] text-slate-400">${ot.userNik}</span></td>
-          <td class="p-3">${ot.date}<br><span class="font-mono text-[10px] text-slate-500">${ot.startTime}-${ot.endTime} (${ot.durationHours} Jam)</span></td>
-          <td class="p-3 text-slate-600 max-w-xs truncate">${ot.reason}</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ot.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (ot.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${ot.status.toUpperCase()}</span></td>
-          <td class="p-3 text-right">
-            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? `
-              <div class="flex items-center justify-end gap-1">
-                <button onclick="updateOtStatus('${ot.id}', 'approved')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-sm">Setujui</button>
-                <button onclick="updateOtStatus('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold shadow-sm">Tolak</button>
-              </div>
-            ` : '-'}
+          <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
+          <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
+          <td class="p-3 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
+          <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${ot.userName}</td>
+          <td class="p-3 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
+          <td class="p-3 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-rose-700 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
+          <td class="p-3 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
+          <td class="p-3 border-r border-slate-100 font-mono font-bold text-amber-800">${ot.effectiveHours} Jam</td>
+          <td class="p-3 border-r border-slate-100 font-mono font-black text-emerald-700">Rp ${(ot.nominal || 0).toLocaleString('id-ID')}</td>
+          <td class="p-3 border-r border-slate-100 text-slate-600 max-w-xs truncate">${ot.reason}</td>
+          <td class="p-3 border-r border-slate-100 text-center">${statusBadge}</td>
+          <td class="p-3 text-center">
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? (
+              isPending ? `
+                <div class="flex items-center justify-center gap-1.5">
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                    Setujui
+                  </button>
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                    Tolak
+                  </button>
+                </div>
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">Terkunci (${ot.status.toUpperCase()})</span>`
+            ) : `<span class="text-[10px] text-slate-400">-</span>`}
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    function updateOtStatus(id, newStatus) {
+    function updateOvertimeStatusAndLock(id, newStatus) {
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const item = overtimes.find(o => o.id === id);
       if (item) {
@@ -2479,7 +2633,38 @@
         setWhDB(activeWarehouse, 'overtime', overtimes);
         renderOvertimeTable();
         refreshAllDashboardData();
+        alert(`Pengajuan lembur berhasil di-${newStatus === 'approved' ? 'SETUJUI' : 'TOLAK'} dan status terkunci permanen!`);
       }
+    }
+
+    function exportOvertimeToExcel() {
+      const startStr = document.getElementById('ot-filter-start')?.value || '';
+      const endStr = document.getElementById('ot-filter-end')?.value || '';
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+
+      const filtered = overtimes.filter(o => (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr));
+
+      const rows = filtered.map((r, i) => ({
+        "No": i + 1,
+        "Tanggal": r.date,
+        "NIK": r.userNik,
+        "Nama Karyawan": r.userName,
+        "Departemen": r.dept || '',
+        "Kategori Hari": r.dayType === 'hari_libur' ? 'Hari Libur' : 'Hari Kerja',
+        "Jam Mulai": r.startTime,
+        "Jam Selesai": r.endTime,
+        "Total Jam": r.totalHours,
+        "Jam Kerja Efektif": r.effectiveHours,
+        "Upah Lembur (Rp)": r.nominal || 0,
+        "Alasan Lembur": r.reason || '',
+        "Status Approval": r.status.toUpperCase(),
+        "Gudang": activeWarehouse
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Rekap_Lembur_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Rekap_Lembur_Karyawan_${activeWarehouse}_${Date.now()}.xlsx`);
     }
 
     // =========================================================
