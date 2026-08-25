@@ -72,13 +72,7 @@
           M
         </div>
         <h1 class="text-xl font-extrabold tracking-tight">WFM MEDIKA GROUP</h1>
-        <p class="text-xs text-slate-400 mt-0.5">Sistem Manajemen Kehadiran & Operasional</p>
-
-        <!-- Tab Toggle Login vs Register -->
-        <div class="mt-4 grid grid-cols-2 p-1 bg-slate-800/80 rounded-xl border border-slate-700">
-          <button id="btn-tab-login" onclick="showAuthTab('login')" class="py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition">Masuk</button>
-          <button id="btn-tab-register" onclick="showAuthTab('register')" class="py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">Daftar Akun Baru</button>
-        </div>
+        <p class="text-xs text-slate-400 mt-0.5">Sistem Presensi & Operasional Gudang</p>
       </div>
 
       <!-- Alert Notification -->
@@ -103,7 +97,7 @@
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK atau Nama Karyawan</label>
-            <input type="text" id="login-identifier" required placeholder="Ketik NIK atau Nama (Contoh: Afuani Huyan / MBI-1001)" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="text" id="login-identifier" required placeholder="Masukkan Nama atau NIK" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div>
@@ -111,33 +105,21 @@
               <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
               <span class="text-[10px] text-slate-500 font-medium">Default: <code class="font-bold text-teal-700">medika123</code></span>
             </div>
-            <input type="password" id="login-password" required placeholder="Masukkan password (default: medika123)" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
             Masuk ke Portal
           </button>
 
-          <!-- Status Cloud Live Sync & Tombol Bantuan -->
-          <div class="pt-3 border-t border-slate-100 flex flex-col gap-2 text-center">
-            <div class="p-2.5 rounded-xl bg-slate-900 text-teal-300 flex items-center justify-between text-xs shadow-inner">
-              <div class="flex items-center gap-2 font-bold text-[11px]">
-                <span id="auth-cloud-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span id="auth-cloud-status">Cloud Sync: Aktif & Terhubung</span>
-              </div>
-              <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="px-2 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-extrabold transition shadow-xs">
-                🔄 Tarik Data Admin
-              </button>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              <button type="button" onclick="openAccountLookupModal()" class="py-1.5 px-2 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 rounded-xl text-[11px] font-bold transition">
-                🔍 Cek Daftar Akun
-              </button>
-              <button type="button" onclick="openDirectSyncModal()" class="py-1.5 px-2 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-[11px] font-bold transition">
-                📲 Kirim Data ke HP
-              </button>
-            </div>
+          <!-- Link Bantuan Sederhana -->
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <button type="button" onclick="openAccountLookupModal()" class="text-sky-600 hover:text-sky-800 font-bold underline text-[11px]">
+              🔍 Cek NIK / Daftar Akun
+            </button>
+            <button type="button" onclick="showAuthTab('register')" class="text-slate-400 hover:text-slate-700 font-medium text-[11px]">
+              Daftar Mandiri
+            </button>
           </div>
         </form>
       </div>
@@ -1961,9 +1943,12 @@
       const roleBadge = document.getElementById('user-role-badge');
       roleBadge.innerText = user.role.toUpperCase();
 
-      const isStaffOnly = user.role === 'staff';
-      const isSuperAdmin = user.role === 'admin';
+      const userRole = (user.role || 'staff').toLowerCase();
+      const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
+      const isSuperAdmin = userRole === 'admin';
       const adminSection = document.getElementById('admin-menu-section');
+      const leavesNav = document.getElementById('nav-leaves');
+      const overtimeNav = document.getElementById('nav-overtime');
       const whSwitcher = document.getElementById('wh-switcher-box');
 
       if (isSuperAdmin) {
@@ -1974,13 +1959,19 @@
         whSwitcher.classList.remove('flex');
       }
 
-      if (isStaffOnly) {
-        adminSection.classList.add('hidden');
-        switchView('attendance');
-      } else {
+      if (isManagement) {
+        // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu
         adminSection.classList.remove('hidden');
+        if (leavesNav) leavesNav.classList.remove('hidden');
+        if (overtimeNav) overtimeNav.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
+      } else {
+        // Akun Karyawan Biasa / Selain Admin: HANYA ADA MENU ABSEN SAJA
+        adminSection.classList.add('hidden');
+        if (leavesNav) leavesNav.classList.add('hidden');
+        if (overtimeNav) overtimeNav.classList.add('hidden');
+        switchView('attendance');
       }
 
       resetVerificationState();
@@ -2033,6 +2024,12 @@
     }
 
     function switchView(viewName) {
+      const userRole = (currentUser?.role || 'staff').toLowerCase();
+      const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
+      if (!isManagement && viewName !== 'attendance') {
+        viewName = 'attendance';
+      }
+
       document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.sidebar-link').forEach(el => {
         el.className = 'sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800';
