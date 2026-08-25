@@ -204,30 +204,29 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <input type="text" id="lookup-search-input" onkeyup="renderAccountLookupList()" placeholder="Cari nama Anda..." class="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-        <label class="cursor-pointer px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
-          <i data-lucide="upload" class="w-3.5 h-3.5"></i> Upload Excel
+        <input type="text" id="lookup-search-input" onkeyup="renderAccountLookupList()" placeholder="Cari nama Anda..." class="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+        <label class="cursor-pointer px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-xs">
+          Upload Excel
           <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
         </label>
       </div>
 
-      <div class="max-h-60 overflow-y-auto custom-scroll border rounded-2xl divide-y divide-slate-100" id="lookup-list-container">
+      <div class="max-h-60 overflow-y-auto custom-scroll border border-slate-200 rounded-2xl divide-y divide-slate-100" id="lookup-list-container">
         <!-- Rendered by JS -->
       </div>
 
-      <p class="text-[11px] text-slate-500 text-center font-medium">Password default seluruh akun: <code class="font-bold text-teal-700">medika123</code></p>
+      <p class="text-[11px] text-slate-500 text-center font-medium">Password default seluruh akun: <code class="font-bold text-slate-900">medika123</code></p>
     </div>
   </div>
 
   <!-- ========================================================= -->
   <!-- MODAL TRANSFER & SINKRON KODE DATABASE LANGSUNG (HP & LAPTOP) -->
   <!-- ========================================================= -->
-  <div id="direct-sync-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+  <div id="direct-sync-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
-          <h3 class="font-black text-sm text-slate-900 flex items-center gap-1.5">
-            <i data-lucide="smartphone" class="w-4 h-4 text-teal-600"></i>
+          <h3 class="font-black text-sm text-slate-900">
             Transfer Data Admin ke HP Instan
           </h3>
           <p class="text-[11px] text-slate-500">Salin kode data dari laptop admin dan tempel di HP</p>
@@ -237,21 +236,21 @@
 
       <div class="space-y-3">
         <!-- Opsi 1: Salin dari Laptop Admin -->
-        <div class="p-3 bg-teal-50 border border-teal-200 rounded-2xl space-y-2">
-          <p class="text-xs font-bold text-teal-900">1. Jika Anda di LAPTOP ADMIN:</p>
-          <p class="text-[11px] text-teal-700">Klik tombol di bawah untuk menyalin seluruh data akun karyawan yang sudah diupload.</p>
-          <button onclick="copyAdminSyncCode()" class="w-full py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i> Salin Kode Database Admin
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+          <p class="text-xs font-bold text-slate-900">1. Jika Anda di LAPTOP ADMIN:</p>
+          <p class="text-[11px] text-slate-600">Klik tombol di bawah untuk menyalin seluruh data akun karyawan yang sudah diupload.</p>
+          <button onclick="copyAdminSyncCode()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
+            Salin Kode Database Admin
           </button>
         </div>
 
         <!-- Opsi 2: Tempel di HP Pengguna -->
-        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-          <p class="text-xs font-bold text-slate-800">2. Jika Anda di HP PENGGUNA:</p>
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+          <p class="text-xs font-bold text-slate-900">2. Jika Anda di HP PENGGUNA:</p>
           <p class="text-[11px] text-slate-600">Tempel (*paste*) kode database yang dikirim dari admin di sini:</p>
-          <textarea id="sync-code-input" rows="3" placeholder="Tempel kode data database di sini..." class="w-full p-2 bg-white border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none"></textarea>
-          <button onclick="applyAdminSyncCode()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i> Terapkan Data ke HP Ini
+          <textarea id="sync-code-input" rows="3" placeholder="Tempel kode data database di sini..." class="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"></textarea>
+          <button onclick="applyAdminSyncCode()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
+            Terapkan Data ke HP Ini
           </button>
         </div>
       </div>
@@ -261,36 +260,33 @@
   <!-- ========================================================= -->
   <!-- MODAL NOTIFIKASI SUKSES BUAT AKUN -->
   <!-- ========================================================= -->
-  <div id="account-created-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+  <div id="account-created-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-center">
-      <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-1 shadow-sm">
-        <i data-lucide="check-circle-2" class="w-8 h-8"></i>
-      </div>
       <div>
-        <h3 class="font-black text-base text-slate-900">Akun Berhasil Dibuat!</h3>
+        <h3 class="font-black text-base text-slate-900">Akun Berhasil Dibuat</h3>
         <p class="text-xs text-slate-500 mt-0.5">Akun karyawan telah otomatis aktif di sistem.</p>
       </div>
 
       <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left space-y-2 text-xs">
-        <div class="flex justify-between border-b pb-1.5">
+        <div class="flex justify-between border-b border-slate-200 pb-1.5">
           <span class="text-slate-500">Nama:</span>
           <span id="created-acc-name" class="font-bold text-slate-900">-</span>
         </div>
-        <div class="flex justify-between border-b pb-1.5">
+        <div class="flex justify-between border-b border-slate-200 pb-1.5">
           <span class="text-slate-500">NIK (ID Login):</span>
-          <span id="created-acc-nik" class="font-mono font-black text-teal-700">-</span>
+          <span id="created-acc-nik" class="font-mono font-black text-slate-900">-</span>
         </div>
-        <div class="flex justify-between border-b pb-1.5">
+        <div class="flex justify-between border-b border-slate-200 pb-1.5">
           <span class="text-slate-500">Gudang:</span>
           <span id="created-acc-wh" class="font-bold text-slate-900">-</span>
         </div>
         <div class="flex justify-between pb-0.5">
           <span class="text-slate-500">Password Default:</span>
-          <span id="created-acc-pass" class="font-mono font-extrabold text-amber-700">medika123</span>
+          <span id="created-acc-pass" class="font-mono font-extrabold text-slate-900">medika123</span>
         </div>
       </div>
 
-      <button id="btn-quick-login-created" onclick="quickLoginCreatedAccount()" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-teal-600/30">
+      <button id="btn-quick-login-created" onclick="quickLoginCreatedAccount()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
         Masuk Sekarang
       </button>
     </div>
@@ -299,12 +295,9 @@
   <!-- ========================================================= -->
   <!-- MODAL WAJIB GANTI PASSWORD (FIRST LOGIN FORCE CHANGE) -->
   <!-- ========================================================= -->
-  <div id="first-login-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+  <div id="first-login-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
       <div class="text-center pb-2 border-b border-slate-100">
-        <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center mx-auto mb-2">
-          <i data-lucide="key-round" class="w-6 h-6"></i>
-        </div>
         <h3 class="font-black text-base text-slate-900">Ubah Password Pribadi</h3>
         <p class="text-xs text-slate-500 mt-0.5">Silakan buat password pribadi baru Anda untuk mengamankan akun.</p>
       </div>
@@ -314,15 +307,15 @@
       <form onsubmit="handleForceChangePassword(event)" class="space-y-3.5">
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Baru *</label>
-          <input type="password" id="new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+          <input type="password" id="new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ulangi Password Baru *</label>
-          <input type="password" id="new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+          <input type="password" id="new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
 
-        <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-teal-600/30">
+        <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
           Simpan Password Baru & Masuk
         </button>
       </form>
@@ -332,12 +325,11 @@
   <!-- ========================================================= -->
   <!-- MODAL EDIT DATA KARYAWAN (SUPERVISOR, COORD, ADMIN) -->
   <!-- ========================================================= -->
-  <div id="edit-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+  <div id="edit-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
-          <h3 class="font-black text-sm text-slate-900 flex items-center gap-1.5">
-            <i data-lucide="edit" class="w-4 h-4 text-amber-600"></i>
+          <h3 class="font-black text-sm text-slate-900">
             Edit Data Karyawan
           </h3>
           <p class="text-[11px] text-slate-500">Perbarui profil atau reset password karyawan</p>
@@ -351,17 +343,17 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap *</label>
-          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
-            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="edit-emp-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <select id="edit-emp-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
               <option value="staff">Staff</option>
               <option value="coordinator">Coordinator</option>
               <option value="supervisor">Supervisor</option>
@@ -373,7 +365,7 @@
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-            <select id="edit-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <select id="edit-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
               <option value="inbound">inbound</option>
               <option value="packer">packer</option>
               <option value="packing">packing</option>
@@ -388,29 +380,29 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource / Vendor</label>
-            <input type="text" id="edit-emp-outsource" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <input type="text" id="edit-emp-outsource" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon</label>
-            <input type="text" id="edit-emp-phone" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <input type="text" id="edit-emp-phone" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE</label>
-            <input type="date" id="edit-emp-joindate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            <input type="date" id="edit-emp-joindate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
         </div>
 
-        <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-          <label class="block text-[11px] font-bold text-amber-900 uppercase tracking-wider mb-1">Reset Password Akun (Opsional)</label>
-          <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tidak diubah" class="w-full px-3 py-1.5 bg-white border border-amber-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none">
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+          <label class="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">Reset Password Akun (Opsional)</label>
+          <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tidak diubah" class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
 
         <div class="flex items-center gap-2 pt-2">
-          <button type="button" onclick="closeEditEmployeeModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">Batal</button>
-          <button type="submit" class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl transition shadow-md shadow-amber-600/30">Simpan Perubahan</button>
+          <button type="button" onclick="closeEditEmployeeModal()" class="flex-1 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition">Batal</button>
+          <button type="submit" class="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">Simpan Perubahan</button>
         </div>
       </form>
     </div>
@@ -419,12 +411,11 @@
   <!-- ========================================================= -->
   <!-- MODAL PENGATURAN / GANTI PASSWORD MANDIRI -->
   <!-- ========================================================= -->
-  <div id="setting-password-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+  <div id="setting-password-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
-          <h3 class="font-black text-sm text-slate-900 flex items-center gap-1.5">
-            <i data-lucide="key" class="w-4 h-4 text-teal-600"></i>
+          <h3 class="font-black text-sm text-slate-900">
             Ubah Kata Sandi
           </h3>
           <p class="text-[11px] text-slate-500">Ubah kata sandi akun Anda</p>
@@ -437,15 +428,15 @@
       <form onsubmit="handleSaveSelfPassword(event)" class="space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Baru *</label>
-          <input type="password" id="self-new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+          <input type="password" id="self-new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ulangi Password Baru *</label>
-          <input type="password" id="self-new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+          <input type="password" id="self-new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
 
-        <button type="submit" class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-teal-600/30">
+        <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
           Simpan Password Baru
         </button>
       </form>
@@ -458,14 +449,14 @@
   <div id="app-container" class="hidden flex-1 flex flex-col min-h-screen">
     
     <!-- Top Navbar -->
-    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm px-4 lg:px-8 py-3 flex items-center justify-between no-print">
+    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-teal-600/20">M</div>
+        <div class="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-lg shadow-xs">M</div>
         <div>
           <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
             <span>MEDIKA WFM</span>
-            <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800">GUDANG MBI</span>
-            <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-teal-100 text-teal-800">SUPERVISOR</span>
+            <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200">GUDANG MBI</span>
+            <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">SUPERVISOR</span>
           </h1>
           <p class="text-[11px] text-slate-500 font-medium">Workforce Management System</p>
         </div>
@@ -473,14 +464,14 @@
 
       <div class="flex items-center gap-2.5">
         <!-- Live Cloud Sync Button -->
-        <button onclick="fetchFullDatabaseFromCloud(true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition shadow-xs" title="Sinkronisasi Data Realtime dari Cloud Database">
-          <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="nav-cloud-label">Cloud Sync: Live</span>
+        <button onclick="fetchFullDatabaseFromCloud(true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime dari Cloud Database">
+          <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+          <span id="nav-cloud-label">Cloud: Live</span>
         </button>
 
         <!-- Switch Database Gudang View (Khusus Super Admin Saja) -->
         <div id="wh-switcher-box" class="hidden items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-          <button onclick="switchActiveWarehouse('MBI')" id="wh-btn-mbi" class="px-3 py-1 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs">MBI</button>
+          <button onclick="switchActiveWarehouse('MBI')" id="wh-btn-mbi" class="px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">MBI</button>
           <button onclick="switchActiveWarehouse('MAI')" id="wh-btn-mai" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">MAI</button>
         </div>
 
@@ -503,14 +494,17 @@
     <!-- App Body: Sidebar + Main Content -->
     <div class="flex-1 flex overflow-hidden">
       
-      <!-- Sidebar Navigasi Terkelompok & Profesional -->
+      <!-- Sidebar Navigasi Bersih, Minimalis & Profesional -->
       <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
-        <!-- 1. Presensi & Operasional (Staff & Semua Role) -->
-        <div class="space-y-1.5">
+        
+        <!-- 1. Presensi & Operasional -->
+        <div class="space-y-1">
           <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
-          <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm">
-            <i data-lucide="qr-code" class="w-4 h-4 text-teal-300"></i>
-            <span>Absensi Barcode</span>
+          <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+            Dashboard
+          </button>
+          <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition">
+            Absensi Barcode
           </button>
         </div>
 
@@ -520,48 +514,38 @@
           <!-- Kelompok: Pengajuan & Lembur -->
           <div class="space-y-1">
             <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
-            <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="file-text" class="w-4 h-4 text-rose-400"></i>
-              <span>Form Pengajuan</span>
+            <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              Form Pengajuan
             </button>
-            <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-              <span>Input & Rekap Lembur</span>
+            <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              Input & Rekap Lembur
             </button>
           </div>
 
           <!-- Kelompok: Manajemen Karyawan -->
           <div class="space-y-1">
             <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
-            <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="users" class="w-4 h-4 text-sky-400"></i>
-              <span>Data Karyawan</span>
+            <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              Data Karyawan
             </button>
-            <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="contact" class="w-4 h-4 text-purple-400"></i>
-              <span>Kartu ID & QR Lokasi</span>
+            <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              Kartu ID & QR Lokasi
             </button>
           </div>
 
-          <!-- Kelompok: Laporan & Analitik -->
+          <!-- Kelompok: Laporan & Rekapitulasi -->
           <div class="space-y-1">
             <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
-            <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
-              <span>Laporan & Rekap</span>
+            <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              Laporan & Rekap Absensi
             </button>
           </div>
 
-          <!-- Kelompok: Sistem & Database -->
+          <!-- Kelompok: Database & Cadangan -->
           <div class="space-y-1">
             <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-            <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="layout-dashboard" class="w-4 h-4 text-teal-400"></i>
-              <span>Dashboard</span>
-            </button>
-            <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-              <i data-lucide="database" class="w-4 h-4 text-amber-500"></i>
-              <span>Database & Cadangan</span>
+            <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              Database & Cadangan
             </button>
           </div>
 
@@ -576,76 +560,58 @@
           <!-- VIEW 1: DASHBOARD UTAMA -->
           <!-- ========================================================= -->
           <div id="view-dashboard" class="view-panel hidden space-y-6">
-            <div class="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
               <div>
-                <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 25 Agustus 2026</span>
-                <h2 class="text-2xl font-black mt-2">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
-                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi GPS & Barcode 2-Step, Record Absen Harian & Rekap Matriks</p>
+                <span id="dash-date" class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700">Senin, 25 Agustus 2026</span>
+                <h2 class="text-2xl font-black mt-2 tracking-tight">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
+                <p class="text-xs text-slate-400 mt-1">Data Karyawan, Presensi Barcode & GPS, Record Absen Harian & Rekap Matriks</p>
               </div>
-              <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center gap-3.5">
-                <div class="p-3 bg-teal-500/20 text-teal-300 rounded-xl"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
-                <div>
-                  <p class="text-[10px] uppercase font-bold text-teal-300">Status Saya Hari Ini:</p>
-                  <p id="dash-my-status" class="text-xs font-extrabold text-white mt-0.5">Belum Absen Masuk</p>
-                </div>
+              <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 backdrop-blur">
+                <p class="text-[10px] uppercase font-bold text-slate-400">Status Saya Hari Ini:</p>
+                <p id="dash-my-status" class="text-xs font-extrabold text-white mt-0.5">Belum Absen Masuk</p>
               </div>
             </div>
 
-            <!-- KPI Cards -->
+            <!-- KPI Cards Minimalis -->
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Total Karyawan</p>
-                  <h3 id="stat-total-emp" class="text-2xl font-black text-slate-800">0 Orang</h3>
-                  <p id="stat-wh-note" class="text-[11px] text-slate-500 mt-0.5">Gudang MBI</p>
-                </div>
-                <div class="p-3 bg-sky-50 text-sky-600 rounded-xl"><i data-lucide="users" class="w-6 h-6"></i></div>
+              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Karyawan</p>
+                <h3 id="stat-total-emp" class="text-2xl font-black text-slate-900 mt-1">0 Orang</h3>
+                <p id="stat-wh-note" class="text-[11px] text-slate-500 mt-0.5">Gudang MBI</p>
               </div>
 
-              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Hadir Hari Ini</p>
-                  <h3 id="stat-today-att" class="text-2xl font-black text-teal-700">0 Hadir</h3>
-                  <p class="text-[11px] text-teal-600 font-bold mt-0.5">Presensi Masuk</p>
-                </div>
-                <div class="p-3 bg-teal-50 text-teal-600 rounded-xl"><i data-lucide="check-circle-2" class="w-6 h-6"></i></div>
+              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Hadir Hari Ini</p>
+                <h3 id="stat-today-att" class="text-2xl font-black text-teal-800 mt-1">0 Hadir</h3>
+                <p class="text-[11px] text-teal-700 font-semibold mt-0.5">Presensi Masuk</p>
               </div>
 
-              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Izin / Sakit / Cuti</p>
-                  <h3 id="stat-today-leave" class="text-2xl font-black text-rose-700">0 Orang</h3>
-                  <p class="text-[11px] text-rose-600 font-semibold mt-0.5">Disetujui</p>
-                </div>
-                <div class="p-3 bg-rose-50 text-rose-600 rounded-xl"><i data-lucide="calendar-off" class="w-6 h-6"></i></div>
+              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Izin / Sakit / Cuti</p>
+                <h3 id="stat-today-leave" class="text-2xl font-black text-rose-800 mt-1">0 Orang</h3>
+                <p class="text-[11px] text-rose-700 font-semibold mt-0.5">Disetujui</p>
               </div>
 
-              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
-                <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Pengajuan Lembur</p>
-                  <h3 id="stat-pending-ot" class="text-2xl font-black text-amber-700">0 Pending</h3>
-                  <p class="text-[11px] text-slate-500 mt-0.5">Perlu Review</p>
-                </div>
-                <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="clock" class="w-6 h-6"></i></div>
+              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan Lembur</p>
+                <h3 id="stat-pending-ot" class="text-2xl font-black text-amber-800 mt-1">0 Pending</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">Perlu Review</p>
               </div>
             </div>
 
-            <!-- Quick Action Grid -->
+            <!-- Quick Action Grid Minimalis -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <button onclick="switchView('employees')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-sky-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3"><i data-lucide="users" class="w-5 h-5"></i></div>
+              <button onclick="switchView('employees')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-slate-400 hover:shadow-xs transition">
                 <h4 class="font-extrabold text-sm text-slate-900">Kelola Data Karyawan</h4>
                 <p class="text-xs text-slate-500 mt-1">Tambah data, download akun & password, dan upload Excel.</p>
               </button>
 
-              <button onclick="switchView('overtime')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-amber-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3"><i data-lucide="clock" class="w-5 h-5"></i></div>
+              <button onclick="switchView('overtime')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-slate-400 hover:shadow-xs transition">
                 <h4 class="font-extrabold text-sm text-slate-900">Input & Rekap Lembur</h4>
                 <p class="text-xs text-slate-500 mt-1">Pilih massal karyawan (grid), hitung upah otomatis & approval supervisor.</p>
               </button>
 
-              <button onclick="switchView('reports-group')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-emerald-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>
+              <button onclick="switchView('reports-group')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-slate-400 hover:shadow-xs transition">
                 <h4 class="font-extrabold text-sm text-slate-900">Laporan & Rekap Absensi</h4>
                 <p class="text-xs text-slate-500 mt-1">Lihat Record Absen Harian dan Rekap Matriks Hari Kerja.</p>
               </button>
@@ -658,30 +624,29 @@
           <div id="view-employees" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="users" class="w-6 h-6 text-sky-600"></i>
-                  Data Karyawan Gudang <span id="emp-wh-title" class="text-sky-600 font-black">MBI</span>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                  Data Karyawan Gudang <span id="emp-wh-title" class="text-teal-700 font-black">MBI</span>
                 </h2>
-                <p class="text-xs text-slate-500">Kelola daftar karyawan, download akun & password, serta upload Excel</p>
+                <p class="text-xs text-slate-500 mt-0.5">Kelola daftar karyawan, download akun & password, serta upload Excel</p>
               </div>
 
-              <!-- Action Buttons Bersih & Sederhana -->
+              <!-- Action Buttons Bersih, Rapi & Elegan -->
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="openAddEmployeeModal()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Karyawan
+                <button onclick="openAddEmployeeModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                  Tambah Karyawan
                 </button>
-                <label class="cursor-pointer px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel
+                <label class="cursor-pointer px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="downloadAccountsExcel()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download Daftar Akun & Password">
-                  <i data-lucide="key" class="w-4 h-4"></i> Download Akun
+                <button onclick="downloadAccountsExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs" title="Download Daftar Akun & Password">
+                  Download Akun
                 </button>
-                <button onclick="downloadEmployeeTemplate()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1 border border-slate-300">
-                  <i data-lucide="file-down" class="w-3.5 h-3.5"></i> Template
+                <button onclick="downloadEmployeeTemplate()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  Template
                 </button>
-                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm opacity-50">
-                  <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
+                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition shadow-xs opacity-50">
+                  Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
               </div>
             </div>
@@ -731,29 +696,28 @@
           <div id="view-attendance" class="view-panel space-y-6">
             <div class="flex items-center justify-between">
               <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="qr-code" class="w-6 h-6 text-teal-600"></i>
-                  Absensi Barcode Kamera (<span id="att-wh-label">Gudang MBI</span>)
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                  Absensi Barcode Kamera (<span id="att-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Wajib aktifkan GPS & Scan Barcode Lokasi Gudang terlebih dahulu, kemudian scan ID Card Karyawan</p>
+                <p class="text-xs text-slate-500 mt-0.5">Wajib aktifkan GPS & Scan Barcode Lokasi Gudang terlebih dahulu, kemudian scan ID Card Karyawan</p>
               </div>
-              <div class="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-teal-700" id="live-clock">00:00:00 WIB</div>
+              <div class="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800" id="live-clock">00:00:00 WIB</div>
             </div>
 
             <!-- Alert Notification -->
-            <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm"></div>
+            <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <!-- Controls & 2-Step Indicator -->
-              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-5">
+              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-5 shadow-xs">
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
                   <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md flex items-center justify-center gap-1.5">
-                      <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Absen Masuk
+                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-900 text-white shadow-xs transition">
+                      Absen Masuk
                     </button>
-                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center gap-1.5">
-                      <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Absen Keluar
+                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition">
+                      Absen Keluar
                     </button>
                   </div>
                 </div>
@@ -763,15 +727,15 @@
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tahapan Validasi Presensi:</label>
                   
                   <!-- Step 1: Lokasi GPS & Barcode Lokasi -->
-                  <div id="step-1-card" class="p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition">
+                  <div id="step-1-card" class="p-3.5 rounded-2xl border border-slate-300 bg-slate-50 flex items-center justify-between transition">
                     <div class="flex items-center gap-3">
-                      <div id="step-1-icon" class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">1</div>
+                      <div id="step-1-icon" class="w-8 h-8 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs shadow-xs">1</div>
                       <div>
                         <h4 class="font-bold text-xs text-slate-900">Validasi GPS & QR Lokasi Gudang</h4>
-                        <p id="step-1-status" class="text-[11px] text-amber-800 font-semibold">Menunggu scan barcode lokasi di pintu gudang...</p>
+                        <p id="step-1-status" class="text-[11px] text-slate-600 font-semibold">Menunggu scan barcode lokasi di pintu gudang...</p>
                       </div>
                     </div>
-                    <span id="step-1-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900">WAJIB</span>
+                    <span id="step-1-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800">WAJIB</span>
                   </div>
 
                   <!-- Step 2: ID Card Karyawan -->
@@ -789,20 +753,19 @@
 
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Tambahan:</label>
-                  <input type="text" id="att-notes" placeholder="Catatan opsional" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                  <input type="text" id="att-notes" placeholder="Catatan opsional" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                 </div>
 
                 <!-- Reset Scan Button -->
-                <button type="button" onclick="resetVerificationState()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition border border-slate-300 flex items-center justify-center gap-1.5">
-                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Tahapan Scan
+                <button type="button" onclick="resetVerificationState()" class="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition border border-slate-300 shadow-2xs">
+                  Reset Tahapan Scan
                 </button>
               </div>
 
               <!-- Scanner Box Kotak -->
-              <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center">
+              <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-xs">
                 <!-- Status Scan Banner -->
-                <div id="scanner-instruction" class="w-full mb-3 p-3 rounded-2xl bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold text-center flex items-center justify-center gap-2">
-                  <i data-lucide="map-pin" class="w-4 h-4 text-amber-700"></i>
+                <div id="scanner-instruction" class="w-full mb-3 p-3 rounded-2xl bg-slate-100 border border-slate-300 text-slate-900 text-xs font-bold text-center">
                   <span>Langkah 1: Arahkan kamera ke Barcode QR Lokasi Gudang</span>
                 </div>
 
@@ -812,22 +775,22 @@
                   
                   <!-- Kotak Target Overlay -->
                   <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div id="scanner-box-border" class="w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
-                      <span id="scanner-box-tag" class="text-[10px] text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN QR LOKASI</span>
+                    <div id="scanner-box-border" class="w-48 h-48 border-2 border-slate-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
+                      <span id="scanner-box-tag" class="text-[10px] text-white bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN QR LOKASI</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Camera Controls -->
                 <div class="mt-4 flex items-center gap-2 flex-wrap justify-center">
-                  <button onclick="startScanner()" class="px-5 py-2.5 bg-teal-600 text-white text-xs font-bold rounded-xl hover:bg-teal-700 transition flex items-center gap-1.5 shadow-md">
-                    <i data-lucide="camera" class="w-4 h-4"></i> Nyalakan Kamera
+                  <button onclick="startScanner()" class="px-5 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition shadow-xs">
+                    Nyalakan Kamera
                   </button>
-                  <button onclick="stopScanner()" class="px-4 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300 transition">
+                  <button onclick="stopScanner()" class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition shadow-xs">
                     Matikan
                   </button>
-                  <label class="cursor-pointer px-4 py-2.5 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="image" class="w-4 h-4"></i> Scan dari Gambar / File
+                  <label class="cursor-pointer px-4 py-2.5 bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-xl hover:bg-slate-50 transition shadow-xs">
+                    Scan Gambar / File
                     <input type="file" id="qr-input-file" accept="image/*" onchange="scanQRFromFile(event)" class="sr-only">
                   </label>
                 </div>
@@ -844,33 +807,30 @@
           <!-- ========================================================= -->
           <div id="view-leaves" class="view-panel hidden space-y-6">
             <div>
-              <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                <i data-lucide="file-text" class="w-6 h-6 text-rose-600"></i>
-                Form Pengajuan (<span id="leave-wh-label">Gudang MBI</span>)
+              <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                Form Pengajuan (<span id="leave-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
               </h2>
-              <p class="text-xs text-slate-500">Pengajuan Izin, Sakit, atau Cuti. Data yang disetujui otomatis tercatat pada Rekap Absen & Matriks</p>
+              <p class="text-xs text-slate-500 mt-0.5">Pengajuan Izin, Sakit, atau Cuti. Data yang disetujui otomatis tercatat pada Rekap Absen & Matriks</p>
             </div>
 
-            <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
+            <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <!-- Form Pengajuan -->
-              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
-                <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <i data-lucide="plus-circle" class="w-4 h-4 text-rose-600"></i> Buat Pengajuan Baru
-                </h3>
+              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
+                <h3 class="font-extrabold text-sm text-slate-900">Buat Pengajuan Baru</h3>
 
                 <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
-                    <select id="leave-employee" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    <select id="leave-employee" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <!-- Rendered by JS -->
                     </select>
                   </div>
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jenis Ketidakhadiran *</label>
-                    <select id="leave-type" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    <select id="leave-type" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <option value="sakit">Sakit</option>
                       <option value="izin">Izin</option>
                       <option value="cuti">Cuti</option>
@@ -880,20 +840,20 @@
                   <div class="grid grid-cols-2 gap-2">
                     <div>
                       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Dari Tanggal *</label>
-                      <input type="date" id="leave-start-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                      <input type="date" id="leave-start-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
                     <div>
                       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Sampai Tanggal *</label>
-                      <input type="date" id="leave-end-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                      <input type="date" id="leave-end-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
                   </div>
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan / Keterangan *</label>
-                    <textarea id="leave-reason" required rows="3" placeholder="Masukkan alasan pengajuan" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"></textarea>
+                    <textarea id="leave-reason" required rows="3" placeholder="Masukkan alasan pengajuan" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"></textarea>
                   </div>
 
-                  <button type="submit" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-rose-600/30">
+                  <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
                     Kirim Pengajuan
                   </button>
                 </form>
@@ -926,50 +886,52 @@
           <!-- ========================================================= -->
           <!-- VIEW 5: KELOMPOK LAPORAN & REKAP ABSENSI (RECORD + MATRIKS) -->
           <!-- ========================================================= -->
+          <!-- ========================================================= -->
+          <!-- VIEW 5: KELOMPOK LAPORAN & REKAP ABSENSI (RECORD + MATRIKS) -->
+          <!-- ========================================================= -->
           <div id="view-reports-group" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="file-spreadsheet" class="w-6 h-6 text-emerald-600"></i>
-                  Laporan & Rekapitulasi Absensi (<span id="reports-wh-title">Gudang MBI</span>)
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                  Laporan & Rekapitulasi Absensi (<span id="reports-wh-title" class="text-teal-700 font-black">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Record riwayat kehadiran harian dan Rekap Matriks hitungan hari kerja</p>
+                <p class="text-xs text-slate-500 mt-0.5">Record riwayat kehadiran harian dan Rekap Matriks hitungan hari kerja</p>
               </div>
 
               <!-- Tab Nav Switcher di dalam Laporan -->
               <div class="flex items-center bg-slate-200/80 p-1.5 rounded-2xl border border-slate-300 flex-wrap gap-1">
-                <button onclick="switchReportTab('records')" id="btn-tab-records" class="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5">
-                  <i data-lucide="list" class="w-3.5 h-3.5 text-teal-600"></i> Record Absen
+                <button onclick="switchReportTab('records')" id="btn-tab-records" class="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-xs transition">
+                  Record Absen
                 </button>
-                <button onclick="switchReportTab('matrix')" id="btn-tab-matrix" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
-                  <i data-lucide="grid" class="w-3.5 h-3.5 text-slate-500"></i> Rekap Matriks
+                <button onclick="switchReportTab('matrix')" id="btn-tab-matrix" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
+                  Rekap Matriks
                 </button>
-                <button onclick="switchReportTab('leaves')" id="btn-tab-report-leaves" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
-                  <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500"></i> Rekap Pengajuan
+                <button onclick="switchReportTab('leaves')" id="btn-tab-report-leaves" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
+                  Rekap Pengajuan
                 </button>
               </div>
             </div>
 
             <!-- TAB 1: RECORD ABSEN HARIAN -->
             <div id="tab-content-records" class="space-y-4">
-              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div class="flex items-center gap-3 flex-wrap">
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="record-start-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <input type="date" id="record-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="record-end-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <input type="date" id="record-end-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
-                    <button onclick="renderRecordsTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
-                      <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filter Record
+                    <button onclick="renderRecordsTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                      Filter Record
                     </button>
                   </div>
 
-                  <button onclick="exportRecordsToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="download" class="w-4 h-4"></i> Download Record Excel
+                  <button onclick="exportRecordsToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                    Download Record Excel
                   </button>
                 </div>
 
@@ -998,30 +960,30 @@
 
             <!-- TAB 2: REKAP ABSEN MATRIKS -->
             <div id="tab-content-matrix" class="hidden space-y-4">
-              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div class="flex items-center gap-3 flex-wrap">
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="matrix-start-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <input type="date" id="matrix-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="matrix-end-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <input type="date" id="matrix-end-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
-                    <button onclick="renderMatrixTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
-                      <i data-lucide="filter" class="w-3.5 h-3.5"></i> Tarik Matriks
+                    <button onclick="renderMatrixTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                      Tarik Matriks
                     </button>
                   </div>
 
-                  <button onclick="exportMatrixToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="download" class="w-4 h-4"></i> Download Matriks Excel
+                  <button onclick="exportMatrixToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                    Download Matriks Excel
                   </button>
                 </div>
 
                 <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
                   <table id="table-matrix-display" class="w-full text-center text-xs border-collapse border border-slate-300">
-                    <thead id="matrix-thead" class="bg-amber-100/70 text-slate-900 font-bold border-b border-slate-300">
+                    <thead id="matrix-thead" class="bg-slate-100 text-slate-900 font-bold border-b border-slate-300">
                       <!-- Rendered by JS -->
                     </thead>
                     <tbody id="matrix-tbody" class="divide-y divide-slate-200 bg-white font-mono font-bold">
@@ -1032,10 +994,10 @@
 
                 <div class="flex items-center gap-4 text-xs text-slate-700 pt-2 flex-wrap font-medium">
                   <span class="font-bold">Keterangan:</span>
-                  <span class="inline-flex items-center gap-1 font-bold text-emerald-800"><span class="w-5 h-5 bg-emerald-100 rounded flex items-center justify-center font-black">1</span> Hadir</span>
-                  <span class="inline-flex items-center gap-1 font-bold text-amber-800"><span class="w-5 h-5 bg-amber-100 rounded flex items-center justify-center font-black">S</span> Sakit</span>
-                  <span class="inline-flex items-center gap-1 font-bold text-sky-800"><span class="w-5 h-5 bg-sky-100 rounded flex items-center justify-center font-black">I</span> Izin</span>
-                  <span class="inline-flex items-center gap-1 font-bold text-purple-800"><span class="w-5 h-5 bg-purple-100 rounded flex items-center justify-center font-black">AL</span> Cuti</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">1</span> Hadir</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">S</span> Sakit</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">I</span> Izin</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">AL</span> Cuti</span>
                   <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center">-</span> Libur</span>
                 </div>
               </div>
@@ -1043,20 +1005,20 @@
 
             <!-- TAB 3: REKAP PENGAJUAN (IZIN / SAKIT / CUTI) -->
             <div id="tab-content-report-leaves" class="hidden space-y-4">
-              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div class="flex items-center gap-3 flex-wrap">
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="report-leave-start" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <input type="date" id="report-leave-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="report-leave-end" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <input type="date" id="report-leave-end" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Jenis:</label>
-                      <select id="report-leave-type-filter" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <select id="report-leave-type-filter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                         <option value="">Semua Jenis</option>
                         <option value="sakit">Sakit</option>
                         <option value="izin">Izin</option>
@@ -1065,20 +1027,20 @@
                     </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Status:</label>
-                      <select id="report-leave-status-filter" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                      <select id="report-leave-status-filter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                         <option value="">Semua Status</option>
                         <option value="approved">Disetujui</option>
                         <option value="pending">Pending</option>
                         <option value="rejected">Ditolak</option>
                       </select>
                     </div>
-                    <button onclick="renderReportLeavesTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
-                      <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filter Pengajuan
+                    <button onclick="renderReportLeavesTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                      Filter Pengajuan
                     </button>
                   </div>
 
-                  <button onclick="exportReportLeavesToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                    <i data-lucide="download" class="w-4 h-4"></i> Download Pengajuan Excel
+                  <button onclick="exportReportLeavesToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                    Download Pengajuan Excel
                   </button>
                 </div>
 
@@ -1111,29 +1073,26 @@
           <div id="view-overtime" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="clock" class="w-6 h-6 text-amber-600"></i>
-                  Input & Rekapitulasi Lembur (<span id="ot-wh-label">Gudang MBI</span>)
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                  Input & Rekapitulasi Lembur (<span id="ot-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Pilih karyawan secara massal (grid), hitung upah otomatis (Hari Kerja Rp 125.000 / Hari Libur Rp 120.000), & approval supervisor</p>
+                <p class="text-xs text-slate-500 mt-0.5">Pilih karyawan secara massal (grid), hitung upah otomatis (Hari Kerja Rp 125.000 / Hari Libur Rp 120.000), & approval supervisor</p>
               </div>
 
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="exportOvertimeToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="download" class="w-4 h-4"></i> Download Rekap Lembur (Excel)
+                <button onclick="exportOvertimeToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  Download Rekap Lembur (Excel)
                 </button>
               </div>
             </div>
 
-            <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
+            <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
-            <!-- 1. FORM INPUT LEMBUR MASSAL DENGAN GRID CHECKBOX (PERSIS GAMBAR) -->
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-5">
-              <div class="flex items-center justify-between border-b pb-3">
-                <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                  <i data-lucide="user-check" class="w-4 h-4 text-amber-600"></i> Form Penugasan Lembur Karyawan
-                </h3>
-                <div id="ot-calc-summary-badge" class="px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl text-xs font-extrabold">
+            <!-- 1. FORM INPUT LEMBUR MASSAL DENGAN GRID CHECKBOX -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-extrabold text-sm text-slate-900">Form Penugasan Lembur Karyawan</h3>
+                <div id="ot-calc-summary-badge" class="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-extrabold">
                   Estimasi: Rp 125.000 / orang (4 Jam Kerja Efektif)
                 </div>
               </div>
@@ -1142,12 +1101,12 @@
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
-                    <input type="date" id="ot-date" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <input type="date" id="ot-date" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                   </div>
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kategori Hari *</label>
-                    <select id="ot-day-type" onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <select id="ot-day-type" onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <option value="hari_kerja">Hari Kerja (5 Jam Total = 4 Jam Kerja / Rp 125.000)</option>
                       <option value="hari_libur">Hari Libur (Flat Rp 120.000)</option>
                     </select>
@@ -1164,24 +1123,24 @@
                   </div>
                 </div>
 
-                <!-- Row 2: Grid Pemilihan Karyawan Massal (Sesuai Gambar) -->
+                <!-- Row 2: Grid Pemilihan Karyawan Massal -->
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
-                      <button type="button" onclick="selectAllOvertimeEmployees(true)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-xs transition">
+                      <button type="button" onclick="selectAllOvertimeEmployees(true)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
                         Pilih Semua
                       </button>
-                      <button type="button" onclick="selectAllOvertimeEmployees(false)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-xs transition">
+                      <button type="button" onclick="selectAllOvertimeEmployees(false)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
                         Batal Semua
                       </button>
                     </div>
-                    <span id="ot-selected-count-badge" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg border">
+                    <span id="ot-selected-count-badge" class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
                       0 dipilih
                     </span>
                   </div>
 
-                  <!-- Container Scrollable Grid (Persis Gambar) -->
-                  <div class="bg-amber-50/40 border border-amber-200/80 rounded-2xl p-4 max-h-56 overflow-y-auto custom-scroll shadow-inner">
+                  <!-- Container Scrollable Grid -->
+                  <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 max-h-56 overflow-y-auto custom-scroll">
                     <div id="ot-employee-checkbox-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                       <!-- Rendered by JS -->
                     </div>
@@ -1192,31 +1151,31 @@
                 <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                   <div class="sm:col-span-9">
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Alasan Lembur *</label>
-                    <input type="text" id="ot-reason" required placeholder="Contoh: Bongkar muat kontainer obat batch darurat" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                    <input type="text" id="ot-reason" required placeholder="Contoh: Bongkar muat kontainer obat batch darurat" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                   </div>
                   <div class="sm:col-span-3">
-                    <button type="submit" class="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-amber-600/30 flex items-center justify-center gap-1.5">
-                      <i data-lucide="check-circle" class="w-4 h-4"></i> Ajukan Lembur
+                    <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
+                      Ajukan Lembur
                     </button>
                   </div>
                 </div>
               </form>
             </div>
 
-            <!-- 2. TABEL REKAP & DAFTAR PENGAJUAN LEMBUR (DENGAN FILTER TANGGAL & APPROVAL TERKUNCI) -->
-            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+            <!-- 2. TABEL REKAP & DAFTAR PENGAJUAN LEMBUR -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div class="flex items-center gap-3 flex-wrap">
                   <div class="flex items-center gap-2">
                     <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                    <input type="date" id="ot-filter-start" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    <input type="date" id="ot-filter-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                   </div>
                   <div class="flex items-center gap-2">
                     <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                    <input type="date" id="ot-filter-end" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    <input type="date" id="ot-filter-end" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                   </div>
-                  <button onclick="renderOvertimeTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
-                    <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filter Data
+                  <button onclick="renderOvertimeTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                    Filter Data
                   </button>
                 </div>
                 <span id="ot-total-badge" class="text-xs font-bold text-slate-700">Total: 0 Data Lembur</span>
@@ -1255,28 +1214,27 @@
           <div id="view-idcard" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
               <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="contact" class="w-6 h-6 text-sky-600"></i>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
                   Kartu Identitas Karyawan & Barcode Lokasi Gudang
                 </h2>
-                <p class="text-xs text-slate-500">Ukuran kartu disesuaikan standar ID Card resmi (CR80: 54mm × 85.6mm)</p>
+                <p class="text-xs text-slate-500 mt-0.5">Ukuran kartu disesuaikan standar ID Card resmi (CR80: 54mm × 85.6mm)</p>
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
-                <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-sm">
+                <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
                   <!-- Rendered by JS -->
                 </select>
-                <button onclick="downloadIDCardImage()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download gambar PNG kartu ID">
-                  <i data-lucide="download" class="w-4 h-4"></i> Download ID Card (PNG)
+                <button onclick="downloadIDCardImage()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs" title="Download gambar PNG kartu ID">
+                  Download ID Card (PNG)
                 </button>
-                <button onclick="printCard('idcard')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card
+                <button onclick="printCard('idcard')" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  Cetak ID Card
                 </button>
-                <button onclick="downloadLocationQRCodeImage()" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download QR Lokasi format PNG">
-                  <i data-lucide="download" class="w-4 h-4"></i> Download QR Lokasi
+                <button onclick="downloadLocationQRCodeImage()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs" title="Download QR Lokasi format PNG">
+                  Download QR Lokasi
                 </button>
-                <button onclick="printCard('location')" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
-                  <i data-lucide="printer" class="w-4 h-4"></i> Cetak QR Lokasi
+                <button onclick="printCard('location')" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  Cetak QR Lokasi
                 </button>
               </div>
             </div>
@@ -1358,40 +1316,39 @@
           <!-- ========================================================= -->
           <div id="view-github" class="view-panel hidden space-y-6">
             <div>
-              <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                <i data-lucide="database" class="w-6 h-6 text-amber-500"></i>
+              <h2 class="text-xl font-black text-slate-900 tracking-tight">
                 Database Terpusat & Sinkronisasi
               </h2>
-              <p class="text-xs text-slate-500">Sinkronkan data antar laptop & HP melalui GitHub atau Backup JSON</p>
+              <p class="text-xs text-slate-500 mt-0.5">Sinkronkan data antar laptop & HP melalui GitHub atau Backup JSON</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Form GitHub Cloud Repo -->
-              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
-                <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                  <p class="font-bold">Status GitHub: <span id="github-mode-status">Local Storage (Aktif)</span></p>
-                  <p class="mt-0.5">Data MBI & MAI tersimpan di repositori GitHub.</p>
+              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
+                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 text-xs">
+                  <p class="font-bold">Status GitHub: <span id="github-mode-status" class="text-teal-700">Local Storage (Aktif)</span></p>
+                  <p class="mt-0.5 text-slate-500">Data MBI & MAI tersimpan di repositori GitHub.</p>
                 </div>
 
                 <form onsubmit="saveGitHubConfig(event)" class="space-y-3">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Personal Access Token (PAT)</label>
-                    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
                   </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Username / Owner</label>
-                    <input type="text" id="gh-owner" placeholder="username_anda" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <input type="text" id="gh-owner" placeholder="username_anda" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                   </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Repo Database</label>
-                    <input type="text" id="gh-repo" placeholder="wfm-medika-db" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <input type="text" id="gh-repo" placeholder="wfm-medika-db" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                   </div>
 
                   <div class="pt-2 flex flex-col gap-2">
-                    <button type="submit" class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition">
+                    <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
                       Simpan Konfigurasi GitHub
                     </button>
-                    <button type="button" onclick="syncAllToGitHub()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition">
+                    <button type="button" onclick="syncAllToGitHub()" class="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
                       Sinkronkan Semua Data ke GitHub
                     </button>
                   </div>
@@ -1399,21 +1356,21 @@
               </div>
 
               <!-- Backup / Transfer JSON Antar Perangkat -->
-              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 flex flex-col justify-between">
+              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 flex flex-col justify-between shadow-xs">
                 <div>
-                  <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2 mb-1">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i> Transfer Database Antar Perangkat
+                  <h3 class="font-extrabold text-sm text-slate-900 mb-1">
+                    Transfer Database Antar Perangkat
                   </h3>
                   <p class="text-xs text-slate-500">Ekspor seluruh data dari laptop dan impor langsung di HP agar semua data karyawan & presensi identik seketika.</p>
                 </div>
 
                 <div class="space-y-3 my-auto">
-                  <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
-                    <i data-lucide="download" class="w-4 h-4"></i> Ekspor Cadangan Database (.json)
+                  <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
+                    Ekspor Cadangan Database (.json)
                   </button>
 
-                  <label class="cursor-pointer w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-2 shadow-sm text-center">
-                    <i data-lucide="upload" class="w-4 h-4"></i> Impor Cadangan Database (.json)
+                  <label class="cursor-pointer w-full py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-extrabold rounded-xl transition shadow-xs text-center block">
+                    Impor Cadangan Database (.json)
                     <input type="file" id="db-json-input" accept=".json" onchange="importFullDatabaseJSON(event)" class="sr-only">
                   </label>
                 </div>
@@ -2200,11 +2157,15 @@
       if (isManagement) {
         // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu
         if (adminSection) adminSection.classList.remove('hidden');
+        const navDash = document.getElementById('nav-dashboard');
+        if (navDash) navDash.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       } else {
         // Akun Karyawan Biasa: HANYA ADA MENU ABSEN SAJA
         if (adminSection) adminSection.classList.add('hidden');
+        const navDash = document.getElementById('nav-dashboard');
+        if (navDash) navDash.classList.add('hidden');
         switchView('attendance');
       }
 
@@ -2245,8 +2206,8 @@
 
     function updateWhSwitcherButtons() {
       const isMBI = activeWarehouse === 'MBI';
-      document.getElementById('wh-btn-mbi').className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
-      document.getElementById('wh-btn-mai').className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      document.getElementById('wh-btn-mbi').className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      document.getElementById('wh-btn-mai').className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
       
       document.getElementById('dash-wh-label').innerText = activeWarehouse;
       document.getElementById('stat-wh-note').innerText = `Gudang ${activeWarehouse}`;
@@ -2266,16 +2227,19 @@
 
       document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.sidebar-link').forEach(el => {
-        el.className = 'sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800';
+        el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition';
       });
 
-      // Pastikan admin-menu-section selalu tersembunyi bagi staff biasa
+      // Pastikan admin-menu-section dan nav-dashboard selalu tersembunyi bagi staff biasa
       const adminSection = document.getElementById('admin-menu-section');
+      const navDash = document.getElementById('nav-dashboard');
       if (adminSection) {
         if (!isManagement) {
           adminSection.classList.add('hidden');
+          if (navDash) navDash.classList.add('hidden');
         } else {
           adminSection.classList.remove('hidden');
+          if (navDash) navDash.classList.remove('hidden');
         }
       }
 
@@ -2283,7 +2247,7 @@
       if (activeView) activeView.classList.remove('hidden');
 
       const activeNav = document.getElementById('nav-' + viewName);
-      if (activeNav) activeNav.className = 'sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white';
+      if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition';
 
       if (viewName === 'employees') renderEmployeeTable();
       if (viewName === 'reports-group') {
@@ -2822,17 +2786,17 @@
           <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone}</td>
           <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate}</td>
-          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-purple-100 text-purple-800' : (emp.role === 'coordinator' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800')}">${emp.role.toUpperCase()}</span></td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-slate-900 text-white' : (emp.role === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200')}">${emp.role.toUpperCase()}</span></td>
           <td class="p-3.5 text-right">
             <div class="flex items-center justify-end gap-1.5">
-              <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition">
-                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+              <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                Edit
               </button>
-              <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
-                <i data-lucide="contact" class="w-3.5 h-3.5 text-sky-600"></i> ID Card
+              <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                ID Card
               </button>
-              <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                Hapus
               </button>
             </div>
           </td>
