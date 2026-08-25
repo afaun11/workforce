@@ -1147,26 +1147,21 @@
                   </div>
                 </div>
 
-                <!-- Row 3: Alasan & Tombol Submit -->
+                <!-- Row 3: Alasan Lembur & Tombol Submit -->
                 <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                     <div>
-                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kategori Alasan Lembur *</label>
-                      <select id="ot-reason-preset" onchange="handleOvertimePresetChange(this.value)" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                        <option value="">-- Pilih Kategori Alasan Lembur --</option>
-                        <option value="Bongkar muat / inbound kontainer obat & alkes darurat">Bongkar Muat / Inbound Kontainer</option>
-                        <option value="Stock opname & audit fisik berkala stok gudang">Stock Opname & Audit Fisik Stok</option>
-                        <option value="Packing & pengepakan urgent pesanan ekspedisi malam">Packing Urgent Pesanan Ekspedisi</option>
-                        <option value="Picking plan & sortir pesanan darurat rumah sakit / klinik">Picking Plan & Sortir Pesanan Darurat</option>
-                        <option value="Dispatch & loading pengiriman truk ekspedisi malam">Dispatch & Loading Pengiriman Malam</option>
-                        <option value="Pembersihan, penataan & reorganisasi racking gudang">Pembersihan & Penataan Racking Gudang</option>
-                        <option value="other">Lainnya (Tulis Manual)</option>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan Lembur *</label>
+                      <select id="ot-reason-select" onchange="toggleOvertimeManualReason(this.value)" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <option value="Menyelesaikan Orderan">Menyelesaikan Orderan</option>
+                        <option value="Stok Opname">Stok Opname</option>
+                        <option value="manual">Lainnya (Isi Manual)</option>
                       </select>
                     </div>
 
-                    <div>
-                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Keterangan Detail Lembur *</label>
-                      <input type="text" id="ot-reason" required placeholder="Pilih kategori di samping atau ketik detail alasan..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <div id="ot-manual-reason-box" class="hidden">
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tulis Alasan Manual *</label>
+                      <input type="text" id="ot-reason-manual" placeholder="Tuliskan alasan lembur..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
                   </div>
 
@@ -3993,6 +3988,20 @@
       }
     }
 
+    function toggleOvertimeManualReason(val) {
+      const manualBox = document.getElementById('ot-manual-reason-box');
+      const manualInput = document.getElementById('ot-reason-manual');
+      if (manualBox) {
+        if (val === 'manual') {
+          manualBox.classList.remove('hidden');
+          if (manualInput) manualInput.focus();
+        } else {
+          manualBox.classList.add('hidden');
+          if (manualInput) manualInput.value = '';
+        }
+      }
+    }
+
     function handleBatchOvertimeSubmit(e) {
       e.preventDefault();
       const checkboxes = document.querySelectorAll('input[name="ot-emp-check"]:checked');
@@ -4004,7 +4013,18 @@
       const date = document.getElementById('ot-date').value;
       const startTime = document.getElementById('ot-start').value;
       const endTime = document.getElementById('ot-end').value;
-      const reason = document.getElementById('ot-reason').value.trim();
+      const selectVal = document.getElementById('ot-reason-select').value;
+      let reason = selectVal;
+      if (selectVal === 'manual') {
+        const manualVal = document.getElementById('ot-reason-manual').value.trim();
+        if (!manualVal) {
+          alert('Silakan ketik alasan lembur manual terlebih dahulu!');
+          document.getElementById('ot-reason-manual').focus();
+          return;
+        }
+        reason = manualVal;
+      }
+
       const calc = calculateOvertimeNominal();
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -4037,13 +4057,13 @@
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
       saveFullDatabaseToCloud();
-      document.getElementById('ot-reason').value = '';
-      document.getElementById('ot-reason-preset').value = '';
+      document.getElementById('ot-reason-select').value = 'Menyelesaikan Orderan';
+      toggleOvertimeManualReason('Menyelesaikan Orderan');
       selectAllOvertimeEmployees(false);
 
       const alertEl = document.getElementById('ot-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300';
-      alertEl.innerText = `Pengajuan lembur untuk ${countAdded} karyawan berhasil diajukan dan menunggu approval Supervisor! (Total Estimasi Upah: Rp ${(calc.nominal * countAdded).toLocaleString('id-ID')})`;
+      alertEl.innerText = `Pengajuan lembur (${reason}) untuk ${countAdded} karyawan berhasil diajukan dan menunggu approval Supervisor! (Total Estimasi Upah: Rp ${(calc.nominal * countAdded).toLocaleString('id-ID')})`;
       alertEl.classList.remove('hidden');
 
       renderOvertimeTable();
