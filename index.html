@@ -1675,8 +1675,26 @@
         mqttClient.onMessageArrived = (message) => {
           try {
             const data = JSON.parse(message.payloadString);
-            if (data && data.origin !== DEVICE_SYNC_ID && data.payload) {
-              console.log('⚡ Realtime Update Received via WebSocket from another device!');
+            if (!data || data.origin === DEVICE_SYNC_ID) return;
+
+            if (data.type === 'SYNC_REQUEST') {
+              // Perangkat lain baru saja dibuka, kirimkan database aktif kita seketika (<50ms)
+              const payload = {
+                mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
+                mbi_attendance: getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE),
+                mbi_leaves: getWhDB('MBI', 'leaves', SEED_MBI_LEAVES),
+                mbi_overtime: getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES),
+                mai_users: getWhDB('MAI', 'users', SEED_MAI_USERS),
+                mai_attendance: getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE),
+                mai_leaves: getWhDB('MAI', 'leaves', []),
+                mai_overtime: getWhDB('MAI', 'overtime', []),
+                updatedAt: new Date().toISOString()
+              };
+              broadcastRealtimeUpdate(payload);
+              return;
+            }
+
+            if (data.payload) {
               applyIncomingDatabase(data.payload, false);
             }
           } catch (err) {
@@ -1693,11 +1711,21 @@
             isMqttConnected = true;
             mqttClient.subscribe(MQTT_TOPIC, { qos: 1 });
             updateCloudSyncStatusBadge('synced');
-            console.log('🟢 MQTT Realtime Sync Connected to HiveMQ Broker!');
+            
+            // Kirim sinyal handshake ke perangkat lain yang online agar saling sinkron otomatis
+            try {
+              const reqMsg = new Paho.MQTT.Message(JSON.stringify({ type: 'SYNC_REQUEST', origin: DEVICE_SYNC_ID }));
+              reqMsg.destinationName = MQTT_TOPIC;
+              mqttClient.send(reqMsg);
+            } catch(e) {}
+
+            // Kirim juga database lokal kita saat ini
+            setTimeout(() => {
+              saveFullDatabaseToCloud();
+            }, 300);
           },
           onFailure: (err) => {
             isMqttConnected = false;
-            console.warn('HiveMQ MQTT connect failed, fallback to EMQX broker...', err);
             connectFallbackMQTT();
           }
         });
@@ -1715,7 +1743,10 @@
         mqttClient.onMessageArrived = (message) => {
           try {
             const data = JSON.parse(message.payloadString);
-            if (data && data.origin !== DEVICE_SYNC_ID && data.payload) {
+            if (!data || data.origin === DEVICE_SYNC_ID) return;
+            if (data.type === 'SYNC_REQUEST') {
+              saveFullDatabaseToCloud();
+            } else if (data.payload) {
               applyIncomingDatabase(data.payload, false);
             }
           } catch (e) {}
@@ -1727,6 +1758,12 @@
             isMqttConnected = true;
             mqttClient.subscribe(MQTT_TOPIC, { qos: 1 });
             updateCloudSyncStatusBadge('synced');
+            try {
+              const reqMsg = new Paho.MQTT.Message(JSON.stringify({ type: 'SYNC_REQUEST', origin: DEVICE_SYNC_ID }));
+              reqMsg.destinationName = MQTT_TOPIC;
+              mqttClient.send(reqMsg);
+            } catch(e) {}
+            setTimeout(() => { saveFullDatabaseToCloud(); }, 300);
           },
           onFailure: () => {
             isMqttConnected = false;
@@ -1753,41 +1790,117 @@
       }
     }
 
+    function mergeUserArrays(localUsers, incomingUsers) {
+      const userMap = new Map();
+      (localUsers || []).forEach(u => {
+        if (u && (u.nik || u.id || u.name)) {
+          const key = u.id || u.nik;
+          userMap.set(key, u);
+        }
+      });
+      (incomingUsers || []).forEach(u => {
+        if (u && (u.nik || u.id || u.name)) {
+          const key = u.id || u.nik;
+          if (!userMap.has(key)) {
+            userMap.set(key, u);
+          } else {
+            const existing = userMap.get(key);
+            userMap.set(key, { ...existing, ...u });
+          }
+        }
+      });
+      return Array.from(userMap.values());
+    }
+
+    function mergeRecordArrays(localRecords, incomingRecords) {
+      const recordMap = new Map();
+      (localRecords || []).forEach(r => {
+        if (r && (r.id || (r.userNik && r.date))) {
+          const key = r.id || `${r.userNik}_${r.date}_${r.startTime || ''}`;
+          recordMap.set(key, r);
+        }
+      });
+      (incomingRecords || []).forEach(r => {
+        if (r && (r.id || (r.userNik && r.date))) {
+          const key = r.id || `${r.userNik}_${r.date}_${r.startTime || ''}`;
+          if (!recordMap.has(key)) {
+            recordMap.set(key, r);
+          } else {
+            const existing = recordMap.get(key);
+            recordMap.set(key, { ...existing, ...r });
+          }
+        }
+      });
+      return Array.from(recordMap.values());
+    }
+
     function applyIncomingDatabase(db, triggerSave = false) {
       if (!db) return;
       let hasChanges = false;
 
-      if (db.mbi_users && Array.isArray(db.mbi_users) && db.mbi_users.length > 0) {
-        localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
-        hasChanges = true;
+      if (db.mbi_users && Array.isArray(db.mbi_users)) {
+        const local = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const merged = mergeUserArrays(local, db.mbi_users);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mbi_users', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
-      if (db.mai_users && Array.isArray(db.mai_users) && db.mai_users.length > 0) {
-        localStorage.setItem('wfm_mai_users', JSON.stringify(db.mai_users));
-        hasChanges = true;
+      if (db.mai_users && Array.isArray(db.mai_users)) {
+        const local = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        const merged = mergeUserArrays(local, db.mai_users);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mai_users', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
       if (db.mbi_attendance && Array.isArray(db.mbi_attendance)) {
-        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
-        hasChanges = true;
+        const local = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE);
+        const merged = mergeRecordArrays(local, db.mbi_attendance);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mbi_attendance', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
       if (db.mai_attendance && Array.isArray(db.mai_attendance)) {
-        localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
-        hasChanges = true;
+        const local = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE);
+        const merged = mergeRecordArrays(local, db.mai_attendance);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mai_attendance', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
       if (db.mbi_leaves && Array.isArray(db.mbi_leaves)) {
-        localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
-        hasChanges = true;
+        const local = getWhDB('MBI', 'leaves', SEED_MBI_LEAVES);
+        const merged = mergeRecordArrays(local, db.mbi_leaves);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mbi_leaves', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
       if (db.mai_leaves && Array.isArray(db.mai_leaves)) {
-        localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
-        hasChanges = true;
+        const local = getWhDB('MAI', 'leaves', []);
+        const merged = mergeRecordArrays(local, db.mai_leaves);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mai_leaves', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
       if (db.mbi_overtime && Array.isArray(db.mbi_overtime)) {
-        localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
-        hasChanges = true;
+        const local = getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES);
+        const merged = mergeRecordArrays(local, db.mbi_overtime);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mbi_overtime', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
       if (db.mai_overtime && Array.isArray(db.mai_overtime)) {
-        localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
-        hasChanges = true;
+        const local = getWhDB('MAI', 'overtime', []);
+        const merged = mergeRecordArrays(local, db.mai_overtime);
+        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
+          localStorage.setItem('wfm_mai_overtime', JSON.stringify(merged));
+          hasChanges = true;
+        }
       }
 
       if (hasChanges) {
@@ -1953,35 +2066,16 @@
           if (res.ok) {
             const db = await res.json();
             if (db && (db.mbi_users || db.mai_users || db.mbi_overtime || db.mbi_attendance)) {
-              if (db.mbi_users && db.mbi_users.length > 0) {
-                localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
-              }
-              if (db.mai_users && db.mai_users.length > 0) {
-                localStorage.setItem('wfm_mai_users', JSON.stringify(db.mai_users));
-              }
-              if (db.mbi_attendance) localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
-              if (db.mai_attendance) localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
-              if (db.mbi_leaves) localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
-              if (db.mai_leaves) localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
-              if (db.mbi_overtime) localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
-              if (db.mai_overtime) localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
-
-              migrateAllUsersNIK();
-              renderAccountLookupList();
-              renderEmployeeTable();
-              populateDropdownEmployees();
-              renderOvertimeEmployeeGrid();
-              renderOvertimeTable();
-              renderReportOvertimeTable();
-              renderLeavesTable();
-              renderReportLeavesTable();
-              renderRecordsTable();
-              refreshAllDashboardData();
+              applyIncomingDatabase(db);
               loaded = true;
 
-              const totalUsers = (db.mbi_users?.length || 0) + (db.mai_users?.length || 0);
-              const totalOt = (db.mbi_overtime?.length || 0) + (db.mai_overtime?.length || 0);
-              const totalAtt = (db.mbi_attendance?.length || 0) + (db.mai_attendance?.length || 0);
+              const currentMBI = getWhDB('MBI', 'users', []);
+              const currentMAI = getWhDB('MAI', 'users', []);
+              const currentOt = getWhDB(activeWarehouse, 'overtime', []);
+              const currentAtt = getWhDB(activeWarehouse, 'attendance', []);
+              const totalUsers = currentMBI.length + currentMAI.length;
+              const totalOt = currentOt.length;
+              const totalAtt = currentAtt.length;
               syncSummary = `\n• ${totalUsers} Akun Karyawan\n• ${totalOt} Data Lemburan\n• ${totalAtt} Data Riwayat Absensi`;
               break;
             }
@@ -1994,7 +2088,7 @@
       updateCloudSyncStatusBadge(loaded ? 'synced' : 'local');
       if (forceAlert) {
         if (loaded) {
-          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah dimuat ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
+          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
         } else {
           alert('Menggunakan database lokal aktif. Pastikan laptop admin sudah mengklik tombol "Kirim dari Laptop" ke cloud.');
         }
@@ -2521,6 +2615,12 @@
       refreshAllDashboardData();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
+      renderOvertimeTable();
+      renderReportOvertimeTable();
+      renderLeavesTable();
+      renderReportLeavesTable();
+      renderRecordsTable();
+      renderMatrixTable();
       calculateOvertimeNominal();
       lucide.createIcons();
     }
