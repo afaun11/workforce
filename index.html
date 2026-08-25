@@ -3729,20 +3729,24 @@
     function downloadAccountsExcel() {
       migrateAllUsersNIK();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const exportData = users.map(u => ({
+      const exportData = users.map((u, idx) => ({
+        "No": idx + 1,
         "NIK Karyawan (ID Login)": u.nik,
         "Nama Karyawan": u.name,
         "Departemen": u.dept,
         "Outsource": u.outsource,
-        "Posisi": u.role,
-        "Password Akun": u.isFirstLogin === false ? "Password Pribadi" : (u.password || 'medika123'),
-        "Status Password": u.isFirstLogin === false ? "Sudah Diubah Mandiri" : "Default (medika123)"
+        "Posisi / Role": (u.role || 'staff').toUpperCase(),
+        "Kata Sandi / Password Aktif": u.password || 'medika123',
+        "Status Password": u.isFirstLogin === false ? "Sudah Diubah Mandiri / Kustom" : "Default (medika123)",
+        "No Telepon": u.phone || '-',
+        "Join Date": u.joinDate || '-',
+        "Gudang": u.warehouse || activeWarehouse
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `Akun_${activeWarehouse}`);
-      XLSX.writeFile(wb, `Daftar_Akun_Password_${activeWarehouse}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, `Daftar_Akun_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Daftar_Akun_dan_Password_Karyawan_${activeWarehouse}.xlsx`);
     }
 
     function downloadEmployeeTemplate() {
