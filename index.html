@@ -2901,6 +2901,129 @@
       lucide.createIcons();
     }
 
+    // =========================================================
+    // AUDIO NOTIFICATION ENGINE (NADA BEEP & SUARA INDONESIA)
+    // =========================================================
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function speakNotification(text) {
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'id-ID';
+          utterance.rate = 1.05;
+          utterance.pitch = 1.0;
+          
+          const voices = window.speechSynthesis.getVoices();
+          const idVoice = voices.find(v => v.lang && (v.lang.startsWith('id') || v.lang.includes('ID')));
+          if (idVoice) utterance.voice = idVoice;
+
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          console.warn('Speech error:', e);
+        }
+      }
+    }
+
+    function playAttendanceSuccessSound(type = 'check_in', userName = '') {
+      try {
+        const ctx = getAudioContext();
+        if (ctx) {
+          const now = ctx.currentTime;
+          // Melodic major chord chime (C5 -> E5 -> G5)
+          const notes = [523.25, 659.25, 783.99];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.1);
+            gain.gain.setValueAtTime(0.01, now + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.28, now + i * 0.1 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.1);
+            osc.stop(now + i * 0.1 + 0.3);
+          });
+        }
+      } catch (e) {}
+
+      const actionText = type === 'check_in' ? 'Absen masuk berhasil' : 'Absen keluar berhasil';
+      const text = userName ? `${actionText}, ${userName}` : actionText;
+      setTimeout(() => {
+        speakNotification(text);
+      }, 350);
+    }
+
+    function playAttendanceErrorSound(reason = '') {
+      try {
+        const ctx = getAudioContext();
+        if (ctx) {
+          const now = ctx.currentTime;
+          // Warning descending error buzz (320Hz -> 200Hz)
+          const notes = [320, 200];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + i * 0.14);
+            gain.gain.setValueAtTime(0.01, now + i * 0.14);
+            gain.gain.exponentialRampToValueAtTime(0.35, now + i * 0.14 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.18);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.14);
+            osc.stop(now + i * 0.14 + 0.22);
+          });
+        }
+      } catch (e) {}
+
+      const text = reason ? `Absen gagal. ${reason}` : 'Absen gagal';
+      setTimeout(() => {
+        speakNotification(text);
+      }, 300);
+    }
+
+    function playLocationVerifiedSound() {
+      try {
+        const ctx = getAudioContext();
+        if (ctx) {
+          const now = ctx.currentTime;
+          const notes = [440, 880];
+          notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.08);
+            gain.gain.setValueAtTime(0.01, now + i * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.25, now + i * 0.08 + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.18);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.08);
+            osc.stop(now + i * 0.08 + 0.2);
+          });
+        }
+      } catch (e) {}
+
+      setTimeout(() => {
+        speakNotification('Lokasi gudang terverifikasi. Silakan scan kartu identitas.');
+      }, 250);
+    }
+
     async function processScannedText(decodedText) {
       const trimmed = decodedText.trim();
       const alertEl = document.getElementById('att-alert');
@@ -2916,16 +3039,19 @@
         if (!gpsCheck.valid) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
           alertEl.innerText = 'Lokasi Tidak Valid: ' + (gpsCheck.error || 'GPS Anda tidak berada di titik lokasi gudang resmi!');
+          playAttendanceErrorSound('Lokasi GPS tidak berada di area gudang');
           return;
         }
 
         setLocationVerifiedSuccess();
+        playLocationVerifiedSound();
         return;
       }
 
       if (!isLocationVerified) {
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
         alertEl.innerText = 'Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
+        playAttendanceErrorSound('Scan barcode lokasi terlebih dahulu');
         return;
       }
 
@@ -2944,6 +3070,7 @@
       if (!matchedUser) {
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
         alertEl.innerText = `Kode Barcode "${nikCode}" tidak terdaftar di Gudang ${activeWarehouse}!`;
+        playAttendanceErrorSound('Kode barcode tidak terdaftar');
         return;
       }
 
@@ -2954,6 +3081,7 @@
         if (existing) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
           alertEl.innerText = `${matchedUser.name} sudah melakukan Absen Masuk untuk hari ini!`;
+          playAttendanceErrorSound('Anda sudah absen masuk hari ini');
           return;
         }
 
@@ -2976,15 +3104,18 @@
         setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
         alertEl.innerText = `Absen MASUK Berhasil: ${matchedUser.name} (Lokasi Terverifikasi)!`;
+        playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
           alertEl.innerText = `${matchedUser.name} belum Absen Masuk hari ini!`;
+          playAttendanceErrorSound('Anda belum absen masuk hari ini');
           return;
         }
         if (existing.checkOutTime) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
           alertEl.innerText = `${matchedUser.name} sudah Absen Keluar sebelumnya.`;
+          playAttendanceErrorSound('Anda sudah absen keluar sebelumnya');
           return;
         }
 
@@ -2992,6 +3123,7 @@
         setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
         alertEl.innerText = `Absen KELUAR Berhasil: ${matchedUser.name}! (Lokasi Terverifikasi)`;
+        playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
       refreshAllDashboardData();
