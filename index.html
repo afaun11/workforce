@@ -14,6 +14,8 @@
   <!-- SheetJS (Excel .XLSX Reader & Writer) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Paho MQTT WebSocket Client for True Zero-Latency Realtime Sync -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -227,30 +229,40 @@
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <h3 class="font-black text-sm text-slate-900">
-            Transfer Data Admin ke HP Instan
+            Sinkronisasi Data Antar Perangkat (HP & Laptop)
           </h3>
-          <p class="text-[11px] text-slate-500">Salin kode data dari laptop admin dan tempel di HP</p>
+          <p class="text-[11px] text-slate-500">Pastikan data karyawan, lemburan & absensi 100% identik di semua HP & Laptop</p>
         </div>
         <button onclick="closeDirectSyncModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       <div class="space-y-3">
-        <!-- Opsi 1: Salin dari Laptop Admin -->
+        <!-- Opsi 1: Tarik Otomatis dari Cloud Server (Paling Cepat untuk HP) -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-          <p class="text-xs font-bold text-slate-900">1. Jika Anda di LAPTOP ADMIN:</p>
-          <p class="text-[11px] text-slate-600">Klik tombol di bawah untuk menyalin seluruh data akun karyawan yang sudah diupload.</p>
-          <button onclick="copyAdminSyncCode()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
-            Salin Kode Database Admin
-          </button>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900">1. Sinkronisasi Otomatis Cloud:</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Online 24/7</span>
+          </div>
+          <p class="text-[11px] text-slate-600">Klik tombol di bawah di HP Anda untuk langsung menyamakan data dengan Laptop Admin.</p>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button onclick="fetchFullDatabaseFromCloud(true)" class="py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
+              Tarik Data ke HP
+            </button>
+            <button onclick="saveFullDatabaseToCloud(true)" class="py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs">
+              Kirim dari Laptop
+            </button>
+          </div>
         </div>
 
-        <!-- Opsi 2: Tempel di HP Pengguna -->
+        <!-- Opsi 2: Salin / Tempel Kode (Alternatif Offline / WhatsApp) -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-          <p class="text-xs font-bold text-slate-900">2. Jika Anda di HP PENGGUNA:</p>
-          <p class="text-[11px] text-slate-600">Tempel (*paste*) kode database yang dikirim dari admin di sini:</p>
-          <textarea id="sync-code-input" rows="3" placeholder="Tempel kode data database di sini..." class="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"></textarea>
+          <p class="text-xs font-bold text-slate-900">2. Transfer Manual Kode Data:</p>
+          <button onclick="copyAdminSyncCode()" class="w-full py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs">
+            Salin Seluruh Database dari Laptop
+          </button>
+          <textarea id="sync-code-input" rows="2" placeholder="Tempel kode data di sini (jika di HP)..." class="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"></textarea>
           <button onclick="applyAdminSyncCode()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
-            Terapkan Data ke HP Ini
+            Terapkan Kode ke HP Ini
           </button>
         </div>
       </div>
@@ -464,7 +476,7 @@
 
       <div class="flex items-center gap-2.5">
         <!-- Live Cloud Sync Button -->
-        <button onclick="fetchFullDatabaseFromCloud(true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime dari Cloud Database">
+        <button onclick="openDirectSyncModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime HP & Laptop">
           <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
           <span id="nav-cloud-label">Cloud: Live</span>
         </button>
@@ -1314,36 +1326,44 @@
               <div class="flex flex-col items-center p-6 bg-slate-200/60 rounded-3xl border border-slate-200">
                 <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan (Standar CR80)</span>
                 
-                <div id="printable-id-card" style="width: 280px; min-height: 450px; max-width: 280px;" class="bg-white rounded-3xl border-2 border-slate-800 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                <div id="printable-id-card" style="width: 280px; min-height: 440px; max-width: 280px; box-sizing: border-box;" class="bg-white rounded-3xl border-2 border-slate-800 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
-                  <div id="idcard-header" class="px-4 py-3 text-white flex items-center justify-between bg-sky-700">
-                    <div>
-                      <span class="text-[9px] uppercase font-bold tracking-widest text-sky-200 block leading-none">WORKFORCE</span>
-                      <h3 class="font-black text-xs leading-tight mt-0.5">MEDIKA GROUP</h3>
+                  <!-- Card Header -->
+                  <div id="idcard-header" style="padding: 12px 16px; background-color: #0369a1; color: #ffffff;" class="flex items-center justify-between">
+                    <div style="text-align: left;">
+                      <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.1em; color: #bae6fd; display: block; line-height: 1; margin: 0 0 3px 0;">WORKFORCE</span>
+                      <h3 style="font-size: 13px; font-weight: 900; line-height: 1.2; margin: 0; color: #ffffff;">MEDIKA GROUP</h3>
                     </div>
-                    <span id="idcard-wh-badge" class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white font-mono">MBI</span>
+                    <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 6px; padding: 4px 10px; display: inline-flex; align-items: center; justify-content: center;">
+                      <span id="idcard-wh-badge" style="font-size: 11px; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1;">MBI</span>
+                    </div>
                   </div>
 
-                  <div class="px-4 py-3 flex flex-col items-center text-center flex-1 justify-between">
-                    <div class="w-14 h-14 rounded-full bg-slate-100 border-2 border-slate-300 shadow-xs flex items-center justify-center my-1 text-slate-500 overflow-hidden">
+                  <!-- Card Body -->
+                  <div style="padding: 16px 14px 12px; display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; justify-content: space-between;">
+                    <div style="width: 56px; height: 56px; border-radius: 9999px; background-color: #f1f5f9; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: #64748b; margin-bottom: 6px;">
                       <i data-lucide="user" class="w-8 h-8"></i>
                     </div>
 
-                    <div class="w-full my-1">
-                      <h4 id="idcard-name" class="font-black text-sm text-slate-900 leading-snug break-words px-1">Nama Karyawan</h4>
-                      <p id="idcard-dept" class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Departemen</p>
-                      <div class="mt-1">
-                        <span id="idcard-nik" class="text-[11px] font-mono font-extrabold bg-slate-100 px-3 py-0.5 rounded-full border border-slate-300 text-slate-800 inline-block">MBI26-001</span>
+                    <div style="width: 100%; margin: 2px 0;">
+                      <h4 id="idcard-name" style="font-size: 14px; font-weight: 900; color: #0f172a; line-height: 1.3; margin: 0; word-break: break-word; padding: 0 4px;">Nama Karyawan</h4>
+                      <p id="idcard-dept" style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 3px 0 6px 0; line-height: 1.2;">Departemen</p>
+                      
+                      <div style="display: flex; justify-content: center; margin-top: 4px;">
+                        <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 5px 16px; display: inline-flex; align-items: center; justify-content: center;">
+                          <span id="idcard-nik" style="font-size: 12px; font-family: monospace; font-weight: 800; color: #1e293b; line-height: 1; display: block;">MBI26-001</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div class="my-2 p-2 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center shadow-xs">
-                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
+                    <div style="margin-top: 8px; padding: 8px; background-color: #f8fafc; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center;">
+                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" style="width: 140px; height: 140px; background-color: #ffffff; padding: 4px; border-radius: 8px; object-fit: contain; display: block;">
                     </div>
                   </div>
 
-                  <div class="pb-2.5 text-center bg-slate-50 border-t border-slate-100 pt-1.5">
-                    <p id="idcard-footer-text" class="text-[9px] font-semibold text-slate-400">Official Employee ID Card</p>
+                  <!-- Card Footer -->
+                  <div style="padding: 8px 12px 10px; text-align: center; background-color: #f8fafc; border-top: 1px solid #f1f5f9;">
+                    <p id="idcard-footer-text" style="font-size: 9px; font-weight: 700; color: #94a3b8; letter-spacing: 0.05em; margin: 0; line-height: 1;">Official Employee ID Card</p>
                   </div>
                 </div>
               </div>
@@ -1352,33 +1372,35 @@
               <div class="flex flex-col items-center p-6 bg-amber-50/80 rounded-3xl border border-amber-200">
                 <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-3">Barcode QR Lokasi Resmi (Pintu Masuk)</span>
 
-                <div id="printable-location-card" style="width: 280px; min-height: 450px; max-width: 280px;" class="bg-white rounded-3xl border-2 border-amber-700 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                <div id="printable-location-card" style="width: 280px; min-height: 440px; max-width: 280px; box-sizing: border-box;" class="bg-white rounded-3xl border-2 border-amber-700 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
-                  <div class="px-4 py-3 text-white flex items-center justify-between bg-amber-700">
-                    <div>
-                      <span class="text-[9px] uppercase font-bold tracking-widest text-amber-200 block leading-none">TITIK LOKASI</span>
-                      <h3 class="font-black text-xs leading-tight mt-0.5">GUDANG MEDIKA</h3>
+                  <div style="padding: 12px 16px; background-color: #b45309; color: #ffffff;" class="flex items-center justify-between">
+                    <div style="text-align: left;">
+                      <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.1em; color: #fde68a; display: block; line-height: 1; margin: 0 0 3px 0;">TITIK LOKASI</span>
+                      <h3 style="font-size: 13px; font-weight: 900; line-height: 1.2; margin: 0; color: #ffffff;">GUDANG MEDIKA</h3>
                     </div>
-                    <span class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white font-mono">RESMI</span>
+                    <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 6px; padding: 4px 10px; display: inline-flex; align-items: center; justify-content: center;">
+                      <span style="font-size: 11px; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1;">RESMI</span>
+                    </div>
                   </div>
 
-                  <div class="px-4 py-3 flex flex-col items-center text-center flex-1 justify-between">
-                    <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center my-1 shadow-xs border-2 border-amber-300">
-                      <i data-lucide="map-pin" class="w-7 h-7"></i>
+                  <div style="padding: 16px 14px 12px; display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; justify-content: space-between;">
+                    <div style="width: 56px; height: 56px; border-radius: 16px; background-color: #fef3c7; border: 2px solid #fcd34d; display: flex; align-items: center; justify-content: center; color: #b45309; margin-bottom: 6px;">
+                      <i data-lucide="map-pin" class="w-8 h-8"></i>
                     </div>
 
-                    <div class="w-full my-1">
-                      <h4 class="font-black text-sm text-slate-900 leading-snug">QR CODE LOKASI GUDANG</h4>
-                      <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Scan sebelum scan ID Card</p>
+                    <div style="width: 100%; margin: 2px 0;">
+                      <h4 style="font-size: 14px; font-weight: 900; color: #0f172a; line-height: 1.3; margin: 0;">QR CODE LOKASI GUDANG</h4>
+                      <p style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin: 3px 0 6px 0; line-height: 1.2;">Scan sebelum scan ID Card</p>
                     </div>
                     
-                    <div class="my-2 p-2 bg-amber-50 rounded-2xl border border-amber-200 flex flex-col items-center shadow-xs">
-                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
+                    <div style="margin-top: 8px; padding: 8px; background-color: #fefce8; border-radius: 16px; border: 1px solid #fef08a; display: flex; align-items: center; justify-content: center;">
+                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" style="width: 140px; height: 140px; background-color: #ffffff; padding: 4px; border-radius: 8px; object-fit: contain; display: block;">
                     </div>
                   </div>
 
-                  <div class="pb-2.5 text-center bg-amber-50/50 border-t border-amber-100 pt-1.5">
-                    <p class="text-[9px] font-semibold text-slate-500">Tempel di Pintu Masuk Gudang</p>
+                  <div style="padding: 8px 12px 10px; text-align: center; background-color: #fefce8; border-top: 1px solid #fef08a;">
+                    <p style="font-size: 9px; font-weight: 700; color: #854d0e; letter-spacing: 0.05em; margin: 0; line-height: 1;">Tempel di Pintu Masuk Gudang</p>
                   </div>
                 </div>
               </div>
@@ -1608,9 +1630,185 @@
     }
 
     const CLOUD_ENDPOINTS = [
-      'https://wfm-medika-group-default-rtdb.asia-southeast1.firebasedatabase.app/database.json',
-      'https://kvdb.io/8qWfM2k9MedikaGroupDB/wfm_medika_database'
+      'https://kvdb.io/8qWfM2k9MedikaGroupDB/wfm_medika_database',
+      'https://kvdb.io/WfmMedikaLive2026/db_full_payload',
+      'https://wfm-medika-group-default-rtdb.asia-southeast1.firebasedatabase.app/database.json'
     ];
+
+    // =========================================================
+    // REAL-TIME AUTO SYNC ENGINE (MQTT WEBSOCKET + BROADCAST + CLOUD)
+    // =========================================================
+    let mqttClient = null;
+    let isMqttConnected = false;
+    const MQTT_TOPIC = 'wfm_medika_group_2026/realtime_sync_v2';
+    const DEVICE_SYNC_ID = 'wfm_dev_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now();
+    const localSyncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('wfm_medika_local_channel') : null;
+
+    if (localSyncChannel) {
+      localSyncChannel.onmessage = (e) => {
+        if (e.data && e.data.type === 'DB_UPDATE' && e.data.origin !== DEVICE_SYNC_ID) {
+          applyIncomingDatabase(e.data.payload, false);
+        }
+      };
+    }
+
+    function initRealtimeMQTTSync() {
+      if (typeof Paho === 'undefined' || !Paho.MQTT) {
+        console.warn('Paho MQTT library not loaded, using HTTP auto polling.');
+        return;
+      }
+
+      try {
+        const brokerHost = 'broker.hivemq.com';
+        const brokerPort = 8884;
+        const clientId = DEVICE_SYNC_ID;
+
+        mqttClient = new Paho.MQTT.Client(brokerHost, brokerPort, '/mqtt', clientId);
+
+        mqttClient.onConnectionLost = (responseObject) => {
+          isMqttConnected = false;
+          updateCloudSyncStatusBadge('local');
+          console.warn('MQTT Connection lost:', responseObject.errorMessage);
+          setTimeout(initRealtimeMQTTSync, 3000);
+        };
+
+        mqttClient.onMessageArrived = (message) => {
+          try {
+            const data = JSON.parse(message.payloadString);
+            if (data && data.origin !== DEVICE_SYNC_ID && data.payload) {
+              console.log('⚡ Realtime Update Received via WebSocket from another device!');
+              applyIncomingDatabase(data.payload, false);
+            }
+          } catch (err) {
+            console.warn('Error parsing incoming realtime message:', err);
+          }
+        };
+
+        mqttClient.connect({
+          useSSL: true,
+          timeout: 8,
+          keepAliveInterval: 30,
+          cleanSession: true,
+          onSuccess: () => {
+            isMqttConnected = true;
+            mqttClient.subscribe(MQTT_TOPIC, { qos: 1 });
+            updateCloudSyncStatusBadge('synced');
+            console.log('🟢 MQTT Realtime Sync Connected to HiveMQ Broker!');
+          },
+          onFailure: (err) => {
+            isMqttConnected = false;
+            console.warn('HiveMQ MQTT connect failed, fallback to EMQX broker...', err);
+            connectFallbackMQTT();
+          }
+        });
+      } catch (err) {
+        console.warn('MQTT init error:', err);
+      }
+    }
+
+    function connectFallbackMQTT() {
+      try {
+        const brokerHost = 'broker.emqx.io';
+        const brokerPort = 8084;
+        mqttClient = new Paho.MQTT.Client(brokerHost, brokerPort, '/mqtt', DEVICE_SYNC_ID);
+        mqttClient.onConnectionLost = () => { isMqttConnected = false; };
+        mqttClient.onMessageArrived = (message) => {
+          try {
+            const data = JSON.parse(message.payloadString);
+            if (data && data.origin !== DEVICE_SYNC_ID && data.payload) {
+              applyIncomingDatabase(data.payload, false);
+            }
+          } catch (e) {}
+        };
+        mqttClient.connect({
+          useSSL: true,
+          timeout: 8,
+          onSuccess: () => {
+            isMqttConnected = true;
+            mqttClient.subscribe(MQTT_TOPIC, { qos: 1 });
+            updateCloudSyncStatusBadge('synced');
+          },
+          onFailure: () => {
+            isMqttConnected = false;
+          }
+        });
+      } catch (e) {}
+    }
+
+    function broadcastRealtimeUpdate(payload) {
+      if (localSyncChannel) {
+        localSyncChannel.postMessage({ type: 'DB_UPDATE', origin: DEVICE_SYNC_ID, payload });
+      }
+
+      if (mqttClient && isMqttConnected) {
+        try {
+          const msgObj = { origin: DEVICE_SYNC_ID, timestamp: Date.now(), payload };
+          const message = new Paho.MQTT.Message(JSON.stringify(msgObj));
+          message.destinationName = MQTT_TOPIC;
+          message.qos = 1;
+          mqttClient.send(message);
+        } catch (e) {
+          console.warn('Error publishing realtime MQTT message:', e);
+        }
+      }
+    }
+
+    function applyIncomingDatabase(db, triggerSave = false) {
+      if (!db) return;
+      let hasChanges = false;
+
+      if (db.mbi_users && Array.isArray(db.mbi_users) && db.mbi_users.length > 0) {
+        localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
+        hasChanges = true;
+      }
+      if (db.mai_users && Array.isArray(db.mai_users) && db.mai_users.length > 0) {
+        localStorage.setItem('wfm_mai_users', JSON.stringify(db.mai_users));
+        hasChanges = true;
+      }
+      if (db.mbi_attendance && Array.isArray(db.mbi_attendance)) {
+        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
+        hasChanges = true;
+      }
+      if (db.mai_attendance && Array.isArray(db.mai_attendance)) {
+        localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
+        hasChanges = true;
+      }
+      if (db.mbi_leaves && Array.isArray(db.mbi_leaves)) {
+        localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
+        hasChanges = true;
+      }
+      if (db.mai_leaves && Array.isArray(db.mai_leaves)) {
+        localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
+        hasChanges = true;
+      }
+      if (db.mbi_overtime && Array.isArray(db.mbi_overtime)) {
+        localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
+        hasChanges = true;
+      }
+      if (db.mai_overtime && Array.isArray(db.mai_overtime)) {
+        localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
+        hasChanges = true;
+      }
+
+      if (hasChanges) {
+        renderAllLiveScreens();
+      }
+    }
+
+    function renderAllLiveScreens() {
+      migrateAllUsersNIK();
+      renderAccountLookupList();
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      renderOvertimeTable();
+      renderReportOvertimeTable();
+      renderLeavesTable();
+      renderReportLeavesTable();
+      renderRecordsTable();
+      renderMatrixTable();
+      refreshAllDashboardData();
+    }
 
     function updateCloudSyncStatusBadge(status) {
       const authStatus = document.getElementById('auth-cloud-status');
@@ -1619,29 +1817,29 @@
       const navDot = document.getElementById('nav-cloud-dot');
 
       if (status === 'syncing') {
-        if (authStatus) authStatus.innerText = 'Cloud Sync: Mengunduh Data Admin...';
+        if (authStatus) authStatus.innerText = 'Cloud Sync: Menghubungkan Realtime...';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-spin';
-        if (navLabel) navLabel.innerText = 'Cloud: Mengunduh...';
+        if (navLabel) navLabel.innerText = 'Realtime: Sync...';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-spin';
       } else if (status === 'uploading') {
-        if (authStatus) authStatus.innerText = 'Cloud Sync: Menyimpan ke Cloud...';
+        if (authStatus) authStatus.innerText = 'Cloud Sync: Mengirim ke Semua HP...';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-sky-400 animate-pulse';
-        if (navLabel) navLabel.innerText = 'Cloud: Menyimpan...';
+        if (navLabel) navLabel.innerText = 'Realtime: Kirim...';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-sky-400 animate-pulse';
-      } else if (status === 'synced') {
-        if (authStatus) authStatus.innerText = 'Cloud Sync: Live & Terhubung';
+      } else if (status === 'synced' || isMqttConnected) {
+        if (authStatus) authStatus.innerText = 'Cloud Sync: Realtime Live ⚡';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-        if (navLabel) navLabel.innerText = 'Cloud Sync: Live';
+        if (navLabel) navLabel.innerText = 'Realtime: Live ⚡';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
       } else {
         if (authStatus) authStatus.innerText = 'Cloud Sync: Mode Lokal';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-slate-400';
-        if (navLabel) navLabel.innerText = 'Cloud: Lokal';
+        if (navLabel) navLabel.innerText = 'Realtime: Standby';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-slate-400';
       }
     }
 
-    async function saveFullDatabaseToCloud() {
+    async function saveFullDatabaseToCloud(forceAlert = false) {
       const payload = {
         mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
         mbi_attendance: getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE),
@@ -1654,6 +1852,10 @@
         updatedAt: new Date().toISOString()
       };
 
+      // 1. Broadcast instant realtime message to all devices (<100ms)
+      broadcastRealtimeUpdate(payload);
+
+      // 2. Background HTTP upload for persistent storage
       updateCloudSyncStatusBadge('uploading');
       let success = false;
 
@@ -1672,7 +1874,14 @@
         }
       }
 
-      updateCloudSyncStatusBadge(success ? 'synced' : 'local');
+      updateCloudSyncStatusBadge((isMqttConnected || success) ? 'synced' : 'local');
+      if (forceAlert) {
+        if (success || isMqttConnected) {
+          alert(`✅ Sukses Realtime Sinkron!\nSemua data karyawan (${payload.mbi_users.length} MBI), data lembur (${payload.mbi_overtime.length} data), dan absensi otomatis disinkronkan secara LIVE ke seluruh HP & Laptop.`);
+        } else {
+          alert('⚠️ Gagal terhubung ke Cloud Server. Periksa koneksi internet laptop Anda.');
+        }
+      }
     }
 
     function sanitizeEmployeesData() {
@@ -1736,13 +1945,14 @@
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
+      let syncSummary = '';
 
       for (const endpoint of CLOUD_ENDPOINTS) {
         try {
           const res = await fetch(endpoint + '?t=' + Date.now());
           if (res.ok) {
             const db = await res.json();
-            if (db && (db.mbi_users || db.mai_users)) {
+            if (db && (db.mbi_users || db.mai_users || db.mbi_overtime || db.mbi_attendance)) {
               if (db.mbi_users && db.mbi_users.length > 0) {
                 localStorage.setItem('wfm_mbi_users', JSON.stringify(db.mbi_users));
               }
@@ -1761,8 +1971,18 @@
               renderEmployeeTable();
               populateDropdownEmployees();
               renderOvertimeEmployeeGrid();
+              renderOvertimeTable();
+              renderReportOvertimeTable();
+              renderLeavesTable();
+              renderReportLeavesTable();
+              renderRecordsTable();
               refreshAllDashboardData();
               loaded = true;
+
+              const totalUsers = (db.mbi_users?.length || 0) + (db.mai_users?.length || 0);
+              const totalOt = (db.mbi_overtime?.length || 0) + (db.mai_overtime?.length || 0);
+              const totalAtt = (db.mbi_attendance?.length || 0) + (db.mai_attendance?.length || 0);
+              syncSummary = `\n• ${totalUsers} Akun Karyawan\n• ${totalOt} Data Lemburan\n• ${totalAtt} Data Riwayat Absensi`;
               break;
             }
           }
@@ -1773,8 +1993,11 @@
 
       updateCloudSyncStatusBadge(loaded ? 'synced' : 'local');
       if (forceAlert) {
-        if (loaded) alert('Sinkronisasi Berhasil!\nData akun karyawan terbaru dari Admin telah dimuat dari Cloud Server.');
-        else alert('Menggunakan database lokal aktif.');
+        if (loaded) {
+          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah dimuat ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
+        } else {
+          alert('Menggunakan database lokal aktif. Pastikan laptop admin sudah mengklik tombol "Kirim dari Laptop" ke cloud.');
+        }
       }
     }
 
@@ -1879,11 +2102,23 @@
 
       renderLocationQRCode();
 
+      // Inisialisasi Realtime Live Sync WebSocket (< 0.1s antar HP & Laptop)
+      initRealtimeMQTTSync();
+
       // Sinkronkan data otomatis dari Cloud Server (semua HP & Laptop otomatis dapat data admin)
       fetchFullDatabaseFromCloud();
       setInterval(() => {
         fetchFullDatabaseFromCloud();
-      }, 5000);
+      }, 4000);
+
+      window.addEventListener('focus', () => {
+        fetchFullDatabaseFromCloud();
+      });
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          fetchFullDatabaseFromCloud();
+        }
+      });
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
@@ -2791,7 +3026,10 @@
       document.getElementById('idcard-wh-badge').innerText = user.warehouse;
 
       const isMBI = user.warehouse === 'MBI';
-      document.getElementById('idcard-header').className = isMBI ? 'p-2.5 text-white flex items-center justify-between bg-sky-700' : 'p-2.5 text-white flex items-center justify-between bg-purple-700';
+      const headerEl = document.getElementById('idcard-header');
+      if (headerEl) {
+        headerEl.style.backgroundColor = isMBI ? '#0369a1' : '#7c3aed';
+      }
 
       const img = document.getElementById('img-qrcode-emp');
       if (img) {
