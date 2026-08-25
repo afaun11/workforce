@@ -503,52 +503,68 @@
     <!-- App Body: Sidebar + Main Content -->
     <div class="flex-1 flex overflow-hidden">
       
-      <!-- Sidebar -->
-      <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-1.5 border-r border-slate-800 no-print flex-shrink-0">
-        <!-- Menu untuk Semua / Staff (HANYA ABSENSI) -->
-        <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white">
-          <i data-lucide="qr-code" class="w-4 h-4 text-teal-400"></i>
-          <span>Absensi Barcode Kamera</span>
-        </button>
+      <!-- Sidebar Navigasi Terkelompok & Profesional -->
+      <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
+        <!-- 1. Presensi & Operasional (Staff & Semua Role) -->
+        <div class="space-y-1.5">
+          <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
+          <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm">
+            <i data-lucide="qr-code" class="w-4 h-4 text-teal-300"></i>
+            <span>Absensi Barcode</span>
+          </button>
+        </div>
 
-        <!-- Menu Manajemen (Khusus Coordinator, Supervisor, Admin) -->
-        <div id="admin-menu-section" class="space-y-1.5 pt-2 border-t border-slate-800">
-          <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Gudang</p>
+        <!-- 2. Manajemen & Kontrol (Khusus Coordinator, Supervisor, Admin) -->
+        <div id="admin-menu-section" class="space-y-4 pt-2 border-t border-slate-800">
           
-          <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="calendar-off" class="w-4 h-4 text-rose-400"></i>
-            <span>Form Izin / Sakit / Cuti</span>
-          </button>
+          <!-- Kelompok: Pengajuan & Lembur -->
+          <div class="space-y-1">
+            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
+            <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="file-text" class="w-4 h-4 text-rose-400"></i>
+              <span>Form Pengajuan</span>
+            </button>
+            <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+              <span>Input & Rekap Lembur</span>
+            </button>
+          </div>
 
-          <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-            <span>Input & Rekap Lembur</span>
-          </button>
+          <!-- Kelompok: Manajemen Karyawan -->
+          <div class="space-y-1">
+            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
+            <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="users" class="w-4 h-4 text-sky-400"></i>
+              <span>Data Karyawan</span>
+            </button>
+            <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="contact" class="w-4 h-4 text-purple-400"></i>
+              <span>Kartu ID & QR Lokasi</span>
+            </button>
+          </div>
 
-          <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-            <span>Dashboard</span>
-          </button>
+          <!-- Kelompok: Laporan & Analitik -->
+          <div class="space-y-1">
+            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
+            <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+              <span>Laporan & Rekap</span>
+            </button>
+          </div>
 
-          <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="users" class="w-4 h-4 text-sky-400"></i>
-            <span>Data Karyawan</span>
-          </button>
+          <!-- Kelompok: Sistem & Database -->
+          <div class="space-y-1">
+            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
+            <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="layout-dashboard" class="w-4 h-4 text-teal-400"></i>
+              <span>Dashboard</span>
+            </button>
+            <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+              <i data-lucide="database" class="w-4 h-4 text-amber-500"></i>
+              <span>Database & Cadangan</span>
+            </button>
+          </div>
 
-          <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
-            <span>Laporan & Rekap Absensi</span>
-          </button>
-
-          <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="contact" class="w-4 h-4 text-sky-400"></i>
-            <span>Kartu ID & Barcode Lokasi</span>
-          </button>
-
-          <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="database" class="w-4 h-4 text-amber-500"></i>
-            <span>Database GitHub</span>
-          </button>
         </div>
       </aside>
 
@@ -733,11 +749,11 @@
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
                   <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md">
-                      ✓ Absen Masuk
+                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md flex items-center justify-center gap-1.5">
+                      <i data-lucide="log-in" class="w-3.5 h-3.5"></i> Absen Masuk
                     </button>
-                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200">
-                      👋 Absen Keluar
+                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center gap-1.5">
+                      <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Absen Keluar
                     </button>
                   </div>
                 </div>
@@ -829,10 +845,10 @@
           <div id="view-leaves" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                <i data-lucide="calendar-off" class="w-6 h-6 text-rose-600"></i>
-                Form Pengajuan Izin / Sakit / Cuti (<span id="leave-wh-label">Gudang MBI</span>)
+                <i data-lucide="file-text" class="w-6 h-6 text-rose-600"></i>
+                Form Pengajuan (<span id="leave-wh-label">Gudang MBI</span>)
               </h2>
-              <p class="text-xs text-slate-500">Pengajuan yang disetujui akan otomatis tercatat pada Rekap Absen Matriks</p>
+              <p class="text-xs text-slate-500">Pengajuan Izin, Sakit, atau Cuti. Data yang disetujui otomatis tercatat pada Rekap Absen & Matriks</p>
             </div>
 
             <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
@@ -921,12 +937,15 @@
               </div>
 
               <!-- Tab Nav Switcher di dalam Laporan -->
-              <div class="flex items-center bg-slate-200/80 p-1.5 rounded-2xl border border-slate-300">
+              <div class="flex items-center bg-slate-200/80 p-1.5 rounded-2xl border border-slate-300 flex-wrap gap-1">
                 <button onclick="switchReportTab('records')" id="btn-tab-records" class="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5">
-                  <i data-lucide="list" class="w-3.5 h-3.5 text-teal-600"></i> Record Absen Harian
+                  <i data-lucide="list" class="w-3.5 h-3.5 text-teal-600"></i> Record Absen
                 </button>
                 <button onclick="switchReportTab('matrix')" id="btn-tab-matrix" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
-                  <i data-lucide="grid" class="w-3.5 h-3.5 text-slate-500"></i> Rekap Absen Matriks
+                  <i data-lucide="grid" class="w-3.5 h-3.5 text-slate-500"></i> Rekap Matriks
+                </button>
+                <button onclick="switchReportTab('leaves')" id="btn-tab-report-leaves" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+                  <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500"></i> Rekap Pengajuan
                 </button>
               </div>
             </div>
@@ -1018,6 +1037,69 @@
                   <span class="inline-flex items-center gap-1 font-bold text-sky-800"><span class="w-5 h-5 bg-sky-100 rounded flex items-center justify-center font-black">I</span> Izin</span>
                   <span class="inline-flex items-center gap-1 font-bold text-purple-800"><span class="w-5 h-5 bg-purple-100 rounded flex items-center justify-center font-black">AL</span> Cuti</span>
                   <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center">-</span> Libur</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 3: REKAP PENGAJUAN (IZIN / SAKIT / CUTI) -->
+            <div id="tab-content-report-leaves" class="hidden space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                      <input type="date" id="report-leave-start" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                      <input type="date" id="report-leave-end" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Jenis:</label>
+                      <select id="report-leave-type-filter" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                        <option value="">Semua Jenis</option>
+                        <option value="sakit">Sakit</option>
+                        <option value="izin">Izin</option>
+                        <option value="cuti">Cuti</option>
+                      </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Status:</label>
+                      <select id="report-leave-status-filter" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                        <option value="">Semua Status</option>
+                        <option value="approved">Disetujui</option>
+                        <option value="pending">Pending</option>
+                        <option value="rejected">Ditolak</option>
+                      </select>
+                    </div>
+                    <button onclick="renderReportLeavesTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
+                      <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filter Pengajuan
+                    </button>
+                  </div>
+
+                  <button onclick="exportReportLeavesToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="download" class="w-4 h-4"></i> Download Pengajuan Excel
+                  </button>
+                </div>
+
+                <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
+                      <tr>
+                        <th class="p-3.5 border-r border-slate-200">No</th>
+                        <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 border-r border-slate-200">Departemen</th>
+                        <th class="p-3.5 border-r border-slate-200">Jenis</th>
+                        <th class="p-3.5 border-r border-slate-200">Rentang Tanggal</th>
+                        <th class="p-3.5 border-r border-slate-200">Alasan</th>
+                        <th class="p-3.5 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="report-leaves-table-body" class="divide-y divide-slate-100">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -1628,8 +1710,8 @@
 
       updateCloudSyncStatusBadge(loaded ? 'synced' : 'local');
       if (forceAlert) {
-        if (loaded) alert('✅ Sinkronisasi Berhasil!\nData akun karyawan terbaru dari Admin telah dimuat dari Cloud Server.');
-        else alert('ℹ️ Menggunakan database lokal aktif.');
+        if (loaded) alert('Sinkronisasi Berhasil!\nData akun karyawan terbaru dari Admin telah dimuat dari Cloud Server.');
+        else alert('Menggunakan database lokal aktif.');
       }
     }
 
@@ -1716,6 +1798,8 @@
       document.getElementById('matrix-end-date').value = lastDayStr;
       document.getElementById('record-start-date').value = firstDayStr;
       document.getElementById('record-end-date').value = todayStr;
+      if (document.getElementById('report-leave-start')) document.getElementById('report-leave-start').value = firstDayStr;
+      if (document.getElementById('report-leave-end')) document.getElementById('report-leave-end').value = lastDayStr;
       document.getElementById('ot-filter-start').value = firstDayStr;
       document.getElementById('ot-filter-end').value = todayStr;
       document.getElementById('ot-date').value = todayStr;
@@ -1817,8 +1901,8 @@
       if (!user) {
         alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
         alertEl.innerHTML = `
-          <span>❌ Akun <b>"${rawInputId}"</b> tidak ditemukan di database!</span>
-          <p class="text-[11px] text-slate-600 font-normal mt-1">Pastikan nama atau NIK sudah di-upload. Klik <a href="javascript:void(0)" onclick="openAccountLookupModal()" class="font-bold text-sky-700 underline">Lihat Daftar Akun</a> untuk mengecek NIK resmi Anda.</p>
+          <span>Akun <b>"${rawInputId}"</b> tidak ditemukan di database!</span>
+          <p class="text-[11px] text-slate-600 font-normal mt-1">Pastikan nama atau NIK sudah terdaftar. Klik <a href="javascript:void(0)" onclick="openAccountLookupModal()" class="font-bold text-sky-700 underline">Lihat Daftar Akun</a> untuk mengecek NIK resmi Anda.</p>
         `;
         alertEl.classList.remove('hidden');
         return;
@@ -1849,8 +1933,8 @@
       if (!isPasswordCorrect) {
         alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
         alertEl.innerHTML = isCustomized ? 
-          `<span>❌ Kata sandi untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Akun ini sudah memiliki kata sandi baru. Silakan login menggunakan password baru Anda.</span>` :
-          `<span>❌ Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default: <code class="font-bold text-teal-700">medika123</code></span>`;
+          `<span>Kata sandi untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Akun ini sudah memiliki kata sandi baru. Silakan login menggunakan password baru Anda.</span>` :
+          `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default: <code class="font-bold text-teal-700">medika123</code></span>`;
         alertEl.classList.remove('hidden');
         return;
       }
@@ -2399,7 +2483,7 @@
 
       const alertEl = document.getElementById('att-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = '✅ Lokasi Gudang Valid & Terverifikasi! Silakan scan ID Card Karyawan.';
+      alertEl.innerText = 'Lokasi Gudang Valid & Terverifikasi! Silakan scan ID Card Karyawan.';
       alertEl.classList.remove('hidden');
 
       lucide.createIcons();
@@ -2419,7 +2503,7 @@
         const gpsCheck = await verifyGPSLocation();
         if (!gpsCheck.valid) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-          alertEl.innerText = '❌ Lokasi Tidak Valid: ' + (gpsCheck.error || 'GPS Anda tidak berada di titik lokasi gudang resmi!');
+          alertEl.innerText = 'Lokasi Tidak Valid: ' + (gpsCheck.error || 'GPS Anda tidak berada di titik lokasi gudang resmi!');
           return;
         }
 
@@ -2429,7 +2513,7 @@
 
       if (!isLocationVerified) {
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-        alertEl.innerText = '❌ Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
+        alertEl.innerText = 'Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
         return;
       }
 
@@ -2479,7 +2563,7 @@
 
         setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-        alertEl.innerText = `✅ Absen MASUK Berhasil: ${matchedUser.name} (Lokasi Terverifikasi)!`;
+        alertEl.innerText = `Absen MASUK Berhasil: ${matchedUser.name} (Lokasi Terverifikasi)!`;
       } else {
         if (!existing) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
@@ -2495,7 +2579,7 @@
         existing.checkOutTime = new Date().toISOString();
         setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
-        alertEl.innerText = `👋 Absen KELUAR Berhasil: ${matchedUser.name}! (Lokasi Terverifikasi)`;
+        alertEl.innerText = `Absen KELUAR Berhasil: ${matchedUser.name}! (Lokasi Terverifikasi)`;
       }
 
       refreshAllDashboardData();
@@ -2824,7 +2908,7 @@
         renderOvertimeEmployeeGrid();
         refreshAllDashboardData();
         renderAccountLookupList();
-        alert(`✅ Data karyawan ${name} (${nik}) berhasil diperbarui!`);
+        alert(`Data karyawan ${name} (${nik}) berhasil diperbarui!`);
       }
     }
 
@@ -2872,7 +2956,7 @@
         setWhDB(wh, 'users', users);
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
         closeChangePasswordSettingModal();
-        alert('✅ Kata sandi akun Anda berhasil diubah!\nUntuk login berikutnya, wajib gunakan kata sandi baru ini.');
+        alert('Kata sandi akun Anda berhasil diubah!\nUntuk login berikutnya, wajib gunakan kata sandi baru ini.');
       }
     }
 
@@ -2924,7 +3008,7 @@
     }
 
     function deleteAllEmployees() {
-      if (!confirm(`⚠️ PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA KARYAWAN di Gudang ${activeWarehouse}?\n\n(Tindakan ini akan mengosongkan seluruh data karyawan agar Anda bisa upload Excel baru yang bersih).`)) {
+      if (!confirm(`PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA KARYAWAN di Gudang ${activeWarehouse}?\n\n(Tindakan ini akan mengosongkan seluruh data karyawan agar Anda bisa upload Excel baru yang bersih).`)) {
         return;
       }
 
@@ -3155,7 +3239,7 @@
           refreshAllDashboardData();
           renderAccountLookupList();
           
-          alert(`🎉 Selesai Upload Excel:\nSemua ${countAdded} data karyawan di Excel BERHASIL DITAMBAHKAN tanpa ada yang tertimpa/hilang!\nTotal Karyawan di Gudang ${targetWh}: ${users.length} orang.`);
+          alert(`Selesai Upload Excel:\nSemua ${countAdded} data karyawan di Excel BERHASIL DITAMBAHKAN tanpa ada yang tertimpa/hilang!\nTotal Karyawan di Gudang ${targetWh}: ${users.length} orang.`);
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
@@ -3172,15 +3256,121 @@
     function switchReportTab(tabName) {
       activeReportTab = tabName;
       const isRecord = tabName === 'records';
+      const isMatrix = tabName === 'matrix';
+      const isLeaves = tabName === 'leaves';
 
       document.getElementById('tab-content-records').classList.toggle('hidden', !isRecord);
-      document.getElementById('tab-content-matrix').classList.toggle('hidden', isRecord);
+      document.getElementById('tab-content-matrix').classList.toggle('hidden', !isMatrix);
+      document.getElementById('tab-content-report-leaves').classList.toggle('hidden', !isLeaves);
 
-      document.getElementById('btn-tab-records').className = isRecord ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
-      document.getElementById('btn-tab-matrix').className = !isRecord ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+      document.getElementById('btn-tab-records').className = isRecord 
+        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
+        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+      
+      document.getElementById('btn-tab-matrix').className = isMatrix 
+        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
+        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+
+      document.getElementById('btn-tab-report-leaves').className = isLeaves 
+        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
+        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
 
       if (isRecord) renderRecordsTable();
-      else renderMatrixTable();
+      else if (isMatrix) renderMatrixTable();
+      else if (isLeaves) renderReportLeavesTable();
+      lucide.createIcons();
+    }
+
+    function renderReportLeavesTable() {
+      const startStr = document.getElementById('report-leave-start')?.value || '';
+      const endStr = document.getElementById('report-leave-end')?.value || '';
+      const typeFilter = document.getElementById('report-leave-type-filter')?.value || '';
+      const statusFilter = document.getElementById('report-leave-status-filter')?.value || '';
+
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+
+      const filtered = leaves.filter(lv => {
+        const inDate = (!startStr || lv.startDate >= startStr || lv.endDate >= startStr) && (!endStr || lv.startDate <= endStr || lv.endDate <= endStr);
+        const inType = !typeFilter || lv.type === typeFilter;
+        const inStatus = !statusFilter || lv.status === statusFilter;
+        return inDate && inType && inStatus;
+      });
+
+      const tbody = document.getElementById('report-leaves-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 font-medium">Tidak ada data pengajuan pada filter ini.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((lv, idx) => {
+        const emp = users.find(u => u.nik === lv.userNik);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+        let typeBadge = '';
+        if (lv.type === 'sakit') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 uppercase">Sakit</span>';
+        else if (lv.type === 'izin') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 uppercase">Izin</span>';
+        else typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 uppercase">Cuti</span>';
+
+        let statusBadge = '';
+        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
+        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">PENDING</span>';
+
+        tr.innerHTML = `
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${lv.userName}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${lv.userNik}</td>
+          <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${emp ? emp.dept : '-'}</td>
+          <td class="p-3.5 border-r border-slate-100">${typeBadge}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800">${lv.startDate} s/d ${lv.endDate}</td>
+          <td class="p-3.5 border-r border-slate-100 text-slate-700 max-w-xs truncate">${lv.reason}</td>
+          <td class="p-3.5 text-center">${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportReportLeavesToExcel() {
+      const startStr = document.getElementById('report-leave-start')?.value || '';
+      const endStr = document.getElementById('report-leave-end')?.value || '';
+      const typeFilter = document.getElementById('report-leave-type-filter')?.value || '';
+      const statusFilter = document.getElementById('report-leave-status-filter')?.value || '';
+
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+
+      const filtered = leaves.filter(lv => {
+        const inDate = (!startStr || lv.startDate >= startStr || lv.endDate >= startStr) && (!endStr || lv.startDate <= endStr || lv.endDate <= endStr);
+        const inType = !typeFilter || lv.type === typeFilter;
+        const inStatus = !statusFilter || lv.status === statusFilter;
+        return inDate && inType && inStatus;
+      });
+
+      const rows = filtered.map((lv, i) => {
+        const emp = users.find(u => u.nik === lv.userNik);
+        return {
+          "No": i + 1,
+          "Nama Karyawan": lv.userName,
+          "NIK": lv.userNik,
+          "Departemen": emp ? emp.dept : '',
+          "Jenis Pengajuan": lv.type.toUpperCase(),
+          "Dari Tanggal": lv.startDate,
+          "Sampai Tanggal": lv.endDate,
+          "Alasan": lv.reason,
+          "Status": lv.status === 'approved' ? 'Disetujui' : (lv.status === 'rejected' ? 'Ditolak' : 'Pending'),
+          "Gudang": activeWarehouse
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Rekap_Pengajuan_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Rekap_Pengajuan_${activeWarehouse}_${startStr || 'all'}_sd_${endStr || 'all'}.xlsx`);
     }
 
     function renderRecordsTable() {
