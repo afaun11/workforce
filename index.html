@@ -1792,15 +1792,24 @@
 
     function mergeUserArrays(localUsers, incomingUsers) {
       const userMap = new Map();
+      const normalizeUserKey = (u) => {
+        if (!u) return '';
+        if (u.role === 'admin') return `ADMIN_${u.warehouse || 'MBI'}`;
+        if (u.name) return cleanStr(u.name);
+        if (u.nik) return cleanStr(u.nik);
+        return u.id || '';
+      };
+
       (localUsers || []).forEach(u => {
-        if (u && (u.nik || u.id || u.name)) {
-          const key = u.id || u.nik;
+        const key = normalizeUserKey(u);
+        if (key) {
           userMap.set(key, u);
         }
       });
+
       (incomingUsers || []).forEach(u => {
-        if (u && (u.nik || u.id || u.name)) {
-          const key = u.id || u.nik;
+        const key = normalizeUserKey(u);
+        if (key) {
           if (!userMap.has(key)) {
             userMap.set(key, u);
           } else {
@@ -2006,6 +2015,22 @@
           let users = JSON.parse(data);
           if (!Array.isArray(users)) return;
           let hasChanges = false;
+
+          // 1. Deduplikasi karyawan berdasarkan nama asli agar akun tidak berlipat ganda
+          const seenNames = new Map();
+          const cleanUsers = [];
+          users.forEach(u => {
+            if (!u) return;
+            const normName = u.role === 'admin' ? `ADMIN_${wh}` : cleanStr(u.name);
+            if (!seenNames.has(normName)) {
+              seenNames.set(normName, u);
+              cleanUsers.push(u);
+            } else {
+              hasChanges = true;
+            }
+          });
+          users = cleanUsers;
+
           users.forEach(u => {
             // Perbaiki nomor telepon jika tertukar dengan nama atau tidak memiliki digit nomor
             if (u.phone && (u.phone === u.name || !/\d{4,}/.test(u.phone)) && u.phone !== '-') {
