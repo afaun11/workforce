@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WFM Medika - Sistem Absensi & Data Gudang MBI & MAI</title>
+  <title>WFM Medika - Sistem Manajemen Kehadiran & Operasional</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -51,13 +51,13 @@
   <div id="auth-container" class="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4">
     <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden relative z-10">
       
-      <!-- Top Banner Header -->
+      <!-- Top Banner Header (Tanpa tulisan Database Terpisah) -->
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
         <div class="w-12 h-12 rounded-2xl bg-teal-500 text-slate-950 font-black text-2xl flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-2">
           M
         </div>
         <h1 class="text-xl font-extrabold tracking-tight">WFM MEDIKA GROUP</h1>
-        <p class="text-xs text-slate-400 mt-0.5">Database Terpisah Gudang MBI & MAI</p>
+        <p class="text-xs text-slate-400 mt-0.5">Sistem Manajemen Kehadiran & Operasional</p>
 
         <!-- Tab Toggle Login vs Register -->
         <div class="mt-4 grid grid-cols-2 p-1 bg-slate-800/80 rounded-xl border border-slate-700">
@@ -67,7 +67,7 @@
       </div>
 
       <!-- Alert Notification -->
-      <div id="auth-alert" class="hidden mx-6 mt-4 p-3 rounded-xl text-xs flex items-center gap-2"></div>
+      <div id="auth-alert" class="hidden mx-6 mt-4 p-3 rounded-xl text-xs flex items-center gap-2 font-bold"></div>
 
       <!-- FORM LOGIN -->
       <div id="form-login-box" class="p-6">
@@ -100,16 +100,6 @@
             Masuk ke Portal
           </button>
         </form>
-
-        <!-- Quick Demo Account Buttons -->
-        <div class="mt-6 pt-4 border-t border-slate-100 text-center">
-          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Klik Login Cepat Akun Demo:</p>
-          <div class="grid grid-cols-3 gap-1.5 text-xs">
-            <button onclick="fillDemo('MBI', 'ADM001','password123')" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 border border-slate-200">👑 Supervisor</button>
-            <button onclick="fillDemo('MBI', 'MBI-COR-01','password123')" class="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 font-bold text-sky-800 border border-sky-200">📋 Coordinator</button>
-            <button onclick="fillDemo('MBI', 'MBI-STF-01','password123')" class="p-2 rounded-xl bg-teal-50 hover:bg-teal-100 font-bold text-teal-800 border border-teal-200">👤 Staff</button>
-          </div>
-        </div>
       </div>
 
       <!-- FORM REGISTER -->
@@ -145,15 +135,26 @@
             <input type="text" id="reg-name" required placeholder="Contoh: Hendra Gunawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-              <input type="text" id="reg-dept" required placeholder="Logistik / Packing / QC" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-              <input type="text" id="reg-outsource" required placeholder="PT Sumber Daya / Internal" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-            </div>
+          <!-- Departemen Dropdown List -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
+            <select id="reg-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
+              <option value="staff office">staff office</option>
+              <option value="supervisor">supervisor</option>
+              <option value="coordinator">coordinator</option>
+              <option value="inbound">inbound</option>
+              <option value="packer">packer</option>
+              <option value="packing">packing</option>
+              <option value="admin so">admin so</option>
+              <option value="picking plan">picking plan</option>
+              <option value="dispatch">dispatch</option>
+              <option value="driver">driver</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
+            <input type="text" id="reg-outsource" required placeholder="PT Sumber Daya / Internal" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
@@ -167,15 +168,14 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK / No Karyawan *</label>
-              <input type="text" id="reg-nik" required placeholder="MBI-1005" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs uppercase font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password *</label>
-              <input type="password" id="reg-password" required placeholder="Min. 6 karakter" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-            </div>
+          <!-- NIK Otomatis & Password Default Info -->
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+            <p class="text-[11px] text-slate-600">
+              <span class="font-bold text-teal-700">&bull; NIK Karyawan:</span> Dibuat <strong>Otomatis</strong> oleh sistem.
+            </p>
+            <p class="text-[11px] text-slate-600">
+              <span class="font-bold text-teal-700">&bull; Password Awal:</span> Default <strong>medika123</strong> (Wajib diubah saat login pertama).
+            </p>
           </div>
 
           <button type="submit" class="w-full mt-2 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
@@ -183,6 +183,39 @@
           </button>
         </form>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL WAJIB GANTI PASSWORD (FIRST LOGIN FORCE CHANGE) -->
+  <!-- ========================================================= -->
+  <div id="first-login-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="text-center pb-2 border-b border-slate-100">
+        <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center mx-auto mb-2">
+          <i data-lucide="key-round" class="w-6 h-6"></i>
+        </div>
+        <h3 class="font-black text-base text-slate-900">Ubah Password Anda</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Ini adalah login pertama Anda atau password masih default. Silakan buat password baru pribadi Anda.</p>
+      </div>
+
+      <div id="pwd-change-alert" class="hidden p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200"></div>
+
+      <form onsubmit="handleForceChangePassword(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Baru *</label>
+          <input type="password" id="new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ulangi Password Baru *</label>
+          <input type="password" id="new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+        </div>
+
+        <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-teal-600/30">
+          Simpan Password Baru & Masuk
+        </button>
+      </form>
     </div>
   </div>
 
@@ -201,13 +234,13 @@
             <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800">GUDANG MBI</span>
             <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-teal-100 text-teal-800">SUPERVISOR</span>
           </h1>
-          <p class="text-[11px] text-slate-500 font-medium">Workforce Management System &bull; Database Mandiri</p>
+          <p class="text-[11px] text-slate-500 font-medium">Workforce Management System</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- Switch Database Gudang View for Coordinator/Supervisor -->
-        <div id="wh-switcher-box" class="hidden md:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <!-- Switch Database Gudang View (Khusus Super Admin Saja) -->
+        <div id="wh-switcher-box" class="hidden items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
           <button onclick="switchActiveWarehouse('MBI')" id="wh-btn-mbi" class="px-3 py-1 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs">MBI (Bina)</button>
           <button onclick="switchActiveWarehouse('MAI')" id="wh-btn-mai" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">MAI (Akses)</button>
         </div>
@@ -278,7 +311,7 @@
               <div>
                 <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 25 Agustus 2026</span>
                 <h2 class="text-2xl font-black mt-2">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
-                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode Kotak, dan Rekap Absen Matriks Terpisah</p>
+                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode Kotak, dan Rekap Absen Matriks</p>
               </div>
               <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center gap-3.5">
                 <div class="p-3 bg-teal-500/20 text-teal-300 rounded-xl"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
@@ -324,7 +357,7 @@
               <button onclick="switchView('employees')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-sky-500 hover:shadow-md transition">
                 <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3"><i data-lucide="users" class="w-5 h-5"></i></div>
                 <h4 class="font-extrabold text-sm text-slate-900">Kelola Data Karyawan</h4>
-                <p class="text-xs text-slate-500 mt-1">Tambah manual, download & upload file Excel data karyawan.</p>
+                <p class="text-xs text-slate-500 mt-1">Tambah manual, download akun & password, dan upload Excel.</p>
               </button>
 
               <button onclick="switchView('matrix')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-emerald-500 hover:shadow-md transition">
@@ -351,13 +384,16 @@
                   <i data-lucide="users" class="w-6 h-6 text-sky-600"></i>
                   Data Karyawan Gudang <span id="emp-wh-title" class="text-sky-600 font-black">MBI</span>
                 </h2>
-                <p class="text-xs text-slate-500">Kelola daftar karyawan, tambah manual, serta download & upload format Excel</p>
+                <p class="text-xs text-slate-500">Kelola daftar karyawan, download akun & password default, serta upload Excel</p>
               </div>
 
               <!-- Action Buttons -->
               <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="openAddEmployeeModal()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Manual
+                </button>
+                <button onclick="downloadAccountsExcel()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download Daftar Akun & Password Default untuk Dibagikan ke Karyawan">
+                  <i data-lucide="key" class="w-4 h-4"></i> Download Akun & Password
                 </button>
                 <button onclick="downloadEmployeeTemplate()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-300">
                   <i data-lucide="file-down" class="w-4 h-4"></i> Format Template
@@ -649,7 +685,7 @@
                     <canvas id="canvas-qrcode" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs"></canvas>
                     <span class="text-[10px] font-mono font-bold text-slate-500 mt-1.5">SCAN KOTAK QR PRESENSI</span>
                   </div>
-                  <p id="idcard-footer-text" class="text-[9px] text-slate-400 mt-2">Medika Bina Investama &bull; Official ID</p>
+                  <p id="idcard-footer-text" class="text-[9px] text-slate-400 mt-2">Medika Bina Investama &bull; Official ID Card</p>
                 </div>
               </div>
             </div>
@@ -725,15 +761,25 @@
           <input type="text" id="m-emp-name" required placeholder="Contoh: Budi Santoso" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-            <input type="text" id="m-emp-dept" required placeholder="Logistik / Packing" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-            <input type="text" id="m-emp-outsource" required placeholder="PT Sumber Daya / Internal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
-          </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
+          <select id="m-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="staff office">staff office</option>
+            <option value="supervisor">supervisor</option>
+            <option value="coordinator">coordinator</option>
+            <option value="inbound">inbound</option>
+            <option value="packer">packer</option>
+            <option value="packing">packing</option>
+            <option value="admin so">admin so</option>
+            <option value="picking plan">picking plan</option>
+            <option value="dispatch">dispatch</option>
+            <option value="driver">driver</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
+          <input type="text" id="m-emp-outsource" required placeholder="PT Sumber Daya / Internal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -747,24 +793,18 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
-            <input type="text" id="m-emp-nik" required placeholder="MBI-1009" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs uppercase font-mono focus:outline-none focus:ring-2 focus:ring-teal-500">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
-              <option value="staff">Staff</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="supervisor">Supervisor</option>
-            </select>
-          </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
+          <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
+            <option value="staff">Staff</option>
+            <option value="coordinator">Coordinator</option>
+            <option value="supervisor">Supervisor</option>
+          </select>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Login *</label>
-          <input type="password" id="m-emp-password" required value="password123" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+        <div class="p-3 bg-slate-50 rounded-xl border text-xs text-slate-600">
+          <p>&bull; <strong>NIK</strong> akan dibuat otomatis.</p>
+          <p>&bull; <strong>Password Awal</strong>: <code>medika123</code> (Wajib diubah saat login pertama).</p>
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
@@ -776,19 +816,19 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (DUAL DATABASE + EXCEL + MATRIX LOGIC) -->
+  <!-- JAVASCRIPT ENGINE (DUAL DATABASE + EXCEL + PASSWORD LOGIC) -->
   <!-- ========================================================= -->
   <script>
     // Initial Seed Database for MBI (Medika Bina Investama)
     const SEED_MBI_USERS = [
-      { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'Logistik Pusat', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'supervisor', password: 'password123', warehouse: 'MBI' },
-      { id: 'mbi-2', name: 'Agus Setiawan', dept: 'Penerimaan Alkes', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-COR-01', role: 'coordinator', password: 'password123', warehouse: 'MBI' },
-      { id: 'mbi-3', name: 'Budi Santoso', dept: 'Operasional Gudang', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-STF-01', role: 'staff', password: 'password123', warehouse: 'MBI' }
+      { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
+      { id: 'mbi-2', name: 'Agus Setiawan', dept: 'coordinator', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-COR-01', role: 'coordinator', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-3', name: 'Budi Santoso', dept: 'packer', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
-      { id: 'mai-1', name: 'Dewi Lestari', dept: 'Packaging Farmasi', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-05', nik: 'MAI-SUP-01', role: 'supervisor', password: 'password123', warehouse: 'MAI' },
-      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'Fast Moving Suplai', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'password123', warehouse: 'MAI' }
+      { id: 'mai-1', name: 'Dewi Lestari', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-05', nik: 'MAI-SUP-01', role: 'supervisor', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
+      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'packing', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
     ];
 
     // Seed Attendance Sample Data
@@ -805,6 +845,7 @@
     let activeWarehouse = 'MBI'; // 'MBI' | 'MAI'
     let selectedAttendanceType = 'check_in';
     let html5QrScanner = null;
+    let pendingUserForPasswordChange = null;
 
     // Database Helper for Separate Warehouse Key
     function getWhDB(warehouse, key, defaultVal) {
@@ -817,6 +858,20 @@
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       localStorage.setItem(storageKey, JSON.stringify(val));
       syncWhToGitHub(warehouse, key, val);
+    }
+
+    // Auto-Generate NIK Helper
+    function generateNextNIK(warehouse) {
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const prefix = `${warehouse}-`;
+      const numericNiks = users
+        .map(u => {
+          const match = u.nik.replace(prefix, '').match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        })
+        .filter(n => !isNaN(n));
+      const maxNum = numericNiks.length > 0 ? Math.max(...numericNiks) : 1000;
+      return `${prefix}${maxNum + 1}`;
     }
 
     // GitHub Sync for Separate Warehouse Directory (data/mbi/ vs data/mai/)
@@ -906,13 +961,6 @@
       document.getElementById('lbl-reg-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
     }
 
-    function fillDemo(wh, nik, pass) {
-      document.querySelector(`input[name="login-warehouse"][value="${wh}"]`).checked = true;
-      updateLoginWhStyle();
-      document.getElementById('login-identifier').value = nik;
-      document.getElementById('login-password').value = pass;
-    }
-
     // Login Handler
     function handleLogin(e) {
       e.preventDefault();
@@ -931,45 +979,85 @@
         return;
       }
 
+      // Check if First Login / Default Password
+      if (user.isFirstLogin === true || user.password === 'medika123') {
+        pendingUserForPasswordChange = user;
+        document.getElementById('first-login-modal').classList.remove('hidden');
+        lucide.createIcons();
+        return;
+      }
+
       loginUserSession(user);
     }
 
-    // Register Handler
+    // Force Change Password Handler
+    function handleForceChangePassword(e) {
+      e.preventDefault();
+      const p1 = document.getElementById('new-pwd-1').value;
+      const p2 = document.getElementById('new-pwd-2').value;
+
+      const alertEl = document.getElementById('pwd-change-alert');
+      if (p1.length < 6) {
+        alertEl.innerText = 'Password baru minimal 6 karakter!';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+      if (p1 !== p2) {
+        alertEl.innerText = 'Konfirmasi password baru tidak cocok!';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      const warehouse = pendingUserForPasswordChange.warehouse;
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const idx = users.findIndex(u => u.nik === pendingUserForPasswordChange.nik);
+
+      if (idx !== -1) {
+        users[idx].password = p1;
+        users[idx].isFirstLogin = false;
+        setWhDB(warehouse, 'users', users);
+        pendingUserForPasswordChange = users[idx];
+      }
+
+      document.getElementById('first-login-modal').classList.add('hidden');
+      alert('Password berhasil diubah! Selamat datang di WFM Medika.');
+      loginUserSession(pendingUserForPasswordChange);
+    }
+
+    // Register Handler with Auto-NIK & Default Password
     function handleRegister(e) {
       e.preventDefault();
       const warehouse = document.querySelector('input[name="reg-warehouse"]:checked').value;
       const position = document.getElementById('reg-position').value; // staff, coordinator, supervisor
       const name = document.getElementById('reg-name').value.trim();
-      const dept = document.getElementById('reg-dept').value.trim();
+      const dept = document.getElementById('reg-dept').value;
       const outsource = document.getElementById('reg-outsource').value.trim();
       const phone = document.getElementById('reg-phone').value.trim();
       const joinDate = document.getElementById('reg-joindate').value;
-      const nik = document.getElementById('reg-nik').value.trim().toUpperCase();
-      const password = document.getElementById('reg-password').value;
+
+      const autoNik = generateNextNIK(warehouse);
+      const defaultPass = 'medika123';
 
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      if (users.some(u => u.nik === nik)) {
-        const alertEl = document.getElementById('auth-alert');
-        alertEl.className = 'mx-6 mt-4 p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-bold';
-        alertEl.innerText = `NIK ${nik} sudah terdaftar di Gudang ${warehouse}!`;
-        alertEl.classList.remove('hidden');
-        return;
-      }
 
       const newUser = {
         id: `${warehouse.toLowerCase()}-${Date.now()}`,
-        name, dept, outsource, phone, joinDate, nik, role: position, password, warehouse
+        name, dept, outsource, phone, joinDate, nik: autoNik, role: position, password: defaultPass, isFirstLogin: true, warehouse
       };
 
       users.push(newUser);
       setWhDB(warehouse, 'users', users);
-      loginUserSession(newUser);
+
+      alert(`Pendaftaran Akun Berhasil!\nNIK Anda: ${autoNik}\nPassword Awal: ${defaultPass}\nSilakan login dan ubah password Anda.`);
+      showAuthTab('login');
+      document.getElementById('login-identifier').value = autoNik;
+      document.getElementById('login-password').value = defaultPass;
     }
 
     // Login Session Logic & Role Access
     function loginUserSession(user) {
       currentUser = user;
-      activeWarehouse = user.warehouse;
+      activeWarehouse = user.warehouse; // Kunci ke gudang user
       localStorage.setItem('wfm_active_session', JSON.stringify(user));
 
       document.getElementById('auth-container').classList.add('hidden');
@@ -977,7 +1065,7 @@
 
       // Update Nav Info
       document.getElementById('nav-user-name').innerText = user.name;
-      document.getElementById('nav-user-dept').innerText = `${user.dept} (${user.role.toUpperCase()})`;
+      document.getElementById('nav-user-dept').innerText = `${user.dept.toUpperCase()} (${user.role.toUpperCase()})`;
       
       const whBadge = document.getElementById('user-warehouse-badge');
       whBadge.innerText = `GUDANG ${user.warehouse}`;
@@ -988,18 +1076,26 @@
 
       // Role Permission Checking
       const isStaffOnly = user.role === 'staff';
+      const isSuperAdmin = user.role === 'admin';
       const sidebar = document.getElementById('app-sidebar');
       const whSwitcher = document.getElementById('wh-switcher-box');
 
-      if (isStaffOnly) {
-        // STAFF: Sembunyikan sidebar & warehouse switcher, langsung kunci ke halaman Absensi
-        sidebar.classList.add('hidden');
+      // Switcher hanya untuk Super Admin
+      if (isSuperAdmin) {
+        whSwitcher.classList.remove('hidden');
+        whSwitcher.classList.add('flex');
+      } else {
         whSwitcher.classList.add('hidden');
+        whSwitcher.classList.remove('flex');
+      }
+
+      if (isStaffOnly) {
+        // STAFF: Sembunyikan sidebar, langsung kunci ke halaman Absensi
+        sidebar.classList.add('hidden');
         switchView('attendance');
       } else {
-        // COORDINATOR / SUPERVISOR: Tampilkan seluruh menu
+        // COORDINATOR / SUPERVISOR / ADMIN: Tampilkan seluruh menu
         sidebar.classList.remove('hidden');
-        whSwitcher.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       }
@@ -1017,6 +1113,11 @@
     }
 
     function switchActiveWarehouse(wh) {
+      // Hanya Super Admin yang bisa pindah gudang
+      if (currentUser && currentUser.role !== 'admin') {
+        alert('Anda terkunci pada unit Gudang ' + currentUser.warehouse);
+        return;
+      }
       activeWarehouse = wh;
       updateWhSwitcherButtons();
       refreshAllDashboardData();
@@ -1104,11 +1205,11 @@
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${emp.name} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
-          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700">${emp.dept}</td>
+          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
           <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone}</td>
           <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate}</td>
-          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' ? 'bg-purple-100 text-purple-800' : (emp.role === 'coordinator' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800')}">${emp.role.toUpperCase()}</span></td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-purple-100 text-purple-800' : (emp.role === 'coordinator' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800')}">${emp.role.toUpperCase()}</span></td>
           <td class="p-3.5 text-right">
             <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
               <i data-lucide="contact" class="w-3.5 h-3.5 text-sky-600"></i> ID Card
@@ -1133,35 +1234,51 @@
     function handleManualAddEmployee(e) {
       e.preventDefault();
       const name = document.getElementById('m-emp-name').value.trim();
-      const dept = document.getElementById('m-emp-dept').value.trim();
+      const dept = document.getElementById('m-emp-dept').value;
       const outsource = document.getElementById('m-emp-outsource').value.trim();
       const phone = document.getElementById('m-emp-phone').value.trim();
       const joinDate = document.getElementById('m-emp-joindate').value;
-      const nik = document.getElementById('m-emp-nik').value.trim().toUpperCase();
       const role = document.getElementById('m-emp-position').value;
-      const password = document.getElementById('m-emp-password').value;
+      
+      const autoNik = generateNextNIK(activeWarehouse);
+      const defaultPass = 'medika123';
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      if (users.some(u => u.nik === nik)) {
-        alert(`NIK ${nik} sudah terdaftar di Gudang ${activeWarehouse}!`);
-        return;
-      }
-
-      const newEmp = { id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, name, dept, outsource, phone, joinDate, nik, role, password, warehouse: activeWarehouse };
+      const newEmp = { id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, name, dept, outsource, phone, joinDate, nik: autoNik, role, password: defaultPass, isFirstLogin: true, warehouse: activeWarehouse };
+      
       users.push(newEmp);
       setWhDB(activeWarehouse, 'users', users);
 
       closeAddEmployeeModal();
       renderEmployeeTable();
       refreshAllDashboardData();
-      alert(`Karyawan ${name} berhasil ditambahkan ke Gudang ${activeWarehouse}!`);
+      alert(`Karyawan ${name} berhasil ditambahkan!\nNIK: ${autoNik}\nPassword Default: ${defaultPass}`);
+    }
+
+    // Download Akun & Password Default untuk Dibagikan ke Karyawan
+    function downloadAccountsExcel() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const exportData = users.map(u => ({
+        "NIK Karyawan": u.nik,
+        "Nama Karyawan": u.name,
+        "Departemen": u.dept,
+        "Outsource": u.outsource,
+        "Posisi / Role": u.role,
+        "Password Akun": u.isFirstLogin === false ? "(Sudah Diubah Mandiri)" : u.password,
+        "Status Password": u.isFirstLogin === false ? "Aktif (Password Pribadi)" : "Password Default (Wajib Ubah)"
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Akun_Karyawan_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Daftar_Akun_Password_Karyawan_${activeWarehouse}.xlsx`);
     }
 
     // Download Format Template Excel Sesuai Gambar 1
     function downloadEmployeeTemplate() {
       const templateData = [
-        { "Nama Karyawan": "Contoh Karyawan A", "Departemen": "Logistik", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "MBI-1010", "Posisi": "staff" },
-        { "Nama Karyawan": "Contoh Karyawan B", "Departemen": "Packing", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "NIK": "MBI-1011", "Posisi": "coordinator" }
+        { "Nama Karyawan": "Budi Santoso", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "", "Posisi": "staff" },
+        { "Nama Karyawan": "Agus Setiawan", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "NIK": "", "Posisi": "coordinator" }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -1213,17 +1330,19 @@
 
           rows.forEach((r, idx) => {
             const name = r['Nama Karyawan'] || r['nama'] || r['Nama'] || `Karyawan ${idx + 1}`;
-            const dept = r['Departemen'] || r['departemen'] || 'Operasional';
+            const dept = (r['Departemen'] || r['departemen'] || 'packer').toLowerCase();
             const outsource = r['Outsource'] || r['outsource'] || 'Internal';
             const phone = r['No Telpon'] || r['no_telp'] || r['No Telp'] || '-';
             const joinDate = r['JOIN DATE'] || r['join_date'] || r['Join Date'] || new Date().toISOString().split('T')[0];
-            const nik = (r['NIK'] || r['nik'] || `${activeWarehouse}-${Date.now() + idx}`).toString().toUpperCase();
+            
+            // Gunakan NIK dari Excel jika ada, atau generate otomatis
+            const nik = (r['NIK'] || r['nik'] || generateNextNIK(activeWarehouse) + '-' + idx).toString().toUpperCase();
             const role = (r['Posisi'] || r['posisi'] || r['role'] || 'staff').toLowerCase();
 
             if (!users.some(u => u.nik === nik)) {
               users.push({
                 id: `${activeWarehouse.toLowerCase()}-${Date.now()}-${idx}`,
-                name, dept, outsource, phone, joinDate, nik, role, password: 'password123', warehouse: activeWarehouse
+                name, dept, outsource, phone, joinDate, nik, role, password: 'medika123', isFirstLogin: true, warehouse: activeWarehouse
               });
               countAdded++;
             }
@@ -1232,7 +1351,7 @@
           setWhDB(activeWarehouse, 'users', users);
           renderEmployeeTable();
           refreshAllDashboardData();
-          alert(`Berhasil mengimpor ${countAdded} data karyawan baru ke Gudang ${activeWarehouse}!`);
+          alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!\nPassword awal semua karyawan: medika123`);
         } catch (err) {
           alert('Gagal membaca file Excel: ' + err.message);
         }
@@ -1521,7 +1640,7 @@
           <td class="p-3 text-slate-600 max-w-xs truncate">${ot.reason}</td>
           <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ot.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (ot.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${ot.status.toUpperCase()}</span></td>
           <td class="p-3 text-right">
-            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator') && ot.status === 'pending' ? `
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') && ot.status === 'pending' ? `
               <button onclick="updateOtStatus('${ot.id}', 'approved')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Setujui</button>
               <button onclick="updateOtStatus('${ot.id}', 'rejected')" class="px-2 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Tolak</button>
             ` : '-'}
@@ -1548,7 +1667,7 @@
     function renderIDCard(user) {
       if (!user) return;
       document.getElementById('idcard-name').innerText = user.name;
-      document.getElementById('idcard-dept').innerText = `${user.dept} &bull; ${user.outsource || 'Medika'}`;
+      document.getElementById('idcard-dept').innerText = `${user.dept.toUpperCase()} &bull; ${user.outsource || 'Medika'}`;
       document.getElementById('idcard-nik').innerText = user.nik;
       document.getElementById('idcard-wh-badge').innerText = user.warehouse;
 
