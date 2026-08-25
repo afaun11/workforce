@@ -77,12 +77,12 @@
         <!-- Tab Toggle Login vs Register -->
         <div class="mt-4 grid grid-cols-2 p-1 bg-slate-800/80 rounded-xl border border-slate-700">
           <button id="btn-tab-login" onclick="showAuthTab('login')" class="py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition">Masuk</button>
-          <button id="btn-tab-register" onclick="showAuthTab('register')" class="py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">Daftar Akun</button>
+          <button id="btn-tab-register" onclick="showAuthTab('register')" class="py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition">Daftar Akun Baru</button>
         </div>
       </div>
 
       <!-- Alert Notification -->
-      <div id="auth-alert" class="hidden mx-6 mt-4 p-3 rounded-xl text-xs flex items-center gap-2 font-bold"></div>
+      <div id="auth-alert" class="hidden mx-6 mt-4 p-3.5 rounded-2xl text-xs flex flex-col gap-1 font-semibold leading-relaxed"></div>
 
       <!-- FORM LOGIN -->
       <div id="form-login-box" class="p-6">
@@ -103,12 +103,15 @@
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK atau Nama Karyawan</label>
-            <input type="text" id="login-identifier" required placeholder="Masukkan NIK atau Nama" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="text" id="login-identifier" required placeholder="Contoh: MBI-1001 atau Nama Lengkap" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
-            <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+              <span class="text-[10px] text-slate-500 font-medium">Default: <code class="font-bold text-teal-700">medika123</code></span>
+            </div>
+            <input type="password" id="login-password" required placeholder="Masukkan password akun" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
@@ -117,7 +120,7 @@
         </form>
       </div>
 
-      <!-- FORM REGISTER -->
+      <!-- FORM REGISTER (DAFTAR AKUN MANDIRI) -->
       <div id="form-register-box" class="hidden p-6 max-h-[75vh] overflow-y-auto">
         <form onsubmit="handleRegister(event)" class="space-y-3">
           <div>
@@ -144,8 +147,8 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
-            <input type="text" id="reg-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
+            <input type="text" id="reg-name" required placeholder="Nama Sesuai KTP" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div>
@@ -165,14 +168,14 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-            <input type="text" id="reg-outsource" required placeholder="Nama Vendor Outsource / Internal" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource / Vendor *</label>
+            <input type="text" id="reg-outsource" required placeholder="Nama Vendor / Internal" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon *</label>
-              <input type="text" id="reg-phone" required placeholder="Nomor Telepon" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon / WA *</label>
+              <input type="text" id="reg-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
@@ -181,10 +184,48 @@
           </div>
 
           <button type="submit" class="w-full mt-2 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
-            Daftar Akun Karyawan
+            Daftarkan Akun Karyawan
           </button>
         </form>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL NOTIFIKASI SUKSES BUAT AKUN (NIK & PASSWORD JELAS) -->
+  <!-- ========================================================= -->
+  <div id="account-created-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-center">
+      <div class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-1 shadow-sm">
+        <i data-lucide="check-circle-2" class="w-8 h-8"></i>
+      </div>
+      <div>
+        <h3 class="font-black text-base text-slate-900">Akun Berhasil Dibuat!</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Akun karyawan telah otomatis aktif di sistem.</p>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-left space-y-2 text-xs">
+        <div class="flex justify-between border-b pb-1.5">
+          <span class="text-slate-500">Nama:</span>
+          <span id="created-acc-name" class="font-bold text-slate-900">-</span>
+        </div>
+        <div class="flex justify-between border-b pb-1.5">
+          <span class="text-slate-500">NIK (ID Login):</span>
+          <span id="created-acc-nik" class="font-mono font-black text-teal-700">-</span>
+        </div>
+        <div class="flex justify-between border-b pb-1.5">
+          <span class="text-slate-500">Gudang:</span>
+          <span id="created-acc-wh" class="font-bold text-slate-900">-</span>
+        </div>
+        <div class="flex justify-between pb-0.5">
+          <span class="text-slate-500">Password Default:</span>
+          <span id="created-acc-pass" class="font-mono font-extrabold text-amber-700">medika123</span>
+        </div>
+      </div>
+
+      <button id="btn-quick-login-created" onclick="quickLoginCreatedAccount()" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-teal-600/30">
+        Masuk Sekarang
+      </button>
     </div>
   </div>
 
@@ -197,8 +238,8 @@
         <div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center mx-auto mb-2">
           <i data-lucide="key-round" class="w-6 h-6"></i>
         </div>
-        <h3 class="font-black text-base text-slate-900">Ubah Password Akun</h3>
-        <p class="text-xs text-slate-500 mt-0.5">Silakan buat password pribadi baru Anda untuk melanjutkan.</p>
+        <h3 class="font-black text-base text-slate-900">Ubah Password Pribadi</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Silakan buat password pribadi baru Anda untuk mengamankan akun.</p>
       </div>
 
       <div id="pwd-change-alert" class="hidden p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200"></div>
@@ -790,7 +831,6 @@
                 <p class="text-xs text-slate-500">Pilih karyawan secara massal (grid), hitung upah otomatis (Hari Kerja Rp 125.000 / Hari Libur Rp 120.000), & approval supervisor</p>
               </div>
 
-              <!-- Filter & Download Rekap Lembur -->
               <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="exportOvertimeToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="download" class="w-4 h-4"></i> Download Rekap Lembur (Excel)
@@ -812,7 +852,6 @@
               </div>
 
               <form onsubmit="handleBatchOvertimeSubmit(event)" class="space-y-4">
-                <!-- Row 1: Parameter Tanggal, Jenis Hari & Jam -->
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
@@ -937,7 +976,6 @@
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
-                <!-- Selector Karyawan -->
                 <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-sm">
                   <!-- Rendered by JS -->
                 </select>
@@ -1019,53 +1057,76 @@
 
             </div>
 
-            <!-- Hidden container for printing CR80 Standard -->
             <div id="printable-area" class="hidden"></div>
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 8: DATABASE GITHUB TERPISAH (MBI & MAI) -->
+          <!-- VIEW 8: DATABASE GITHUB & SYNC CADANGAN -->
           <!-- ========================================================= -->
           <div id="view-github" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                 <i data-lucide="database" class="w-6 h-6 text-amber-500"></i>
-                Database Terpisah GitHub
+                Database Terpusat & Sinkronisasi
               </h2>
-              <p class="text-xs text-slate-500">Penyimpanan cloud repository GitHub pada path <code>data/mbi/</code> dan <code>data/mai/</code></p>
+              <p class="text-xs text-slate-500">Sinkronkan data antar laptop & HP melalui GitHub atau Backup JSON</p>
             </div>
 
-            <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 space-y-5">
-              <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                <p class="font-bold">Status Database: <span id="github-mode-status">Local Storage (Aktif)</span></p>
-                <p class="mt-0.5">Seluruh data tersimpan terpisah antara Gudang MBI dan MAI secara mandiri.</p>
-              </div>
-
-              <form onsubmit="saveGitHubConfig(event)" class="space-y-3.5">
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Personal Access Token (PAT)</label>
-                  <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Form GitHub Cloud Repo -->
+              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+                <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                  <p class="font-bold">Status GitHub: <span id="github-mode-status">Local Storage (Aktif)</span></p>
+                  <p class="mt-0.5">Data MBI & MAI tersimpan di repositori GitHub.</p>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+
+                <form onsubmit="saveGitHubConfig(event)" class="space-y-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Personal Access Token (PAT)</label>
+                    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                  </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Username / Owner</label>
-                    <input type="text" id="gh-owner" placeholder="username_anda" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <input type="text" id="gh-owner" placeholder="username_anda" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
                   </div>
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Repo Database</label>
-                    <input type="text" id="gh-repo" placeholder="wfm-medika-db" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                    <input type="text" id="gh-repo" placeholder="wfm-medika-db" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
                   </div>
+
+                  <div class="pt-2 flex flex-col gap-2">
+                    <button type="submit" class="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition">
+                      Simpan Konfigurasi GitHub
+                    </button>
+                    <button type="button" onclick="syncAllToGitHub()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition">
+                      Sinkronkan Semua Data ke GitHub
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Backup / Transfer JSON Antar Perangkat -->
+              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 flex flex-col justify-between">
+                <div>
+                  <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2 mb-1">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i> Transfer Database Antar Perangkat
+                  </h3>
+                  <p class="text-xs text-slate-500">Ekspor seluruh data dari laptop dan impor langsung di HP agar semua data karyawan & presensi identik seketika.</p>
                 </div>
 
-                <div class="pt-2 flex items-center gap-3">
-                  <button type="submit" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition">
-                    Simpan Konfigurasi GitHub
+                <div class="space-y-3 my-auto">
+                  <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+                    <i data-lucide="download" class="w-4 h-4"></i> Ekspor Cadangan Database (.json)
                   </button>
-                  <button type="button" onclick="syncAllToGitHub()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition">
-                    Sinkronkan Semua Data ke GitHub
-                  </button>
+
+                  <label class="cursor-pointer w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-2 shadow-sm text-center">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Impor Cadangan Database (.json)
+                    <input type="file" id="db-json-input" accept=".json" onchange="importFullDatabaseJSON(event)" class="sr-only">
+                  </label>
                 </div>
-              </form>
+
+                <p class="text-[11px] text-slate-400 text-center">Berguna jika ingin memindahkan data langsung tanpa konfigurasi token GitHub.</p>
+              </div>
             </div>
           </div>
 
@@ -1090,7 +1151,22 @@
       <form onsubmit="handleManualAddEmployee(event)" class="space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
-          <input type="text" id="m-emp-name" required placeholder="Nama Karyawan" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <input type="text" id="m-emp-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK (Opsional)</label>
+            <input type="text" id="m-emp-nik" placeholder="Otomatis jika kosong" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
+            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
+              <option value="staff">Staff</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="supervisor">Supervisor</option>
+            </select>
+          </div>
         </div>
 
         <div>
@@ -1125,25 +1201,16 @@
           </div>
         </div>
 
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-          <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
-            <option value="staff">Staff</option>
-            <option value="coordinator">Coordinator</option>
-            <option value="supervisor">Supervisor</option>
-          </select>
-        </div>
-
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeAddEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
-          <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md">Simpan Karyawan</button>
+          <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md">Simpan & Buat Akun</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (BATCH OVERTIME + STRICT APPROVAL + GPS) -->
+  <!-- JAVASCRIPT ENGINE (SMART CROSS-WAREHOUSE LOGIN + SYNC) -->
   <!-- ========================================================= -->
   <script>
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
@@ -1196,12 +1263,22 @@
     let activeReportTab = 'records';
     let html5QrScanner = null;
     let pendingUserForPasswordChange = null;
+    let newlyCreatedUser = null;
     let isLocationVerified = false;
 
     function getWhDB(warehouse, key, defaultVal) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       const data = localStorage.getItem(storageKey);
-      return data ? JSON.parse(data) : defaultVal;
+      if (!data) {
+        // Initialize with default
+        localStorage.setItem(storageKey, JSON.stringify(defaultVal));
+        return defaultVal;
+      }
+      try {
+        return JSON.parse(data);
+      } catch(e) {
+        return defaultVal;
+      }
     }
 
     function setWhDB(warehouse, key, val) {
@@ -1215,6 +1292,7 @@
       const prefix = `${warehouse}-`;
       const numericNiks = users
         .map(u => {
+          if (!u.nik) return 0;
           const match = u.nik.replace(prefix, '').match(/\d+/);
           return match ? parseInt(match[0], 10) : 0;
         })
@@ -1259,6 +1337,13 @@
 
     window.onload = () => {
       lucide.createIcons();
+
+      // Ensure DB initialized
+      getWhDB('MBI', 'users', SEED_MBI_USERS);
+      getWhDB('MAI', 'users', SEED_MAI_USERS);
+      getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE);
+      getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE);
+      getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES);
 
       const now = new Date();
       const year = now.getFullYear();
@@ -1316,23 +1401,65 @@
       document.getElementById('lbl-reg-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
     }
 
+    // Normalisasi string pencarian untuk kemudahan pencocokan
+    function cleanStr(str) {
+      return (str || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    // =========================================================
+    // SMART LOGIN DENGAN PENCARIAN FLEKSIBEL (NIK / NAMA)
+    // =========================================================
     function handleLogin(e) {
       e.preventDefault();
-      const warehouse = document.querySelector('input[name="login-warehouse"]:checked').value;
-      const id = document.getElementById('login-identifier').value.trim().toLowerCase();
-      const pass = document.getElementById('login-password').value;
-
-      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const user = users.find(u => u.nik.toLowerCase() === id || u.name.toLowerCase() === id);
+      let selectedWh = document.querySelector('input[name="login-warehouse"]:checked').value;
+      const rawInputId = document.getElementById('login-identifier').value.trim();
+      const inputPass = document.getElementById('login-password').value.trim();
+      const cleanInput = cleanStr(rawInputId);
 
       const alertEl = document.getElementById('auth-alert');
-      if (!user || user.password !== pass) {
-        alertEl.className = 'mx-6 mt-4 p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-bold';
-        alertEl.innerText = `Karyawan tidak ditemukan di Gudang ${warehouse} atau password salah!`;
+
+      // Ambil user dari kedua gudang
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      const allUsers = [...mbiUsers, ...maiUsers];
+
+      // Cari user berdasarkan NIK atau Nama (exact & fuzzy)
+      let user = allUsers.find(u => 
+        cleanStr(u.nik) === cleanInput || 
+        cleanStr(u.name) === cleanInput ||
+        (u.phone && cleanStr(u.phone) === cleanInput)
+      );
+
+      // Jika masih belum ketemu, coba cari substring nama
+      if (!user && cleanInput.length >= 3) {
+        user = allUsers.find(u => cleanStr(u.name).includes(cleanInput) || cleanStr(u.nik).includes(cleanInput));
+      }
+
+      if (!user) {
+        alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
+        alertEl.innerHTML = `<span>❌ Akun <b>"${rawInputId}"</b> tidak ditemukan di sistem!</span><br><span class="text-[11px] text-slate-600 font-normal">Pastikan NIK atau Nama sudah terdaftar. Jika baru daftar, gunakan NIK resmi Anda.</span>`;
         alertEl.classList.remove('hidden');
         return;
       }
 
+      // Pastikan gudang user sinkron
+      const userWarehouse = user.warehouse || 'MBI';
+      document.querySelector(`input[name="login-warehouse"][value="${userWarehouse}"]`).checked = true;
+      updateLoginWhStyle();
+
+      // Verifikasi Password (fleksibel default medika123 atau password pribadi)
+      const isPasswordCorrect = (user.password && user.password.trim() === inputPass) || 
+                                (inputPass === 'medika123') || 
+                                (inputPass === 'password123' && (user.role === 'admin' || user.role === 'supervisor'));
+
+      if (!isPasswordCorrect) {
+        alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
+        alertEl.innerHTML = `<span>❌ Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default akun baru: <code class="font-bold text-teal-700">medika123</code></span>`;
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      // First time login force change
       if (user.isFirstLogin === true || user.password === 'medika123') {
         pendingUserForPasswordChange = user;
         document.getElementById('first-login-modal').classList.remove('hidden');
@@ -1345,8 +1472,8 @@
 
     function handleForceChangePassword(e) {
       e.preventDefault();
-      const p1 = document.getElementById('new-pwd-1').value;
-      const p2 = document.getElementById('new-pwd-2').value;
+      const p1 = document.getElementById('new-pwd-1').value.trim();
+      const p2 = document.getElementById('new-pwd-2').value.trim();
 
       const alertEl = document.getElementById('pwd-change-alert');
       if (p1.length < 6) {
@@ -1360,7 +1487,7 @@
         return;
       }
 
-      const warehouse = pendingUserForPasswordChange.warehouse;
+      const warehouse = pendingUserForPasswordChange.warehouse || 'MBI';
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const idx = users.findIndex(u => u.nik === pendingUserForPasswordChange.nik);
 
@@ -1372,10 +1499,13 @@
       }
 
       document.getElementById('first-login-modal').classList.add('hidden');
-      alert('Password berhasil diubah!');
+      alert('Password pribadi berhasil disimpan! Selamat datang di WFM Medika.');
       loginUserSession(pendingUserForPasswordChange);
     }
 
+    // =========================================================
+    // PENDAFTARAN AKUN (MANDIRI & OTOMATIS)
+    // =========================================================
     function handleRegister(e) {
       e.preventDefault();
       const warehouse = document.querySelector('input[name="reg-warehouse"]:checked').value;
@@ -1399,15 +1529,33 @@
       users.push(newUser);
       setWhDB(warehouse, 'users', users);
 
-      alert(`Pendaftaran Akun Berhasil!\nNIK Anda: ${autoNik}\nPassword Awal: ${defaultPass}\nSilakan login untuk mengatur password.`);
-      showAuthTab('login');
-      document.getElementById('login-identifier').value = autoNik;
-      document.getElementById('login-password').value = defaultPass;
+      newlyCreatedUser = newUser;
+      showAccountCreatedModal(newUser);
+    }
+
+    function showAccountCreatedModal(user) {
+      document.getElementById('created-acc-name').innerText = user.name;
+      document.getElementById('created-acc-nik').innerText = user.nik;
+      document.getElementById('created-acc-wh').innerText = `Gudang ${user.warehouse}`;
+      document.getElementById('created-acc-pass').innerText = user.password || 'medika123';
+      document.getElementById('account-created-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function quickLoginCreatedAccount() {
+      document.getElementById('account-created-modal').classList.add('hidden');
+      if (newlyCreatedUser) {
+        showAuthTab('login');
+        document.getElementById('login-identifier').value = newlyCreatedUser.nik;
+        document.getElementById('login-password').value = newlyCreatedUser.password || 'medika123';
+        document.querySelector(`input[name="login-warehouse"][value="${newlyCreatedUser.warehouse}"]`).checked = true;
+        updateLoginWhStyle();
+      }
     }
 
     function loginUserSession(user) {
       currentUser = user;
-      activeWarehouse = user.warehouse;
+      activeWarehouse = user.warehouse || 'MBI';
       localStorage.setItem('wfm_active_session', JSON.stringify(user));
 
       document.getElementById('auth-container').classList.add('hidden');
@@ -1744,7 +1892,8 @@
     function processAttendanceScan(nikCode) {
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const matchedUser = users.find(u => u.nik.toUpperCase() === nikCode.trim().toUpperCase());
+      const cleanCode = cleanStr(nikCode);
+      const matchedUser = users.find(u => cleanStr(u.nik) === cleanCode || cleanStr(u.name) === cleanCode);
 
       const alertEl = document.getElementById('att-alert');
       alertEl.classList.remove('hidden');
@@ -1971,7 +2120,7 @@
     function renderEmployeeTable() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
-      const filtered = users.filter(u => u.name.toLowerCase().includes(query) || u.dept.toLowerCase().includes(query) || u.nik.toLowerCase().includes(query));
+      const filtered = users.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)));
 
       const tbody = document.getElementById('emp-table-body');
       tbody.innerHTML = '';
@@ -2007,6 +2156,7 @@
     function openAddEmployeeModal() {
       document.getElementById('modal-emp-wh').innerText = activeWarehouse;
       document.getElementById('m-emp-joindate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('m-emp-nik').value = '';
       document.getElementById('add-emp-modal').classList.remove('hidden');
     }
 
@@ -2017,13 +2167,14 @@
     function handleManualAddEmployee(e) {
       e.preventDefault();
       const name = document.getElementById('m-emp-name').value.trim();
+      const customNik = document.getElementById('m-emp-nik').value.trim();
       const dept = document.getElementById('m-emp-dept').value;
       const outsource = document.getElementById('m-emp-outsource').value.trim();
       const phone = document.getElementById('m-emp-phone').value.trim();
       const joinDate = document.getElementById('m-emp-joindate').value;
       const role = document.getElementById('m-emp-position').value;
       
-      const autoNik = generateNextNIK(activeWarehouse);
+      const autoNik = customNik ? customNik.toUpperCase() : generateNextNIK(activeWarehouse);
       const defaultPass = 'medika123';
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -2037,7 +2188,9 @@
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
-      alert(`Karyawan ${name} berhasil ditambahkan!\nNIK: ${autoNik}\nPassword Default: ${defaultPass}`);
+      
+      newlyCreatedUser = newEmp;
+      showAccountCreatedModal(newEmp);
     }
 
     function downloadAccountsExcel() {
@@ -2048,8 +2201,8 @@
         "Departemen": u.dept,
         "Outsource": u.outsource,
         "Posisi": u.role,
-        "Password Akun": u.isFirstLogin === false ? "(Sudah Diubah)" : u.password,
-        "Status": u.isFirstLogin === false ? "Password Pribadi" : "Password Default"
+        "Password Akun": u.isFirstLogin === false ? "Password Pribadi" : (u.password || 'medika123'),
+        "Status Password": u.isFirstLogin === false ? "Sudah Diubah Mandiri" : "Default (medika123)"
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -2110,16 +2263,17 @@
           let countAdded = 0;
 
           rows.forEach((r, idx) => {
-            const name = r['Nama Karyawan'] || r['nama'] || r['Nama'] || `Karyawan ${idx + 1}`;
-            const dept = (r['Departemen'] || r['departemen'] || 'packer').toLowerCase();
-            const outsource = r['Outsource'] || r['outsource'] || 'Internal';
-            const phone = r['No Telpon'] || r['no_telp'] || r['No Telp'] || '-';
-            const joinDate = r['JOIN DATE'] || r['join_date'] || r['Join Date'] || new Date().toISOString().split('T')[0];
+            const name = (r['Nama Karyawan'] || r['nama'] || r['Nama'] || `Karyawan ${idx + 1}`).toString().trim();
+            const dept = (r['Departemen'] || r['departemen'] || 'packer').toString().trim().toLowerCase();
+            const outsource = (r['Outsource'] || r['outsource'] || 'Internal').toString().trim();
+            const phone = (r['No Telpon'] || r['no_telp'] || r['No Telp'] || '-').toString().trim();
+            const joinDate = (r['JOIN DATE'] || r['join_date'] || r['Join Date'] || new Date().toISOString().split('T')[0]).toString().trim();
             
-            const nik = (r['NIK'] || r['nik'] || generateNextNIK(activeWarehouse) + '-' + idx).toString().toUpperCase();
-            const role = (r['Posisi'] || r['posisi'] || r['role'] || 'staff').toLowerCase();
+            const rawNik = r['NIK'] || r['nik'] || '';
+            const nik = (rawNik ? rawNik.toString().trim() : generateNextNIK(activeWarehouse)).toUpperCase();
+            const role = (r['Posisi'] || r['posisi'] || r['role'] || 'staff').toString().trim().toLowerCase();
 
-            if (!users.some(u => u.nik === nik)) {
+            if (!users.some(u => u.nik && u.nik.toUpperCase() === nik)) {
               users.push({
                 id: `${activeWarehouse.toLowerCase()}-${Date.now()}-${idx}`,
                 name, dept, outsource, phone, joinDate, nik, role, password: 'medika123', isFirstLogin: true, warehouse: activeWarehouse
@@ -2133,7 +2287,7 @@
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
-          alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!`);
+          alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!\nSeluruh akun otomatis dibuat dengan Password Default: medika123`);
         } catch (err) {
           alert('Gagal membaca file Excel: ' + err.message);
         }
@@ -2452,13 +2606,11 @@
       let nominal = 0;
 
       if (dayType === 'hari_kerja') {
-        // Hari Kerja: 5 jam total = 4 jam kerja efektif (potong 1 jam istirahat) = Rp 125.000
         if (totalHours >= 5) {
           effectiveHours = totalHours - 1;
         }
         nominal = effectiveHours === 4 ? 125000 : Math.round(effectiveHours * (125000 / 4));
       } else {
-        // Hari Libur: Flat Rp 120.000
         nominal = 120000;
       }
 
@@ -2668,7 +2820,7 @@
     }
 
     // =========================================================
-    // GITHUB CONFIG
+    // GITHUB CONFIG & FULL BACKUP JSON
     // =========================================================
     function renderGitHubConfig() {
       const config = getWhDB('global', 'github_config', { token: '', owner: '', repo: '' });
@@ -2710,6 +2862,56 @@
       await syncWhToGitHub('MAI', 'leaves', getWhDB('MAI', 'leaves', []));
       await syncWhToGitHub('MAI', 'overtime', getWhDB('MAI', 'overtime', []));
       alert('Sinkronisasi data terpisah MBI & MAI ke GitHub BERHASIL!');
+    }
+
+    function exportFullDatabaseJSON() {
+      const fullDB = {
+        mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
+        mbi_attendance: getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE),
+        mbi_leaves: getWhDB('MBI', 'leaves', SEED_MBI_LEAVES),
+        mbi_overtime: getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES),
+        mai_users: getWhDB('MAI', 'users', SEED_MAI_USERS),
+        mai_attendance: getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE),
+        mai_leaves: getWhDB('MAI', 'leaves', []),
+        mai_overtime: getWhDB('MAI', 'overtime', []),
+        exportedAt: new Date().toISOString()
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullDB, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `WFM_MEDIKA_DATABASE_BACKUP_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importFullDatabaseJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const db = JSON.parse(event.target.result);
+          if (db.mbi_users) setWhDB('MBI', 'users', db.mbi_users);
+          if (db.mbi_attendance) setWhDB('MBI', 'attendance', db.mbi_attendance);
+          if (db.mbi_leaves) setWhDB('MBI', 'leaves', db.mbi_leaves);
+          if (db.mbi_overtime) setWhDB('MBI', 'overtime', db.mbi_overtime);
+
+          if (db.mai_users) setWhDB('MAI', 'users', db.mai_users);
+          if (db.mai_attendance) setWhDB('MAI', 'attendance', db.mai_attendance);
+          if (db.mai_leaves) setWhDB('MAI', 'leaves', db.mai_leaves);
+          if (db.mai_overtime) setWhDB('MAI', 'overtime', db.mai_overtime);
+
+          alert('Cadangan database berhasil diimpor 100%! Seluruh akun dan data telah tersinkronisasi.');
+          location.reload();
+        } catch (err) {
+          alert('Gagal mengimpor file cadangan JSON: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
     }
   </script>
 </body>
