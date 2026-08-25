@@ -1310,35 +1310,40 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <!-- 1. KARTU IDENTITAS KARYAWAN (UKURAN STANDAR CR80: 54mm x 85.6mm) -->
+              <!-- 1. KARTU IDENTITAS KARYAWAN (UKURAN STANDAR CR80 BERESOLUSI TINGGI) -->
               <div class="flex flex-col items-center p-6 bg-slate-200/60 rounded-3xl border border-slate-200">
-                <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan (Ukuran Standar)</span>
+                <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan (Standar CR80)</span>
                 
-                <div id="printable-id-card" style="width: 54mm; min-height: 85.6mm; max-width: 54mm;" class="bg-white rounded-2xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                <div id="printable-id-card" style="width: 280px; min-height: 450px; max-width: 280px;" class="bg-white rounded-3xl border-2 border-slate-800 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
-                  <div id="idcard-header" class="p-2.5 text-white flex items-center justify-between bg-sky-700">
+                  <div id="idcard-header" class="px-4 py-3 text-white flex items-center justify-between bg-sky-700">
                     <div>
-                      <span class="text-[7px] uppercase font-bold tracking-widest text-sky-200 block leading-none">WORKFORCE</span>
-                      <h3 class="font-black text-[10px] leading-tight mt-0.5">MEDIKA GROUP</h3>
+                      <span class="text-[9px] uppercase font-bold tracking-widest text-sky-200 block leading-none">WORKFORCE</span>
+                      <h3 class="font-black text-xs leading-tight mt-0.5">MEDIKA GROUP</h3>
                     </div>
-                    <span id="idcard-wh-badge" class="text-[8px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded text-white">MBI</span>
+                    <span id="idcard-wh-badge" class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white font-mono">MBI</span>
                   </div>
 
-                  <div class="px-2 py-1 flex flex-col items-center text-center">
-                    <div class="w-11 h-11 rounded-full bg-slate-100 border-2 border-white shadow flex items-center justify-center -mt-5 overflow-hidden mb-1 text-slate-400">
-                      <i data-lucide="user" class="w-6 h-6"></i>
+                  <div class="px-4 py-3 flex flex-col items-center text-center flex-1 justify-between">
+                    <div class="w-14 h-14 rounded-full bg-slate-100 border-2 border-slate-300 shadow-xs flex items-center justify-center my-1 text-slate-500 overflow-hidden">
+                      <i data-lucide="user" class="w-8 h-8"></i>
                     </div>
-                    <h4 id="idcard-name" class="font-extrabold text-[11px] leading-tight text-slate-900 max-w-[48mm] truncate">Nama Karyawan</h4>
-                    <p id="idcard-dept" class="text-[8px] text-slate-500 font-semibold uppercase leading-tight mt-0.5">Departemen</p>
-                    <span id="idcard-nik" class="mt-1 text-[8px] font-mono font-bold bg-slate-100 px-2 py-0.5 rounded border text-slate-800 leading-none">MBI-1001</span>
 
-                    <div class="my-1.5 p-1 bg-slate-50 rounded-lg border border-slate-200 flex flex-col items-center">
-                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-24 h-24 bg-white p-0.5 rounded shadow-xs object-contain">
+                    <div class="w-full my-1">
+                      <h4 id="idcard-name" class="font-black text-sm text-slate-900 leading-snug break-words px-1">Nama Karyawan</h4>
+                      <p id="idcard-dept" class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Departemen</p>
+                      <div class="mt-1">
+                        <span id="idcard-nik" class="text-[11px] font-mono font-extrabold bg-slate-100 px-3 py-0.5 rounded-full border border-slate-300 text-slate-800 inline-block">MBI26-001</span>
+                      </div>
+                    </div>
+
+                    <div class="my-2 p-2 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center shadow-xs">
+                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
                     </div>
                   </div>
 
-                  <div class="pb-1.5 text-center">
-                    <p id="idcard-footer-text" class="text-[7px] font-medium text-slate-400">Official Employee ID Card</p>
+                  <div class="pb-2.5 text-center bg-slate-50 border-t border-slate-100 pt-1.5">
+                    <p id="idcard-footer-text" class="text-[9px] font-semibold text-slate-400">Official Employee ID Card</p>
                   </div>
                 </div>
               </div>
@@ -1347,30 +1352,33 @@
               <div class="flex flex-col items-center p-6 bg-amber-50/80 rounded-3xl border border-amber-200">
                 <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-3">Barcode QR Lokasi Resmi (Pintu Masuk)</span>
 
-                <div id="printable-location-card" style="width: 54mm; min-height: 85.6mm; max-width: 54mm;" class="bg-white rounded-2xl border-2 border-amber-600 shadow-2xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                <div id="printable-location-card" style="width: 280px; min-height: 450px; max-width: 280px;" class="bg-white rounded-3xl border-2 border-amber-700 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
-                  <div class="p-2.5 text-white flex items-center justify-between bg-amber-700">
+                  <div class="px-4 py-3 text-white flex items-center justify-between bg-amber-700">
                     <div>
-                      <span class="text-[7px] uppercase font-bold tracking-widest text-amber-200 block leading-none">TITIK LOKASI</span>
-                      <h3 class="font-black text-[10px] leading-tight mt-0.5">GUDANG MEDIKA</h3>
+                      <span class="text-[9px] uppercase font-bold tracking-widest text-amber-200 block leading-none">TITIK LOKASI</span>
+                      <h3 class="font-black text-xs leading-tight mt-0.5">GUDANG MEDIKA</h3>
                     </div>
-                    <span class="text-[8px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded text-white">RESMI</span>
+                    <span class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white font-mono">RESMI</span>
                   </div>
 
-                  <div class="px-2 py-1 flex flex-col items-center text-center">
-                    <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center -mt-5 shadow border-2 border-white mb-1">
-                      <i data-lucide="map-pin" class="w-5 h-5"></i>
+                  <div class="px-4 py-3 flex flex-col items-center text-center flex-1 justify-between">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center my-1 shadow-xs border-2 border-amber-300">
+                      <i data-lucide="map-pin" class="w-7 h-7"></i>
                     </div>
-                    <h4 class="font-extrabold text-[11px] text-slate-900 leading-tight">QR CODE LOKASI</h4>
-                    <p class="text-[8px] text-slate-500 leading-tight mt-0.5">Scan sebelum scan ID Card</p>
+
+                    <div class="w-full my-1">
+                      <h4 class="font-black text-sm text-slate-900 leading-snug">QR CODE LOKASI GUDANG</h4>
+                      <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">Scan sebelum scan ID Card</p>
+                    </div>
                     
-                    <div class="my-1.5 p-1 bg-amber-50 rounded-lg border border-amber-200 flex flex-col items-center">
-                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" class="w-24 h-24 bg-white p-0.5 rounded shadow-xs object-contain">
+                    <div class="my-2 p-2 bg-amber-50 rounded-2xl border border-amber-200 flex flex-col items-center shadow-xs">
+                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
                     </div>
                   </div>
 
-                  <div class="pb-1.5 text-center">
-                    <p class="text-[7px] font-medium text-slate-400">Tempel di pintu masuk gudang</p>
+                  <div class="pb-2.5 text-center bg-amber-50/50 border-t border-amber-100 pt-1.5">
+                    <p class="text-[9px] font-semibold text-slate-500">Tempel di Pintu Masuk Gudang</p>
                   </div>
                 </div>
               </div>
@@ -2825,7 +2833,13 @@
 
       try {
         if (typeof html2canvas !== 'undefined') {
-          const canvas = await html2canvas(cardEl, { scale: 3, useCORS: true, backgroundColor: '#ffffff' });
+          const canvas = await html2canvas(cardEl, { 
+            scale: 3, 
+            useCORS: true, 
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false
+          });
           const a = document.createElement('a');
           a.download = filename;
           a.href = canvas.toDataURL('image/png');
@@ -2843,7 +2857,13 @@
       const cardEl = document.getElementById('printable-location-card');
       try {
         if (typeof html2canvas !== 'undefined') {
-          const canvas = await html2canvas(cardEl, { scale: 3, useCORS: true, backgroundColor: '#ffffff' });
+          const canvas = await html2canvas(cardEl, { 
+            scale: 3, 
+            useCORS: true, 
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false
+          });
           const a = document.createElement('a');
           a.download = `QR_Lokasi_Gudang_${activeWarehouse}.png`;
           a.href = canvas.toDataURL('image/png');
