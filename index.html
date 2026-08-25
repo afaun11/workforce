@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WFM Medika - Sistem Absensi Barcode & Lembur (MBI & MAI)</title>
+  <title>WFM Medika - Sistem Absensi & Data Gudang MBI & MAI</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -11,10 +11,12 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- HTML5 QR/Barcode Scanner -->
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <!-- JsBarcode (1D Barcode Generator) -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-  <!-- QRCode.js (2D QR Generator) -->
+  <!-- SheetJS (Excel .XLSX Reader & Writer) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- QRCode.js (Kotak 2D Barcode Generator) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <!-- JsBarcode (1D Barcode) -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -37,6 +39,8 @@
       #printable-id-card { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); width: 340px !important; }
       .no-print { display: none !important; }
     }
+    .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
@@ -53,7 +57,7 @@
           M
         </div>
         <h1 class="text-xl font-extrabold tracking-tight">WFM MEDIKA GROUP</h1>
-        <p class="text-xs text-slate-400 mt-0.5">Gudang MBI (Bina) & MAI (Akses)</p>
+        <p class="text-xs text-slate-400 mt-0.5">Database Terpisah Gudang MBI & MAI</p>
 
         <!-- Tab Toggle Login vs Register -->
         <div class="mt-4 grid grid-cols-2 p-1 bg-slate-800/80 rounded-xl border border-slate-700">
@@ -69,13 +73,29 @@
       <div id="form-login-box" class="p-6">
         <form onsubmit="handleLogin(event)" class="space-y-4">
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK atau Email Karyawan</label>
-            <input type="text" id="login-identifier" required placeholder="Contoh: ADM001 atau MBI-1001" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Gudang Login</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label id="lbl-login-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs">
+                <input type="radio" name="login-warehouse" value="MBI" checked onchange="updateLoginWhStyle()" class="sr-only">
+                <span>Gudang MBI</span>
+              </label>
+              <label id="lbl-login-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
+                <input type="radio" name="login-warehouse" value="MAI" onchange="updateLoginWhStyle()" class="sr-only">
+                <span>Gudang MAI</span>
+              </label>
+            </div>
           </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK atau Nama Karyawan</label>
+            <input type="text" id="login-identifier" required placeholder="Contoh: MBI-1001 atau Nama" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+          </div>
+
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
             <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
+
           <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
             Masuk ke Portal
           </button>
@@ -85,61 +105,81 @@
         <div class="mt-6 pt-4 border-t border-slate-100 text-center">
           <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Klik Login Cepat Akun Demo:</p>
           <div class="grid grid-cols-3 gap-1.5 text-xs">
-            <button onclick="fillDemo('ADM001','password123')" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 border border-slate-200">👑 Admin</button>
-            <button onclick="fillDemo('MBI-1001','password123')" class="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 font-bold text-sky-800 border border-sky-200">📦 Staf MBI</button>
-            <button onclick="fillDemo('MAI-2001','password123')" class="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 font-bold text-purple-800 border border-purple-200">🚚 Staf MAI</button>
+            <button onclick="fillDemo('MBI', 'ADM001','password123')" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 border border-slate-200">👑 Supervisor</button>
+            <button onclick="fillDemo('MBI', 'MBI-COR-01','password123')" class="p-2 rounded-xl bg-sky-50 hover:bg-sky-100 font-bold text-sky-800 border border-sky-200">📋 Coordinator</button>
+            <button onclick="fillDemo('MBI', 'MBI-STF-01','password123')" class="p-2 rounded-xl bg-teal-50 hover:bg-teal-100 font-bold text-teal-800 border border-teal-200">👤 Staff</button>
           </div>
         </div>
       </div>
 
       <!-- FORM REGISTER -->
-      <div id="form-register-box" class="hidden p-6">
-        <form onsubmit="handleRegister(event)" class="space-y-3.5">
+      <div id="form-register-box" class="hidden p-6 max-h-[75vh] overflow-y-auto">
+        <form onsubmit="handleRegister(event)" class="space-y-3">
           <!-- Pilihan Gudang -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pilih Unit Gudang Kerja *</label>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Gudang Tempat Bekerja *</label>
             <div class="grid grid-cols-2 gap-2">
-              <label id="lbl-wh-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center gap-2">
-                <input type="radio" name="reg-warehouse" value="MBI" checked onchange="updateWarehouseStyle()" class="sr-only">
-                <span class="w-6 h-6 rounded bg-sky-600 text-white font-bold text-xs flex items-center justify-center">MBI</span>
-                <span class="text-xs font-bold">Medika Bina</span>
+              <label id="lbl-reg-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs">
+                <input type="radio" name="reg-warehouse" value="MBI" checked onchange="updateRegWhStyle()" class="sr-only">
+                <span>Gudang MBI</span>
               </label>
-              <label id="lbl-wh-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center gap-2">
-                <input type="radio" name="reg-warehouse" value="MAI" onchange="updateWarehouseStyle()" class="sr-only">
-                <span class="w-6 h-6 rounded bg-purple-600 text-white font-bold text-xs flex items-center justify-center">MAI</span>
-                <span class="text-xs font-bold">Medika Akses</span>
+              <label id="lbl-reg-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
+                <input type="radio" name="reg-warehouse" value="MAI" onchange="updateRegWhStyle()" class="sr-only">
+                <span>Gudang MAI</span>
               </label>
             </div>
           </div>
 
+          <!-- Pilihan Posisi: staff, coordinator, supervisor -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap *</label>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
+            <select id="reg-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
+              <option value="staff">Staff (Hanya Akses Absensi)</option>
+              <option value="coordinator">Coordinator (Akses Penuh Semua Menu)</option>
+              <option value="supervisor">Supervisor (Akses Penuh Semua Menu + Approval)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
             <input type="text" id="reg-name" required placeholder="Contoh: Hendra Gunawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
+              <input type="text" id="reg-dept" required placeholder="Logistik / Packing / QC" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
+              <input type="text" id="reg-outsource" required placeholder="PT Sumber Daya / Internal" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon *</label>
+              <input type="text" id="reg-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
+              <input type="date" id="reg-joindate" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK / No Karyawan *</label>
               <input type="text" id="reg-nik" required placeholder="MBI-1005" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs uppercase font-mono focus:ring-2 focus:ring-teal-500 focus:outline-none">
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi / Jabatan</label>
-              <input type="text" id="reg-position" placeholder="Staf Gudang" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password *</label>
+              <input type="password" id="reg-password" required placeholder="Min. 6 karakter" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
             </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email *</label>
-            <input type="email" id="reg-email" required placeholder="nama@medika.com" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password *</label>
-            <input type="password" id="reg-password" required placeholder="Minimal 6 karakter" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-          </div>
-
           <button type="submit" class="w-full mt-2 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
-            Daftar Akun Baru
+            Daftar Akun Karyawan
           </button>
         </form>
       </div>
@@ -158,24 +198,25 @@
         <div>
           <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
             <span>MEDIKA WFM</span>
-            <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800">MBI</span>
+            <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800">GUDANG MBI</span>
+            <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-md bg-teal-100 text-teal-800">SUPERVISOR</span>
           </h1>
-          <p class="text-[11px] text-slate-500 font-medium">Workforce Management Multi-Gudang</p>
+          <p class="text-[11px] text-slate-500 font-medium">Workforce Management System &bull; Database Mandiri</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- Kiosk Button -->
-        <button onclick="openKioskModal()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition">
-          <i data-lucide="qr-code" class="w-4 h-4"></i>
-          <span>Kiosk Scanner Gerbang</span>
-        </button>
+        <!-- Switch Database Gudang View for Coordinator/Supervisor -->
+        <div id="wh-switcher-box" class="hidden md:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+          <button onclick="switchActiveWarehouse('MBI')" id="wh-btn-mbi" class="px-3 py-1 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs">MBI (Bina)</button>
+          <button onclick="switchActiveWarehouse('MAI')" id="wh-btn-mai" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">MAI (Akses)</button>
+        </div>
 
-        <!-- User Info -->
+        <!-- User Info & Logout -->
         <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
           <div class="text-right hidden sm:block">
             <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
-            <p id="nav-user-nik" class="text-[11px] text-slate-500 font-mono">NIK</p>
+            <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
           </div>
           <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="Logout">
             <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -187,162 +228,253 @@
     <!-- App Body: Sidebar + Main Content -->
     <div class="flex-1 flex overflow-hidden">
       
-      <!-- Sidebar -->
-      <aside class="w-60 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-1.5 border-r border-slate-800 no-print flex-shrink-0">
+      <!-- Sidebar (Hidden for Staff role) -->
+      <aside id="app-sidebar" class="w-60 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-1.5 border-r border-slate-800 no-print flex-shrink-0">
         <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white">
           <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
           <span>Dashboard</span>
         </button>
+
+        <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="users" class="w-4 h-4 text-sky-400"></i>
+          <span>Data Karyawan (Excel)</span>
+        </button>
+
         <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="qr-code" class="w-4 h-4 text-teal-400"></i>
-          <span>Absensi Barcode</span>
+          <span>Absensi Barcode Kamera</span>
         </button>
+
+        <button onclick="switchView('matrix')" id="nav-matrix" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="table-2" class="w-4 h-4 text-emerald-400"></i>
+          <span>Rekap Absen Matriks</span>
+        </button>
+
         <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="clock" class="w-4 h-4"></i>
-          <span>Input Lembur</span>
+          <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+          <span>Input & Approval Lembur</span>
         </button>
+
         <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
           <i data-lucide="contact" class="w-4 h-4"></i>
           <span>Kartu ID Barcode</span>
         </button>
-        <button onclick="switchView('reports')" id="nav-reports" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-          <span>Rekap & Ekspor CSV</span>
-        </button>
+
         <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="database" class="w-4 h-4 text-amber-400"></i>
-          <span>Database GitHub</span>
+          <i data-lucide="database" class="w-4 h-4 text-amber-500"></i>
+          <span>Database GitHub (MBI/MAI)</span>
         </button>
       </aside>
 
-      <!-- Main Content Views -->
+      <!-- Main Content Area -->
       <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div class="max-w-6xl mx-auto space-y-6">
+        <div class="max-w-7xl mx-auto space-y-6">
 
-          <!-- VIEW 1: DASHBOARD -->
+          <!-- ========================================================= -->
+          <!-- VIEW 1: DASHBOARD UTAMA -->
+          <!-- ========================================================= -->
           <div id="view-dashboard" class="view-panel space-y-6">
-            <!-- Greeting Banner -->
             <div class="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
-                <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 24 Agustus 2026</span>
-                <h2 class="text-2xl font-black mt-2">Selamat Datang, <span id="dash-user-name">User</span>! 👋</h2>
-                <p class="text-xs text-slate-300 mt-1">Sistem Presensi Barcode & Lembur Gudang Medika Bina (MBI) & Medika Akses (MAI)</p>
+                <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 25 Agustus 2026</span>
+                <h2 class="text-2xl font-black mt-2">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
+                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode Kotak, dan Rekap Absen Matriks Terpisah</p>
               </div>
               <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center gap-3.5">
                 <div class="p-3 bg-teal-500/20 text-teal-300 rounded-xl"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
                 <div>
-                  <p class="text-[10px] uppercase font-bold text-teal-300">Status Kehadiran Hari Ini:</p>
+                  <p class="text-[10px] uppercase font-bold text-teal-300">Status Saya Hari Ini:</p>
                   <p id="dash-my-status" class="text-xs font-extrabold text-white mt-0.5">Belum Absen Masuk</p>
                 </div>
               </div>
             </div>
 
-            <!-- Stats KPI Cards -->
+            <!-- KPI Cards -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Total Hadir Hari Ini</p>
-                  <h3 id="stat-total-hadir" class="text-2xl font-black text-slate-800">0 Orang</h3>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Total Karyawan Aktif</p>
+                  <h3 id="stat-total-emp" class="text-2xl font-black text-slate-800">0 Orang</h3>
+                  <p id="stat-wh-note" class="text-[11px] text-slate-500 mt-0.5">Gudang MBI</p>
                 </div>
-                <div class="p-3 bg-teal-50 text-teal-600 rounded-xl"><i data-lucide="users" class="w-6 h-6"></i></div>
+                <div class="p-3 bg-sky-50 text-sky-600 rounded-xl"><i data-lucide="users" class="w-6 h-6"></i></div>
               </div>
+
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Gudang MBI (Bina)</p>
-                  <h3 id="stat-mbi-hadir" class="text-2xl font-black text-sky-700">0 Hadir</h3>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Hadir Hari Ini</p>
+                  <h3 id="stat-today-att" class="text-2xl font-black text-teal-700">0 Hadir</h3>
+                  <p class="text-[11px] text-teal-600 font-bold mt-0.5">Realtime Scan</p>
                 </div>
-                <div class="p-3 bg-sky-50 text-sky-600 rounded-xl"><i data-lucide="building-2" class="w-6 h-6"></i></div>
+                <div class="p-3 bg-teal-50 text-teal-600 rounded-xl"><i data-lucide="check-circle-2" class="w-6 h-6"></i></div>
               </div>
+
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Gudang MAI (Akses)</p>
-                  <h3 id="stat-mai-hadir" class="text-2xl font-black text-purple-700">0 Hadir</h3>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Pengajuan Lembur</p>
+                  <h3 id="stat-pending-ot" class="text-2xl font-black text-amber-700">0 Pending</h3>
+                  <p class="text-[11px] text-slate-500 mt-0.5">Perlu Approval</p>
                 </div>
-                <div class="p-3 bg-purple-50 text-purple-600 rounded-xl"><i data-lucide="building-2" class="w-6 h-6"></i></div>
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="clock" class="w-6 h-6"></i></div>
               </div>
             </div>
 
             <!-- Quick Action Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button onclick="switchView('employees')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-sky-500 hover:shadow-md transition">
+                <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3"><i data-lucide="users" class="w-5 h-5"></i></div>
+                <h4 class="font-extrabold text-sm text-slate-900">Kelola Data Karyawan</h4>
+                <p class="text-xs text-slate-500 mt-1">Tambah manual, download & upload file Excel data karyawan.</p>
+              </button>
+
+              <button onclick="switchView('matrix')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-emerald-500 hover:shadow-md transition">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><i data-lucide="table-2" class="w-5 h-5"></i></div>
+                <h4 class="font-extrabold text-sm text-slate-900">Rekap Absen Matriks</h4>
+                <p class="text-xs text-slate-500 mt-1">Tarik data rentang tanggal & download laporan format matriks Excel.</p>
+              </button>
+
               <button onclick="switchView('attendance')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-teal-500 hover:shadow-md transition">
                 <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3"><i data-lucide="qr-code" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Absen Masuk / Keluar</h4>
-                <p class="text-xs text-slate-500 mt-1">Scan barcode kamera untuk mencatat jam masuk/keluar shift kerja.</p>
-              </button>
-              <button onclick="switchView('overtime')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-amber-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3"><i data-lucide="clock" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Pengajuan Lembur</h4>
-                <p class="text-xs text-slate-500 mt-1">Form input durasi lembur & tugas operasional gudang.</p>
-              </button>
-              <button onclick="switchView('idcard')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-sky-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center mb-3"><i data-lucide="contact" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Kartu ID Barcode</h4>
-                <p class="text-xs text-slate-500 mt-1">Lihat dan cetak Kartu ID digital ber-barcode Code128 & QR Code.</p>
+                <h4 class="font-extrabold text-sm text-slate-900">Absensi Barcode Kamera</h4>
+                <p class="text-xs text-slate-500 mt-1">Kamera scanner responsif dengan barcode kotak cepat deteksi.</p>
               </button>
             </div>
           </div>
 
-          <!-- VIEW 2: ABSENSI BARCODE -->
+          <!-- ========================================================= -->
+          <!-- VIEW 2: DATA KARYAWAN (SESUAI GAMBAR 1 + EXCEL) -->
+          <!-- ========================================================= -->
+          <div id="view-employees" class="view-panel hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <i data-lucide="users" class="w-6 h-6 text-sky-600"></i>
+                  Data Karyawan Gudang <span id="emp-wh-title" class="text-sky-600 font-black">MBI</span>
+                </h2>
+                <p class="text-xs text-slate-500">Kelola daftar karyawan, tambah manual, serta download & upload format Excel</p>
+              </div>
+
+              <!-- Action Buttons -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="openAddEmployeeModal()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Manual
+                </button>
+                <button onclick="downloadEmployeeTemplate()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-300">
+                  <i data-lucide="file-down" class="w-4 h-4"></i> Format Template
+                </button>
+                <label class="cursor-pointer px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="upload" class="w-4 h-4"></i> Upload Excel
+                  <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
+                </label>
+                <button onclick="exportEmployeesExcel()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="download" class="w-4 h-4"></i> Download Data
+                </button>
+              </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div class="relative flex-1 min-w-[240px]">
+                  <input type="text" id="emp-search-input" onkeyup="renderEmployeeTable()" placeholder="Cari Nama Karyawan, Departemen, atau NIK..." class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+                <span id="emp-total-badge" class="text-xs font-bold px-3 py-1.5 bg-sky-50 text-sky-800 rounded-xl border border-sky-200">
+                  Total: 0 Karyawan
+                </span>
+              </div>
+
+              <!-- Tabel Format Persis Gambar 1 -->
+              <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
+                    <tr>
+                      <th class="p-3.5 border-r border-slate-200">No</th>
+                      <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                      <th class="p-3.5 border-r border-slate-200">Departemen</th>
+                      <th class="p-3.5 border-r border-slate-200">Outsource</th>
+                      <th class="p-3.5 border-r border-slate-200">No Telpon</th>
+                      <th class="p-3.5 border-r border-slate-200">JOIN DATE</th>
+                      <th class="p-3.5 border-r border-slate-200">Posisi</th>
+                      <th class="p-3.5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="emp-table-body" class="divide-y divide-slate-100">
+                    <!-- Rendered by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- VIEW 3: ABSENSI BARCODE KAMERA (KOTAK QR CODE) -->
+          <!-- ========================================================= -->
           <div id="view-attendance" class="view-panel hidden space-y-6">
             <div class="flex items-center justify-between">
               <div>
                 <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                   <i data-lucide="qr-code" class="w-6 h-6 text-teal-600"></i>
-                  Absensi Barcode (Masuk & Keluar)
+                  Absensi Barcode Kamera (<span id="att-wh-label">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Scan barcode lokasi gudang MBI/MAI atau barcode ID Card Anda</p>
+                <p class="text-xs text-slate-500">Scan Barcode Kotak / QR Code ID Card karyawan melalui kamera HP atau Laptop</p>
               </div>
-              <div class="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold" id="live-clock">00:00:00 WIB</div>
+              <div class="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-teal-700" id="live-clock">00:00:00 WIB</div>
             </div>
 
             <!-- Alert Notification -->
-            <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
+            <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <!-- Controls -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-5">
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Pilih Gudang Kehadiran:</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-att-mbi" onclick="setAttendanceWh('MBI')" class="p-3 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 font-bold text-xs flex flex-col items-center">
-                      <span class="text-xs">MBI</span>
-                      <span class="text-[10px] text-slate-500 font-normal">Medika Bina</span>
-                    </button>
-                    <button type="button" id="btn-att-mai" onclick="setAttendanceWh('MAI')" class="p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-xs flex flex-col items-center">
-                      <span class="text-xs">MAI</span>
-                      <span class="text-[10px] text-slate-500 font-normal">Medika Akses</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
                   <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md">Absen Masuk</button>
-                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200">Absen Keluar</button>
+                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md">
+                      ✓ Absen Masuk
+                    </button>
+                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200">
+                      👋 Absen Keluar
+                    </button>
                   </div>
                 </div>
 
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan (Opsional):</label>
-                  <input type="text" id="att-notes" placeholder="Contoh: Shift pagi" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Tambahan (Opsional):</label>
+                  <input type="text" id="att-notes" placeholder="Contoh: Shift pagi / Tugas pengiriman" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 </div>
 
-                <button onclick="processAttendanceManual()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition">
-                  Konfirmasi Absensi Langsung (Tanpa Kamera)
+                <div class="p-4 bg-teal-50/80 rounded-2xl border border-teal-200 text-xs space-y-2">
+                  <p class="font-bold text-teal-900 flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-4 h-4 text-teal-600"></i> Cara Absensi:
+                  </p>
+                  <p class="text-teal-800 text-[11px]">
+                    Nyalakan kamera di sebelah kanan dan arahkan <strong>Barcode Kotak (QR Code)</strong> ID Card Anda ke dalam kotak target kamera.
+                  </p>
+                </div>
+
+                <button onclick="processAttendanceManual()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-sm">
+                  Konfirmasi Absen Saya Sendiri Langsung
                 </button>
               </div>
 
-              <!-- Scanner Box -->
+              <!-- Scanner Box Kotak -->
               <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center">
-                <div class="w-full max-w-sm aspect-square bg-black rounded-2xl overflow-hidden relative flex items-center justify-center">
+                <div class="relative w-full max-w-sm aspect-square bg-black rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-800">
                   <div id="qr-reader" class="w-full h-full"></div>
+                  <!-- Kotak Frame Overlay Panduan -->
+                  <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div class="w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
+                      <span class="text-[10px] text-teal-300 bg-slate-900/80 px-2 py-0.5 rounded font-mono">ARAHKAN KOTAK QR</span>
+                    </div>
+                  </div>
                 </div>
+
                 <div class="mt-4 flex items-center gap-2">
-                  <button onclick="startScanner()" class="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-xl hover:bg-teal-700 transition flex items-center gap-1.5">
-                    <i data-lucide="camera" class="w-4 h-4"></i> Nyalakan Kamera Scanner
+                  <button onclick="startScanner()" class="px-5 py-2.5 bg-teal-600 text-white text-xs font-bold rounded-xl hover:bg-teal-700 transition flex items-center gap-1.5 shadow-md">
+                    <i data-lucide="camera" class="w-4 h-4"></i> Nyalakan Kamera
                   </button>
-                  <button onclick="stopScanner()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300 transition">
+                  <button onclick="stopScanner()" class="px-4 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300 transition">
                     Matikan
                   </button>
                 </div>
@@ -350,33 +482,83 @@
             </div>
           </div>
 
-          <!-- VIEW 3: INPUT LEMBUR -->
+          <!-- ========================================================= -->
+          <!-- VIEW 4: REKAP ABSEN MATRIKS (SESUAI GAMBAR 2) -->
+          <!-- ========================================================= -->
+          <div id="view-matrix" class="view-panel hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <i data-lucide="table-2" class="w-6 h-6 text-emerald-600"></i>
+                  Rekapitulasi Absensi Matriks (<span id="matrix-wh-title">MBI</span>)
+                </h2>
+                <p class="text-xs text-slate-500">Tarik data absensi karyawan per rentang tanggal (Sesuai Format Gambar 2)</p>
+              </div>
+
+              <!-- Download Excel Matriks Button -->
+              <button onclick="exportMatrixToExcel()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-md">
+                <i data-lucide="download" class="w-4 h-4"></i> Download File Format Excel
+              </button>
+            </div>
+
+            <!-- Filter Range Tanggal -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                  <input type="date" id="matrix-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                  <input type="date" id="matrix-end-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold">
+                </div>
+                <button onclick="renderMatrixTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5">
+                  <i data-lucide="filter" class="w-3.5 h-3.5"></i> Tarik Data Rekap
+                </button>
+              </div>
+
+              <!-- Matriks Grid Table -->
+              <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
+                <table id="table-matrix-display" class="w-full text-center text-xs border-collapse border border-slate-300">
+                  <thead id="matrix-thead" class="bg-amber-100/70 text-slate-900 font-bold border-b border-slate-300">
+                    <!-- Rendered by JS -->
+                  </thead>
+                  <tbody id="matrix-tbody" class="divide-y divide-slate-200 bg-white">
+                    <!-- Rendered by JS -->
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="flex items-center gap-4 text-xs text-slate-600 pt-2">
+                <span class="font-bold">Keterangan:</span>
+                <span class="inline-flex items-center gap-1 font-bold text-emerald-700"><span class="w-4 h-4 bg-emerald-100 rounded flex items-center justify-center">✓</span> Hadir</span>
+                <span class="inline-flex items-center gap-1 font-bold text-rose-700"><span class="w-4 h-4 bg-rose-100 rounded flex items-center justify-center">T</span> Terlambat</span>
+                <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-4 h-4 bg-slate-100 rounded flex items-center justify-center">-</span> Libur / Tidak Hadir</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- VIEW 5: INPUT LEMBUR -->
+          <!-- ========================================================= -->
           <div id="view-overtime" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                 <i data-lucide="clock" class="w-6 h-6 text-amber-600"></i>
-                Input & Pengajuan Lembur (Overtime)
+                Input & Pengajuan Lembur (<span id="ot-wh-label">Gudang MBI</span>)
               </h2>
-              <p class="text-xs text-slate-500">Form pengajuan jam lembur kerja staf Gudang MBI & MAI</p>
+              <p class="text-xs text-slate-500">Formulir pengajuan jam lembur dan persetujuan supervisor</p>
             </div>
 
             <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Form Input -->
+              <!-- Form -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
                 <form onsubmit="handleOvertimeSubmit(event)" class="space-y-3.5">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
                     <input type="date" id="ot-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none">
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Unit Gudang *</label>
-                    <select id="ot-warehouse" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold">
-                      <option value="MBI">Gudang MBI (Medika Bina Investama)</option>
-                      <option value="MAI">Gudang MAI (Medika Akses Investama)</option>
-                    </select>
                   </div>
 
                   <div class="grid grid-cols-2 gap-2">
@@ -392,7 +574,7 @@
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Alasan Lembur *</label>
-                    <textarea id="ot-reason" required rows="3" placeholder="Contoh: Bongkar muat obat kontainer batch 99" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <textarea id="ot-reason" required rows="3" placeholder="Contoh: Bongkar muat obat kontainer batch 88" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
                   </div>
 
                   <button type="submit" class="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-amber-600/30">
@@ -401,7 +583,7 @@
                 </form>
               </div>
 
-              <!-- List Riwayat Lembur -->
+              <!-- List -->
               <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
                 <h3 class="font-extrabold text-sm text-slate-900 mb-4">Daftar Pengajuan Lembur</h3>
                 <div class="overflow-x-auto">
@@ -410,9 +592,9 @@
                       <tr>
                         <th class="p-3">Karyawan</th>
                         <th class="p-3">Tanggal & Jam</th>
-                        <th class="p-3">Gudang</th>
+                        <th class="p-3">Uraian</th>
                         <th class="p-3">Status</th>
-                        <th class="p-3 text-right" id="th-ot-action">Aksi</th>
+                        <th class="p-3 text-right">Aksi</th>
                       </tr>
                     </thead>
                     <tbody id="ot-table-body" class="divide-y divide-slate-100">
@@ -424,22 +606,24 @@
             </div>
           </div>
 
-          <!-- VIEW 4: KARTU ID BARCODE -->
+          <!-- ========================================================= -->
+          <!-- VIEW 6: KARTU ID BARCODE KOTAK (PRINT READY) -->
+          <!-- ========================================================= -->
           <div id="view-idcard" class="view-panel hidden space-y-6">
             <div class="flex items-center justify-between no-print">
               <div>
                 <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                   <i data-lucide="contact" class="w-6 h-6 text-sky-600"></i>
-                  Kartu Identitas & Barcode Karyawan
+                  Kartu Identitas Karyawan & Barcode Kotak
                 </h2>
-                <p class="text-xs text-slate-500">ID Card digital dengan Barcode 1D Code128 dan QR Code resmi</p>
+                <p class="text-xs text-slate-500">ID Card digital dengan QR Code Kotak presisi untuk scan cepat</p>
               </div>
               <button onclick="window.print()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-2">
                 <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card
               </button>
             </div>
 
-            <!-- ID CARD DESIGN PREVIEW -->
+            <!-- ID CARD DESIGN -->
             <div class="flex justify-center p-8 bg-slate-200/60 rounded-3xl">
               <div id="printable-id-card" class="w-[340px] bg-white rounded-2xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-800 select-none">
                 <div id="idcard-header" class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900">
@@ -455,15 +639,15 @@
                     <i data-lucide="user" class="w-8 h-8"></i>
                   </div>
                   <h4 id="idcard-name" class="font-extrabold text-base text-slate-900">Nama Karyawan</h4>
-                  <p id="idcard-pos" class="text-xs text-slate-500 font-medium">Staf Logistik</p>
-                  <span id="idcard-nik" class="mt-2 text-xs font-mono font-bold bg-slate-100 px-3 py-0.5 rounded-md border text-slate-800">MBI-1001</span>
+                  <p id="idcard-dept" class="text-xs text-slate-500 font-semibold">Departemen Logistik</p>
+                  <span id="idcard-nik" class="mt-1 text-xs font-mono font-bold bg-slate-100 px-3 py-0.5 rounded-md border text-slate-800">MBI-1001</span>
 
                   <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
 
-                  <!-- Barcodes -->
-                  <div class="w-full flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                    <svg id="svg-barcode-1d" class="max-w-[190px] h-auto"></svg>
-                    <canvas id="canvas-qrcode" class="w-16 h-16 bg-white p-1 rounded border"></canvas>
+                  <!-- QR Code Kotak Besar -->
+                  <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
+                    <canvas id="canvas-qrcode" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs"></canvas>
+                    <span class="text-[10px] font-mono font-bold text-slate-500 mt-1.5">SCAN KOTAK QR PRESENSI</span>
                   </div>
                   <p id="idcard-footer-text" class="text-[9px] text-slate-400 mt-2">Medika Bina Investama &bull; Official ID</p>
                 </div>
@@ -471,65 +655,22 @@
             </div>
           </div>
 
-          <!-- VIEW 5: REKAP LAPORAN & EKSPOR CSV -->
-          <div id="view-reports" class="view-panel hidden space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="file-spreadsheet" class="w-6 h-6 text-teal-600"></i>
-                  Rekapitulasi Kehadiran & Lembur (MBI & MAI)
-                </h2>
-                <p class="text-xs text-slate-500">Unduh data kehadiran ke file CSV / Excel</p>
-              </div>
-              <button onclick="exportReportsToCSV()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-md">
-                <i data-lucide="download" class="w-4 h-4"></i> Unduh File CSV (Excel)
-              </button>
-            </div>
-
-            <!-- Report Table -->
-            <div class="bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden">
-              <div class="flex items-center gap-3 mb-4">
-                <select id="report-filter-wh" onchange="renderReportsTable()" class="px-3 py-1.5 bg-slate-50 border rounded-xl text-xs font-bold">
-                  <option value="ALL">Semua Gudang (MBI & MAI)</option>
-                  <option value="MBI">Gudang MBI</option>
-                  <option value="MAI">Gudang MAI</option>
-                </select>
-              </div>
-
-              <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                  <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
-                    <tr>
-                      <th class="p-3">Tanggal</th>
-                      <th class="p-3">Karyawan</th>
-                      <th class="p-3">Gudang</th>
-                      <th class="p-3">Jam Masuk</th>
-                      <th class="p-3">Jam Keluar</th>
-                      <th class="p-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody id="report-table-body" class="divide-y divide-slate-100">
-                    <!-- Rendered by JS -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- VIEW 6: DATABASE GITHUB -->
+          <!-- ========================================================= -->
+          <!-- VIEW 7: DATABASE GITHUB TERPISAH (MBI & MAI) -->
+          <!-- ========================================================= -->
           <div id="view-github" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                 <i data-lucide="database" class="w-6 h-6 text-amber-500"></i>
-                Pengaturan Database GitHub
+                Database Terpisah GitHub (MBI & MAI)
               </h2>
-              <p class="text-xs text-slate-500">Simpan data langsung ke file JSON di repositori GitHub Anda</p>
+              <p class="text-xs text-slate-500">Data otomatis disimpan terpisah pada path <code>data/mbi/</code> dan <code>data/mai/</code></p>
             </div>
 
             <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 space-y-5">
               <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
                 <p class="font-bold">Status Database: <span id="github-mode-status">Local Storage (Aktif)</span></p>
-                <p class="mt-0.5">Jika Token GitHub diisi, seluruh data absensi dan lembur akan otomatis di-commit ke repositori GitHub Anda.</p>
+                <p class="mt-0.5">Seluruh data tersimpan terpisah antara Gudang MBI dan MAI secara mandiri.</p>
               </div>
 
               <form onsubmit="saveGitHubConfig(event)" class="space-y-3.5">
@@ -552,8 +693,8 @@
                   <button type="submit" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition">
                     Simpan Konfigurasi GitHub
                   </button>
-                  <button type="button" onclick="testGitHubSync()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition">
-                    Sinkronkan Data ke GitHub Sekarang
+                  <button type="button" onclick="syncAllToGitHub()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition">
+                    Sinkronkan Semua Data MBI & MAI ke GitHub
                   </button>
                 </div>
               </form>
@@ -566,79 +707,127 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- KIOSK SCANNER MODAL -->
+  <!-- MODAL TAMBAH MANUAL KARYAWAN (SESUAI GAMBAR 1) -->
   <!-- ========================================================= -->
-  <div id="kiosk-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+  <div id="add-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between pb-3 border-b">
         <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-          <i data-lucide="shield-check" class="w-5 h-5 text-teal-600"></i>
-          Terminal Kiosk Scanner Gerbang
+          <i data-lucide="user-plus" class="w-5 h-5 text-teal-600"></i>
+          Tambah Karyawan Baru (<span id="modal-emp-wh">MBI</span>)
         </h3>
-        <button onclick="closeKioskModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeAddEmployeeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <div class="p-3 bg-slate-50 rounded-xl border flex items-center justify-between text-xs">
-        <span class="font-bold">Gerbang Gudang:</span>
-        <select id="kiosk-wh-select" class="px-3 py-1 bg-white border rounded-lg font-bold text-xs">
-          <option value="MBI">Gudang MBI (Medika Bina)</option>
-          <option value="MAI">Gudang MAI (Medika Akses)</option>
-        </select>
-      </div>
+      <form onsubmit="handleManualAddEmployee(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
+          <input type="text" id="m-emp-name" required placeholder="Contoh: Budi Santoso" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
 
-      <div id="kiosk-reader" class="w-full aspect-square bg-black rounded-2xl overflow-hidden"></div>
-      <div id="kiosk-result" class="hidden p-3.5 rounded-xl text-xs font-bold"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
+            <input type="text" id="m-emp-dept" required placeholder="Logistik / Packing" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
+            <input type="text" id="m-emp-outsource" required placeholder="PT Sumber Daya / Internal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
 
-      <div class="flex justify-between items-center pt-2">
-        <button onclick="startKioskScanner()" class="px-4 py-2 bg-teal-600 text-white text-xs font-bold rounded-xl">Mulai Kamera</button>
-        <button onclick="closeKioskModal()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">Tutup</button>
-      </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon *</label>
+            <input type="text" id="m-emp-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
+            <input type="date" id="m-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
+            <input type="text" id="m-emp-nik" required placeholder="MBI-1009" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs uppercase font-mono focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
+            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
+              <option value="staff">Staff</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="supervisor">Supervisor</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Login *</label>
+          <input type="password" id="m-emp-password" required value="password123" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeAddEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md">Simpan Karyawan</button>
+        </div>
+      </form>
     </div>
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (DATABASE + AUTH + SCANNER + LOGIC) -->
+  <!-- JAVASCRIPT ENGINE (DUAL DATABASE + EXCEL + MATRIX LOGIC) -->
   <!-- ========================================================= -->
   <script>
-    // Initial Seed Database
-    const DEFAULT_USERS = [
-      { id: 'usr-admin', nik: 'ADM001', name: 'Super Admin Medika', email: 'admin@medika.com', password: 'password123', role: 'admin', warehouse: 'MBI', position: 'Supervisor WFM' },
-      { id: 'usr-mbi-1', nik: 'MBI-1001', name: 'Budi Santoso', email: 'budi@medika.com', password: 'password123', role: 'karyawan', warehouse: 'MBI', position: 'Staf Logistik' },
-      { id: 'usr-mai-1', nik: 'MAI-2001', name: 'Siti Rahmawati', email: 'siti@medika.com', password: 'password123', role: 'karyawan', warehouse: 'MAI', position: 'Operator Packaging' }
+    // Initial Seed Database for MBI (Medika Bina Investama)
+    const SEED_MBI_USERS = [
+      { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'Logistik Pusat', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'supervisor', password: 'password123', warehouse: 'MBI' },
+      { id: 'mbi-2', name: 'Agus Setiawan', dept: 'Penerimaan Alkes', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-COR-01', role: 'coordinator', password: 'password123', warehouse: 'MBI' },
+      { id: 'mbi-3', name: 'Budi Santoso', dept: 'Operasional Gudang', outsource: 'PT Cahaya Mitra', phone: '081345678901', joinDate: '2023-03-01', nik: 'MBI-STF-01', role: 'staff', password: 'password123', warehouse: 'MBI' }
     ];
 
-    const DEFAULT_ATTENDANCE = [
-      { id: 'att-1', userId: 'usr-mbi-1', userNik: 'MBI-1001', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
+    const SEED_MAI_USERS = [
+      { id: 'mai-1', name: 'Dewi Lestari', dept: 'Packaging Farmasi', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-05', nik: 'MAI-SUP-01', role: 'supervisor', password: 'password123', warehouse: 'MAI' },
+      { id: 'mai-2', name: 'Siti Rahmawati', dept: 'Fast Moving Suplai', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'password123', warehouse: 'MAI' }
     ];
 
-    const DEFAULT_OVERTIME = [
-      { id: 'ot-1', userId: 'usr-mbi-1', userNik: 'MBI-1001', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], startTime: '17:00', endTime: '20:00', durationHours: 3, reason: 'Bongkar muat kontainer obat batch 88', status: 'approved' }
+    // Seed Attendance Sample Data
+    const SEED_MBI_ATTENDANCE = [
+      { id: 'att-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
     ];
 
-    // Local Storage Database Getters & Setters
-    function getDB(key, defaultVal) {
-      const data = localStorage.getItem('wfm_' + key);
+    const SEED_MAI_ATTENDANCE = [
+      { id: 'att-mai-1', userId: 'mai-2', userNik: 'MAI-STF-01', userName: 'Siti Rahmawati', warehouse: 'MAI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
+    ];
+
+    // State Variables
+    let currentUser = null;
+    let activeWarehouse = 'MBI'; // 'MBI' | 'MAI'
+    let selectedAttendanceType = 'check_in';
+    let html5QrScanner = null;
+
+    // Database Helper for Separate Warehouse Key
+    function getWhDB(warehouse, key, defaultVal) {
+      const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
+      const data = localStorage.getItem(storageKey);
       return data ? JSON.parse(data) : defaultVal;
     }
 
-    function setDB(key, val) {
-      localStorage.setItem('wfm_' + key, JSON.stringify(val));
-      syncToGitHubIfConfigured(key, val);
+    function setWhDB(warehouse, key, val) {
+      const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
+      localStorage.setItem(storageKey, JSON.stringify(val));
+      syncWhToGitHub(warehouse, key, val);
     }
 
-    let currentUser = null;
-    let selectedAttendanceWh = 'MBI';
-    let selectedAttendanceType = 'check_in';
-    let html5QrScanner = null;
-    let kioskScanner = null;
-
-    // GitHub Database Sync Engine
-    async function syncToGitHubIfConfigured(key, data) {
-      const config = getDB('github_config', null);
+    // GitHub Sync for Separate Warehouse Directory (data/mbi/ vs data/mai/)
+    async function syncWhToGitHub(warehouse, key, data) {
+      const config = getWhDB('global', 'github_config', null);
       if (!config || !config.token || !config.owner || !config.repo) return;
 
       try {
-        const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/data/${key}.json`;
+        const filePath = `data/${warehouse.toLowerCase()}/${key}.json`;
+        const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${filePath}`;
+        
         let sha = null;
         const getRes = await fetch(url, {
           headers: { 'Authorization': `Bearer ${config.token}`, 'Accept': 'application/vnd.github.v3+json' }
@@ -649,7 +838,7 @@
         }
 
         const body = {
-          message: `Update ${key}.json via WFM Medika`,
+          message: `Update ${filePath} via WFM Medika`,
           content: btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2)))),
           branch: 'main'
         };
@@ -665,22 +854,35 @@
       }
     }
 
-    // Init App
+    // App Initialization
     window.onload = () => {
       lucide.createIcons();
+
+      // Set default dates for matrix (Current Month 1st to Today/End of Month)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      
+      document.getElementById('matrix-start-date').value = `${year}-${month}-01`;
+      document.getElementById('matrix-end-date').value = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+      document.getElementById('ot-date').value = now.toISOString().split('T')[0];
+
+      // Live clock
       setInterval(() => {
-        const now = new Date();
+        const d = new Date();
         const el = document.getElementById('live-clock');
-        if (el) el.innerText = now.toLocaleTimeString('id-ID') + ' WIB';
+        if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
       }, 1000);
 
-      // Check session
-      const sessionUser = getDB('current_user', null);
-      if (sessionUser) {
-        loginUserSession(sessionUser);
+      // Check existing session
+      const savedUser = localStorage.getItem('wfm_active_session');
+      if (savedUser) {
+        loginUserSession(JSON.parse(savedUser));
       }
     };
 
+    // Auth Tabs & Radio Styling
     function showAuthTab(tab) {
       const isLogin = tab === 'login';
       document.getElementById('form-login-box').classList.toggle('hidden', !isLogin);
@@ -690,30 +892,41 @@
       document.getElementById('auth-alert').classList.add('hidden');
     }
 
-    function updateWarehouseStyle() {
-      const val = document.querySelector('input[name="reg-warehouse"]:checked').value;
+    function updateLoginWhStyle() {
+      const val = document.querySelector('input[name="login-warehouse"]:checked').value;
       const isMBI = val === 'MBI';
-      document.getElementById('lbl-wh-mbi').className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center gap-2' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center gap-2';
-      document.getElementById('lbl-wh-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center gap-2' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center gap-2';
+      document.getElementById('lbl-login-mbi').className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+      document.getElementById('lbl-login-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
     }
 
-    function fillDemo(nik, pass) {
+    function updateRegWhStyle() {
+      const val = document.querySelector('input[name="reg-warehouse"]:checked').value;
+      const isMBI = val === 'MBI';
+      document.getElementById('lbl-reg-mbi').className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+      document.getElementById('lbl-reg-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+    }
+
+    function fillDemo(wh, nik, pass) {
+      document.querySelector(`input[name="login-warehouse"][value="${wh}"]`).checked = true;
+      updateLoginWhStyle();
       document.getElementById('login-identifier').value = nik;
       document.getElementById('login-password').value = pass;
     }
 
+    // Login Handler
     function handleLogin(e) {
       e.preventDefault();
+      const warehouse = document.querySelector('input[name="login-warehouse"]:checked').value;
       const id = document.getElementById('login-identifier').value.trim().toLowerCase();
       const pass = document.getElementById('login-password').value;
 
-      const users = getDB('users', DEFAULT_USERS);
-      const user = users.find(u => u.email.toLowerCase() === id || u.nik.toLowerCase() === id);
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const user = users.find(u => u.nik.toLowerCase() === id || u.name.toLowerCase() === id);
 
       const alertEl = document.getElementById('auth-alert');
       if (!user || user.password !== pass) {
         alertEl.className = 'mx-6 mt-4 p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-bold';
-        alertEl.innerText = 'NIK/Email atau Password salah!';
+        alertEl.innerText = `Karyawan tidak ditemukan di Gudang ${warehouse} atau password salah!`;
         alertEl.classList.remove('hidden');
         return;
       }
@@ -721,60 +934,109 @@
       loginUserSession(user);
     }
 
+    // Register Handler
     function handleRegister(e) {
       e.preventDefault();
-      const name = document.getElementById('reg-name').value.trim();
-      const nik = document.getElementById('reg-nik').value.trim().toUpperCase();
-      const position = document.getElementById('reg-position').value.trim() || 'Staf Gudang';
-      const email = document.getElementById('reg-email').value.trim().toLowerCase();
-      const password = document.getElementById('reg-password').value;
       const warehouse = document.querySelector('input[name="reg-warehouse"]:checked').value;
+      const position = document.getElementById('reg-position').value; // staff, coordinator, supervisor
+      const name = document.getElementById('reg-name').value.trim();
+      const dept = document.getElementById('reg-dept').value.trim();
+      const outsource = document.getElementById('reg-outsource').value.trim();
+      const phone = document.getElementById('reg-phone').value.trim();
+      const joinDate = document.getElementById('reg-joindate').value;
+      const nik = document.getElementById('reg-nik').value.trim().toUpperCase();
+      const password = document.getElementById('reg-password').value;
 
-      const users = getDB('users', DEFAULT_USERS);
-      if (users.some(u => u.nik === nik || u.email === email)) {
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      if (users.some(u => u.nik === nik)) {
         const alertEl = document.getElementById('auth-alert');
         alertEl.className = 'mx-6 mt-4 p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-bold';
-        alertEl.innerText = 'NIK atau Email sudah terdaftar!';
+        alertEl.innerText = `NIK ${nik} sudah terdaftar di Gudang ${warehouse}!`;
         alertEl.classList.remove('hidden');
         return;
       }
 
-      const newUser = { id: 'usr-' + Date.now(), nik, name, position, email, password, warehouse, role: 'karyawan' };
+      const newUser = {
+        id: `${warehouse.toLowerCase()}-${Date.now()}`,
+        name, dept, outsource, phone, joinDate, nik, role: position, password, warehouse
+      };
+
       users.push(newUser);
-      setDB('users', users);
+      setWhDB(warehouse, 'users', users);
       loginUserSession(newUser);
     }
 
+    // Login Session Logic & Role Access
     function loginUserSession(user) {
       currentUser = user;
-      localStorage.setItem('wfm_current_user', JSON.stringify(user));
+      activeWarehouse = user.warehouse;
+      localStorage.setItem('wfm_active_session', JSON.stringify(user));
 
       document.getElementById('auth-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
 
-      // Update Nav
+      // Update Nav Info
       document.getElementById('nav-user-name').innerText = user.name;
-      document.getElementById('nav-user-nik').innerText = user.nik;
-      document.getElementById('dash-user-name').innerText = user.name;
+      document.getElementById('nav-user-dept').innerText = `${user.dept} (${user.role.toUpperCase()})`;
       
-      const badge = document.getElementById('user-warehouse-badge');
-      badge.innerText = user.warehouse;
-      badge.className = user.warehouse === 'MBI' ? 'px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800' : 'px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-purple-100 text-purple-800';
+      const whBadge = document.getElementById('user-warehouse-badge');
+      whBadge.innerText = `GUDANG ${user.warehouse}`;
+      whBadge.className = user.warehouse === 'MBI' ? 'px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800' : 'px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-purple-100 text-purple-800';
 
-      selectedAttendanceWh = user.warehouse;
-      setAttendanceWh(user.warehouse);
+      const roleBadge = document.getElementById('user-role-badge');
+      roleBadge.innerText = user.role.toUpperCase();
 
-      switchView('dashboard');
-      refreshAllData();
+      // Role Permission Checking
+      const isStaffOnly = user.role === 'staff';
+      const sidebar = document.getElementById('app-sidebar');
+      const whSwitcher = document.getElementById('wh-switcher-box');
+
+      if (isStaffOnly) {
+        // STAFF: Sembunyikan sidebar & warehouse switcher, langsung kunci ke halaman Absensi
+        sidebar.classList.add('hidden');
+        whSwitcher.classList.add('hidden');
+        switchView('attendance');
+      } else {
+        // COORDINATOR / SUPERVISOR: Tampilkan seluruh menu
+        sidebar.classList.remove('hidden');
+        whSwitcher.classList.remove('hidden');
+        updateWhSwitcherButtons();
+        switchView('dashboard');
+      }
+
+      refreshAllDashboardData();
       lucide.createIcons();
     }
 
     function handleLogout() {
       currentUser = null;
-      localStorage.removeItem('wfm_current_user');
+      localStorage.removeItem('wfm_active_session');
       document.getElementById('app-container').classList.add('hidden');
       document.getElementById('auth-container').classList.remove('hidden');
       stopScanner();
+    }
+
+    function switchActiveWarehouse(wh) {
+      activeWarehouse = wh;
+      updateWhSwitcherButtons();
+      refreshAllDashboardData();
+      renderEmployeeTable();
+      renderMatrixTable();
+      lucide.createIcons();
+    }
+
+    function updateWhSwitcherButtons() {
+      const isMBI = activeWarehouse === 'MBI';
+      document.getElementById('wh-btn-mbi').className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      document.getElementById('wh-btn-mai').className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      
+      // Update Titles
+      document.getElementById('dash-wh-label').innerText = activeWarehouse;
+      document.getElementById('stat-wh-note').innerText = `Gudang ${activeWarehouse}`;
+      document.getElementById('emp-wh-title').innerText = activeWarehouse;
+      document.getElementById('att-wh-label').innerText = `Gudang ${activeWarehouse}`;
+      document.getElementById('matrix-wh-title').innerText = activeWarehouse;
+      document.getElementById('ot-wh-label').innerText = `Gudang ${activeWarehouse}`;
     }
 
     function switchView(viewName) {
@@ -789,41 +1051,319 @@
       const activeNav = document.getElementById('nav-' + viewName);
       if (activeNav) activeNav.className = 'sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white';
 
+      if (viewName === 'employees') renderEmployeeTable();
+      if (viewName === 'matrix') renderMatrixTable();
       if (viewName === 'idcard') renderIDCard(currentUser);
-      if (viewName === 'reports') renderReportsTable();
       if (viewName === 'overtime') renderOvertimeTable();
       if (viewName === 'github') renderGitHubConfig();
 
-      refreshAllData();
+      refreshAllDashboardData();
       lucide.createIcons();
     }
 
-    function refreshAllData() {
+    function refreshAllDashboardData() {
       const todayStr = new Date().toISOString().split('T')[0];
-      const attendances = getDB('attendance', DEFAULT_ATTENDANCE);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
+
       const todayAtt = attendances.filter(a => a.date === todayStr);
+      document.getElementById('stat-total-emp').innerText = `${users.length} Orang`;
+      document.getElementById('stat-today-att').innerText = `${todayAtt.length} Hadir`;
+      document.getElementById('stat-pending-ot').innerText = `${overtimes.filter(o => o.status === 'pending').length} Pending`;
 
-      document.getElementById('stat-total-hadir').innerText = todayAtt.length + ' Orang';
-      document.getElementById('stat-mbi-hadir').innerText = todayAtt.filter(a => a.warehouse === 'MBI').length + ' Hadir';
-      document.getElementById('stat-mai-hadir').innerText = todayAtt.filter(a => a.warehouse === 'MAI').length + ' Hadir';
-
-      const myToday = todayAtt.find(a => a.userId === currentUser.id || a.userNik === currentUser.nik);
+      const myToday = todayAtt.find(a => a.userNik === currentUser.nik);
       const statusEl = document.getElementById('dash-my-status');
       if (myToday) {
-        statusEl.innerText = myToday.checkOutTime ? 'Selesai Shift (Keluar)' : 'Aktif Bekerja (Masuk: ' + new Date(myToday.checkInTime).toLocaleTimeString('id-ID') + ')';
+        statusEl.innerText = myToday.checkOutTime ? 'Selesai Shift (Keluar)' : `Aktif (Masuk: ${new Date(myToday.checkInTime).toLocaleTimeString('id-ID')})`;
       } else {
         statusEl.innerText = 'Belum Absen Masuk Hari Ini';
       }
     }
 
-    // Attendance Logic
-    function setAttendanceWh(wh) {
-      selectedAttendanceWh = wh;
-      const isMBI = wh === 'MBI';
-      document.getElementById('btn-att-mbi').className = isMBI ? 'p-3 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 font-bold text-xs flex flex-col items-center' : 'p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-xs flex flex-col items-center';
-      document.getElementById('btn-att-mai').className = !isMBI ? 'p-3 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 font-bold text-xs flex flex-col items-center' : 'p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 font-bold text-xs flex flex-col items-center';
+    // =========================================================
+    // FITUR DATA KARYAWAN (SESUAI GAMBAR 1) + EXCEL
+    // =========================================================
+    function renderEmployeeTable() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
+      const filtered = users.filter(u => u.name.toLowerCase().includes(query) || u.dept.toLowerCase().includes(query) || u.nik.toLowerCase().includes(query));
+
+      const tbody = document.getElementById('emp-table-body');
+      tbody.innerHTML = '';
+      document.getElementById('emp-total-badge').innerText = `Total: ${filtered.length} Karyawan (${activeWarehouse})`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((emp, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+        tr.innerHTML = `
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${emp.name} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
+          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700">${emp.dept}</td>
+          <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone}</td>
+          <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate}</td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' ? 'bg-purple-100 text-purple-800' : (emp.role === 'coordinator' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800')}">${emp.role.toUpperCase()}</span></td>
+          <td class="p-3.5 text-right">
+            <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
+              <i data-lucide="contact" class="w-3.5 h-3.5 text-sky-600"></i> ID Card
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      lucide.createIcons();
     }
 
+    function openAddEmployeeModal() {
+      document.getElementById('modal-emp-wh').innerText = activeWarehouse;
+      document.getElementById('m-emp-joindate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('add-emp-modal').classList.remove('hidden');
+    }
+
+    function closeAddEmployeeModal() {
+      document.getElementById('add-emp-modal').classList.add('hidden');
+    }
+
+    function handleManualAddEmployee(e) {
+      e.preventDefault();
+      const name = document.getElementById('m-emp-name').value.trim();
+      const dept = document.getElementById('m-emp-dept').value.trim();
+      const outsource = document.getElementById('m-emp-outsource').value.trim();
+      const phone = document.getElementById('m-emp-phone').value.trim();
+      const joinDate = document.getElementById('m-emp-joindate').value;
+      const nik = document.getElementById('m-emp-nik').value.trim().toUpperCase();
+      const role = document.getElementById('m-emp-position').value;
+      const password = document.getElementById('m-emp-password').value;
+
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      if (users.some(u => u.nik === nik)) {
+        alert(`NIK ${nik} sudah terdaftar di Gudang ${activeWarehouse}!`);
+        return;
+      }
+
+      const newEmp = { id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, name, dept, outsource, phone, joinDate, nik, role, password, warehouse: activeWarehouse };
+      users.push(newEmp);
+      setWhDB(activeWarehouse, 'users', users);
+
+      closeAddEmployeeModal();
+      renderEmployeeTable();
+      refreshAllDashboardData();
+      alert(`Karyawan ${name} berhasil ditambahkan ke Gudang ${activeWarehouse}!`);
+    }
+
+    // Download Format Template Excel Sesuai Gambar 1
+    function downloadEmployeeTemplate() {
+      const templateData = [
+        { "Nama Karyawan": "Contoh Karyawan A", "Departemen": "Logistik", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "MBI-1010", "Posisi": "staff" },
+        { "Nama Karyawan": "Contoh Karyawan B", "Departemen": "Packing", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "NIK": "MBI-1011", "Posisi": "coordinator" }
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Template_Karyawan");
+      XLSX.writeFile(wb, `Template_Data_Karyawan_${activeWarehouse}.xlsx`);
+    }
+
+    // Export Data Karyawan ke Excel
+    function exportEmployeesExcel() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const exportData = users.map(u => ({
+        "Nama Karyawan": u.name,
+        "Departemen": u.dept,
+        "Outsource": u.outsource,
+        "No Telpon": u.phone,
+        "JOIN DATE": u.joinDate,
+        "NIK": u.nik,
+        "Posisi": u.role,
+        "Gudang": u.warehouse
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Karyawan_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Data_Karyawan_${activeWarehouse}_${Date.now()}.xlsx`);
+    }
+
+    // Upload & Import File Excel / CSV Data Karyawan
+    function handleExcelUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(firstSheet);
+
+          if (!rows || rows.length === 0) {
+            alert('File Excel kosong atau format tidak sesuai.');
+            return;
+          }
+
+          const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          let countAdded = 0;
+
+          rows.forEach((r, idx) => {
+            const name = r['Nama Karyawan'] || r['nama'] || r['Nama'] || `Karyawan ${idx + 1}`;
+            const dept = r['Departemen'] || r['departemen'] || 'Operasional';
+            const outsource = r['Outsource'] || r['outsource'] || 'Internal';
+            const phone = r['No Telpon'] || r['no_telp'] || r['No Telp'] || '-';
+            const joinDate = r['JOIN DATE'] || r['join_date'] || r['Join Date'] || new Date().toISOString().split('T')[0];
+            const nik = (r['NIK'] || r['nik'] || `${activeWarehouse}-${Date.now() + idx}`).toString().toUpperCase();
+            const role = (r['Posisi'] || r['posisi'] || r['role'] || 'staff').toLowerCase();
+
+            if (!users.some(u => u.nik === nik)) {
+              users.push({
+                id: `${activeWarehouse.toLowerCase()}-${Date.now()}-${idx}`,
+                name, dept, outsource, phone, joinDate, nik, role, password: 'password123', warehouse: activeWarehouse
+              });
+              countAdded++;
+            }
+          });
+
+          setWhDB(activeWarehouse, 'users', users);
+          renderEmployeeTable();
+          refreshAllDashboardData();
+          alert(`Berhasil mengimpor ${countAdded} data karyawan baru ke Gudang ${activeWarehouse}!`);
+        } catch (err) {
+          alert('Gagal membaca file Excel: ' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = ''; // Reset input
+    }
+
+    // =========================================================
+    // FITUR REKAP ABSEN MATRIKS (SESUAI GAMBAR 2)
+    // =========================================================
+    function getDatesInRange(startDateStr, endDateStr) {
+      const dates = [];
+      let cur = new Date(startDateStr);
+      const end = new Date(endDateStr);
+      while (cur <= end) {
+        dates.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+      return dates;
+    }
+
+    const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+    function renderMatrixTable() {
+      const startStr = document.getElementById('matrix-start-date').value;
+      const endStr = document.getElementById('matrix-end-date').value;
+      if (!startStr || !endStr) return;
+
+      const dateList = getDatesInRange(startStr, endStr);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+
+      const thead = document.getElementById('matrix-thead');
+      const tbody = document.getElementById('matrix-tbody');
+
+      // Build 2-Tier Header Sesuai Gambar 2
+      const monthYearTitle = new Date(startStr).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+      
+      let headerHTML = `
+        <tr class="border-b border-slate-300">
+          <th rowspan="2" class="p-2 border-r border-slate-300 w-12">No</th>
+          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[160px] text-left">${monthYearTitle} / Nama</th>
+          <th colspan="${dateList.length}" class="p-1.5 border-r border-slate-300">Tanggal</th>
+          <th rowspan="2" class="p-2 min-w-[90px] bg-amber-200/80">Jumlah Kehadiran</th>
+        </tr>
+        <tr class="border-b border-slate-300 text-[10px]">
+      `;
+
+      dateList.forEach(d => {
+        const dayNum = d.getDate();
+        const dayName = DAY_NAMES[d.getDay()];
+        headerHTML += `<th class="p-1 border-r border-slate-300 min-w-[28px] font-bold">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
+      });
+      headerHTML += `</tr>`;
+      thead.innerHTML = headerHTML;
+
+      // Build Body Rows
+      tbody.innerHTML = '';
+      users.forEach((user, uIdx) => {
+        let totalHadir = 0;
+        let rowHTML = `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-200">
+            <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
+            <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${user.name}</td>
+        `;
+
+        dateList.forEach(d => {
+          const dStr = d.toISOString().split('T')[0];
+          const att = attendances.find(a => a.userNik === user.nik && a.date === dStr);
+
+          if (att) {
+            totalHadir++;
+            if (att.checkInStatus === 'on_time') {
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-bold text-emerald-700 bg-emerald-50/50">✓</td>`;
+            } else {
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-bold text-rose-700 bg-rose-50/50">T</td>`;
+            }
+          } else {
+            rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300">-</td>`;
+          }
+        });
+
+        rowHTML += `<td class="p-2 font-black text-slate-900 bg-amber-50/60">${totalHadir}</td></tr>`;
+        tbody.innerHTML += rowHTML;
+      });
+    }
+
+    // Export Rekap Matriks ke Format Excel Asli (.XLSX) Persis Gambar 2
+    function exportMatrixToExcel() {
+      const startStr = document.getElementById('matrix-start-date').value;
+      const endStr = document.getElementById('matrix-end-date').value;
+      const dateList = getDatesInRange(startStr, endStr);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+
+      const monthYearTitle = new Date(startStr).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+      // Build 2D Array for Excel Sheet
+      const row1 = ["No", `${monthYearTitle} / Nama Karyawan`];
+      dateList.forEach(d => row1.push(`${d.getDate()} (${DAY_NAMES[d.getDay()]})`));
+      row1.push("Jumlah Kehadiran");
+
+      const matrixData = [row1];
+
+      users.forEach((user, uIdx) => {
+        let totalHadir = 0;
+        const row = [uIdx + 1, user.name];
+        dateList.forEach(d => {
+          const dStr = d.toISOString().split('T')[0];
+          const att = attendances.find(a => a.userNik === user.nik && a.date === dStr);
+          if (att) {
+            totalHadir++;
+            row.push(att.checkInStatus === 'on_time' ? "✓" : "T");
+          } else {
+            row.push("-");
+          }
+        });
+        row.push(totalHadir);
+        matrixData.push(row);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(matrixData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Rekap_Matriks_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Rekap_Absen_Matriks_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+    }
+
+    // =========================================================
+    // FITUR ABSENSI BARCODE KAMERA (KOTAK QR CODE)
+    // =========================================================
     function setAttendanceType(type) {
       selectedAttendanceType = type;
       const isIn = type === 'check_in';
@@ -837,72 +1377,81 @@
 
     function processAttendanceScan(scannedCode) {
       const todayStr = new Date().toISOString().split('T')[0];
-      const attendances = getDB('attendance', DEFAULT_ATTENDANCE);
-      const existing = attendances.find(a => (a.userId === currentUser.id || a.userNik === currentUser.nik) && a.date === todayStr);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const matchedUser = users.find(u => u.nik.toUpperCase() === scannedCode.trim().toUpperCase());
 
       const alertEl = document.getElementById('att-alert');
       alertEl.classList.remove('hidden');
 
+      if (!matchedUser) {
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+        alertEl.innerText = `Kode Barcode "${scannedCode}" tidak terdaftar di Gudang ${activeWarehouse}!`;
+        return;
+      }
+
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const existing = attendances.find(a => a.userNik === matchedUser.nik && a.date === todayStr);
+
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-          alertEl.innerText = 'Anda sudah melakukan Absen Masuk untuk hari ini!';
+          alertEl.innerText = `${matchedUser.name} sudah melakukan Absen Masuk untuk hari ini!`;
           return;
         }
 
-        const newRecord = {
-          id: 'att-' + Date.now(),
-          userId: currentUser.id,
-          userNik: currentUser.nik,
-          userName: currentUser.name,
-          warehouse: selectedAttendanceWh,
-          date: todayStr,
-          checkInTime: new Date().toISOString(),
-          checkOutTime: null,
-          checkInStatus: new Date().getHours() >= 8 && new Date().getMinutes() > 15 ? 'late' : 'on_time',
-          notes: document.getElementById('att-notes').value || 'Hadir'
-        };
-        attendances.unshift(newRecord);
-        setDB('attendance', attendances);
+        const now = new Date();
+        const isLate = now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 15);
 
+        attendances.unshift({
+          id: `att-${activeWarehouse.toLowerCase()}-${Date.now()}`,
+          userId: matchedUser.id,
+          userNik: matchedUser.nik,
+          userName: matchedUser.name,
+          warehouse: activeWarehouse,
+          date: todayStr,
+          checkInTime: now.toISOString(),
+          checkOutTime: null,
+          checkInStatus: isLate ? 'late' : 'on_time',
+          notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
+        });
+
+        setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-        alertEl.innerText = `Absen MASUK di Gudang ${selectedAttendanceWh} Berhasil dicatat!`;
+        alertEl.innerText = `✅ Absen MASUK Berhasil: ${matchedUser.name} di Gudang ${activeWarehouse}!`;
       } else {
         if (!existing) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-          alertEl.innerText = 'Anda belum Absen Masuk hari ini!';
+          alertEl.innerText = `${matchedUser.name} belum Absen Masuk hari ini!`;
           return;
         }
         if (existing.checkOutTime) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-          alertEl.innerText = 'Anda sudah Absen Keluar sebelumnya.';
+          alertEl.innerText = `${matchedUser.name} sudah Absen Keluar sebelumnya.`;
           return;
         }
 
         existing.checkOutTime = new Date().toISOString();
-        setDB('attendance', attendances);
-
+        setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
-        alertEl.innerText = `Absen KELUAR Berhasil dicatat! Terima kasih atas dedikasi Anda.`;
+        alertEl.innerText = `👋 Absen KELUAR Berhasil: ${matchedUser.name}! Terima kasih.`;
       }
 
-      refreshAllData();
+      refreshAllDashboardData();
     }
 
-    // Camera Scanner
     function startScanner() {
       if (html5QrScanner) stopScanner();
       html5QrScanner = new Html5Qrcode("qr-reader");
       html5QrScanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
         (decodedText) => {
           processAttendanceScan(decodedText);
           stopScanner();
         },
         (error) => {}
       ).catch(err => {
-        alert('Kamera tidak dapat dibuka: ' + err);
+        alert('Kamera tidak dapat diakses: ' + err);
       });
     }
 
@@ -915,11 +1464,12 @@
       }
     }
 
-    // Overtime Logic
+    // =========================================================
+    // FITUR LEMBUR (OVERTIME)
+    // =========================================================
     function handleOvertimeSubmit(e) {
       e.preventDefault();
       const date = document.getElementById('ot-date').value;
-      const warehouse = document.getElementById('ot-warehouse').value;
       const startTime = document.getElementById('ot-start').value;
       const endTime = document.getElementById('ot-end').value;
       const reason = document.getElementById('ot-reason').value;
@@ -930,48 +1480,48 @@
       if (diff < 0) diff += 24 * 60;
       const durationHours = Math.round((diff / 60) * 10) / 10;
 
-      const overtimes = getDB('overtime', DEFAULT_OVERTIME);
-      const newOt = {
-        id: 'ot-' + Date.now(),
+      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
+      overtimes.unshift({
+        id: `ot-${activeWarehouse.toLowerCase()}-${Date.now()}`,
         userId: currentUser.id,
         userNik: currentUser.nik,
         userName: currentUser.name,
-        warehouse,
-        date,
-        startTime,
-        endTime,
-        durationHours,
-        reason,
-        status: 'pending'
-      };
+        warehouse: activeWarehouse,
+        date, startTime, endTime, durationHours, reason, status: 'pending'
+      });
 
-      overtimes.unshift(newOt);
-      setDB('overtime', overtimes);
-
+      setWhDB(activeWarehouse, 'overtime', overtimes);
       document.getElementById('ot-reason').value = '';
+      
       const alertEl = document.getElementById('ot-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = `Pengajuan lembur ${durationHours} jam berhasil dikirim! Menunggu persetujuan.`;
+      alertEl.innerText = `Pengajuan lembur ${durationHours} jam di Gudang ${activeWarehouse} berhasil dikirim!`;
       alertEl.classList.remove('hidden');
 
       renderOvertimeTable();
+      refreshAllDashboardData();
     }
 
     function renderOvertimeTable() {
-      const overtimes = getDB('overtime', DEFAULT_OVERTIME);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
       const tbody = document.getElementById('ot-table-body');
       tbody.innerHTML = '';
 
+      if (overtimes.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">Belum ada pengajuan lembur di Gudang ${activeWarehouse}.</td></tr>`;
+        return;
+      }
+
       overtimes.forEach(ot => {
         const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         tr.innerHTML = `
           <td class="p-3 font-bold">${ot.userName}<br><span class="font-mono text-[10px] text-slate-400">${ot.userNik}</span></td>
           <td class="p-3">${ot.date}<br><span class="font-mono text-[10px] text-slate-500">${ot.startTime}-${ot.endTime} (${ot.durationHours} Jam)</span></td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ot.warehouse === 'MBI' ? 'bg-sky-100 text-sky-800' : 'bg-purple-100 text-purple-800'}">${ot.warehouse}</span></td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ot.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (ot.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${ot.status}</span></td>
+          <td class="p-3 text-slate-600 max-w-xs truncate">${ot.reason}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${ot.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (ot.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${ot.status.toUpperCase()}</span></td>
           <td class="p-3 text-right">
-            ${currentUser.role === 'admin' && ot.status === 'pending' ? `
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator') && ot.status === 'pending' ? `
               <button onclick="updateOtStatus('${ot.id}', 'approved')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Setujui</button>
               <button onclick="updateOtStatus('${ot.id}', 'rejected')" class="px-2 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Tolak</button>
             ` : '-'}
@@ -982,91 +1532,58 @@
     }
 
     function updateOtStatus(id, newStatus) {
-      const overtimes = getDB('overtime', DEFAULT_OVERTIME);
+      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
       const item = overtimes.find(o => o.id === id);
       if (item) {
         item.status = newStatus;
-        setDB('overtime', overtimes);
+        setWhDB(activeWarehouse, 'overtime', overtimes);
         renderOvertimeTable();
+        refreshAllDashboardData();
       }
     }
 
-    // ID Card Render
+    // =========================================================
+    // FITUR KARTU ID DIGITAL (QR CODE KOTAK)
+    // =========================================================
     function renderIDCard(user) {
+      if (!user) return;
       document.getElementById('idcard-name').innerText = user.name;
-      document.getElementById('idcard-pos').innerText = user.position;
+      document.getElementById('idcard-dept').innerText = `${user.dept} &bull; ${user.outsource || 'Medika'}`;
       document.getElementById('idcard-nik').innerText = user.nik;
       document.getElementById('idcard-wh-badge').innerText = user.warehouse;
 
       const isMBI = user.warehouse === 'MBI';
       document.getElementById('idcard-header').className = isMBI ? 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900' : 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-purple-700 to-purple-900';
-      document.getElementById('idcard-footer-text').innerText = isMBI ? 'Medika Bina Investama • Official ID' : 'Medika Akses Investama • Official ID';
+      document.getElementById('idcard-footer-text').innerText = isMBI ? 'Medika Bina Investama • Official ID Card' : 'Medika Akses Investama • Official ID Card';
 
-      // 1D Barcode
-      JsBarcode("#svg-barcode-1d", user.nik, {
-        format: "CODE128",
-        width: 1.5,
-        height: 40,
-        displayValue: true,
-        fontSize: 12
-      });
-
-      // 2D QR Code
-      QRCode.toCanvas(document.getElementById('canvas-qrcode'), user.nik, { width: 64, margin: 0 });
+      // Generate Kotak QR Code
+      QRCode.toCanvas(document.getElementById('canvas-qrcode'), user.nik, { width: 140, margin: 1 });
     }
 
-    // Reports Table & Export
-    function renderReportsTable() {
-      const whFilter = document.getElementById('report-filter-wh').value;
-      const attendances = getDB('attendance', DEFAULT_ATTENDANCE);
-      const filtered = whFilter === 'ALL' ? attendances : attendances.filter(a => a.warehouse === whFilter);
-
-      const tbody = document.getElementById('report-table-body');
-      tbody.innerHTML = '';
-
-      filtered.forEach(att => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
-        tr.innerHTML = `
-          <td class="p-3 font-bold">${att.date}</td>
-          <td class="p-3">${att.userName} (${att.userNik})</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${att.warehouse === 'MBI' ? 'bg-sky-100 text-sky-800' : 'bg-purple-100 text-purple-800'}">${att.warehouse}</span></td>
-          <td class="p-3 font-mono">${new Date(att.checkInTime).toLocaleTimeString('id-ID')}</td>
-          <td class="p-3 font-mono">${att.checkOutTime ? new Date(att.checkOutTime).toLocaleTimeString('id-ID') : 'Sedang Bekerja'}</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${att.checkInStatus === 'on_time' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${att.checkInStatus === 'on_time' ? 'Tepat Waktu' : 'Terlambat'}</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
+    function renderIDCardAndShow(nik) {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const targetUser = users.find(u => u.nik === nik);
+      if (targetUser) {
+        switchView('idcard');
+        renderIDCard(targetUser);
+      }
     }
 
-    function exportReportsToCSV() {
-      const attendances = getDB('attendance', DEFAULT_ATTENDANCE);
-      let csv = "ID,Tanggal,Nama,NIK,Gudang,Jam_Masuk,Jam_Keluar,Status\n";
-      attendances.forEach(a => {
-        csv += `"${a.id}","${a.date}","${a.userName}","${a.userNik}","${a.warehouse}","${a.checkInTime}","${a.checkOutTime || ''}","${a.checkInStatus}"\n`;
-      });
-
-      const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rekap_wfm_medika_${Date.now()}.csv`;
-      a.click();
-    }
-
-    // GitHub Config Form
+    // =========================================================
+    // GITHUB CONFIG
+    // =========================================================
     function renderGitHubConfig() {
-      const config = getDB('github_config', { token: '', owner: '', repo: '' });
+      const config = getWhDB('global', 'github_config', { token: '', owner: '', repo: '' });
       document.getElementById('gh-token').value = config.token || '';
       document.getElementById('gh-owner').value = config.owner || '';
       document.getElementById('gh-repo').value = config.repo || '';
 
       const statusEl = document.getElementById('github-mode-status');
       if (config.token && config.owner && config.repo) {
-        statusEl.innerText = `GitHub Connected (${config.owner}/${config.repo})`;
+        statusEl.innerText = `GitHub Terhubung (${config.owner}/${config.repo})`;
         statusEl.className = 'text-emerald-700 font-bold';
       } else {
-        statusEl.innerText = 'Local Storage (Aktif)';
+        statusEl.innerText = 'Local Storage Mandiri (Aktif)';
         statusEl.className = 'text-amber-700 font-bold';
       }
     }
@@ -1078,91 +1595,22 @@
         owner: document.getElementById('gh-owner').value.trim(),
         repo: document.getElementById('gh-repo').value.trim()
       };
-      setDB('github_config', config);
+      setWhDB('global', 'github_config', config);
       alert('Konfigurasi GitHub berhasil disimpan!');
       renderGitHubConfig();
     }
 
-    async function testGitHubSync() {
-      alert('Sinkronisasi database users, attendance, dan overtime ke GitHub sedang berjalan...');
-      await syncToGitHubIfConfigured('users', getDB('users', DEFAULT_USERS));
-      await syncToGitHubIfConfigured('attendance', getDB('attendance', DEFAULT_ATTENDANCE));
-      await syncToGitHubIfConfigured('overtime', getDB('overtime', DEFAULT_OVERTIME));
-      alert('Sinkronisasi data ke GitHub Berhasil!');
-    }
-
-    // Kiosk Scanner Modal
-    function openKioskModal() {
-      document.getElementById('kiosk-modal').classList.remove('hidden');
-      startKioskScanner();
-    }
-
-    function closeKioskModal() {
-      document.getElementById('kiosk-modal').classList.add('hidden');
-      if (kioskScanner) {
-        kioskScanner.stop().catch(() => {}).then(() => {
-          kioskScanner.clear();
-          kioskScanner = null;
-        });
-      }
-    }
-
-    function startKioskScanner() {
-      if (kioskScanner) return;
-      kioskScanner = new Html5Qrcode("kiosk-reader");
-      kioskScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          handleKioskScan(decodedText);
-        },
-        (error) => {}
-      );
-    }
-
-    function handleKioskScan(nik) {
-      const wh = document.getElementById('kiosk-wh-select').value;
-      const users = getDB('users', DEFAULT_USERS);
-      const user = users.find(u => u.nik === nik || u.barcodeValue === nik);
-
-      const resEl = document.getElementById('kiosk-result');
-      resEl.classList.remove('hidden');
-
-      if (!user) {
-        resEl.className = 'p-3.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-        resEl.innerText = `Kartu Barcode "${nik}" tidak terdaftar di sistem!`;
-        return;
-      }
-
-      const todayStr = new Date().toISOString().split('T')[0];
-      const attendances = getDB('attendance', DEFAULT_ATTENDANCE);
-      const existing = attendances.find(a => (a.userId === user.id || a.userNik === user.nik) && a.date === todayStr);
-
-      if (!existing) {
-        attendances.unshift({
-          id: 'att-' + Date.now(),
-          userId: user.id,
-          userNik: user.nik,
-          userName: user.name,
-          warehouse: wh,
-          date: todayStr,
-          checkInTime: new Date().toISOString(),
-          checkOutTime: null,
-          checkInStatus: 'on_time'
-        });
-        setDB('attendance', attendances);
-        resEl.className = 'p-3.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-        resEl.innerText = `✅ Absen MASUK Berhasil: ${user.name} (${wh})`;
-      } else if (!existing.checkOutTime) {
-        existing.checkOutTime = new Date().toISOString();
-        setDB('attendance', attendances);
-        resEl.className = 'p-3.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
-        resEl.innerText = `👋 Absen KELUAR Berhasil: ${user.name}!`;
-      } else {
-        resEl.className = 'p-3.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-        resEl.innerText = `⚠️ ${user.name} sudah selesai absen masuk & keluar hari ini.`;
-      }
-      refreshAllData();
+    async function syncAllToGitHub() {
+      alert('Memulai sinkronisasi seluruh data MBI & MAI ke repositori GitHub...');
+      // Sync MBI
+      await syncWhToGitHub('MBI', 'users', getWhDB('MBI', 'users', SEED_MBI_USERS));
+      await syncWhToGitHub('MBI', 'attendance', getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE));
+      await syncWhToGitHub('MBI', 'overtime', getWhDB('MBI', 'overtime', []));
+      // Sync MAI
+      await syncWhToGitHub('MAI', 'users', getWhDB('MAI', 'users', SEED_MAI_USERS));
+      await syncWhToGitHub('MAI', 'attendance', getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE));
+      await syncWhToGitHub('MAI', 'overtime', getWhDB('MAI', 'overtime', []));
+      alert('Sinkronisasi data terpisah MBI & MAI ke GitHub BERHASIL!');
     }
   </script>
 </body>
