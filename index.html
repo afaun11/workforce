@@ -1567,33 +1567,18 @@
         let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         let hasChanges = false;
         const prefix = `${wh}${year}-`;
-        const existingNiks = new Set();
-
-        users.forEach((u, idx) => {
+        
+        let counter = 1;
+        users.forEach(u => {
           if (u.role === 'admin' && (u.nik === 'ADM001' || u.nik === `ADM-${wh}`)) {
-            existingNiks.add(u.nik.toUpperCase());
             return;
           }
-
-          // Cek apakah NIK masih berformat lama (nomor hp 08xxx, digit murni, atau tidak diawali MBI26-)
-          const isOld = !u.nik || 
-                        u.nik.startsWith('08') || 
-                        u.nik.startsWith('62') || 
-                        u.nik.replace(/\D/g, '').length >= 8 || 
-                        !u.nik.toUpperCase().startsWith(prefix);
-
-          if (isOld || existingNiks.has(u.nik.toUpperCase())) {
-            let num = 1; // Mulai dari 001, bukan 002!
-            let candidate = `${prefix}${String(num).padStart(3, '0')}`;
-            while (existingNiks.has(candidate)) {
-              num++;
-              candidate = `${prefix}${String(num).padStart(3, '0')}`;
-            }
-            u.nik = candidate;
+          const expectedNik = `${prefix}${String(counter).padStart(3, '0')}`;
+          if (u.nik !== expectedNik) {
+            u.nik = expectedNik;
             hasChanges = true;
           }
-
-          existingNiks.add(u.nik.toUpperCase());
+          counter++;
         });
 
         if (hasChanges) {
@@ -1935,6 +1920,12 @@
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       const all = [...mbiUsers, ...maiUsers];
+
+      all.sort((a, b) => {
+        if (a.role === 'admin') return -1;
+        if (b.role === 'admin') return 1;
+        return (a.nik || '').localeCompare(b.nik || '', undefined, { numeric: true, sensitivity: 'base' });
+      });
 
       const filtered = all.filter(u => (u.name && u.name.toLowerCase().includes(q)) || (u.nik && u.nik.toLowerCase().includes(q)) || (u.dept && u.dept.toLowerCase().includes(q)));
       const container = document.getElementById('lookup-list-container');
