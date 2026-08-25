@@ -1560,6 +1560,50 @@
       updateCloudSyncStatusBadge(success ? 'synced' : 'local');
     }
 
+    function migrateAllUsersNIK() {
+      const year = new Date().getFullYear().toString().slice(-2); // "26"
+
+      ['MBI', 'MAI'].forEach(wh => {
+        let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        let hasChanges = false;
+        const prefix = `${wh}${year}-`;
+        const existingNiks = new Set();
+
+        users.forEach((u, idx) => {
+          if (u.role === 'admin' && u.nik === 'ADM001') {
+            existingNiks.add('ADM001');
+            return;
+          }
+
+          // Cek apakah NIK masih berformat lama (nomor hp 08xxx, digit murni, atau tidak diawali MBI26-)
+          const isOld = !u.nik || 
+                        u.nik.startsWith('08') || 
+                        u.nik.startsWith('62') || 
+                        u.nik.replace(/\D/g, '').length >= 8 || 
+                        !u.nik.toUpperCase().startsWith(prefix);
+
+          if (isOld || existingNiks.has(u.nik.toUpperCase())) {
+            let num = idx + 1;
+            let candidate = `${prefix}${String(num).padStart(3, '0')}`;
+            while (existingNiks.has(candidate)) {
+              num++;
+              candidate = `${prefix}${String(num).padStart(3, '0')}`;
+            }
+            u.nik = candidate;
+            hasChanges = true;
+          }
+
+          existingNiks.add(u.nik.toUpperCase());
+        });
+
+        if (hasChanges) {
+          const storageKey = `wfm_${wh.toLowerCase()}_users`;
+          localStorage.setItem(storageKey, JSON.stringify(users));
+          saveFullDatabaseToCloud();
+        }
+      });
+    }
+
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
@@ -1583,6 +1627,7 @@
               if (db.mbi_overtime) localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
               if (db.mai_overtime) localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
 
+              migrateAllUsersNIK();
               renderAccountLookupList();
               renderEmployeeTable();
               populateDropdownEmployees();
@@ -1666,12 +1711,13 @@
     window.onload = () => {
       lucide.createIcons();
 
-      // Ensure DB initialized
+      // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
       getWhDB('MBI', 'users', SEED_MBI_USERS);
       getWhDB('MAI', 'users', SEED_MAI_USERS);
       getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE);
       getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE);
       getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES);
+      migrateAllUsersNIK();
 
       const now = new Date();
       const year = now.getFullYear();
@@ -1873,6 +1919,7 @@
     // LOOKUP MODAL (CARI NIK SENDIRI)
     // =========================================================
     function openAccountLookupModal() {
+      migrateAllUsersNIK();
       document.getElementById('account-lookup-modal').classList.remove('hidden');
       document.getElementById('lookup-search-input').value = '';
       renderAccountLookupList();
@@ -2908,9 +2955,10 @@
     }
 
     function downloadAccountsExcel() {
+      migrateAllUsersNIK();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const exportData = users.map(u => ({
-        "NIK Karyawan": u.nik,
+        "NIK Karyawan (ID Login)": u.nik,
         "Nama Karyawan": u.name,
         "Departemen": u.dept,
         "Outsource": u.outsource,
