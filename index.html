@@ -103,7 +103,7 @@
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK atau Nama Karyawan</label>
-            <input type="text" id="login-identifier" required placeholder="Contoh: MBI-1001 atau Nama Lengkap" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="text" id="login-identifier" required placeholder="Ketik NIK atau Nama (Contoh: Afuani Huyan / MBI-1001)" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div>
@@ -111,12 +111,19 @@
               <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
               <span class="text-[10px] text-slate-500 font-medium">Default: <code class="font-bold text-teal-700">medika123</code></span>
             </div>
-            <input type="password" id="login-password" required placeholder="Masukkan password akun" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="password" id="login-password" required placeholder="Masukkan password (default: medika123)" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
             Masuk ke Portal
           </button>
+
+          <!-- Tombol Bantuan Cek Daftar Akun Aktif -->
+          <div class="pt-2 text-center">
+            <button type="button" onclick="openAccountLookupModal()" class="text-xs font-bold text-sky-600 hover:text-sky-800 underline">
+              🔍 Lupa NIK? Lihat Daftar NIK & Karyawan Terdaftar
+            </button>
+          </div>
         </form>
       </div>
 
@@ -148,7 +155,7 @@
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
-            <input type="text" id="reg-name" required placeholder="Nama Sesuai KTP" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="text" id="reg-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
           <div>
@@ -192,7 +199,30 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- MODAL NOTIFIKASI SUKSES BUAT AKUN (NIK & PASSWORD JELAS) -->
+  <!-- MODAL LOOKUP AKUN (CEK NIK & NAMA SEMUA KARYAWAN) -->
+  <!-- ========================================================= -->
+  <div id="account-lookup-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-2 border-b">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900">Daftar Akun Karyawan Aktif</h3>
+          <p class="text-xs text-slate-500">Pilih nama Anda untuk otomatis mengisi form login</p>
+        </div>
+        <button onclick="closeAccountLookupModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <input type="text" id="lookup-search-input" onkeyup="renderAccountLookupList()" placeholder="Cari nama Anda..." class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+
+      <div class="max-h-60 overflow-y-auto custom-scroll border rounded-2xl divide-y divide-slate-100" id="lookup-list-container">
+        <!-- Rendered by JS -->
+      </div>
+
+      <p class="text-[11px] text-slate-500 text-center font-medium">Password default seluruh akun: <code class="font-bold text-teal-700">medika123</code></p>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL NOTIFIKASI SUKSES BUAT AKUN -->
   <!-- ========================================================= -->
   <div id="account-created-modal" class="hidden fixed inset-0 z-50 bg-slate-900/90 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200 text-center">
@@ -1210,7 +1240,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (SMART CROSS-WAREHOUSE LOGIN + SYNC) -->
+  <!-- JAVASCRIPT ENGINE (BULLETPROOF EXCEL & FUZZY LOGIN) -->
   <!-- ========================================================= -->
   <script>
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
@@ -1270,7 +1300,6 @@
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       const data = localStorage.getItem(storageKey);
       if (!data) {
-        // Initialize with default
         localStorage.setItem(storageKey, JSON.stringify(defaultVal));
         return defaultVal;
       }
@@ -1287,8 +1316,7 @@
       syncWhToGitHub(warehouse, key, val);
     }
 
-    function generateNextNIK(warehouse) {
-      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+    function getHighestNikNum(users, warehouse) {
       const prefix = `${warehouse}-`;
       const numericNiks = users
         .map(u => {
@@ -1297,8 +1325,13 @@
           return match ? parseInt(match[0], 10) : 0;
         })
         .filter(n => !isNaN(n));
-      const maxNum = numericNiks.length > 0 ? Math.max(...numericNiks) : 1000;
-      return `${prefix}${maxNum + 1}`;
+      return numericNiks.length > 0 ? Math.max(...numericNiks) : 1000;
+    }
+
+    function generateNextNIK(warehouse) {
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const maxNum = getHighestNikNum(users, warehouse);
+      return `${warehouse}-${maxNum + 1}`;
     }
 
     async function syncWhToGitHub(warehouse, key, data) {
@@ -1401,53 +1434,72 @@
       document.getElementById('lbl-reg-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
     }
 
-    // Normalisasi string pencarian untuk kemudahan pencocokan
     function cleanStr(str) {
       return (str || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
     // =========================================================
-    // SMART LOGIN DENGAN PENCARIAN FLEKSIBEL (NIK / NAMA)
+    // SMART LOGIN DENGAN PENCARIAN FLEKSIBEL (NIK / NAMA / PHONE)
     // =========================================================
     function handleLogin(e) {
       e.preventDefault();
-      let selectedWh = document.querySelector('input[name="login-warehouse"]:checked').value;
       const rawInputId = document.getElementById('login-identifier').value.trim();
       const inputPass = document.getElementById('login-password').value.trim();
       const cleanInput = cleanStr(rawInputId);
 
       const alertEl = document.getElementById('auth-alert');
 
-      // Ambil user dari kedua gudang
+      // Ambil user dari kedua database gudang
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       const allUsers = [...mbiUsers, ...maiUsers];
 
-      // Cari user berdasarkan NIK atau Nama (exact & fuzzy)
+      // 1. Exact match (NIK / Nama / Phone)
       let user = allUsers.find(u => 
         cleanStr(u.nik) === cleanInput || 
         cleanStr(u.name) === cleanInput ||
         (u.phone && cleanStr(u.phone) === cleanInput)
       );
 
-      // Jika masih belum ketemu, coba cari substring nama
+      // 2. Partial word match (contoh: "Afuani" atau "Huyan")
       if (!user && cleanInput.length >= 3) {
-        user = allUsers.find(u => cleanStr(u.name).includes(cleanInput) || cleanStr(u.nik).includes(cleanInput));
+        user = allUsers.find(u => 
+          cleanStr(u.name).includes(cleanInput) || 
+          cleanInput.includes(cleanStr(u.name)) ||
+          cleanStr(u.nik).includes(cleanInput)
+        );
+      }
+
+      // 3. Multi-word individual match
+      if (!user) {
+        const words = rawInputId.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        if (words.length > 0) {
+          user = allUsers.find(u => {
+            const uName = (u.name || '').toLowerCase();
+            return words.some(w => uName.includes(w));
+          });
+        }
       }
 
       if (!user) {
         alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
-        alertEl.innerHTML = `<span>❌ Akun <b>"${rawInputId}"</b> tidak ditemukan di sistem!</span><br><span class="text-[11px] text-slate-600 font-normal">Pastikan NIK atau Nama sudah terdaftar. Jika baru daftar, gunakan NIK resmi Anda.</span>`;
+        alertEl.innerHTML = `
+          <span>❌ Akun <b>"${rawInputId}"</b> tidak ditemukan di database!</span>
+          <p class="text-[11px] text-slate-600 font-normal mt-1">Pastikan nama atau NIK sudah di-upload. Klik <a href="javascript:void(0)" onclick="openAccountLookupModal()" class="font-bold text-sky-700 underline">Lihat Daftar Akun</a> untuk mengecek NIK resmi Anda.</p>
+        `;
         alertEl.classList.remove('hidden');
         return;
       }
 
-      // Pastikan gudang user sinkron
+      // Sinkronkan radio gudang ke gudang karyawan
       const userWarehouse = user.warehouse || 'MBI';
-      document.querySelector(`input[name="login-warehouse"][value="${userWarehouse}"]`).checked = true;
-      updateLoginWhStyle();
+      const whRadio = document.querySelector(`input[name="login-warehouse"][value="${userWarehouse}"]`);
+      if (whRadio) {
+        whRadio.checked = true;
+        updateLoginWhStyle();
+      }
 
-      // Verifikasi Password (fleksibel default medika123 atau password pribadi)
+      // Validasi Password (fleksibel: password tersimpan / default medika123 / admin password123)
       const isPasswordCorrect = (user.password && user.password.trim() === inputPass) || 
                                 (inputPass === 'medika123') || 
                                 (inputPass === 'password123' && (user.role === 'admin' || user.role === 'supervisor'));
@@ -1504,6 +1556,59 @@
     }
 
     // =========================================================
+    // LOOKUP MODAL (CARI NIK SENDIRI)
+    // =========================================================
+    function openAccountLookupModal() {
+      document.getElementById('account-lookup-modal').classList.remove('hidden');
+      document.getElementById('lookup-search-input').value = '';
+      renderAccountLookupList();
+      lucide.createIcons();
+    }
+
+    function closeAccountLookupModal() {
+      document.getElementById('account-lookup-modal').classList.add('hidden');
+    }
+
+    function renderAccountLookupList() {
+      const q = (document.getElementById('lookup-search-input')?.value || '').toLowerCase();
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      const all = [...mbiUsers, ...maiUsers];
+
+      const filtered = all.filter(u => (u.name && u.name.toLowerCase().includes(q)) || (u.nik && u.nik.toLowerCase().includes(q)) || (u.dept && u.dept.toLowerCase().includes(q)));
+      const container = document.getElementById('lookup-list-container');
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-xs text-slate-400">Tidak ada karyawan yang cocok.</div>';
+        return;
+      }
+
+      filtered.forEach(u => {
+        const div = document.createElement('div');
+        div.className = 'p-3 hover:bg-slate-50 flex items-center justify-between cursor-pointer transition';
+        div.onclick = () => {
+          document.getElementById('login-identifier').value = u.nik || u.name;
+          document.getElementById('login-password').value = u.isFirstLogin === false ? '' : (u.password || 'medika123');
+          const whRadio = document.querySelector(`input[name="login-warehouse"][value="${u.warehouse}"]`);
+          if (whRadio) {
+            whRadio.checked = true;
+            updateLoginWhStyle();
+          }
+          closeAccountLookupModal();
+        };
+        div.innerHTML = `
+          <div>
+            <span class="font-extrabold text-xs text-slate-900 block">${u.name}</span>
+            <span class="font-mono text-[10px] text-slate-500">NIK: <b class="text-teal-700">${u.nik}</b> &bull; ${u.dept} (Gudang ${u.warehouse})</span>
+          </div>
+          <span class="px-2.5 py-1 bg-teal-50 text-teal-700 text-[10px] font-bold rounded-lg border border-teal-200">Gunakan</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // =========================================================
     // PENDAFTARAN AKUN (MANDIRI & OTOMATIS)
     // =========================================================
     function handleRegister(e) {
@@ -1548,8 +1653,11 @@
         showAuthTab('login');
         document.getElementById('login-identifier').value = newlyCreatedUser.nik;
         document.getElementById('login-password').value = newlyCreatedUser.password || 'medika123';
-        document.querySelector(`input[name="login-warehouse"][value="${newlyCreatedUser.warehouse}"]`).checked = true;
-        updateLoginWhStyle();
+        const whRadio = document.querySelector(`input[name="login-warehouse"][value="${newlyCreatedUser.warehouse}"]`);
+        if (whRadio) {
+          whRadio.checked = true;
+          updateLoginWhStyle();
+        }
       }
     }
 
@@ -2213,8 +2321,8 @@
 
     function downloadEmployeeTemplate() {
       const templateData = [
-        { "Nama Karyawan": "Budi Santoso", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "", "Posisi": "staff" },
-        { "Nama Karyawan": "Agus Setiawan", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "NIK": "", "Posisi": "coordinator" }
+        { "Nama Karyawan": "Afuani Huyan", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "", "Posisi": "staff" },
+        { "Nama Karyawan": "Budi Santoso", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "NIK": "", "Posisi": "staff" }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -2242,6 +2350,26 @@
       XLSX.writeFile(wb, `Data_Karyawan_${activeWarehouse}_${Date.now()}.xlsx`);
     }
 
+    // Helper pencari nilai kolom fleksibel pada baris Excel
+    function getExcelVal(row, keywords, defaultVal = '') {
+      const keys = Object.keys(row);
+      for (const k of keys) {
+        const cleanK = k.trim().toLowerCase();
+        for (const kw of keywords) {
+          if (cleanK.includes(kw.toLowerCase())) {
+            const val = row[k];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              return String(val).trim();
+            }
+          }
+        }
+      }
+      return defaultVal;
+    }
+
+    // =========================================================
+    // IMPORT EXCEL SUPER ROBUST (SEMUA BARIS DIJAMIN TERSIMPAN)
+    // =========================================================
     function handleExcelUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -2252,28 +2380,51 @@
           const data = new Uint8Array(event.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(firstSheet);
+          const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
 
           if (!rows || rows.length === 0) {
-            alert('File Excel kosong atau format tidak sesuai.');
+            alert('File Excel kosong atau tidak terbaca.');
             return;
           }
 
           const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          let currentNikNum = getHighestNikNum(users, activeWarehouse);
           let countAdded = 0;
+          let countUpdated = 0;
 
           rows.forEach((r, idx) => {
-            const name = (r['Nama Karyawan'] || r['nama'] || r['Nama'] || `Karyawan ${idx + 1}`).toString().trim();
-            const dept = (r['Departemen'] || r['departemen'] || 'packer').toString().trim().toLowerCase();
-            const outsource = (r['Outsource'] || r['outsource'] || 'Internal').toString().trim();
-            const phone = (r['No Telpon'] || r['no_telp'] || r['No Telp'] || '-').toString().trim();
-            const joinDate = (r['JOIN DATE'] || r['join_date'] || r['Join Date'] || new Date().toISOString().split('T')[0]).toString().trim();
-            
-            const rawNik = r['NIK'] || r['nik'] || '';
-            const nik = (rawNik ? rawNik.toString().trim() : generateNextNIK(activeWarehouse)).toUpperCase();
-            const role = (r['Posisi'] || r['posisi'] || r['role'] || 'staff').toString().trim().toLowerCase();
+            const name = getExcelVal(r, ['nama', 'name', 'karyawan', 'pegawai'], `Karyawan ${idx + 1}`);
+            if (!name || name.trim() === '') return;
 
-            if (!users.some(u => u.nik && u.nik.toUpperCase() === nik)) {
+            const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi'], 'packer').toLowerCase();
+            const outsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi'], 'Internal');
+            const phone = getExcelVal(r, ['telp', 'phone', 'hp', 'wa', 'kontak'], '-');
+            const joinDate = getExcelVal(r, ['join', 'masuk', 'date', 'tanggal'], new Date().toISOString().split('T')[0]);
+            
+            let rawNik = getExcelVal(r, ['nik', 'id', 'nomer', 'nomor', 'no'], '');
+            let nik = rawNik ? rawNik.toUpperCase() : '';
+
+            if (!nik) {
+              currentNikNum++;
+              nik = `${activeWarehouse}-${currentNikNum}`;
+            }
+
+            const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff').toLowerCase();
+
+            // Cek apakah NIK atau Nama sudah ada
+            const existingIdx = users.findIndex(u => (u.nik && u.nik.toUpperCase() === nik) || (u.name && u.name.toLowerCase() === name.toLowerCase()));
+
+            if (existingIdx !== -1) {
+              // Update data yang ada
+              users[existingIdx].name = name;
+              users[existingIdx].dept = dept;
+              users[existingIdx].outsource = outsource;
+              users[existingIdx].phone = phone;
+              users[existingIdx].joinDate = joinDate;
+              users[existingIdx].role = role;
+              countUpdated++;
+            } else {
+              // Tambah karyawan baru
               users.push({
                 id: `${activeWarehouse.toLowerCase()}-${Date.now()}-${idx}`,
                 name, dept, outsource, phone, joinDate, nik, role, password: 'medika123', isFirstLogin: true, warehouse: activeWarehouse
@@ -2287,7 +2438,8 @@
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
-          alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!\nSeluruh akun otomatis dibuat dengan Password Default: medika123`);
+          
+          alert(`✅ Import Excel Sukses!\n- ${countAdded} Akun Baru Ditambahkan\n- ${countUpdated} Akun Diperbarui\n\nSeluruh karyawan langsung aktif dan dapat login dengan NIK / Nama masing-masing (Password default: medika123).`);
         } catch (err) {
           alert('Gagal membaca file Excel: ' + err.message);
         }
