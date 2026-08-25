@@ -13,10 +13,8 @@
   <script src="https://unpkg.com/html5-qrcode"></script>
   <!-- SheetJS (Excel .XLSX Reader & Writer) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- QRCode.js (Kotak 2D Barcode Generator) -->
+  <!-- QRCode.js -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <!-- JsBarcode (1D Barcode) -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -35,8 +33,8 @@
   <style>
     @media print {
       body * { visibility: hidden; }
-      #printable-id-card, #printable-id-card * { visibility: visible; }
-      #printable-id-card { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); width: 340px !important; }
+      #printable-area, #printable-area * { visibility: visible; }
+      #printable-area { position: absolute; left: 50%; top: 20px; transform: translateX(-50%); width: 360px !important; }
       .no-print { display: none !important; }
     }
     .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
@@ -287,8 +285,8 @@
           </button>
 
           <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-            <i data-lucide="contact" class="w-4 h-4"></i>
-            <span>Kartu ID Barcode</span>
+            <i data-lucide="contact" class="w-4 h-4 text-sky-400"></i>
+            <span>Kartu ID & Barcode Lokasi</span>
           </button>
 
           <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
@@ -310,7 +308,7 @@
               <div>
                 <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 25 Agustus 2026</span>
                 <h2 class="text-2xl font-black mt-2">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
-                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode, Record Absen Harian & Rekap Matriks</p>
+                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode 2-Step (Lokasi & ID), Record Absen Harian & Rekap Matriks</p>
               </div>
               <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center gap-3.5">
                 <div class="p-3 bg-teal-500/20 text-teal-300 rounded-xl"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
@@ -374,10 +372,10 @@
                 <p class="text-xs text-slate-500 mt-1">Lihat Record Absen Harian dan Rekap Matriks Hari Kerja.</p>
               </button>
 
-              <button onclick="switchView('leaves')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-rose-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3"><i data-lucide="calendar-off" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Form Izin / Sakit / Cuti</h4>
-                <p class="text-xs text-slate-500 mt-1">Kelola & persetujuan izin ketidakhadiran karyawan.</p>
+              <button onclick="switchView('idcard')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-teal-500 hover:shadow-md transition">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3"><i data-lucide="qr-code" class="w-5 h-5"></i></div>
+                <h4 class="font-extrabold text-sm text-slate-900">Cetak QR Lokasi & ID Card</h4>
+                <p class="text-xs text-slate-500 mt-1">Cetak Barcode Lokasi Gudang dan ID Card barcode karyawan.</p>
               </button>
             </div>
           </div>
@@ -400,7 +398,7 @@
                 <button onclick="openAddEmployeeModal()" class="px-3.5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="user-plus" class="w-4 h-4"></i> Tambah Manual
                 </button>
-                <button onclick="downloadAccountsExcel()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download Daftar Akun & Password untuk Dibagikan ke Karyawan">
+                <button onclick="downloadAccountsExcel()" class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Download Daftar Akun & Password">
                   <i data-lucide="key" class="w-4 h-4"></i> Download Akun & Password
                 </button>
                 <button onclick="downloadEmployeeTemplate()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-slate-300">
@@ -451,7 +449,7 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 3: ABSENSI BARCODE KAMERA (KOTAK QR CODE) -->
+          <!-- VIEW 3: ABSENSI BARCODE KAMERA (2-STEP: LOKASI DULU -> ID CARD) -->
           <!-- ========================================================= -->
           <div id="view-attendance" class="view-panel space-y-6">
             <div class="flex items-center justify-between">
@@ -460,7 +458,7 @@
                   <i data-lucide="qr-code" class="w-6 h-6 text-teal-600"></i>
                   Absensi Barcode Kamera (<span id="att-wh-label">Gudang MBI</span>)
                 </h2>
-                <p class="text-xs text-slate-500">Scan Barcode Kotak / QR Code ID Card karyawan melalui kamera HP atau Laptop</p>
+                <p class="text-xs text-slate-500">Sistem 2-Step: Scan Barcode Lokasi Gudang terlebih dahulu, kemudian scan ID Card Karyawan</p>
               </div>
               <div class="px-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-teal-700" id="live-clock">00:00:00 WIB</div>
             </div>
@@ -469,7 +467,7 @@
             <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Controls -->
+              <!-- Controls & 2-Step Indicator -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-5">
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
@@ -483,44 +481,81 @@
                   </div>
                 </div>
 
+                <!-- 2-Step Scan Status Tracker -->
+                <div class="space-y-2.5">
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Tahapan Verifikasi Barcode:</label>
+                  
+                  <!-- Step 1: Lokasi -->
+                  <div id="step-1-card" class="p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                      <div id="step-1-icon" class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">1</div>
+                      <div>
+                        <h4 class="font-bold text-xs text-slate-900">Scan Barcode Lokasi Gudang</h4>
+                        <p id="step-1-status" class="text-[11px] text-amber-800 font-semibold">Menunggu scan QR lokasi di pintu masuk...</p>
+                      </div>
+                    </div>
+                    <span id="step-1-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900">WAJIB</span>
+                  </div>
+
+                  <!-- Step 2: ID Card Karyawan -->
+                  <div id="step-2-card" class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between opacity-60 transition">
+                    <div class="flex items-center gap-3">
+                      <div id="step-2-icon" class="w-8 h-8 rounded-xl bg-slate-300 text-slate-700 flex items-center justify-center font-black text-xs">2</div>
+                      <div>
+                        <h4 class="font-bold text-xs text-slate-800">Scan Barcode ID Card Karyawan</h4>
+                        <p id="step-2-status" class="text-[11px] text-slate-500">Terkunci (Scan lokasi terlebih dahulu)</p>
+                      </div>
+                    </div>
+                    <span id="step-2-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600">TERKUNCI</span>
+                  </div>
+                </div>
+
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Tambahan:</label>
                   <input type="text" id="att-notes" placeholder="Catatan opsional" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
                 </div>
 
-                <div class="p-4 bg-teal-50/80 rounded-2xl border border-teal-200 text-xs space-y-2">
-                  <p class="font-bold text-teal-900 flex items-center gap-1.5">
-                    <i data-lucide="info" class="w-4 h-4 text-teal-600"></i> Petunjuk Presensi:
-                  </p>
-                  <p class="text-teal-800 text-[11px]">
-                    Nyalakan kamera di sebelah kanan dan arahkan <strong>Barcode Kotak (QR Code)</strong> ID Card Anda ke dalam kotak target kamera.
-                  </p>
-                </div>
-
-                <button onclick="processAttendanceManual()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-sm">
-                  Konfirmasi Absen Saya Sendiri
+                <!-- Reset Scan Button -->
+                <button type="button" onclick="resetVerificationState()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition border border-slate-300 flex items-center justify-center gap-1.5">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Reset Tahapan Scan
                 </button>
               </div>
 
               <!-- Scanner Box Kotak -->
               <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center">
-                <div class="relative w-full max-w-sm aspect-square bg-black rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-800">
+                <!-- Status Scan Banner -->
+                <div id="scanner-instruction" class="w-full mb-3 p-3 rounded-2xl bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold text-center flex items-center justify-center gap-2">
+                  <i data-lucide="map-pin" class="w-4 h-4 text-amber-700"></i>
+                  <span>Langkah 1: Arahkan kamera ke Barcode QR Lokasi Gudang</span>
+                </div>
+
+                <!-- Video / Scanner Container -->
+                <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-800">
                   <div id="qr-reader" class="w-full h-full"></div>
+                  <video id="native-video-feed" class="hidden w-full h-full object-cover"></video>
+                  
+                  <!-- Kotak Target Overlay -->
                   <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div class="w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
-                      <span class="text-[10px] text-teal-300 bg-slate-900/80 px-2 py-0.5 rounded font-mono">ARAHKAN KOTAK QR</span>
+                    <div id="scanner-box-border" class="w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
+                      <span id="scanner-box-tag" class="text-[10px] text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN QR LOKASI</span>
                     </div>
                   </div>
                 </div>
 
-                <div class="mt-4 flex items-center gap-2">
+                <!-- Camera Controls -->
+                <div class="mt-4 flex items-center gap-2 flex-wrap justify-center">
                   <button onclick="startScanner()" class="px-5 py-2.5 bg-teal-600 text-white text-xs font-bold rounded-xl hover:bg-teal-700 transition flex items-center gap-1.5 shadow-md">
                     <i data-lucide="camera" class="w-4 h-4"></i> Nyalakan Kamera
                   </button>
                   <button onclick="stopScanner()" class="px-4 py-2.5 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300 transition">
                     Matikan
                   </button>
+                  <button onclick="simulateScanLocation()" class="px-3.5 py-2.5 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition flex items-center gap-1" title="Untuk Pengujian Tanpa Kamera Fisik">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Tes Validasi Lokasi
+                  </button>
                 </div>
+                
+                <p id="cam-status-msg" class="text-[11px] text-slate-400 mt-2 text-center">Klik 'Nyalakan Kamera' & beri izin akses webcam / kamera HP Anda</p>
               </div>
             </div>
           </div>
@@ -540,7 +575,7 @@
             <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Form Pengajuan Bersih Tanpa Teks Keterangan Kurung -->
+              <!-- Form Pengajuan Bersih -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
                 <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                   <i data-lucide="plus-circle" class="w-4 h-4 text-rose-600"></i> Buat Pengajuan Baru
@@ -785,50 +820,103 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 7: KARTU ID BARCODE KOTAK (PRINT READY) -->
+          <!-- VIEW 7: KARTU ID BARCODE & CETAK QR LOKASI GUDANG -->
           <!-- ========================================================= -->
           <div id="view-idcard" class="view-panel hidden space-y-6">
-            <div class="flex items-center justify-between no-print">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 no-print">
               <div>
                 <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
                   <i data-lucide="contact" class="w-6 h-6 text-sky-600"></i>
-                  Kartu Identitas Karyawan & Barcode Kotak
+                  Kartu Identitas Karyawan & Barcode Lokasi Gudang
                 </h2>
-                <p class="text-xs text-slate-500">ID Card digital dengan QR Code Kotak presisi untuk scan cepat</p>
+                <p class="text-xs text-slate-500">Pilih karyawan untuk melihat/mencetak ID Card atau cetak QR Lokasi Resmi</p>
               </div>
-              <button onclick="window.print()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-2">
-                <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card
-              </button>
-            </div>
-
-            <div class="flex justify-center p-8 bg-slate-200/60 rounded-3xl">
-              <div id="printable-id-card" class="w-[340px] bg-white rounded-2xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-800 select-none">
-                <div id="idcard-header" class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900">
-                  <div>
-                    <span class="text-[9px] uppercase font-bold tracking-widest text-sky-200 block">WORKFORCE MANAGEMENT</span>
-                    <h3 class="font-black text-sm">MEDIKA GROUP</h3>
-                  </div>
-                  <span id="idcard-wh-badge" class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white">MBI</span>
-                </div>
-
-                <div class="p-5 flex flex-col items-center text-center">
-                  <div class="w-16 h-16 rounded-full bg-slate-100 border-4 border-white shadow-md flex items-center justify-center -mt-9 overflow-hidden mb-2 text-slate-400">
-                    <i data-lucide="user" class="w-8 h-8"></i>
-                  </div>
-                  <h4 id="idcard-name" class="font-extrabold text-base text-slate-900">Nama Karyawan</h4>
-                  <p id="idcard-dept" class="text-xs text-slate-500 font-semibold uppercase">Departemen</p>
-                  <span id="idcard-nik" class="mt-1 text-xs font-mono font-bold bg-slate-100 px-3 py-0.5 rounded-md border text-slate-800">MBI-1001</span>
-
-                  <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
-
-                  <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
-                    <canvas id="canvas-qrcode" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs"></canvas>
-                    <span class="text-[10px] font-mono font-bold text-slate-500 mt-1.5">SCAN KOTAK QR PRESENSI</span>
-                  </div>
-                  <p id="idcard-footer-text" class="text-[9px] text-slate-400 mt-2">Medika Bina Investama &bull; Official ID Card</p>
-                </div>
+              
+              <div class="flex items-center gap-2 flex-wrap">
+                <!-- Selector Karyawan -->
+                <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-sm">
+                  <!-- Rendered by JS -->
+                </select>
+                <button onclick="printCard('idcard')" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="printer" class="w-4 h-4"></i> Cetak ID Card
+                </button>
+                <button onclick="printCard('location')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="map-pin" class="w-4 h-4"></i> Cetak QR Lokasi
+                </button>
               </div>
             </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <!-- 1. KARTU IDENTITAS KARYAWAN -->
+              <div class="flex flex-col items-center p-6 bg-slate-200/60 rounded-3xl border border-slate-200">
+                <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan</span>
+                
+                <div id="printable-id-card" class="w-[330px] bg-white rounded-3xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-800 select-none">
+                  <div id="idcard-header" class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900">
+                    <div>
+                      <span class="text-[9px] uppercase font-bold tracking-widest text-sky-200 block">WORKFORCE MANAGEMENT</span>
+                      <h3 class="font-black text-sm">MEDIKA GROUP</h3>
+                    </div>
+                    <span id="idcard-wh-badge" class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white">MBI</span>
+                  </div>
+
+                  <div class="p-5 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 rounded-full bg-slate-100 border-4 border-white shadow-md flex items-center justify-center -mt-9 overflow-hidden mb-2 text-slate-400">
+                      <i data-lucide="user" class="w-8 h-8"></i>
+                    </div>
+                    <h4 id="idcard-name" class="font-extrabold text-base text-slate-900">Nama Karyawan</h4>
+                    <p id="idcard-dept" class="text-xs text-slate-500 font-semibold uppercase">Departemen</p>
+                    <span id="idcard-nik" class="mt-1 text-xs font-mono font-bold bg-slate-100 px-3 py-0.5 rounded-md border text-slate-800">MBI-1001</span>
+
+                    <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
+
+                    <!-- QR Code Karyawan Image / Canvas Fallback -->
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
+                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
+                      <span class="text-[10px] font-mono font-bold text-slate-500 mt-1.5">BARCODE ID PRESENSI</span>
+                    </div>
+                    <p id="idcard-footer-text" class="text-[9px] text-slate-400 mt-2">Medika Bina Investama &bull; Official ID Card</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. QR CODE LOKASI RESMI GUDANG (UNTUK DITEMPEL DI PINTU GUDANG) -->
+              <div class="flex flex-col items-center p-6 bg-amber-50/80 rounded-3xl border border-amber-200">
+                <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-3">Barcode QR Lokasi Resmi (Pintu Gudang)</span>
+
+                <div id="printable-location-card" class="w-[330px] bg-white rounded-3xl border-2 border-amber-600 shadow-2xl overflow-hidden text-slate-800 select-none">
+                  <div class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-amber-600 to-amber-800">
+                    <div>
+                      <span class="text-[9px] uppercase font-bold tracking-widest text-amber-200 block">TITIK LOKASI PRESENSI</span>
+                      <h3 class="font-black text-sm">GUDANG MEDIKA</h3>
+                    </div>
+                    <span class="text-[10px] font-extrabold bg-white/20 px-2 py-0.5 rounded text-white">RESMI</span>
+                  </div>
+
+                  <div class="p-5 flex flex-col items-center text-center">
+                    <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center -mt-9 shadow-md border-2 border-white mb-2">
+                      <i data-lucide="map-pin" class="w-7 h-7"></i>
+                    </div>
+                    <h4 class="font-extrabold text-base text-slate-900">QR CODE LOKASI</h4>
+                    <p class="text-xs text-slate-500 font-medium">Scan QR ini sebelum scan ID Card</p>
+                    
+                    <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
+
+                    <!-- QR Code Lokasi Gudang -->
+                    <div class="bg-amber-50 p-3 rounded-2xl border border-amber-200 flex flex-col items-center">
+                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs object-contain">
+                      <span class="text-[9px] font-mono font-bold text-amber-800 mt-1.5">MAPS LOKASI TERVERIFIKASI</span>
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-2">Tempel barcode ini di area pintu masuk gudang</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Hidden container for printing -->
+            <div id="printable-area" class="hidden"></div>
           </div>
 
           <!-- ========================================================= -->
@@ -951,9 +1039,11 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (DUAL DATABASE + EXCEL + MATRIX + LEAVE) -->
+  <!-- JAVASCRIPT ENGINE (2-STEP QR LOKASI & ID CARD + CAMERA) -->
   <!-- ========================================================= -->
   <script>
+    const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
+
     const SEED_MBI_USERS = [
       { id: 'mbi-1', name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
       { id: 'mbi-2', name: 'Agus Setiawan', dept: 'coordinator', outsource: 'PT Medika Daya', phone: '081298765432', joinDate: '2023-02-15', nik: 'MBI-COR-01', role: 'coordinator', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
@@ -983,7 +1073,11 @@
     let selectedAttendanceType = 'check_in';
     let activeReportTab = 'records';
     let html5QrScanner = null;
+    let mediaStream = null;
     let pendingUserForPasswordChange = null;
+
+    // 2-Step Verification State
+    let isLocationVerified = false;
 
     function getWhDB(warehouse, key, defaultVal) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
@@ -1069,6 +1163,9 @@
         const el = document.getElementById('live-clock');
         if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
       }, 1000);
+
+      // Pre-render Location QR Code
+      renderLocationQRCode();
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
@@ -1228,7 +1325,9 @@
         switchView('dashboard');
       }
 
+      resetVerificationState();
       refreshAllDashboardData();
+      populateIDCardEmployeeSelect();
       lucide.createIcons();
     }
 
@@ -1252,6 +1351,8 @@
       renderRecordsTable();
       renderMatrixTable();
       renderLeavesTable();
+      populateIDCardEmployeeSelect();
+      resetVerificationState();
       lucide.createIcons();
     }
 
@@ -1287,9 +1388,17 @@
         renderMatrixTable();
       }
       if (viewName === 'leaves') renderLeavesTable();
-      if (viewName === 'idcard') renderIDCard(currentUser);
+      if (viewName === 'idcard') {
+        populateIDCardEmployeeSelect();
+        renderSelectedIDCard();
+        renderLocationQRCode();
+      }
       if (viewName === 'overtime') renderOvertimeTable();
       if (viewName === 'github') renderGitHubConfig();
+
+      if (viewName !== 'attendance') {
+        stopScanner();
+      }
 
       refreshAllDashboardData();
       lucide.createIcons();
@@ -1317,6 +1426,380 @@
       } else {
         statusEl.innerText = 'Belum Absen Masuk';
       }
+    }
+
+    // =========================================================
+    // 2-STEP VERIFICATION STATE (LOKASI DULU -> ID CARD)
+    // =========================================================
+    function resetVerificationState() {
+      isLocationVerified = false;
+      
+      const s1Card = document.getElementById('step-1-card');
+      const s1Icon = document.getElementById('step-1-icon');
+      const s1Status = document.getElementById('step-1-status');
+      const s1Badge = document.getElementById('step-1-badge');
+
+      const s2Card = document.getElementById('step-2-card');
+      const s2Icon = document.getElementById('step-2-icon');
+      const s2Status = document.getElementById('step-2-status');
+      const s2Badge = document.getElementById('step-2-badge');
+
+      const instr = document.getElementById('scanner-instruction');
+      const boxBorder = document.getElementById('scanner-box-border');
+      const boxTag = document.getElementById('scanner-box-tag');
+
+      if (s1Card) {
+        s1Card.className = 'p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition';
+        s1Icon.className = 'w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm';
+        s1Icon.innerText = '1';
+        s1Status.innerText = 'Menunggu scan QR lokasi di pintu masuk...';
+        s1Status.className = 'text-[11px] text-amber-800 font-semibold';
+        s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900';
+        s1Badge.innerText = 'WAJIB';
+      }
+
+      if (s2Card) {
+        s2Card.className = 'p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between opacity-60 transition';
+        s2Icon.className = 'w-8 h-8 rounded-xl bg-slate-300 text-slate-700 flex items-center justify-center font-black text-xs';
+        s2Icon.innerText = '2';
+        s2Status.innerText = 'Terkunci (Scan lokasi terlebih dahulu)';
+        s2Status.className = 'text-[11px] text-slate-500';
+        s2Badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600';
+        s2Badge.innerText = 'TERKUNCI';
+      }
+
+      if (instr) {
+        instr.className = 'w-full mb-3 p-3 rounded-2xl bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold text-center flex items-center justify-center gap-2';
+        instr.innerHTML = '<i data-lucide="map-pin" class="w-4 h-4 text-amber-700"></i> <span>Langkah 1: Arahkan kamera ke Barcode QR Lokasi Gudang</span>';
+      }
+
+      if (boxBorder) {
+        boxBorder.className = 'w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
+      }
+      if (boxTag) {
+        boxTag.className = 'text-[10px] text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
+        boxTag.innerText = 'SCAN QR LOKASI';
+      }
+
+      lucide.createIcons();
+    }
+
+    function setLocationVerifiedSuccess() {
+      isLocationVerified = true;
+
+      const s1Card = document.getElementById('step-1-card');
+      const s1Icon = document.getElementById('step-1-icon');
+      const s1Status = document.getElementById('step-1-status');
+      const s1Badge = document.getElementById('step-1-badge');
+
+      const s2Card = document.getElementById('step-2-card');
+      const s2Icon = document.getElementById('step-2-icon');
+      const s2Status = document.getElementById('step-2-status');
+      const s2Badge = document.getElementById('step-2-badge');
+
+      const instr = document.getElementById('scanner-instruction');
+      const boxBorder = document.getElementById('scanner-box-border');
+      const boxTag = document.getElementById('scanner-box-tag');
+
+      if (s1Card) {
+        s1Card.className = 'p-3.5 rounded-2xl border border-emerald-300 bg-emerald-50 flex items-center justify-between transition';
+        s1Icon.className = 'w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm';
+        s1Icon.innerHTML = '✓';
+        s1Status.innerText = 'Lokasi Fisik Terverifikasi!';
+        s1Status.className = 'text-[11px] text-emerald-800 font-bold';
+        s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-200 text-emerald-900';
+        s1Badge.innerText = 'SELESAI';
+      }
+
+      if (s2Card) {
+        s2Card.className = 'p-3.5 rounded-2xl border-2 border-teal-500 bg-teal-50 flex items-center justify-between opacity-100 transition shadow-sm';
+        s2Icon.className = 'w-8 h-8 rounded-xl bg-teal-600 text-white flex items-center justify-center font-black text-xs shadow-sm';
+        s2Icon.innerText = '2';
+        s2Status.innerText = 'SIAP! Arahkan Barcode ID Card Karyawan ke kamera';
+        s2Status.className = 'text-[11px] text-teal-800 font-bold animate-pulse';
+        s2Badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-teal-200 text-teal-900';
+        s2Badge.innerText = 'AKTIF';
+      }
+
+      if (instr) {
+        instr.className = 'w-full mb-3 p-3 rounded-2xl bg-teal-100 border border-teal-300 text-teal-950 text-xs font-bold text-center flex items-center justify-center gap-2 animate-bounce';
+        instr.innerHTML = '<i data-lucide="qr-code" class="w-4 h-4 text-teal-700"></i> <span>Langkah 2: Lokasi Valid! Silakan scan Barcode ID Card Karyawan</span>';
+      }
+
+      if (boxBorder) {
+        boxBorder.className = 'w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
+      }
+      if (boxTag) {
+        boxTag.className = 'text-[10px] text-teal-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
+        boxTag.innerText = 'SCAN ID CARD';
+      }
+
+      const alertEl = document.getElementById('att-alert');
+      alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+      alertEl.innerText = '✅ Barcode Lokasi Gudang Valid! Silakan scan ID Card Karyawan.';
+      alertEl.classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+
+    function simulateScanLocation() {
+      processScannedText(OFFICIAL_WAREHOUSE_MAPS_URL);
+    }
+
+    // =========================================================
+    // PARSING & LOGIKA SCAN REALTIME
+    // =========================================================
+    function processScannedText(decodedText) {
+      const trimmed = decodedText.trim();
+      const alertEl = document.getElementById('att-alert');
+      alertEl.classList.remove('hidden');
+
+      // Cek apakah barcode yang discan adalah Barcode Lokasi Gudang
+      const isLocationBarcode = trimmed.includes("maps.app.goo.gl") || 
+                                 trimmed.includes("maps.google.com") || 
+                                 trimmed.includes("rDZysrj5TJ1NmdGD7") || 
+                                 trimmed.toUpperCase().includes("LOKASI-GUDANG");
+
+      if (isLocationBarcode) {
+        setLocationVerifiedSuccess();
+        return;
+      }
+
+      // Jika bukan barcode lokasi, periksa apakah lokasi sudah diverifikasi
+      if (!isLocationVerified) {
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+        alertEl.innerText = '❌ Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
+        return;
+      }
+
+      // Jika lokasi sudah diverifikasi -> Proses Absensi ID Card Karyawan
+      processAttendanceScan(trimmed);
+    }
+
+    function processAttendanceScan(nikCode) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const matchedUser = users.find(u => u.nik.toUpperCase() === nikCode.trim().toUpperCase());
+
+      const alertEl = document.getElementById('att-alert');
+      alertEl.classList.remove('hidden');
+
+      if (!matchedUser) {
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+        alertEl.innerText = `Kode Barcode "${nikCode}" tidak terdaftar di Gudang ${activeWarehouse}!`;
+        return;
+      }
+
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const existing = attendances.find(a => a.userNik === matchedUser.nik && a.date === todayStr);
+
+      if (selectedAttendanceType === 'check_in') {
+        if (existing) {
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
+          alertEl.innerText = `${matchedUser.name} sudah melakukan Absen Masuk untuk hari ini!`;
+          return;
+        }
+
+        const now = new Date();
+        const isLate = now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 15);
+
+        attendances.unshift({
+          id: `att-${activeWarehouse.toLowerCase()}-${Date.now()}`,
+          userId: matchedUser.id,
+          userNik: matchedUser.nik,
+          userName: matchedUser.name,
+          warehouse: activeWarehouse,
+          date: todayStr,
+          checkInTime: now.toISOString(),
+          checkOutTime: null,
+          checkInStatus: isLate ? 'late' : 'on_time',
+          notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
+        });
+
+        setWhDB(activeWarehouse, 'attendance', attendances);
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+        alertEl.innerText = `✅ Absen MASUK Berhasil: ${matchedUser.name} (Lokasi Terverifikasi)!`;
+      } else {
+        if (!existing) {
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+          alertEl.innerText = `${matchedUser.name} belum Absen Masuk hari ini!`;
+          return;
+        }
+        if (existing.checkOutTime) {
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
+          alertEl.innerText = `${matchedUser.name} sudah Absen Keluar sebelumnya.`;
+          return;
+        }
+
+        existing.checkOutTime = new Date().toISOString();
+        setWhDB(activeWarehouse, 'attendance', attendances);
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
+        alertEl.innerText = `👋 Absen KELUAR Berhasil: ${matchedUser.name}! (Lokasi Terverifikasi)`;
+      }
+
+      refreshAllDashboardData();
+
+      // Reset verification state setelah 5 detik untuk karyawan berikutnya
+      setTimeout(() => {
+        resetVerificationState();
+      }, 4000);
+    }
+
+    // =========================================================
+    // KAMERA ENGINE (DUAL BACKEND: HTML5-QRCODE + GETUSERMEDIA)
+    // =========================================================
+    async function startScanner() {
+      stopScanner();
+      const statusMsg = document.getElementById('cam-status-msg');
+      if (statusMsg) statusMsg.innerText = 'Mengaktifkan kamera...';
+
+      try {
+        if (typeof Html5Qrcode !== 'undefined') {
+          html5QrScanner = new Html5Qrcode("qr-reader");
+          const config = { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 };
+          
+          await html5QrScanner.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+              processScannedText(decodedText);
+            },
+            () => {}
+          );
+          if (statusMsg) statusMsg.innerText = 'Kamera Aktif. Silakan scan Barcode QR.';
+          return;
+        }
+      } catch (err) {
+        console.warn('Html5Qrcode direct start error, trying fallback:', err);
+      }
+
+      // Fallback: Direct Video Stream (MediaDevices)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 640 } }
+        });
+        mediaStream = stream;
+        const videoEl = document.getElementById('native-video-feed');
+        const qrDiv = document.getElementById('qr-reader');
+        if (videoEl) {
+          videoEl.srcObject = stream;
+          videoEl.setAttribute('playsinline', 'true');
+          videoEl.classList.remove('hidden');
+          videoEl.play();
+          if (qrDiv) qrDiv.classList.add('hidden');
+          if (statusMsg) statusMsg.innerText = 'Kamera Aktif (Native Mode).';
+        }
+      } catch (err2) {
+        if (statusMsg) statusMsg.innerText = 'Gagal mengakses kamera. Pastikan izin kamera telah diaktifkan di browser: ' + err2.message;
+        alert('Izin kamera ditolak atau perangkat kamera tidak ditemukan.\n\nTips: Klik ikon gembok di sebelah URL browser dan pilih "Allow Camera".');
+      }
+    }
+
+    function stopScanner() {
+      if (html5QrScanner) {
+        html5QrScanner.stop().catch(() => {}).then(() => {
+          html5QrScanner.clear();
+          html5QrScanner = null;
+        });
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      const videoEl = document.getElementById('native-video-feed');
+      const qrDiv = document.getElementById('qr-reader');
+      if (videoEl) {
+        videoEl.pause();
+        videoEl.srcObject = null;
+        videoEl.classList.add('hidden');
+      }
+      if (qrDiv) qrDiv.classList.remove('hidden');
+
+      const statusMsg = document.getElementById('cam-status-msg');
+      if (statusMsg) statusMsg.innerText = 'Kamera dimatikan.';
+    }
+
+    function setAttendanceType(type) {
+      selectedAttendanceType = type;
+      const isIn = type === 'check_in';
+      document.getElementById('btn-type-in').className = isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
+      document.getElementById('btn-type-out').className = !isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
+    }
+
+    // =========================================================
+    // FITUR KARTU ID DIGITAL & QR CODE GENERATOR MANDIRI
+    // =========================================================
+    function getQrCodeUrl(text) {
+      return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(text)}&margin=1`;
+    }
+
+    function renderLocationQRCode() {
+      const img = document.getElementById('img-qrcode-location');
+      if (img) {
+        img.src = getQrCodeUrl(OFFICIAL_WAREHOUSE_MAPS_URL);
+      }
+    }
+
+    function populateIDCardEmployeeSelect() {
+      const select = document.getElementById('idcard-select-emp');
+      if (!select) return;
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      select.innerHTML = '';
+      users.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.nik;
+        opt.innerText = `${u.name} (${u.nik})`;
+        if (currentUser && u.nik === currentUser.nik) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderSelectedIDCard() {
+      const select = document.getElementById('idcard-select-emp');
+      const nik = select ? select.value : (currentUser ? currentUser.nik : '');
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const user = users.find(u => u.nik === nik) || currentUser;
+      if (user) renderIDCard(user);
+    }
+
+    function renderIDCard(user) {
+      if (!user) return;
+      document.getElementById('idcard-name').innerText = user.name;
+      document.getElementById('idcard-dept').innerText = `${user.dept.toUpperCase()} • ${user.outsource || 'Medika'}`;
+      document.getElementById('idcard-nik').innerText = user.nik;
+      document.getElementById('idcard-wh-badge').innerText = user.warehouse;
+
+      const isMBI = user.warehouse === 'MBI';
+      document.getElementById('idcard-header').className = isMBI ? 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900' : 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-purple-700 to-purple-900';
+      document.getElementById('idcard-footer-text').innerText = isMBI ? 'Medika Bina Investama • Official ID Card' : 'Medika Akses Investama • Official ID Card';
+
+      const img = document.getElementById('img-qrcode-emp');
+      if (img) {
+        img.src = getQrCodeUrl(user.nik);
+      }
+    }
+
+    function renderIDCardAndShow(nik) {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const targetUser = users.find(u => u.nik === nik);
+      if (targetUser) {
+        switchView('idcard');
+        const select = document.getElementById('idcard-select-emp');
+        if (select) select.value = nik;
+        renderIDCard(targetUser);
+      }
+    }
+
+    function printCard(type) {
+      const printArea = document.getElementById('printable-area');
+      if (type === 'idcard') {
+        const idCardHtml = document.getElementById('printable-id-card').outerHTML;
+        printArea.innerHTML = idCardHtml;
+      } else {
+        const locCardHtml = document.getElementById('printable-location-card').outerHTML;
+        printArea.innerHTML = locCardHtml;
+      }
+      window.print();
     }
 
     // =========================================================
@@ -1388,6 +1871,7 @@
 
       closeAddEmployeeModal();
       renderEmployeeTable();
+      populateIDCardEmployeeSelect();
       refreshAllDashboardData();
       alert(`Karyawan ${name} berhasil ditambahkan!\nNIK: ${autoNik}\nPassword Default: ${defaultPass}`);
     }
@@ -1482,6 +1966,7 @@
 
           setWhDB(activeWarehouse, 'users', users);
           renderEmployeeTable();
+          populateIDCardEmployeeSelect();
           refreshAllDashboardData();
           alert(`Berhasil mengimpor ${countAdded} data karyawan ke Gudang ${activeWarehouse}!`);
         } catch (err) {
@@ -1509,7 +1994,6 @@
       else renderMatrixTable();
     }
 
-    // TAB 1: RECORD ABSEN HARIAN
     function renderRecordsTable() {
       const startStr = document.getElementById('record-start-date').value;
       const endStr = document.getElementById('record-end-date').value;
@@ -1572,7 +2056,6 @@
       XLSX.writeFile(wb, `Record_Absen_Harian_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
     }
 
-    // TAB 2: REKAP ABSEN MATRIKS (Format 1, S, I, AL, -)
     function getDatesInRange(startDateStr, endDateStr) {
       const dates = [];
       let cur = new Date(startDateStr);
@@ -1781,109 +2264,6 @@
     }
 
     // =========================================================
-    // FITUR ABSENSI BARCODE KAMERA
-    // =========================================================
-    function setAttendanceType(type) {
-      selectedAttendanceType = type;
-      const isIn = type === 'check_in';
-      document.getElementById('btn-type-in').className = isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
-      document.getElementById('btn-type-out').className = !isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
-    }
-
-    function processAttendanceManual() {
-      processAttendanceScan(currentUser.nik);
-    }
-
-    function processAttendanceScan(scannedCode) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const matchedUser = users.find(u => u.nik.toUpperCase() === scannedCode.trim().toUpperCase());
-
-      const alertEl = document.getElementById('att-alert');
-      alertEl.classList.remove('hidden');
-
-      if (!matchedUser) {
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-        alertEl.innerText = `Kode Barcode "${scannedCode}" tidak terdaftar di Gudang ${activeWarehouse}!`;
-        return;
-      }
-
-      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-      const existing = attendances.find(a => a.userNik === matchedUser.nik && a.date === todayStr);
-
-      if (selectedAttendanceType === 'check_in') {
-        if (existing) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-          alertEl.innerText = `${matchedUser.name} sudah melakukan Absen Masuk untuk hari ini!`;
-          return;
-        }
-
-        const now = new Date();
-        const isLate = now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 15);
-
-        attendances.unshift({
-          id: `att-${activeWarehouse.toLowerCase()}-${Date.now()}`,
-          userId: matchedUser.id,
-          userNik: matchedUser.nik,
-          userName: matchedUser.name,
-          warehouse: activeWarehouse,
-          date: todayStr,
-          checkInTime: now.toISOString(),
-          checkOutTime: null,
-          checkInStatus: isLate ? 'late' : 'on_time',
-          notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
-        });
-
-        setWhDB(activeWarehouse, 'attendance', attendances);
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-        alertEl.innerText = `✅ Absen MASUK Berhasil: ${matchedUser.name}!`;
-      } else {
-        if (!existing) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-          alertEl.innerText = `${matchedUser.name} belum Absen Masuk hari ini!`;
-          return;
-        }
-        if (existing.checkOutTime) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-          alertEl.innerText = `${matchedUser.name} sudah Absen Keluar sebelumnya.`;
-          return;
-        }
-
-        existing.checkOutTime = new Date().toISOString();
-        setWhDB(activeWarehouse, 'attendance', attendances);
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
-        alertEl.innerText = `👋 Absen KELUAR Berhasil: ${matchedUser.name}!`;
-      }
-
-      refreshAllDashboardData();
-    }
-
-    function startScanner() {
-      if (html5QrScanner) stopScanner();
-      html5QrScanner = new Html5Qrcode("qr-reader");
-      html5QrScanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
-        (decodedText) => {
-          processAttendanceScan(decodedText);
-          stopScanner();
-        },
-        (error) => {}
-      ).catch(err => {
-        alert('Kamera tidak dapat diakses: ' + err);
-      });
-    }
-
-    function stopScanner() {
-      if (html5QrScanner) {
-        html5QrScanner.stop().catch(() => {}).then(() => {
-          html5QrScanner.clear();
-          html5QrScanner = null;
-        });
-      }
-    }
-
-    // =========================================================
     // FITUR LEMBUR (OVERTIME)
     // =========================================================
     function handleOvertimeSubmit(e) {
@@ -1958,32 +2338,6 @@
         setWhDB(activeWarehouse, 'overtime', overtimes);
         renderOvertimeTable();
         refreshAllDashboardData();
-      }
-    }
-
-    // =========================================================
-    // FITUR KARTU ID DIGITAL (QR CODE KOTAK)
-    // =========================================================
-    function renderIDCard(user) {
-      if (!user) return;
-      document.getElementById('idcard-name').innerText = user.name;
-      document.getElementById('idcard-dept').innerText = `${user.dept.toUpperCase()} &bull; ${user.outsource || 'Medika'}`;
-      document.getElementById('idcard-nik').innerText = user.nik;
-      document.getElementById('idcard-wh-badge').innerText = user.warehouse;
-
-      const isMBI = user.warehouse === 'MBI';
-      document.getElementById('idcard-header').className = isMBI ? 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900' : 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-purple-700 to-purple-900';
-      document.getElementById('idcard-footer-text').innerText = isMBI ? 'Medika Bina Investama • Official ID Card' : 'Medika Akses Investama • Official ID Card';
-
-      QRCode.toCanvas(document.getElementById('canvas-qrcode'), user.nik, { width: 140, margin: 1 });
-    }
-
-    function renderIDCardAndShow(nik) {
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const targetUser = users.find(u => u.nik === nik);
-      if (targetUser) {
-        switchView('idcard');
-        renderIDCard(targetUser);
       }
     }
 
