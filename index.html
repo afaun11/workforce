@@ -51,7 +51,7 @@
   <div id="auth-container" class="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4">
     <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden relative z-10">
       
-      <!-- Top Banner Header (Tanpa tulisan Database Terpisah) -->
+      <!-- Top Banner Header -->
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
         <div class="w-12 h-12 rounded-2xl bg-teal-500 text-slate-950 font-black text-2xl flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-2">
           M
@@ -105,7 +105,6 @@
       <!-- FORM REGISTER -->
       <div id="form-register-box" class="hidden p-6 max-h-[75vh] overflow-y-auto">
         <form onsubmit="handleRegister(event)" class="space-y-3">
-          <!-- Pilihan Gudang -->
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Gudang Tempat Bekerja *</label>
             <div class="grid grid-cols-2 gap-2">
@@ -120,11 +119,10 @@
             </div>
           </div>
 
-          <!-- Pilihan Posisi: staff, coordinator, supervisor -->
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
             <select id="reg-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
-              <option value="staff">Staff (Hanya Akses Absensi)</option>
+              <option value="staff">Staff (Akses Absensi & Pengajuan Izin)</option>
               <option value="coordinator">Coordinator (Akses Penuh Semua Menu)</option>
               <option value="supervisor">Supervisor (Akses Penuh Semua Menu + Approval)</option>
             </select>
@@ -135,7 +133,7 @@
             <input type="text" id="reg-name" required placeholder="Contoh: Hendra Gunawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
-          <!-- Departemen Dropdown List -->
+          <!-- Departemen Dropdown List 10 Opsi -->
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
             <select id="reg-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
@@ -168,7 +166,6 @@
             </div>
           </div>
 
-          <!-- NIK Otomatis & Password Default Info -->
           <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
             <p class="text-[11px] text-slate-600">
               <span class="font-bold text-teal-700">&bull; NIK Karyawan:</span> Dibuat <strong>Otomatis</strong> oleh sistem.
@@ -261,42 +258,54 @@
     <!-- App Body: Sidebar + Main Content -->
     <div class="flex-1 flex overflow-hidden">
       
-      <!-- Sidebar (Hidden for Staff role) -->
-      <aside id="app-sidebar" class="w-60 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-1.5 border-r border-slate-800 no-print flex-shrink-0">
-        <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white">
-          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-          <span>Dashboard</span>
-        </button>
-
-        <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="users" class="w-4 h-4 text-sky-400"></i>
-          <span>Data Karyawan (Excel)</span>
-        </button>
-
-        <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+      <!-- Sidebar -->
+      <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-1.5 border-r border-slate-800 no-print flex-shrink-0">
+        <!-- Menu untuk Semua / Staff -->
+        <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white">
           <i data-lucide="qr-code" class="w-4 h-4 text-teal-400"></i>
           <span>Absensi Barcode Kamera</span>
         </button>
 
-        <button onclick="switchView('matrix')" id="nav-matrix" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="table-2" class="w-4 h-4 text-emerald-400"></i>
-          <span>Rekap Absen Matriks</span>
+        <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+          <i data-lucide="calendar-off" class="w-4 h-4 text-rose-400"></i>
+          <span>Form Izin / Sakit / Cuti</span>
         </button>
 
-        <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-          <span>Input & Approval Lembur</span>
-        </button>
+        <!-- Menu Manajemen (Khusus Coordinator, Supervisor, Admin) -->
+        <div id="admin-menu-section" class="space-y-1.5 pt-2 border-t border-slate-800">
+          <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Gudang</p>
+          
+          <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Dashboard</span>
+          </button>
 
-        <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="contact" class="w-4 h-4"></i>
-          <span>Kartu ID Barcode</span>
-        </button>
+          <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="users" class="w-4 h-4 text-sky-400"></i>
+            <span>Data Karyawan (Excel)</span>
+          </button>
 
-        <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="database" class="w-4 h-4 text-amber-500"></i>
-          <span>Database GitHub (MBI/MAI)</span>
-        </button>
+          <!-- Kelompok Menu Rekapitulasi Fleksibel (Record Harian + Matriks) -->
+          <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-400"></i>
+            <span>Laporan & Rekap Absensi</span>
+          </button>
+
+          <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+            <span>Input & Approval Lembur</span>
+          </button>
+
+          <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="contact" class="w-4 h-4"></i>
+            <span>Kartu ID Barcode</span>
+          </button>
+
+          <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="database" class="w-4 h-4 text-amber-500"></i>
+            <span>Database GitHub (MBI/MAI)</span>
+          </button>
+        </div>
       </aside>
 
       <!-- Main Content Area -->
@@ -306,12 +315,12 @@
           <!-- ========================================================= -->
           <!-- VIEW 1: DASHBOARD UTAMA -->
           <!-- ========================================================= -->
-          <div id="view-dashboard" class="view-panel space-y-6">
+          <div id="view-dashboard" class="view-panel hidden space-y-6">
             <div class="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div>
                 <span id="dash-date" class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-bold">Senin, 25 Agustus 2026</span>
                 <h2 class="text-2xl font-black mt-2">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
-                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode Kotak, dan Rekap Absen Matriks</p>
+                <p class="text-xs text-slate-300 mt-1">Data Karyawan, Presensi Barcode Kotak, Record Absen Harian & Rekap Matriks</p>
               </div>
               <div class="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center gap-3.5">
                 <div class="p-3 bg-teal-500/20 text-teal-300 rounded-xl"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
@@ -323,10 +332,10 @@
             </div>
 
             <!-- KPI Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
                 <div>
-                  <p class="text-[10px] font-bold uppercase text-slate-400">Total Karyawan Aktif</p>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Total Karyawan</p>
                   <h3 id="stat-total-emp" class="text-2xl font-black text-slate-800">0 Orang</h3>
                   <p id="stat-wh-note" class="text-[11px] text-slate-500 mt-0.5">Gudang MBI</p>
                 </div>
@@ -337,9 +346,18 @@
                 <div>
                   <p class="text-[10px] font-bold uppercase text-slate-400">Hadir Hari Ini</p>
                   <h3 id="stat-today-att" class="text-2xl font-black text-teal-700">0 Hadir</h3>
-                  <p class="text-[11px] text-teal-600 font-bold mt-0.5">Realtime Scan</p>
+                  <p class="text-[11px] text-teal-600 font-bold mt-0.5">Masuk Kerja (1)</p>
                 </div>
                 <div class="p-3 bg-teal-50 text-teal-600 rounded-xl"><i data-lucide="check-circle-2" class="w-6 h-6"></i></div>
+              </div>
+
+              <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Izin / Sakit / Cuti</p>
+                  <h3 id="stat-today-leave" class="text-2xl font-black text-rose-700">0 Orang</h3>
+                  <p class="text-[11px] text-rose-600 font-semibold mt-0.5">S / I / AL</p>
+                </div>
+                <div class="p-3 bg-rose-50 text-rose-600 rounded-xl"><i data-lucide="calendar-off" class="w-6 h-6"></i></div>
               </div>
 
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
@@ -360,16 +378,16 @@
                 <p class="text-xs text-slate-500 mt-1">Tambah manual, download akun & password, dan upload Excel.</p>
               </button>
 
-              <button onclick="switchView('matrix')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-emerald-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><i data-lucide="table-2" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Rekap Absen Matriks</h4>
-                <p class="text-xs text-slate-500 mt-1">Tarik data rentang tanggal & download laporan format matriks Excel.</p>
+              <button onclick="switchView('reports-group')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-emerald-500 hover:shadow-md transition">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>
+                <h4 class="font-extrabold text-sm text-slate-900">Laporan & Rekap Absensi</h4>
+                <p class="text-xs text-slate-500 mt-1">Lihat Record Absen Harian dan Rekap Matriks Hari Kerja (Angka 1, S, I, AL).</p>
               </button>
 
-              <button onclick="switchView('attendance')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-teal-500 hover:shadow-md transition">
-                <div class="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3"><i data-lucide="qr-code" class="w-5 h-5"></i></div>
-                <h4 class="font-extrabold text-sm text-slate-900">Absensi Barcode Kamera</h4>
-                <p class="text-xs text-slate-500 mt-1">Kamera scanner responsif dengan barcode kotak cepat deteksi.</p>
+              <button onclick="switchView('leaves')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-rose-500 hover:shadow-md transition">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3"><i data-lucide="calendar-off" class="w-5 h-5"></i></div>
+                <h4 class="font-extrabold text-sm text-slate-900">Form Izin / Sakit / Cuti</h4>
+                <p class="text-xs text-slate-500 mt-1">Kelola & persetujuan izin karyawan yang otomatis mengisi rekap matriks.</p>
               </button>
             </div>
           </div>
@@ -445,7 +463,7 @@
           <!-- ========================================================= -->
           <!-- VIEW 3: ABSENSI BARCODE KAMERA (KOTAK QR CODE) -->
           <!-- ========================================================= -->
-          <div id="view-attendance" class="view-panel hidden space-y-6">
+          <div id="view-attendance" class="view-panel space-y-6">
             <div class="flex items-center justify-between">
               <div>
                 <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
@@ -482,7 +500,7 @@
 
                 <div class="p-4 bg-teal-50/80 rounded-2xl border border-teal-200 text-xs space-y-2">
                   <p class="font-bold text-teal-900 flex items-center gap-1.5">
-                    <i data-lucide="info" class="w-4 h-4 text-teal-600"></i> Cara Absensi:
+                    <i data-lucide="info" class="w-4 h-4 text-teal-600"></i> Petunjuk Presensi:
                   </p>
                   <p class="text-teal-800 text-[11px]">
                     Nyalakan kamera di sebelah kanan dan arahkan <strong>Barcode Kotak (QR Code)</strong> ID Card Anda ke dalam kotak target kamera.
@@ -519,63 +537,200 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 4: REKAP ABSEN MATRIKS (SESUAI GAMBAR 2) -->
+          <!-- VIEW 4: FORM IZIN / SAKIT / CUTI (LEAVES) -->
           <!-- ========================================================= -->
-          <div id="view-matrix" class="view-panel hidden space-y-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <i data-lucide="table-2" class="w-6 h-6 text-emerald-600"></i>
-                  Rekapitulasi Absensi Matriks (<span id="matrix-wh-title">MBI</span>)
-                </h2>
-                <p class="text-xs text-slate-500">Tarik data absensi karyawan per rentang tanggal (Sesuai Format Gambar 2)</p>
-              </div>
-
-              <!-- Download Excel Matriks Button -->
-              <button onclick="exportMatrixToExcel()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-2 shadow-md">
-                <i data-lucide="download" class="w-4 h-4"></i> Download File Format Excel
-              </button>
+          <div id="view-leaves" class="view-panel hidden space-y-6">
+            <div>
+              <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                <i data-lucide="calendar-off" class="w-6 h-6 text-rose-600"></i>
+                Form Pengajuan Izin / Sakit / Cuti (<span id="leave-wh-label">Gudang MBI</span>)
+              </h2>
+              <p class="text-xs text-slate-500">Izin/Sakit/Cuti yang disetujui akan otomatis mengisi simbol S, I, atau AL pada Rekap Absen Matriks</p>
             </div>
 
-            <!-- Filter Range Tanggal -->
-            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-              <div class="flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div class="flex items-center gap-2">
-                  <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                  <input type="date" id="matrix-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-                </div>
-                <div class="flex items-center gap-2">
-                  <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                  <input type="date" id="matrix-end-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold">
-                </div>
-                <button onclick="renderMatrixTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5">
-                  <i data-lucide="filter" class="w-3.5 h-3.5"></i> Tarik Data Rekap
-                </button>
+            <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <!-- Form Pengajuan -->
+              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
+                <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                  <i data-lucide="plus-circle" class="w-4 h-4 text-rose-600"></i> Buat Pengajuan Baru
+                </h3>
+
+                <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jenis Ketidakhadiran *</label>
+                    <select id="leave-type" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                      <option value="sakit">Sakit (Simbol S di Matriks)</option>
+                      <option value="izin">Izin (Simbol I di Matriks)</option>
+                      <option value="cuti">Cuti / AL (Simbol AL di Matriks)</option>
+                    </select>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Dari Tanggal *</label>
+                      <input type="date" id="leave-start-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Sampai Tanggal *</label>
+                      <input type="date" id="leave-end-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none">
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan / Keterangan *</label>
+                    <textarea id="leave-reason" required rows="3" placeholder="Contoh: Demam & flu (Surat Dokter Terlampir) / Keperluan keluarga" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-rose-500 focus:outline-none"></textarea>
+                  </div>
+
+                  <button type="submit" class="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold rounded-xl transition shadow-md shadow-rose-600/30">
+                    Kirim Pengajuan
+                  </button>
+                </form>
               </div>
 
-              <!-- Matriks Grid Table -->
-              <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
-                <table id="table-matrix-display" class="w-full text-center text-xs border-collapse border border-slate-300">
-                  <thead id="matrix-thead" class="bg-amber-100/70 text-slate-900 font-bold border-b border-slate-300">
-                    <!-- Rendered by JS -->
-                  </thead>
-                  <tbody id="matrix-tbody" class="divide-y divide-slate-200 bg-white">
-                    <!-- Rendered by JS -->
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="flex items-center gap-4 text-xs text-slate-600 pt-2">
-                <span class="font-bold">Keterangan:</span>
-                <span class="inline-flex items-center gap-1 font-bold text-emerald-700"><span class="w-4 h-4 bg-emerald-100 rounded flex items-center justify-center">✓</span> Hadir</span>
-                <span class="inline-flex items-center gap-1 font-bold text-rose-700"><span class="w-4 h-4 bg-rose-100 rounded flex items-center justify-center">T</span> Terlambat</span>
-                <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-4 h-4 bg-slate-100 rounded flex items-center justify-center">-</span> Libur / Tidak Hadir</span>
+              <!-- List Pengajuan Izin/Sakit/Cuti -->
+              <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
+                <h3 class="font-extrabold text-sm text-slate-900 mb-4">Daftar Riwayat Izin / Sakit / Cuti</h3>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
+                      <tr>
+                        <th class="p-3">Karyawan</th>
+                        <th class="p-3">Jenis</th>
+                        <th class="p-3">Rentang Tanggal</th>
+                        <th class="p-3">Keterangan</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="leave-table-body" class="divide-y divide-slate-100">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 5: INPUT LEMBUR -->
+          <!-- VIEW 5: KELOMPOK LAPORAN & REKAP ABSENSI (RECORD + MATRIKS) -->
+          <!-- ========================================================= -->
+          <div id="view-reports-group" class="view-panel hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <i data-lucide="file-spreadsheet" class="w-6 h-6 text-emerald-600"></i>
+                  Laporan & Rekapitulasi Absensi (<span id="reports-wh-title">Gudang MBI</span>)
+                </h2>
+                <p class="text-xs text-slate-500">Record riwayat kehadiran harian dan Rekap Matriks hitungan hari kerja (1, S, I, AL, -)</p>
+              </div>
+
+              <!-- Tab Nav Switcher di dalam Laporan -->
+              <div class="flex items-center bg-slate-200/80 p-1.5 rounded-2xl border border-slate-300">
+                <button onclick="switchReportTab('records')" id="btn-tab-records" class="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition">
+                  📋 Record Absen Harian
+                </button>
+                <button onclick="switchReportTab('matrix')" id="btn-tab-matrix" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
+                  📊 Rekap Absen Matriks
+                </button>
+              </div>
+            </div>
+
+            <!-- TAB 1: RECORD ABSEN HARIAN (Setiap Karyawan Absen Masuk/Pulang) -->
+            <div id="tab-content-records" class="space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                      <input type="date" id="record-start-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                      <input type="date" id="record-end-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    </div>
+                    <button onclick="renderRecordsTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
+                      <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filter Record
+                    </button>
+                  </div>
+
+                  <button onclick="exportRecordsToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="download" class="w-4 h-4"></i> Download Record Excel
+                  </button>
+                </div>
+
+                <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
+                  <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
+                      <tr>
+                        <th class="p-3.5 border-r border-slate-200">No</th>
+                        <th class="p-3.5 border-r border-slate-200">Tanggal</th>
+                        <th class="p-3.5 border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 border-r border-slate-200">Departemen</th>
+                        <th class="p-3.5 border-r border-slate-200">Jam Masuk</th>
+                        <th class="p-3.5 border-r border-slate-200">Jam Pulang</th>
+                        <th class="p-3.5">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody id="records-table-body" class="divide-y divide-slate-100">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- TAB 2: REKAP ABSEN MATRIKS (Format Grid Sesuai Gambar 2 - 1, S, I, AL, -) -->
+            <div id="tab-content-matrix" class="hidden space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                      <input type="date" id="matrix-start-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                      <input type="date" id="matrix-end-date" class="px-3 py-1.5 bg-white border rounded-xl text-xs font-bold">
+                    </div>
+                    <button onclick="renderMatrixTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition flex items-center gap-1">
+                      <i data-lucide="filter" class="w-3.5 h-3.5"></i> Tarik Matriks
+                    </button>
+                  </div>
+
+                  <button onclick="exportMatrixToExcel()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="download" class="w-4 h-4"></i> Download Matriks Excel
+                  </button>
+                </div>
+
+                <!-- Matriks Table Display -->
+                <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
+                  <table id="table-matrix-display" class="w-full text-center text-xs border-collapse border border-slate-300">
+                    <thead id="matrix-thead" class="bg-amber-100/70 text-slate-900 font-bold border-b border-slate-300">
+                      <!-- Rendered by JS -->
+                    </thead>
+                    <tbody id="matrix-tbody" class="divide-y divide-slate-200 bg-white font-mono font-bold">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="flex items-center gap-4 text-xs text-slate-700 pt-2 flex-wrap font-medium">
+                  <span class="font-bold">Keterangan Simbol:</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-emerald-800"><span class="w-5 h-5 bg-emerald-100 rounded flex items-center justify-center font-black">1</span> Hadir Kerja (Dihitung)</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-amber-800"><span class="w-5 h-5 bg-amber-100 rounded flex items-center justify-center font-black">S</span> Sakit</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-sky-800"><span class="w-5 h-5 bg-sky-100 rounded flex items-center justify-center font-black">I</span> Izin</span>
+                  <span class="inline-flex items-center gap-1 font-bold text-purple-800"><span class="w-5 h-5 bg-purple-100 rounded flex items-center justify-center font-black">AL</span> Cuti (Annual Leave)</span>
+                  <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center">-</span> Libur / Tidak Hadir</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- VIEW 6: INPUT LEMBUR -->
           <!-- ========================================================= -->
           <div id="view-overtime" class="view-panel hidden space-y-6">
             <div>
@@ -589,7 +744,6 @@
             <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold flex items-center gap-2"></div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Form -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4">
                 <form onsubmit="handleOvertimeSubmit(event)" class="space-y-3.5">
                   <div>
@@ -619,7 +773,6 @@
                 </form>
               </div>
 
-              <!-- List -->
               <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
                 <h3 class="font-extrabold text-sm text-slate-900 mb-4">Daftar Pengajuan Lembur</h3>
                 <div class="overflow-x-auto">
@@ -643,7 +796,7 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 6: KARTU ID BARCODE KOTAK (PRINT READY) -->
+          <!-- VIEW 7: KARTU ID BARCODE KOTAK (PRINT READY) -->
           <!-- ========================================================= -->
           <div id="view-idcard" class="view-panel hidden space-y-6">
             <div class="flex items-center justify-between no-print">
@@ -659,7 +812,6 @@
               </button>
             </div>
 
-            <!-- ID CARD DESIGN -->
             <div class="flex justify-center p-8 bg-slate-200/60 rounded-3xl">
               <div id="printable-id-card" class="w-[340px] bg-white rounded-2xl border-2 border-slate-800 shadow-2xl overflow-hidden text-slate-800 select-none">
                 <div id="idcard-header" class="p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900">
@@ -675,12 +827,11 @@
                     <i data-lucide="user" class="w-8 h-8"></i>
                   </div>
                   <h4 id="idcard-name" class="font-extrabold text-base text-slate-900">Nama Karyawan</h4>
-                  <p id="idcard-dept" class="text-xs text-slate-500 font-semibold">Departemen Logistik</p>
+                  <p id="idcard-dept" class="text-xs text-slate-500 font-semibold uppercase">Departemen</p>
                   <span id="idcard-nik" class="mt-1 text-xs font-mono font-bold bg-slate-100 px-3 py-0.5 rounded-md border text-slate-800">MBI-1001</span>
 
                   <div class="w-full my-3 border-t border-dashed border-slate-200"></div>
 
-                  <!-- QR Code Kotak Besar -->
                   <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
                     <canvas id="canvas-qrcode" class="w-36 h-36 bg-white p-1 rounded-xl shadow-xs"></canvas>
                     <span class="text-[10px] font-mono font-bold text-slate-500 mt-1.5">SCAN KOTAK QR PRESENSI</span>
@@ -692,7 +843,7 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 7: DATABASE GITHUB TERPISAH (MBI & MAI) -->
+          <!-- VIEW 8: DATABASE GITHUB TERPISAH (MBI & MAI) -->
           <!-- ========================================================= -->
           <div id="view-github" class="view-panel hidden space-y-6">
             <div>
@@ -816,7 +967,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- JAVASCRIPT ENGINE (DUAL DATABASE + EXCEL + PASSWORD LOGIC) -->
+  <!-- JAVASCRIPT ENGINE (DUAL DATABASE + EXCEL + MATRIX + LEAVE) -->
   <!-- ========================================================= -->
   <script>
     // Initial Seed Database for MBI (Medika Bina Investama)
@@ -831,7 +982,6 @@
       { id: 'mai-2', name: 'Siti Rahmawati', dept: 'packing', outsource: 'PT Medika Daya', phone: '081398765432', joinDate: '2023-02-01', nik: 'MAI-STF-01', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
     ];
 
-    // Seed Attendance Sample Data
     const SEED_MBI_ATTENDANCE = [
       { id: 'att-mbi-1', userId: 'mbi-3', userNik: 'MBI-STF-01', userName: 'Budi Santoso', warehouse: 'MBI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
     ];
@@ -840,10 +990,16 @@
       { id: 'att-mai-1', userId: 'mai-2', userNik: 'MAI-STF-01', userName: 'Siti Rahmawati', warehouse: 'MAI', date: new Date().toISOString().split('T')[0], checkInTime: new Date().toISOString(), checkOutTime: null, checkInStatus: 'on_time' }
     ];
 
+    // Seed Leaves / Izin / Sakit / Cuti
+    const SEED_MBI_LEAVES = [
+      { id: 'lv-mbi-1', userNik: 'MBI-COR-01', userName: 'Agus Setiawan', type: 'sakit', startDate: '2026-08-20', endDate: '2026-08-20', reason: 'Demam & batuk', status: 'approved' }
+    ];
+
     // State Variables
     let currentUser = null;
     let activeWarehouse = 'MBI'; // 'MBI' | 'MAI'
     let selectedAttendanceType = 'check_in';
+    let activeReportTab = 'records'; // 'records' | 'matrix'
     let html5QrScanner = null;
     let pendingUserForPasswordChange = null;
 
@@ -860,7 +1016,6 @@
       syncWhToGitHub(warehouse, key, val);
     }
 
-    // Auto-Generate NIK Helper
     function generateNextNIK(warehouse) {
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const prefix = `${warehouse}-`;
@@ -874,7 +1029,6 @@
       return `${prefix}${maxNum + 1}`;
     }
 
-    // GitHub Sync for Separate Warehouse Directory (data/mbi/ vs data/mai/)
     async function syncWhToGitHub(warehouse, key, data) {
       const config = getWhDB('global', 'github_config', null);
       if (!config || !config.token || !config.owner || !config.repo) return;
@@ -913,31 +1067,35 @@
     window.onload = () => {
       lucide.createIcons();
 
-      // Set default dates for matrix (Current Month 1st to Today/End of Month)
       const now = new Date();
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
       
-      document.getElementById('matrix-start-date').value = `${year}-${month}-01`;
-      document.getElementById('matrix-end-date').value = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-      document.getElementById('ot-date').value = now.toISOString().split('T')[0];
+      const firstDayStr = `${year}-${month}-01`;
+      const lastDayStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+      const todayStr = now.toISOString().split('T')[0];
 
-      // Live clock
+      document.getElementById('matrix-start-date').value = firstDayStr;
+      document.getElementById('matrix-end-date').value = lastDayStr;
+      document.getElementById('record-start-date').value = firstDayStr;
+      document.getElementById('record-end-date').value = todayStr;
+      document.getElementById('ot-date').value = todayStr;
+      document.getElementById('leave-start-date').value = todayStr;
+      document.getElementById('leave-end-date').value = todayStr;
+
       setInterval(() => {
         const d = new Date();
         const el = document.getElementById('live-clock');
         if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
       }, 1000);
 
-      // Check existing session
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
         loginUserSession(JSON.parse(savedUser));
       }
     };
 
-    // Auth Tabs & Radio Styling
     function showAuthTab(tab) {
       const isLogin = tab === 'login';
       document.getElementById('form-login-box').classList.toggle('hidden', !isLogin);
@@ -961,7 +1119,6 @@
       document.getElementById('lbl-reg-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
     }
 
-    // Login Handler
     function handleLogin(e) {
       e.preventDefault();
       const warehouse = document.querySelector('input[name="login-warehouse"]:checked').value;
@@ -979,7 +1136,6 @@
         return;
       }
 
-      // Check if First Login / Default Password
       if (user.isFirstLogin === true || user.password === 'medika123') {
         pendingUserForPasswordChange = user;
         document.getElementById('first-login-modal').classList.remove('hidden');
@@ -990,7 +1146,6 @@
       loginUserSession(user);
     }
 
-    // Force Change Password Handler
     function handleForceChangePassword(e) {
       e.preventDefault();
       const p1 = document.getElementById('new-pwd-1').value;
@@ -1024,11 +1179,10 @@
       loginUserSession(pendingUserForPasswordChange);
     }
 
-    // Register Handler with Auto-NIK & Default Password
     function handleRegister(e) {
       e.preventDefault();
       const warehouse = document.querySelector('input[name="reg-warehouse"]:checked').value;
-      const position = document.getElementById('reg-position').value; // staff, coordinator, supervisor
+      const position = document.getElementById('reg-position').value;
       const name = document.getElementById('reg-name').value.trim();
       const dept = document.getElementById('reg-dept').value;
       const outsource = document.getElementById('reg-outsource').value.trim();
@@ -1054,16 +1208,14 @@
       document.getElementById('login-password').value = defaultPass;
     }
 
-    // Login Session Logic & Role Access
     function loginUserSession(user) {
       currentUser = user;
-      activeWarehouse = user.warehouse; // Kunci ke gudang user
+      activeWarehouse = user.warehouse;
       localStorage.setItem('wfm_active_session', JSON.stringify(user));
 
       document.getElementById('auth-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
 
-      // Update Nav Info
       document.getElementById('nav-user-name').innerText = user.name;
       document.getElementById('nav-user-dept').innerText = `${user.dept.toUpperCase()} (${user.role.toUpperCase()})`;
       
@@ -1074,13 +1226,11 @@
       const roleBadge = document.getElementById('user-role-badge');
       roleBadge.innerText = user.role.toUpperCase();
 
-      // Role Permission Checking
       const isStaffOnly = user.role === 'staff';
       const isSuperAdmin = user.role === 'admin';
-      const sidebar = document.getElementById('app-sidebar');
+      const adminSection = document.getElementById('admin-menu-section');
       const whSwitcher = document.getElementById('wh-switcher-box');
 
-      // Switcher hanya untuk Super Admin
       if (isSuperAdmin) {
         whSwitcher.classList.remove('hidden');
         whSwitcher.classList.add('flex');
@@ -1090,12 +1240,10 @@
       }
 
       if (isStaffOnly) {
-        // STAFF: Sembunyikan sidebar, langsung kunci ke halaman Absensi
-        sidebar.classList.add('hidden');
+        adminSection.classList.add('hidden');
         switchView('attendance');
       } else {
-        // COORDINATOR / SUPERVISOR / ADMIN: Tampilkan seluruh menu
-        sidebar.classList.remove('hidden');
+        adminSection.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       }
@@ -1113,7 +1261,6 @@
     }
 
     function switchActiveWarehouse(wh) {
-      // Hanya Super Admin yang bisa pindah gudang
       if (currentUser && currentUser.role !== 'admin') {
         alert('Anda terkunci pada unit Gudang ' + currentUser.warehouse);
         return;
@@ -1122,7 +1269,9 @@
       updateWhSwitcherButtons();
       refreshAllDashboardData();
       renderEmployeeTable();
+      renderRecordsTable();
       renderMatrixTable();
+      renderLeavesTable();
       lucide.createIcons();
     }
 
@@ -1131,12 +1280,12 @@
       document.getElementById('wh-btn-mbi').className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
       document.getElementById('wh-btn-mai').className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-purple-600 text-white shadow-xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
       
-      // Update Titles
       document.getElementById('dash-wh-label').innerText = activeWarehouse;
       document.getElementById('stat-wh-note').innerText = `Gudang ${activeWarehouse}`;
       document.getElementById('emp-wh-title').innerText = activeWarehouse;
       document.getElementById('att-wh-label').innerText = `Gudang ${activeWarehouse}`;
-      document.getElementById('matrix-wh-title').innerText = activeWarehouse;
+      document.getElementById('reports-wh-title').innerText = `Gudang ${activeWarehouse}`;
+      document.getElementById('leave-wh-label').innerText = `Gudang ${activeWarehouse}`;
       document.getElementById('ot-wh-label').innerText = `Gudang ${activeWarehouse}`;
     }
 
@@ -1153,7 +1302,11 @@
       if (activeNav) activeNav.className = 'sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white';
 
       if (viewName === 'employees') renderEmployeeTable();
-      if (viewName === 'matrix') renderMatrixTable();
+      if (viewName === 'reports-group') {
+        renderRecordsTable();
+        renderMatrixTable();
+      }
+      if (viewName === 'leaves') renderLeavesTable();
       if (viewName === 'idcard') renderIDCard(currentUser);
       if (viewName === 'overtime') renderOvertimeTable();
       if (viewName === 'github') renderGitHubConfig();
@@ -1166,11 +1319,15 @@
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
       const overtimes = getWhDB(activeWarehouse, 'overtime', []);
 
       const todayAtt = attendances.filter(a => a.date === todayStr);
+      const todayLeaves = leaves.filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr);
+
       document.getElementById('stat-total-emp').innerText = `${users.length} Orang`;
       document.getElementById('stat-today-att').innerText = `${todayAtt.length} Hadir`;
+      document.getElementById('stat-today-leave').innerText = `${todayLeaves.length} Orang`;
       document.getElementById('stat-pending-ot').innerText = `${overtimes.filter(o => o.status === 'pending').length} Pending`;
 
       const myToday = todayAtt.find(a => a.userNik === currentUser.nik);
@@ -1255,7 +1412,6 @@
       alert(`Karyawan ${name} berhasil ditambahkan!\nNIK: ${autoNik}\nPassword Default: ${defaultPass}`);
     }
 
-    // Download Akun & Password Default untuk Dibagikan ke Karyawan
     function downloadAccountsExcel() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const exportData = users.map(u => ({
@@ -1274,7 +1430,6 @@
       XLSX.writeFile(wb, `Daftar_Akun_Password_Karyawan_${activeWarehouse}.xlsx`);
     }
 
-    // Download Format Template Excel Sesuai Gambar 1
     function downloadEmployeeTemplate() {
       const templateData = [
         { "Nama Karyawan": "Budi Santoso", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "NIK": "", "Posisi": "staff" },
@@ -1287,7 +1442,6 @@
       XLSX.writeFile(wb, `Template_Data_Karyawan_${activeWarehouse}.xlsx`);
     }
 
-    // Export Data Karyawan ke Excel
     function exportEmployeesExcel() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const exportData = users.map(u => ({
@@ -1307,7 +1461,6 @@
       XLSX.writeFile(wb, `Data_Karyawan_${activeWarehouse}_${Date.now()}.xlsx`);
     }
 
-    // Upload & Import File Excel / CSV Data Karyawan
     function handleExcelUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -1334,8 +1487,6 @@
             const outsource = r['Outsource'] || r['outsource'] || 'Internal';
             const phone = r['No Telpon'] || r['no_telp'] || r['No Telp'] || '-';
             const joinDate = r['JOIN DATE'] || r['join_date'] || r['Join Date'] || new Date().toISOString().split('T')[0];
-            
-            // Gunakan NIK dari Excel jika ada, atau generate otomatis
             const nik = (r['NIK'] || r['nik'] || generateNextNIK(activeWarehouse) + '-' + idx).toString().toUpperCase();
             const role = (r['Posisi'] || r['posisi'] || r['role'] || 'staff').toLowerCase();
 
@@ -1357,12 +1508,90 @@
         }
       };
       reader.readAsArrayBuffer(file);
-      e.target.value = ''; // Reset input
+      e.target.value = '';
     }
 
     // =========================================================
-    // FITUR REKAP ABSEN MATRIKS (SESUAI GAMBAR 2)
+    // FITUR PENGELOMPOKAN LAPORAN (RECORD HARIAN + MATRIKS)
     // =========================================================
+    function switchReportTab(tabName) {
+      activeReportTab = tabName;
+      const isRecord = tabName === 'records';
+
+      document.getElementById('tab-content-records').classList.toggle('hidden', !isRecord);
+      document.getElementById('tab-content-matrix').classList.toggle('hidden', isRecord);
+
+      document.getElementById('btn-tab-records').className = isRecord ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+      document.getElementById('btn-tab-matrix').className = !isRecord ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+
+      if (isRecord) renderRecordsTable();
+      else renderMatrixTable();
+    }
+
+    // TAB 1: RECORD ABSEN HARIAN
+    function renderRecordsTable() {
+      const startStr = document.getElementById('record-start-date').value;
+      const endStr = document.getElementById('record-end-date').value;
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+
+      const filtered = attendances.filter(a => (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr));
+      const tbody = document.getElementById('records-table-body');
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((rec, idx) => {
+        const emp = users.find(u => u.nik === rec.userNik);
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+        tr.innerHTML = `
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${rec.date}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.userNik}</td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${rec.userName}</td>
+          <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${emp ? emp.dept : '-'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-emerald-700 font-bold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : '<span class="text-amber-600 font-sans font-bold">Sedang Bekerja</span>'}</td>
+          <td class="p-3.5 text-slate-600">${rec.notes || '-'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportRecordsToExcel() {
+      const startStr = document.getElementById('record-start-date').value;
+      const endStr = document.getElementById('record-end-date').value;
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+
+      const filtered = attendances.filter(a => (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr));
+
+      const rows = filtered.map((r, i) => {
+        const emp = users.find(u => u.nik === r.userNik);
+        return {
+          "No": i + 1,
+          "Tanggal": r.date,
+          "NIK": r.userNik,
+          "Nama Karyawan": r.userName,
+          "Departemen": emp ? emp.dept : '',
+          "Jam Masuk": new Date(r.checkInTime).toLocaleTimeString('id-ID'),
+          "Jam Pulang": r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('id-ID') : 'Sedang Bekerja',
+          "Gudang": activeWarehouse,
+          "Keterangan": r.notes || ''
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Record_Absen_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Record_Absen_Harian_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+    }
+
+    // TAB 2: REKAP ABSEN MATRIKS (Format 1, S, I, AL, -)
     function getDatesInRange(startDateStr, endDateStr) {
       const dates = [];
       let cur = new Date(startDateStr);
@@ -1384,11 +1613,11 @@
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
       const thead = document.getElementById('matrix-thead');
       const tbody = document.getElementById('matrix-tbody');
 
-      // Build 2-Tier Header Sesuai Gambar 2
       const monthYearTitle = new Date(startStr).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
       
       let headerHTML = `
@@ -1409,10 +1638,9 @@
       headerHTML += `</tr>`;
       thead.innerHTML = headerHTML;
 
-      // Build Body Rows
       tbody.innerHTML = '';
       users.forEach((user, uIdx) => {
-        let totalHadir = 0;
+        let totalHariKerja = 0;
         let rowHTML = `
           <tr class="hover:bg-slate-50 transition border-b border-slate-200">
             <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
@@ -1422,35 +1650,42 @@
         dateList.forEach(d => {
           const dStr = d.toISOString().split('T')[0];
           const att = attendances.find(a => a.userNik === user.nik && a.date === dStr);
+          const approvedLeave = leaves.find(l => l.userNik === user.nik && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
 
           if (att) {
-            totalHadir++;
-            if (att.checkInStatus === 'on_time') {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-bold text-emerald-700 bg-emerald-50/50">✓</td>`;
+            // Masuk Kerja -> Tulis angka 1 (Menghitung Hari Kerja)
+            totalHariKerja += 1;
+            rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-emerald-800 bg-emerald-50">1</td>`;
+          } else if (approvedLeave) {
+            // Izin, Sakit, atau Cuti
+            if (approvedLeave.type === 'sakit') {
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-amber-800 bg-amber-50">S</td>`;
+            } else if (approvedLeave.type === 'izin') {
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-sky-800 bg-sky-50">I</td>`;
             } else {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-bold text-rose-700 bg-rose-50/50">T</td>`;
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-purple-800 bg-purple-50">AL</td>`;
             }
           } else {
-            rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300">-</td>`;
+            // Kosong / Libur
+            rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
           }
         });
 
-        rowHTML += `<td class="p-2 font-black text-slate-900 bg-amber-50/60">${totalHadir}</td></tr>`;
+        rowHTML += `<td class="p-2 font-black text-slate-900 bg-amber-50/60">${totalHariKerja}</td></tr>`;
         tbody.innerHTML += rowHTML;
       });
     }
 
-    // Export Rekap Matriks ke Format Excel Asli (.XLSX) Persis Gambar 2
     function exportMatrixToExcel() {
       const startStr = document.getElementById('matrix-start-date').value;
       const endStr = document.getElementById('matrix-end-date').value;
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
       const monthYearTitle = new Date(startStr).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
-      // Build 2D Array for Excel Sheet
       const row1 = ["No", `${monthYearTitle} / Nama Karyawan`];
       dateList.forEach(d => row1.push(`${d.getDate()} (${DAY_NAMES[d.getDay()]})`));
       row1.push("Jumlah Kehadiran");
@@ -1458,19 +1693,25 @@
       const matrixData = [row1];
 
       users.forEach((user, uIdx) => {
-        let totalHadir = 0;
+        let totalHariKerja = 0;
         const row = [uIdx + 1, user.name];
         dateList.forEach(d => {
           const dStr = d.toISOString().split('T')[0];
           const att = attendances.find(a => a.userNik === user.nik && a.date === dStr);
+          const approvedLeave = leaves.find(l => l.userNik === user.nik && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+
           if (att) {
-            totalHadir++;
-            row.push(att.checkInStatus === 'on_time' ? "✓" : "T");
+            totalHariKerja += 1;
+            row.push(1);
+          } else if (approvedLeave) {
+            if (approvedLeave.type === 'sakit') row.push("S");
+            else if (approvedLeave.type === 'izin') row.push("I");
+            else row.push("AL");
           } else {
             row.push("-");
           }
         });
-        row.push(totalHadir);
+        row.push(totalHariKerja);
         matrixData.push(row);
       });
 
@@ -1481,7 +1722,88 @@
     }
 
     // =========================================================
-    // FITUR ABSENSI BARCODE KAMERA (KOTAK QR CODE)
+    // FITUR FORM IZIN / SAKIT / CUTI (LEAVES)
+    // =========================================================
+    function handleLeaveSubmit(e) {
+      e.preventDefault();
+      const type = document.getElementById('leave-type').value;
+      const startDate = document.getElementById('leave-start-date').value;
+      const endDate = document.getElementById('leave-end-date').value;
+      const reason = document.getElementById('leave-reason').value.trim();
+
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const newLeave = {
+        id: `lv-${activeWarehouse.toLowerCase()}-${Date.now()}`,
+        userNik: currentUser.nik,
+        userName: currentUser.name,
+        type, startDate, endDate, reason,
+        status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending',
+        warehouse: activeWarehouse
+      };
+
+      leaves.unshift(newLeave);
+      setWhDB(activeWarehouse, 'leaves', leaves);
+
+      document.getElementById('leave-reason').value = '';
+      const alertEl = document.getElementById('leave-alert');
+      alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+      alertEl.innerText = `Pengajuan ${type.toUpperCase()} berhasil dikirim! ${(currentUser.role === 'supervisor' || currentUser.role === 'admin') ? '(Otomatis Disetujui)' : '(Menunggu Approval Supervisor)'}`;
+      alertEl.classList.remove('hidden');
+
+      renderLeavesTable();
+      refreshAllDashboardData();
+    }
+
+    function renderLeavesTable() {
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const tbody = document.getElementById('leave-table-body');
+      tbody.innerHTML = '';
+
+      if (leaves.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada pengajuan izin/sakit/cuti di Gudang ${activeWarehouse}.</td></tr>`;
+        return;
+      }
+
+      leaves.forEach(lv => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+        
+        let typeBadge = '';
+        if (lv.type === 'sakit') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Sakit (S)</span>';
+        else if (lv.type === 'izin') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800">Izin (I)</span>';
+        else typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800">Cuti (AL)</span>';
+
+        tr.innerHTML = `
+          <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
+          <td class="p-3">${typeBadge}</td>
+          <td class="p-3 font-mono text-[11px] text-slate-700">${lv.startDate} s/d ${lv.endDate}</td>
+          <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (lv.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${lv.status.toUpperCase()}</span></td>
+          <td class="p-3 text-right">
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') && lv.status === 'pending' ? `
+              <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold">Setujui</button>
+              <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2 py-1 bg-rose-600 text-white rounded text-[10px] font-bold">Tolak</button>
+            ` : '-'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function updateLeaveStatus(id, newStatus) {
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const item = leaves.find(l => l.id === id);
+      if (item) {
+        item.status = newStatus;
+        setWhDB(activeWarehouse, 'leaves', leaves);
+        renderLeavesTable();
+        refreshAllDashboardData();
+        renderMatrixTable();
+      }
+    }
+
+    // =========================================================
+    // FITUR ABSENSI BARCODE KAMERA
     // =========================================================
     function setAttendanceType(type) {
       selectedAttendanceType = type;
@@ -1675,7 +1997,6 @@
       document.getElementById('idcard-header').className = isMBI ? 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-sky-700 to-sky-900' : 'p-4 text-white flex items-center justify-between bg-gradient-to-r from-purple-700 to-purple-900';
       document.getElementById('idcard-footer-text').innerText = isMBI ? 'Medika Bina Investama • Official ID Card' : 'Medika Akses Investama • Official ID Card';
 
-      // Generate Kotak QR Code
       QRCode.toCanvas(document.getElementById('canvas-qrcode'), user.nik, { width: 140, margin: 1 });
     }
 
@@ -1724,10 +2045,12 @@
       // Sync MBI
       await syncWhToGitHub('MBI', 'users', getWhDB('MBI', 'users', SEED_MBI_USERS));
       await syncWhToGitHub('MBI', 'attendance', getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE));
+      await syncWhToGitHub('MBI', 'leaves', getWhDB('MBI', 'leaves', SEED_MBI_LEAVES));
       await syncWhToGitHub('MBI', 'overtime', getWhDB('MBI', 'overtime', []));
       // Sync MAI
       await syncWhToGitHub('MAI', 'users', getWhDB('MAI', 'users', SEED_MAI_USERS));
       await syncWhToGitHub('MAI', 'attendance', getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE));
+      await syncWhToGitHub('MAI', 'leaves', getWhDB('MAI', 'leaves', []));
       await syncWhToGitHub('MAI', 'overtime', getWhDB('MAI', 'overtime', []));
       alert('Sinkronisasi data terpisah MBI & MAI ke GitHub BERHASIL!');
     }
