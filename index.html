@@ -446,10 +446,10 @@
   <!-- ========================================================= -->
   <!-- 2. MAIN APPLICATION DASHBOARD SCREEN -->
   <!-- ========================================================= -->
-  <div id="app-container" class="hidden flex-1 flex flex-col min-h-screen">
+  <div id="app-container" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
     
-    <!-- Top Navbar -->
-    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print">
+    <!-- Top Navbar (Fixed di Posisi Atas) -->
+    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-lg shadow-xs">M</div>
         <div>
@@ -1148,14 +1148,31 @@
                 </div>
 
                 <!-- Row 3: Alasan & Tombol Submit -->
-                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                  <div class="sm:col-span-9">
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Alasan Lembur *</label>
-                    <input type="text" id="ot-reason" required placeholder="Contoh: Bongkar muat kontainer obat batch darurat" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kategori Alasan Lembur *</label>
+                      <select id="ot-reason-preset" onchange="handleOvertimePresetChange(this.value)" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <option value="">-- Pilih Kategori Alasan Lembur --</option>
+                        <option value="Bongkar muat / inbound kontainer obat & alkes darurat">Bongkar Muat / Inbound Kontainer</option>
+                        <option value="Stock opname & audit fisik berkala stok gudang">Stock Opname & Audit Fisik Stok</option>
+                        <option value="Packing & pengepakan urgent pesanan ekspedisi malam">Packing Urgent Pesanan Ekspedisi</option>
+                        <option value="Picking plan & sortir pesanan darurat rumah sakit / klinik">Picking Plan & Sortir Pesanan Darurat</option>
+                        <option value="Dispatch & loading pengiriman truk ekspedisi malam">Dispatch & Loading Pengiriman Malam</option>
+                        <option value="Pembersihan, penataan & reorganisasi racking gudang">Pembersihan & Penataan Racking Gudang</option>
+                        <option value="other">Lainnya (Tulis Manual)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Uraian / Keterangan Detail Lembur *</label>
+                      <input type="text" id="ot-reason" required placeholder="Pilih kategori di samping atau ketik detail alasan..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
                   </div>
-                  <div class="sm:col-span-3">
-                    <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
-                      Ajukan Lembur
+
+                  <div class="flex justify-end pt-1">
+                    <button type="submit" class="w-full sm:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
+                      Ajukan Lembur (Menunggu Approval Supervisor)
                     </button>
                   </div>
                 </div>
@@ -1598,7 +1615,36 @@
       updateCloudSyncStatusBadge(success ? 'synced' : 'local');
     }
 
+    function sanitizeEmployeesData() {
+      ['MBI', 'MAI'].forEach(wh => {
+        const storageKey = `wfm_${wh.toLowerCase()}_users`;
+        const data = localStorage.getItem(storageKey);
+        if (!data) return;
+        try {
+          let users = JSON.parse(data);
+          if (!Array.isArray(users)) return;
+          let hasChanges = false;
+          users.forEach(u => {
+            // Perbaiki nomor telepon jika tertukar dengan nama atau tidak memiliki digit nomor
+            if (u.phone && (u.phone === u.name || !/\d{4,}/.test(u.phone)) && u.phone !== '-') {
+              u.phone = '-';
+              hasChanges = true;
+            }
+            // Perbaiki tanggal jika masih berupa serial date Excel seperti 46225
+            if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
+              u.joinDate = formatExcelDate(u.joinDate);
+              hasChanges = true;
+            }
+          });
+          if (hasChanges) {
+            localStorage.setItem(storageKey, JSON.stringify(users));
+          }
+        } catch (e) {}
+      });
+    }
+
     function migrateAllUsersNIK() {
+      sanitizeEmployeesData();
       const year = new Date().getFullYear().toString().slice(-2); // "26"
 
       ['MBI', 'MAI'].forEach(wh => {
@@ -2121,22 +2167,27 @@
     }
 
     function loginUserSession(user) {
-      currentUser = user;
-      activeWarehouse = user.warehouse || 'MBI';
-      localStorage.setItem('wfm_active_session', JSON.stringify(user));
+      // Selalu cari data karyawan paling mutakhir dari database agar nama hasil edit langsung sinkron
+      const currentWh = user.warehouse || activeWarehouse || 'MBI';
+      const allUsers = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const latestUser = allUsers.find(u => u.id === user.id || u.nik === user.nik) || user;
+
+      currentUser = { ...latestUser };
+      activeWarehouse = currentUser.warehouse || currentWh;
+      localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
 
       document.getElementById('auth-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
 
-      document.getElementById('nav-user-name').innerText = user.name;
-      document.getElementById('nav-user-dept').innerText = `${user.dept.toUpperCase()} - ${user.role.toUpperCase()}`;
+      document.getElementById('nav-user-name').innerText = currentUser.name || 'User';
+      document.getElementById('nav-user-dept').innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
       
       const whBadge = document.getElementById('user-warehouse-badge');
-      whBadge.innerText = `GUDANG ${user.warehouse}`;
-      whBadge.className = user.warehouse === 'MBI' ? 'px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-sky-100 text-sky-800' : 'px-2 py-0.5 text-[10px] font-extrabold rounded-md bg-purple-100 text-purple-800';
+      whBadge.innerText = `GUDANG ${currentUser.warehouse}`;
+      whBadge.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200';
 
       const roleBadge = document.getElementById('user-role-badge');
-      roleBadge.innerText = user.role.toUpperCase();
+      roleBadge.innerText = (currentUser.role || 'STAFF').toUpperCase();
 
       const userRole = (user.role || 'staff').toLowerCase();
       const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
@@ -2830,6 +2881,17 @@
       document.getElementById('edit-emp-modal').classList.add('hidden');
     }
 
+    function handleOvertimePresetChange(val) {
+      const reasonInput = document.getElementById('ot-reason');
+      if (!reasonInput) return;
+      if (val === 'other' || !val) {
+        reasonInput.value = '';
+        reasonInput.focus();
+      } else {
+        reasonInput.value = val;
+      }
+    }
+
     function handleSaveEditEmployee(e) {
       e.preventDefault();
       const id = document.getElementById('edit-emp-id').value;
@@ -2846,6 +2908,9 @@
       const idx = users.findIndex(u => u.id === id || u.nik === nik);
 
       if (idx !== -1) {
+        const oldNik = users[idx].nik;
+        const oldName = users[idx].name;
+
         users[idx].name = name;
         users[idx].nik = nik;
         users[idx].role = role;
@@ -2858,14 +2923,69 @@
           users[idx].isFirstLogin = false;
         }
 
-        // Jika user yang diedit adalah akun yang sedang login, update sesi aktif seketika
-        if (currentUser && (currentUser.id === users[idx].id || currentUser.nik === users[idx].nik || currentUser.nik === nik)) {
-          currentUser = { ...users[idx] };
-          localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
-          loginUserSession(currentUser);
+        setWhDB(activeWarehouse, 'users', users);
+        saveFullDatabaseToCloud();
+
+        // Update riwayat absensi & lembur jika NIK atau Nama berubah
+        if (oldNik !== nik || oldName !== name) {
+          let att = getWhDB(activeWarehouse, 'attendance', []);
+          att.forEach(a => {
+            if (a.userNik === oldNik || a.userId === id) {
+              a.userNik = nik;
+              a.userName = name;
+            }
+          });
+          setWhDB(activeWarehouse, 'attendance', att);
+
+          let lvs = getWhDB(activeWarehouse, 'leaves', []);
+          lvs.forEach(l => {
+            if (l.userNik === oldNik) {
+              l.userNik = nik;
+              l.userName = name;
+            }
+          });
+          setWhDB(activeWarehouse, 'leaves', lvs);
+
+          let ots = getWhDB(activeWarehouse, 'overtime', []);
+          ots.forEach(o => {
+            if (o.userNik === oldNik || o.userId === id) {
+              o.userNik = nik;
+              o.userName = name;
+              o.dept = dept;
+            }
+          });
+          setWhDB(activeWarehouse, 'overtime', ots);
         }
 
-        setWhDB(activeWarehouse, 'users', users);
+        // Jika user yang diedit adalah akun yang sedang aktif/login (atau super admin yang mengedit profil admin), update sesi dan navbar seketika!
+        const isEditingCurrent = currentUser && (
+          currentUser.id === id || 
+          currentUser.nik === oldNik || 
+          currentUser.nik === nik ||
+          (currentUser.role === 'admin' && (users[idx].role === 'admin' || users[idx].nik === 'ADM001'))
+        );
+
+        if (isEditingCurrent) {
+          currentUser.name = name;
+          currentUser.nik = nik;
+          currentUser.role = role;
+          currentUser.dept = dept;
+          currentUser.outsource = outsource;
+          currentUser.phone = phone;
+          currentUser.joinDate = joinDate;
+          if (customPass) currentUser.password = customPass;
+
+          localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+          
+          // Langsung perbarui DOM Top Navbar seketika!
+          const navName = document.getElementById('nav-user-name');
+          if (navName) navName.innerText = name;
+          const navDept = document.getElementById('nav-user-dept');
+          if (navDept) navDept.innerText = `${dept.toUpperCase()} - ${role.toUpperCase()}`;
+          const roleBadge = document.getElementById('user-role-badge');
+          if (roleBadge) roleBadge.innerText = role.toUpperCase();
+        }
+
         closeEditEmployeeModal();
         renderEmployeeTable();
         populateDropdownEmployees();
@@ -3098,6 +3218,41 @@
       XLSX.writeFile(wb, `Data_Karyawan_${activeWarehouse}_${Date.now()}.xlsx`);
     }
 
+    function formatExcelDate(val) {
+      if (!val) return new Date().toISOString().split('T')[0];
+      const strVal = String(val).trim();
+      // Jika angka serial Excel seperti 45200 atau 46225
+      if (/^\d{4,5}(\.\d+)?$/.test(strVal)) {
+        const serial = parseFloat(strVal);
+        const utcDays = Math.floor(serial - 25569);
+        const dateInfo = new Date(utcDays * 86400 * 1000);
+        const yyyy = dateInfo.getUTCFullYear();
+        const mm = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(dateInfo.getUTCDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      // Jika format tanggal standar YYYY-MM-DD
+      if (/^\d{4}-\d{2}-\d{2}$/.test(strVal)) return strVal;
+      // Jika format DD/MM/YYYY atau DD-MM-YYYY
+      if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(strVal)) {
+        const parts = strVal.split(/[\/\-]/);
+        const dd = String(parts[0]).padStart(2, '0');
+        const mm = String(parts[1]).padStart(2, '0');
+        const yyyy = parts[2];
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return strVal;
+    }
+
+    function cleanExcelPhone(val, name, dept) {
+      if (!val || val === '-' || val === name || val === dept) return '-';
+      const str = String(val).trim();
+      // Validasi: nomor telepon wajib memiliki minimal 5 digit angka
+      const digits = str.replace(/\D/g, '');
+      if (digits.length < 5) return '-';
+      return str;
+    }
+
     // Helper pencari nilai kolom fleksibel pada baris Excel
     function getExcelVal(row, keywords, defaultVal = '', excludeKeywords = []) {
       const keys = Object.keys(row);
@@ -3135,10 +3290,38 @@
           const data = new Uint8Array(event.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-
-          if (!rows || rows.length === 0) {
+          
+          // Baca seluruh sheet sebagai raw array baris
+          const rawSheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+          if (!rawSheetData || rawSheetData.length === 0) {
             alert('File Excel kosong atau tidak terbaca.');
+            return;
+          }
+
+          // Cari baris header yang sebenarnya (baris yang memiliki kata 'nama', 'karyawan', 'pegawai', dsb.)
+          let headerRowIdx = 0;
+          for (let i = 0; i < Math.min(rawSheetData.length, 10); i++) {
+            const rowStr = rawSheetData[i].map(c => String(c).toLowerCase()).join(' ');
+            if (rowStr.includes('nama') || rowStr.includes('karyawan') || rowStr.includes('pegawai')) {
+              headerRowIdx = i;
+              break;
+            }
+          }
+
+          const headers = rawSheetData[headerRowIdx].map(h => String(h).trim().toLowerCase());
+          const rows = [];
+          for (let i = headerRowIdx + 1; i < rawSheetData.length; i++) {
+            const rowArr = rawSheetData[i];
+            if (!rowArr || rowArr.length === 0) continue;
+            const obj = {};
+            headers.forEach((h, colIdx) => {
+              if (h) obj[h] = rowArr[colIdx] !== undefined ? rowArr[colIdx] : '';
+            });
+            rows.push(obj);
+          }
+
+          if (rows.length === 0) {
+            alert('Tidak ada baris data karyawan yang ditemukan pada file Excel.');
             return;
           }
 
@@ -3149,22 +3332,26 @@
           let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
           const adminAccounts = existingUsers.filter(u => u.role === 'admin' || (u.role === 'supervisor' && u.nik === 'ADM001'));
           
-          // Mulai dengan akun Admin agar NIK Karyawan baru selalu mulai rapi dari MBI26-001!
           let users = adminAccounts.length > 0 ? [...adminAccounts] : [
-            { id: `${targetWh.toLowerCase()}-admin`, name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
+            { id: `${targetWh.toLowerCase()}-admin`, name: 'Admin Gudang', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
           ];
 
           let countAdded = 0;
 
           rows.forEach((r, idx) => {
             const name = getExcelVal(r, ['nama', 'name', 'karyawan', 'pegawai'], '').trim();
-            if (!name) return; // Lewati hanya jika baris kosong total tanpa nama
+            if (!name) return; // Lewati jika baris tanpa nama
 
-            const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi'], 'packer').toLowerCase();
-            const outsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi'], 'Internal');
-            const phone = getExcelVal(r, ['telp', 'phone', 'hp', 'wa', 'kontak'], '-');
-            const joinDate = getExcelVal(r, ['join', 'masuk', 'date', 'tanggal'], new Date().toISOString().split('T')[0]);
+            const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], 'packer', ['nama', 'telp', 'phone', 'outsource', 'nik']).toLowerCase();
+            let rawOutsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi', 'pt', 'cv'], 'Internal', ['nama', 'telp', 'phone', 'nik', 'dept']);
+            const outsource = (rawOutsource === name) ? 'Internal' : rawOutsource;
             
+            const rawPhone = getExcelVal(r, ['no telp', 'no hp', 'nomor hp', 'nomor telp', 'no telepon', 'telepon', 'phone', 'mobile', 'whatsapp', 'wa', 'telp', 'kontak'], '-', ['nama', 'name', 'dept', 'departemen', 'outsource', 'vendor', 'nik', 'join', 'tgl']);
+            const phone = cleanExcelPhone(rawPhone, name, dept);
+            
+            const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], new Date().toISOString().split('T')[0], ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept']);
+            const joinDate = formatExcelDate(rawJoin);
+
             // Kolom NIK: Hanya jika ada kolom NIK resmi
             let rawNik = getExcelVal(r, ['nik karyawan', 'id karyawan', 'nik', 'kode karyawan'], '', ['telp', 'phone', 'hp', 'wa', 'kontak', 'urut', 'no.', 'no ']);
             if (rawNik) {
@@ -3174,12 +3361,9 @@
               }
             }
 
-            // Buat NIK unik baru berurutan rapi: MBI26-001, MBI26-002, ..., MBI26-115
             const nik = rawNik ? rawNik.toUpperCase() : generateUniqueNIK(targetWh, name, users);
+            const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik']).toLowerCase();
 
-            const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff').toLowerCase();
-
-            // Tambah seluruh baris karyawan baru dengan NIK Kode Unik
             users.push({
               id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
               name,
@@ -3197,13 +3381,14 @@
           });
 
           setWhDB(targetWh, 'users', users);
+          saveFullDatabaseToCloud();
           renderEmployeeTable();
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
           renderAccountLookupList();
           
-          alert(`Selesai Upload Excel:\nSemua ${countAdded} data karyawan di Excel BERHASIL DITAMBAHKAN tanpa ada yang tertimpa/hilang!\nTotal Karyawan di Gudang ${targetWh}: ${users.length} orang.`);
+          alert(`Selesai Upload Excel:\nSemua ${countAdded} data karyawan di Excel BERHASIL DITAMBAHKAN!\nTotal Karyawan di Gudang ${targetWh}: ${users.length} orang.`);
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
@@ -3657,17 +3842,18 @@
         userNik: emp.nik,
         userName: emp.name,
         type, startDate, endDate, reason,
-        status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending',
+        status: 'pending',
         warehouse: activeWarehouse
       };
 
       leaves.unshift(newLeave);
       setWhDB(activeWarehouse, 'leaves', leaves);
+      saveFullDatabaseToCloud();
 
       document.getElementById('leave-reason').value = '';
       const alertEl = document.getElementById('leave-alert');
-      alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = `Pengajuan ${type.toUpperCase()} untuk ${emp.name} berhasil dikirim!`;
+      alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300';
+      alertEl.innerText = `Pengajuan ${type.toUpperCase()} untuk ${emp.name} berhasil dikirim dan masuk daftar approval Supervisor!`;
       alertEl.classList.remove('hidden');
 
       renderLeavesTable();
@@ -3689,23 +3875,30 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         
         let typeBadge = '';
-        if (lv.type === 'sakit') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 uppercase">Sakit</span>';
-        else if (lv.type === 'izin') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 uppercase">Izin</span>';
-        else typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 uppercase">Cuti</span>';
+        if (lv.type === 'sakit') typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 uppercase">Sakit</span>';
+        else if (lv.type === 'izin') typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-900 border border-sky-200 uppercase">Izin</span>';
+        else typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200 uppercase">Cuti</span>';
+
+        let statusBadge = '';
+        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
+        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">MENUNGGU APPROVAL</span>';
 
         tr.innerHTML = `
           <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
           <td class="p-3">${typeBadge}</td>
           <td class="p-3 font-mono text-[11px] text-slate-700">${lv.startDate} s/d ${lv.endDate}</td>
           <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
-          <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : (lv.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${lv.status.toUpperCase()}</span></td>
+          <td class="p-3">${statusBadge}</td>
           <td class="p-3 text-right">
-            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') && lv.status === 'pending' ? `
-              <div class="flex items-center justify-end gap-1">
-                <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold">Setujui</button>
-                <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-bold">Tolak</button>
-              </div>
-            ` : '-'}
+            ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? (
+              lv.status === 'pending' ? `
+                <div class="flex items-center justify-end gap-1.5">
+                  <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui</button>
+                  <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
+                </div>
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
+            ) : `<span class="text-[10px] text-slate-400">-</span>`}
           </td>
         `;
         tbody.appendChild(tr);
@@ -3718,9 +3911,11 @@
       if (item) {
         item.status = newStatus;
         setWhDB(activeWarehouse, 'leaves', leaves);
+        saveFullDatabaseToCloud();
         renderLeavesTable();
         refreshAllDashboardData();
         renderMatrixTable();
+        alert(`Pengajuan berhasil di-${newStatus === 'approved' ? 'SETUJUI' : 'TOLAK'}!`);
       }
     }
 
@@ -3834,19 +4029,21 @@
             effectiveHours: calc.effectiveHours,
             nominal: calc.nominal,
             reason,
-            status: (currentUser.role === 'supervisor' || currentUser.role === 'admin') ? 'approved' : 'pending'
+            status: 'pending'
           });
           countAdded++;
         }
       });
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
+      saveFullDatabaseToCloud();
       document.getElementById('ot-reason').value = '';
+      document.getElementById('ot-reason-preset').value = '';
       selectAllOvertimeEmployees(false);
 
       const alertEl = document.getElementById('ot-alert');
-      alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-      alertEl.innerText = `Pengajuan lembur untuk ${countAdded} karyawan berhasil disimpan! (Total Upah: Rp ${(calc.nominal * countAdded).toLocaleString('id-ID')})`;
+      alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300';
+      alertEl.innerText = `Pengajuan lembur untuk ${countAdded} karyawan berhasil diajukan dan menunggu approval Supervisor! (Total Estimasi Upah: Rp ${(calc.nominal * countAdded).toLocaleString('id-ID')})`;
       alertEl.classList.remove('hidden');
 
       renderOvertimeTable();
@@ -3880,7 +4077,7 @@
         let statusBadge = '';
         if (isApproved) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
         else if (isRejected) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">PENDING</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">MENUNGGU APPROVAL</span>';
 
         tr.innerHTML = `
           <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -3890,18 +4087,18 @@
           <td class="p-3 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
           <td class="p-3 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-rose-700 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
           <td class="p-3 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
-          <td class="p-3 border-r border-slate-100 font-mono font-bold text-amber-800">${ot.effectiveHours} Jam</td>
-          <td class="p-3 border-r border-slate-100 font-mono font-black text-emerald-700">Rp ${(ot.nominal || 0).toLocaleString('id-ID')}</td>
+          <td class="p-3 border-r border-slate-100 font-mono font-bold text-slate-800">${ot.effectiveHours} Jam</td>
+          <td class="p-3 border-r border-slate-100 font-mono font-black text-slate-900">Rp ${(ot.nominal || 0).toLocaleString('id-ID')}</td>
           <td class="p-3 border-r border-slate-100 text-slate-600 max-w-xs truncate">${ot.reason}</td>
           <td class="p-3 border-r border-slate-100 text-center">${statusBadge}</td>
           <td class="p-3 text-center">
             ${(currentUser.role === 'supervisor' || currentUser.role === 'coordinator' || currentUser.role === 'admin') ? (
               isPending ? `
                 <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
                     Setujui
                   </button>
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 rounded-lg text-[10px] font-bold shadow-xs transition">
                     Tolak
                   </button>
                 </div>
@@ -3919,6 +4116,7 @@
       if (item) {
         item.status = newStatus;
         setWhDB(activeWarehouse, 'overtime', overtimes);
+        saveFullDatabaseToCloud();
         renderOvertimeTable();
         refreshAllDashboardData();
         alert(`Pengajuan lembur berhasil di-${newStatus === 'approved' ? 'SETUJUI' : 'TOLAK'} dan status terkunci permanen!`);
