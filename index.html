@@ -510,26 +510,26 @@
       
       <!-- Sidebar -->
       <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-1.5 border-r border-slate-800 no-print flex-shrink-0">
-        <!-- Menu untuk Semua / Staff -->
+        <!-- Menu untuk Semua / Staff (HANYA ABSENSI) -->
         <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white">
           <i data-lucide="qr-code" class="w-4 h-4 text-teal-400"></i>
           <span>Absensi Barcode Kamera</span>
-        </button>
-
-        <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="calendar-off" class="w-4 h-4 text-rose-400"></i>
-          <span>Form Izin / Sakit / Cuti</span>
-        </button>
-
-        <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
-          <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
-          <span>Input & Rekap Lembur</span>
         </button>
 
         <!-- Menu Manajemen (Khusus Coordinator, Supervisor, Admin) -->
         <div id="admin-menu-section" class="space-y-1.5 pt-2 border-t border-slate-800">
           <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Gudang</p>
           
+          <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="calendar-off" class="w-4 h-4 text-rose-400"></i>
+            <span>Form Izin / Sakit / Cuti</span>
+          </button>
+
+          <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
+            <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+            <span>Input & Rekap Lembur</span>
+          </button>
+
           <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Dashboard</span>
@@ -1570,8 +1570,8 @@
         const existingNiks = new Set();
 
         users.forEach((u, idx) => {
-          if (u.role === 'admin' && u.nik === 'ADM001') {
-            existingNiks.add('ADM001');
+          if (u.role === 'admin' && (u.nik === 'ADM001' || u.nik === `ADM-${wh}`)) {
+            existingNiks.add(u.nik.toUpperCase());
             return;
           }
 
@@ -1583,7 +1583,7 @@
                         !u.nik.toUpperCase().startsWith(prefix);
 
           if (isOld || existingNiks.has(u.nik.toUpperCase())) {
-            let num = idx + 1;
+            let num = 1; // Mulai dari 001, bukan 002!
             let candidate = `${prefix}${String(num).padStart(3, '0')}`;
             while (existingNiks.has(candidate)) {
               num++;
@@ -1750,7 +1750,7 @@
       fetchFullDatabaseFromCloud();
       setInterval(() => {
         fetchFullDatabaseFromCloud();
-      }, 15000);
+      }, 5000);
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
@@ -2125,16 +2125,12 @@
 
       if (isManagement) {
         // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu
-        adminSection.classList.remove('hidden');
-        if (leavesNav) leavesNav.classList.remove('hidden');
-        if (overtimeNav) overtimeNav.classList.remove('hidden');
+        if (adminSection) adminSection.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       } else {
-        // Akun Karyawan Biasa / Selain Admin: HANYA ADA MENU ABSEN SAJA
-        adminSection.classList.add('hidden');
-        if (leavesNav) leavesNav.classList.add('hidden');
-        if (overtimeNav) overtimeNav.classList.add('hidden');
+        // Akun Karyawan Biasa: HANYA ADA MENU ABSEN SAJA
+        if (adminSection) adminSection.classList.add('hidden');
         switchView('attendance');
       }
 
@@ -2198,6 +2194,16 @@
       document.querySelectorAll('.sidebar-link').forEach(el => {
         el.className = 'sidebar-link w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800';
       });
+
+      // Pastikan admin-menu-section selalu tersembunyi bagi staff biasa
+      const adminSection = document.getElementById('admin-menu-section');
+      if (adminSection) {
+        if (!isManagement) {
+          adminSection.classList.add('hidden');
+        } else {
+          adminSection.classList.remove('hidden');
+        }
+      }
 
       const activeView = document.getElementById('view-' + viewName);
       if (activeView) activeView.classList.remove('hidden');
@@ -3051,8 +3057,15 @@
           const selectedLoginWh = document.querySelector('input[name="login-warehouse"]:checked')?.value;
           const targetWh = activeWarehouse || selectedLoginWh || 'MBI';
 
-          // Ambil data users aktif
-          let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          // Ambil data users aktif & pisahkan admin
+          let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const adminAccounts = existingUsers.filter(u => u.role === 'admin' || (u.role === 'supervisor' && u.nik === 'ADM001'));
+          
+          // Mulai dengan akun Admin agar NIK Karyawan baru selalu mulai rapi dari MBI26-001!
+          let users = adminAccounts.length > 0 ? [...adminAccounts] : [
+            { id: `${targetWh.toLowerCase()}-admin`, name: 'Hendra Gunawan', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
+          ];
+
           let countAdded = 0;
 
           rows.forEach((r, idx) => {
@@ -3073,7 +3086,7 @@
               }
             }
 
-            // Buat NIK unik baru terhadap daftar users yang terus bertambah di batch ini
+            // Buat NIK unik baru berurutan rapi: MBI26-001, MBI26-002, ..., MBI26-115
             const nik = rawNik ? rawNik.toUpperCase() : generateUniqueNIK(targetWh, name, users);
 
             const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff').toLowerCase();
