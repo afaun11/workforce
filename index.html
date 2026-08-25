@@ -909,6 +909,9 @@
                 <button onclick="switchReportTab('leaves')" id="btn-tab-report-leaves" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
                   Rekap Pengajuan
                 </button>
+                <button onclick="switchReportTab('overtime')" id="btn-tab-report-overtime" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
+                  Rekap Lembur
+                </button>
               </div>
             </div>
 
@@ -1065,6 +1068,68 @@
                 </div>
               </div>
             </div>
+
+            <!-- TAB 4: REKAP LEMBUR (EXCEL & LAPORAN TERPUSAT) -->
+            <div id="tab-content-report-overtime" class="hidden space-y-4">
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                      <input type="date" id="report-ot-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                      <input type="date" id="report-ot-end" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Status:</label>
+                      <select id="report-ot-status-filter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                        <option value="">Semua Status</option>
+                        <option value="approved">Disetujui</option>
+                        <option value="pending">Pending</option>
+                        <option value="rejected">Ditolak</option>
+                      </select>
+                    </div>
+                    <button onclick="renderReportOvertimeTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                      Filter Lembur
+                    </button>
+                  </div>
+
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span id="report-ot-total-nominal-badge" class="px-3 py-2 bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-extrabold">
+                      Total Biaya: Rp 0
+                    </span>
+                    <button onclick="exportReportOvertimeToExcel()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                      Download Rekap Lembur (Excel)
+                    </button>
+                  </div>
+                </div>
+
+                <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
+                  <table class="w-full text-left text-xs border-collapse">
+                    <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
+                      <tr>
+                        <th class="p-3.5 border-r border-slate-200">No</th>
+                        <th class="p-3.5 border-r border-slate-200">Tanggal</th>
+                        <th class="p-3.5 border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 border-r border-slate-200">Departemen</th>
+                        <th class="p-3.5 border-r border-slate-200">Kategori Hari</th>
+                        <th class="p-3.5 border-r border-slate-200">Jam Lembur</th>
+                        <th class="p-3.5 border-r border-slate-200">Jam Efektif</th>
+                        <th class="p-3.5 border-r border-slate-200">Upah Lembur</th>
+                        <th class="p-3.5 border-r border-slate-200">Alasan Lembur</th>
+                        <th class="p-3.5 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="report-overtime-table-body" class="divide-y divide-slate-100">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- ========================================================= -->
@@ -1074,14 +1139,14 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                  Input & Rekapitulasi Lembur (<span id="ot-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
+                  Input & Persetujuan Lembur (<span id="ot-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
                 </h2>
                 <p class="text-xs text-slate-500 mt-0.5">Pilih karyawan secara massal (grid), hitung upah otomatis (Hari Kerja Rp 125.000 / Hari Libur Rp 120.000), & approval supervisor</p>
               </div>
 
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="exportOvertimeToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
-                  Download Rekap Lembur (Excel)
+                <button onclick="switchView('reports-group'); switchReportTab('overtime');" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  Buka Rekap & Download Excel di Laporan
                 </button>
               </div>
             </div>
@@ -1798,6 +1863,8 @@
       document.getElementById('record-end-date').value = todayStr;
       if (document.getElementById('report-leave-start')) document.getElementById('report-leave-start').value = firstDayStr;
       if (document.getElementById('report-leave-end')) document.getElementById('report-leave-end').value = lastDayStr;
+      if (document.getElementById('report-ot-start')) document.getElementById('report-ot-start').value = firstDayStr;
+      if (document.getElementById('report-ot-end')) document.getElementById('report-ot-end').value = todayStr;
       document.getElementById('ot-filter-start').value = firstDayStr;
       document.getElementById('ot-filter-end').value = todayStr;
       document.getElementById('ot-date').value = todayStr;
@@ -3402,10 +3469,13 @@
       const isRecord = tabName === 'records';
       const isMatrix = tabName === 'matrix';
       const isLeaves = tabName === 'leaves';
+      const isOvertime = tabName === 'overtime';
 
       document.getElementById('tab-content-records').classList.toggle('hidden', !isRecord);
       document.getElementById('tab-content-matrix').classList.toggle('hidden', !isMatrix);
       document.getElementById('tab-content-report-leaves').classList.toggle('hidden', !isLeaves);
+      const tabOtEl = document.getElementById('tab-content-report-overtime');
+      if (tabOtEl) tabOtEl.classList.toggle('hidden', !isOvertime);
 
       document.getElementById('btn-tab-records').className = isRecord 
         ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
@@ -3419,9 +3489,17 @@
         ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
         : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
 
+      const btnOtEl = document.getElementById('btn-tab-report-overtime');
+      if (btnOtEl) {
+        btnOtEl.className = isOvertime 
+          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
+          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+      }
+
       if (isRecord) renderRecordsTable();
       else if (isMatrix) renderMatrixTable();
       else if (isLeaves) renderReportLeavesTable();
+      else if (isOvertime) renderReportOvertimeTable();
       lucide.createIcons();
     }
 
@@ -3515,6 +3593,109 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, `Rekap_Pengajuan_${activeWarehouse}`);
       XLSX.writeFile(wb, `Rekap_Pengajuan_${activeWarehouse}_${startStr || 'all'}_sd_${endStr || 'all'}.xlsx`);
+    }
+
+    function renderReportOvertimeTable() {
+      const startStr = document.getElementById('report-ot-start')?.value || '';
+      const endStr = document.getElementById('report-ot-end')?.value || '';
+      const statusFilter = document.getElementById('report-ot-status-filter')?.value || '';
+
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const filtered = overtimes.filter(o => {
+        const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
+        const inStatus = !statusFilter || o.status === statusFilter;
+        return inDate && inStatus;
+      });
+
+      let totalNominal = 0;
+      filtered.forEach(o => {
+        if (o.status === 'approved' || !statusFilter) {
+          totalNominal += (o.nominal || 0);
+        }
+      });
+
+      const badge = document.getElementById('report-ot-total-nominal-badge');
+      if (badge) {
+        badge.innerText = `Total Estimasi Biaya: Rp ${totalNominal.toLocaleString('id-ID')} (${filtered.length} Data)`;
+      }
+
+      const tbody = document.getElementById('report-overtime-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400 font-medium">Tidak ada data lembur pada filter periode ini.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach((ot, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+        let statusBadge = '';
+        if (ot.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
+        else if (ot.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">PENDING</span>';
+
+        tr.innerHTML = `
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.userName}</td>
+          <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-rose-700 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
+          <td class="p-3.5 border-r border-slate-100 font-mono font-bold text-slate-800">${ot.effectiveHours} Jam</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono font-black text-slate-900">Rp ${(ot.nominal || 0).toLocaleString('id-ID')}</td>
+          <td class="p-3.5 border-r border-slate-100 text-slate-600 max-w-xs truncate">${ot.reason}</td>
+          <td class="p-3.5 text-center">${statusBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportReportOvertimeToExcel() {
+      const startStr = document.getElementById('report-ot-start')?.value || '';
+      const endStr = document.getElementById('report-ot-end')?.value || '';
+      const statusFilter = document.getElementById('report-ot-status-filter')?.value || '';
+
+      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const filtered = overtimes.filter(o => {
+        const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
+        const inStatus = !statusFilter || o.status === statusFilter;
+        return inDate && inStatus;
+      });
+
+      if (filtered.length === 0) {
+        alert('Tidak ada data lembur yang sesuai dengan filter untuk diekspor.');
+        return;
+      }
+
+      const rows = filtered.map((r, i) => ({
+        "No": i + 1,
+        "Tanggal": r.date,
+        "NIK": r.userNik,
+        "Nama Karyawan": r.userName,
+        "Departemen": r.dept || '',
+        "Kategori Hari": r.dayType === 'hari_libur' ? 'Hari Libur' : 'Hari Kerja',
+        "Jam Mulai": r.startTime,
+        "Jam Selesai": r.endTime,
+        "Total Jam": r.totalHours,
+        "Jam Kerja Efektif": r.effectiveHours,
+        "Upah Lembur (Rp)": r.nominal || 0,
+        "Alasan Lembur": r.reason || '',
+        "Status Approval": r.status === 'approved' ? 'Disetujui' : (r.status === 'rejected' ? 'Ditolak' : 'Pending'),
+        "Gudang": activeWarehouse
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Rekap_Lembur_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Rekap_Lembur_Karyawan_${activeWarehouse}_${startStr || 'all'}_sd_${endStr || 'all'}.xlsx`);
+    }
+
+    function exportOvertimeToExcel() {
+      exportReportOvertimeToExcel();
     }
 
     function renderRecordsTable() {
