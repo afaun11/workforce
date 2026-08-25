@@ -118,11 +118,16 @@
             Masuk ke Portal
           </button>
 
-          <!-- Tombol Bantuan Cek Daftar Akun Aktif -->
-          <div class="pt-2 text-center">
+          <!-- Tombol Bantuan Cek Daftar Akun Aktif & Upload Excel Cepat -->
+          <div class="pt-3 border-t border-slate-100 flex flex-col gap-2 text-center">
             <button type="button" onclick="openAccountLookupModal()" class="text-xs font-bold text-sky-600 hover:text-sky-800 underline">
-              🔍 Lupa NIK? Lihat Daftar NIK & Karyawan Terdaftar
+              🔍 Cek Daftar Akun / Lupa NIK Karyawan
             </button>
+            <label class="cursor-pointer inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition shadow-xs">
+              <i data-lucide="file-up" class="w-3.5 h-3.5 text-emerald-600"></i>
+              <span>Upload File Excel Karyawan (.xlsx)</span>
+              <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
+            </label>
           </div>
         </form>
       </div>
@@ -211,7 +216,13 @@
         <button onclick="closeAccountLookupModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <input type="text" id="lookup-search-input" onkeyup="renderAccountLookupList()" placeholder="Cari nama Anda..." class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+      <div class="flex items-center gap-2">
+        <input type="text" id="lookup-search-input" onkeyup="renderAccountLookupList()" placeholder="Cari nama Anda..." class="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
+        <label class="cursor-pointer px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i> Upload Excel
+          <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
+        </label>
+      </div>
 
       <div class="max-h-60 overflow-y-auto custom-scroll border rounded-2xl divide-y divide-slate-100" id="lookup-list-container">
         <!-- Rendered by JS -->
@@ -498,6 +509,12 @@
                 <button onclick="exportEmployeesExcel()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
                   <i data-lucide="download" class="w-4 h-4"></i> Download Data
                 </button>
+                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
+                </button>
+                <button onclick="deleteAllEmployees()" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm" title="Hapus Semua Data Karyawan">
+                  <i data-lucide="trash" class="w-4 h-4"></i> Hapus Semua Data
+                </button>
               </div>
             </div>
 
@@ -507,16 +524,21 @@
                 <div class="relative flex-1 min-w-[240px]">
                   <input type="text" id="emp-search-input" onkeyup="renderEmployeeTable()" placeholder="Cari Nama Karyawan, Departemen, atau NIK..." class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">
                 </div>
-                <span id="emp-total-badge" class="text-xs font-bold px-3 py-1.5 bg-sky-50 text-sky-800 rounded-xl border border-sky-200">
-                  Total: 0 Karyawan
-                </span>
+                <div class="flex items-center gap-2">
+                  <span id="emp-total-badge" class="text-xs font-bold px-3 py-1.5 bg-sky-50 text-sky-800 rounded-xl border border-sky-200">
+                    Total: 0 Karyawan
+                  </span>
+                </div>
               </div>
 
-              <!-- Tabel Format Persis Gambar 1 -->
+              <!-- Tabel Format Persis Gambar 1 + Checkbox Hapus -->
               <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
                 <table class="w-full text-left text-xs border-collapse">
                   <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
                     <tr>
+                      <th class="p-3.5 border-r border-slate-200 w-10 text-center">
+                        <input type="checkbox" id="emp-master-check" onchange="toggleSelectAllEmployees(this.checked)" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+                      </th>
                       <th class="p-3.5 border-r border-slate-200">No</th>
                       <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
                       <th class="p-3.5 border-r border-slate-200">Departemen</th>
@@ -524,7 +546,7 @@
                       <th class="p-3.5 border-r border-slate-200">No Telpon</th>
                       <th class="p-3.5 border-r border-slate-200">JOIN DATE</th>
                       <th class="p-3.5 border-r border-slate-200">Posisi</th>
-                      <th class="p-3.5 text-right">Aksi</th>
+                      <th class="p-3.5 text-right min-w-[120px]">Aksi</th>
                     </tr>
                   </thead>
                   <tbody id="emp-table-body" class="divide-y divide-slate-100">
@@ -2223,7 +2245,7 @@
     }
 
     // =========================================================
-    // FITUR DATA KARYAWAN (SESUAI GAMBAR 1) + EXCEL
+    // FITUR DATA KARYAWAN (SESUAI GAMBAR 1) + EXCEL & HAPUS CEKLIS
     // =========================================================
     function renderEmployeeTable() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -2234,8 +2256,12 @@
       tbody.innerHTML = '';
       document.getElementById('emp-total-badge').innerText = `Total: ${filtered.length} Karyawan (${activeWarehouse})`;
 
+      const masterCheck = document.getElementById('emp-master-check');
+      if (masterCheck) masterCheck.checked = false;
+      updateSelectedEmployeesCount();
+
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
         return;
       }
 
@@ -2243,6 +2269,9 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         tr.innerHTML = `
+          <td class="p-3.5 border-r border-slate-100 text-center">
+            <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+          </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${emp.name} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
           <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
@@ -2251,14 +2280,103 @@
           <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate}</td>
           <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-purple-100 text-purple-800' : (emp.role === 'coordinator' ? 'bg-sky-100 text-sky-800' : 'bg-teal-100 text-teal-800')}">${emp.role.toUpperCase()}</span></td>
           <td class="p-3.5 text-right">
-            <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
-              <i data-lucide="contact" class="w-3.5 h-3.5 text-sky-600"></i> ID Card
-            </button>
+            <div class="flex items-center justify-end gap-1.5">
+              <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-bold text-[11px] inline-flex items-center gap-1">
+                <i data-lucide="contact" class="w-3.5 h-3.5 text-sky-600"></i> ID Card
+              </button>
+              <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
       });
       lucide.createIcons();
+    }
+
+    function toggleSelectAllEmployees(checked) {
+      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]');
+      checkboxes.forEach(cb => cb.checked = checked);
+      updateSelectedEmployeesCount();
+    }
+
+    function updateSelectedEmployeesCount() {
+      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]:checked');
+      const count = checkboxes.length;
+      const countBadge = document.getElementById('count-selected-emp-badge');
+      if (countBadge) countBadge.innerText = count;
+
+      const deleteBtn = document.getElementById('btn-delete-selected-emp');
+      if (deleteBtn) {
+        if (count > 0) {
+          deleteBtn.classList.remove('opacity-50', 'pointer-events-none');
+        } else {
+          deleteBtn.classList.add('opacity-50');
+        }
+      }
+    }
+
+    function deleteSelectedEmployees() {
+      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]:checked');
+      if (checkboxes.length === 0) {
+        alert('Silakan centang (ceklis) minimal 1 karyawan yang ingin dihapus.');
+        return;
+      }
+
+      const selectedNiks = Array.from(checkboxes).map(cb => cb.value);
+      if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedNiks.length} data karyawan yang diceklis dari Gudang ${activeWarehouse}?`)) {
+        return;
+      }
+
+      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      users = users.filter(u => !selectedNiks.includes(u.nik));
+
+      setWhDB(activeWarehouse, 'users', users);
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      refreshAllDashboardData();
+      renderAccountLookupList();
+
+      alert(`Berhasil menghapus ${selectedNiks.length} karyawan dari Gudang ${activeWarehouse}!`);
+    }
+
+    function deleteAllEmployees() {
+      if (!confirm(`⚠️ PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA KARYAWAN di Gudang ${activeWarehouse}?\n\n(Tindakan ini akan mengosongkan seluruh data karyawan agar Anda bisa upload Excel baru yang bersih).`)) {
+        return;
+      }
+
+      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      
+      // Sisakan akun admin aktif agar tidak terkunci
+      const adminUser = users.find(u => u.role === 'admin' || u.role === 'supervisor') || (activeWarehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
+      users = adminUser ? [adminUser] : [];
+
+      setWhDB(activeWarehouse, 'users', users);
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      refreshAllDashboardData();
+      renderAccountLookupList();
+
+      alert(`Semua data karyawan di Gudang ${activeWarehouse} berhasil dikosongkan!\nSekarang Anda dapat meng-upload file Excel yang baru.`);
+    }
+
+    function deleteSingleEmployee(nik) {
+      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const target = users.find(u => u.nik === nik);
+      if (!target) return;
+
+      if (!confirm(`Hapus data karyawan ${target.name} (${target.nik})?`)) return;
+
+      users = users.filter(u => u.nik !== nik);
+      setWhDB(activeWarehouse, 'users', users);
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      refreshAllDashboardData();
+      renderAccountLookupList();
     }
 
     function openAddEmployeeModal() {
@@ -2387,8 +2505,11 @@
             return;
           }
 
-          const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-          let currentNikNum = getHighestNikNum(users, activeWarehouse);
+          const selectedLoginWh = document.querySelector('input[name="login-warehouse"]:checked')?.value;
+          const targetWh = activeWarehouse || selectedLoginWh || 'MBI';
+
+          const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          let currentNikNum = getHighestNikNum(users, targetWh);
           let countAdded = 0;
           let countUpdated = 0;
 
@@ -2406,7 +2527,7 @@
 
             if (!nik) {
               currentNikNum++;
-              nik = `${activeWarehouse}-${currentNikNum}`;
+              nik = `${targetWh}-${currentNikNum}`;
             }
 
             const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff').toLowerCase();
@@ -2426,20 +2547,21 @@
             } else {
               // Tambah karyawan baru
               users.push({
-                id: `${activeWarehouse.toLowerCase()}-${Date.now()}-${idx}`,
-                name, dept, outsource, phone, joinDate, nik, role, password: 'medika123', isFirstLogin: true, warehouse: activeWarehouse
+                id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}`,
+                name, dept, outsource, phone, joinDate, nik, role, password: 'medika123', isFirstLogin: true, warehouse: targetWh
               });
               countAdded++;
             }
           });
 
-          setWhDB(activeWarehouse, 'users', users);
+          setWhDB(targetWh, 'users', users);
           renderEmployeeTable();
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
+          renderAccountLookupList();
           
-          alert(`✅ Import Excel Sukses!\n- ${countAdded} Akun Baru Ditambahkan\n- ${countUpdated} Akun Diperbarui\n\nSeluruh karyawan langsung aktif dan dapat login dengan NIK / Nama masing-masing (Password default: medika123).`);
+          alert(`✅ Import Excel Sukses ke Gudang ${targetWh}!\n- ${countAdded} Akun Baru Ditambahkan\n- ${countUpdated} Akun Diperbarui\n\nSeluruh karyawan langsung aktif dan dapat login dengan NIK / Nama masing-masing (Password default: medika123).`);
         } catch (err) {
           alert('Gagal membaca file Excel: ' + err.message);
         }
