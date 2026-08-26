@@ -2678,25 +2678,107 @@
       });
     }
 
-    function migrateAllUsersNIK() {
+    function deduplicateAndFixNIKs() {
       sanitizeEmployeesData();
 
       ['MBI', 'MAI'].forEach(wh => {
         let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-        let hasChanges = false;
+        if (!Array.isArray(users) || users.length === 0) return;
 
+        let hasChanges = false;
+        const year = new Date().getFullYear().toString().slice(-2); // "26"
+        const prefix = `${wh.toUpperCase()}${year}-`;
+
+        // TAHAP 1: Kumpulkan semua NIK unik yang sah dan sudah dipakai
+        // Mengunci NIK karyawan lain agar tidak ada yang bergeser/berubah
+        const nikOwnerMap = new Map();
+        const duplicateUsers = [];
+
+        // 1a. Pastikan Admin selalu memiliki NIK resmi (ADM001 / ADM-MAI)
         users.forEach(u => {
-          if (!u.nik || u.nik.trim() === '') {
-            u.nik = generateUniqueNIK(wh, u.name, users);
-            hasChanges = true;
+          if (u.role === 'admin') {
+            const adminNik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
+            if (u.nik !== adminNik) {
+              u.nik = adminNik;
+              hasChanges = true;
+            }
+            nikOwnerMap.set(adminNik.toUpperCase(), u);
+          }
+        });
+
+        // 1b. Kunci NIK karyawan sah, pisahkan karyawan yang duplikat
+        users.forEach(u => {
+          if (u.role === 'admin') return;
+
+          const currentNik = (u.nik || '').trim().toUpperCase();
+          if (currentNik && !nikOwnerMap.has(currentNik)) {
+            nikOwnerMap.set(currentNik, u);
+          } else {
+            duplicateUsers.push(u);
+          }
+        });
+
+        // TAHAP 2: Hanya berikan NIK baru ke user yang duplikat (KARYAWAN LAIN 100% AMAN & TIDAK BERGESER)
+        duplicateUsers.forEach(u => {
+          let newNik = '';
+          for (let num = 1; num <= 9999; num++) {
+            const candidate = `${prefix}${String(num).padStart(3, '0')}`;
+            if (!nikOwnerMap.has(candidate)) {
+              newNik = candidate;
+              break;
+            }
+          }
+          if (!newNik) newNik = `${prefix}${Date.now().toString().slice(-4)}`;
+
+          const oldNik = u.nik;
+          u.nik = newNik;
+          nikOwnerMap.set(newNik, u);
+          hasChanges = true;
+
+          // Sinkronkan riwayat absensi, izin, dan lembur untuk user terkait
+          if (oldNik && oldNik !== newNik) {
+            let att = getWhDB(wh, 'attendance', []);
+            let attChanged = false;
+            att.forEach(a => {
+              if (a.userId === u.id || (a.userNik === oldNik && a.userName === u.name)) {
+                a.userNik = newNik;
+                attChanged = true;
+              }
+            });
+            if (attChanged) setWhDB(wh, 'attendance', att);
+
+            let lvs = getWhDB(wh, 'leaves', []);
+            let lvsChanged = false;
+            lvs.forEach(l => {
+              if (l.userNik === oldNik && l.userName === u.name) {
+                l.userNik = newNik;
+                lvsChanged = true;
+              }
+            });
+            if (lvsChanged) setWhDB(wh, 'leaves', lvs);
+
+            let ots = getWhDB(wh, 'overtime', []);
+            let otsChanged = false;
+            ots.forEach(o => {
+              if (o.userId === u.id || (o.userNik === oldNik && o.userName === u.name)) {
+                o.userNik = newNik;
+                otsChanged = true;
+              }
+            });
+            if (otsChanged) setWhDB(wh, 'overtime', ots);
           }
         });
 
         if (hasChanges) {
           const storageKey = `wfm_${wh.toLowerCase()}_users`;
           localStorage.setItem(storageKey, JSON.stringify(users));
+          saveFullDatabaseToCloud();
         }
       });
+    }
+
+    function migrateAllUsersNIK() {
+      deduplicateAndFixNIKs();
     }
 
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
@@ -5075,9 +5157,16 @@
       const customPass = document.getElementById('edit-emp-pass').value.trim();
 
       let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const idx = users.findIndex(u => u.id === id || u.nik === nik);
+      const idx = users.findIndex(u => u.id === id);
 
       if (idx !== -1) {
+        // Cek apakah NIK baru sudah dipakai karyawan lain di gudang ini
+        const duplicateUser = users.find((u, i) => i !== idx && (u.nik || '').toUpperCase() === nik);
+        if (duplicateUser) {
+          alert(`⚠️ NIK "${nik}" sudah digunakan oleh karyawan: ${duplicateUser.name}.\nSilakan gunakan NIK yang berbeda agar tidak terjadi duplikasi NIK.`);
+          return;
+        }
+
         const oldNik = users[idx].nik;
         const oldName = users[idx].name;
 
