@@ -599,9 +599,8 @@
 
         <!-- Tombol Minimize / Expand di Bagian Bawah Sidebar (Footer) -->
         <div class="pt-3 border-t border-slate-800 mt-4 flex-shrink-0">
-          <button id="btn-toggle-sidebar" onclick="toggleSidebarCollapse()" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5" title="Sembunyikan / Buka Menu Samping">
-            <i data-lucide="chevrons-left" class="w-4 h-4 flex-shrink-0"></i>
-            <span class="sidebar-text font-bold">Ciutkan Menu</span>
+          <button id="btn-toggle-sidebar" onclick="toggleSidebarCollapse()" class="w-full py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center justify-center" title="Minimize / Expand Menu">
+            <i data-lucide="chevrons-left" class="w-4 h-4"></i>
           </button>
         </div>
       </aside>
@@ -2888,8 +2887,8 @@
       const toggleBtn = document.getElementById('btn-toggle-sidebar');
       if (toggleBtn) {
         toggleBtn.innerHTML = isCollapsed 
-          ? '<i data-lucide="chevrons-right" class="w-4 h-4 flex-shrink-0"></i>'
-          : '<i data-lucide="chevrons-left" class="w-4 h-4 flex-shrink-0"></i><span class="sidebar-text font-bold">Ciutkan Menu</span>';
+          ? '<i data-lucide="chevrons-right" class="w-4 h-4"></i>'
+          : '<i data-lucide="chevrons-left" class="w-4 h-4"></i>';
       }
       lucide.createIcons();
     }
