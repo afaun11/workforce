@@ -1453,51 +1453,58 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <!-- 1. KARTU IDENTITAS KARYAWAN (UKURAN STANDAR CR80 BERESOLUSI TINGGI) -->
+              <!-- 1. KARTU IDENTITAS KARYAWAN (STANDAR CR80 ELEGAN & RAPI) -->
               <div class="flex flex-col items-center p-6 bg-slate-200/60 rounded-3xl border border-slate-200">
                 <span class="text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-3">Preview ID Card Karyawan (Standar CR80)</span>
                 
-                <div id="printable-id-card" style="width: 300px; height: 475px; min-width: 300px; min-height: 475px; max-width: 300px; max-height: 475px; box-sizing: border-box;" class="bg-white rounded-3xl border-2 border-slate-900 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                <div id="printable-id-card" style="width: 320px; height: 510px; min-width: 320px; min-height: 510px; max-width: 320px; max-height: 510px; box-sizing: border-box;" class="bg-white rounded-3xl border-2 border-slate-900 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
                   <!-- Card Header -->
-                  <div id="idcard-header" style="height: 56px; flex-shrink: 0; padding: 10px 14px; background-color: #0369a1; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;">
+                  <div id="idcard-header" style="height: 64px; flex-shrink: 0; padding: 12px 16px; background-color: #0369a1; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;">
                     <div style="text-align: left;">
-                      <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: #bae6fd; display: block; line-height: 1; margin: 0 0 2px 0;">WORKFORCE</span>
-                      <h3 style="font-size: 13px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; letter-spacing: 0.02em;">MEDIKA GROUP</h3>
+                      <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: #bae6fd; display: block; line-height: 1; margin: 0 0 3px 0;">WORKFORCE MANAGEMENT</span>
+                      <h3 style="font-size: 14px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; letter-spacing: 0.02em;">MEDIKA GROUP</h3>
                     </div>
-                    <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 6px; padding: 3px 9px; display: inline-flex; align-items: center; justify-content: center;">
+                    <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 8px; padding: 4px 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.4);">
                       <span id="idcard-wh-badge" style="font-size: 11px; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1;">MBI</span>
                     </div>
                   </div>
 
                   <!-- Card Body -->
-                  <div style="flex: 1; padding: 10px 14px 6px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; text-align: center; box-sizing: border-box; background: #ffffff;">
-                    <div style="width: 48px; height: 48px; border-radius: 9999px; background-color: #f1f5f9; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: #334155; font-weight: 900; font-size: 20px; flex-shrink: 0;">
+                  <div style="flex: 1; padding: 14px 16px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; background: #ffffff; gap: 8px;">
+                    
+                    <!-- Avatar Frame -->
+                    <div style="width: 60px; height: 60px; border-radius: 9999px; background-color: #f0fdfa; border: 3px solid #0284c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; color: #0369a1; font-weight: 900; font-size: 24px; line-height: 1; flex-shrink: 0;">
                       <span id="idcard-avatar-initial">U</span>
                     </div>
 
-                    <div style="width: 100%; padding: 0 4px;">
-                      <h4 id="idcard-name" style="font-size: 14.5px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; word-break: break-word; text-transform: uppercase; letter-spacing: 0.01em;">Nama Karyawan</h4>
+                    <!-- Employee Details -->
+                    <div style="width: 100%;">
+                      <h4 id="idcard-name" style="font-size: 16px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; word-break: break-word; text-transform: uppercase; letter-spacing: 0.02em;">Nama Karyawan</h4>
                       
-                      <div style="display: flex; justify-content: center; margin-top: 3px;">
-                        <span id="idcard-dept" style="font-size: 10px; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border-radius: 6px; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block;">STAFF</span>
-                      </div>
-                      
-                      <div style="display: flex; justify-content: center; margin-top: 4px;">
-                        <div style="background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 9999px; padding: 2.5px 12px; display: inline-flex; align-items: center; justify-content: center;">
-                          <span id="idcard-nik" style="font-size: 12px; font-family: monospace; font-weight: 900; color: #0f172a; line-height: 1; display: block;">MBI26-001</span>
-                        </div>
+                      <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
+                        <span id="idcard-dept" style="font-size: 10.5px; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 10px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block;">STAFF</span>
+                        <span id="idcard-nik" style="font-size: 11.5px; font-family: monospace; font-weight: 800; color: #334155; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 10px; line-height: 1.2; display: inline-block;">MBI26-001</span>
                       </div>
                     </div>
 
-                    <div style="padding: 5px; background-color: #ffffff; border-radius: 12px; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-shrink: 0;">
-                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" style="width: 130px; height: 130px; background-color: #ffffff; border-radius: 4px; object-fit: contain; display: block;">
+                    <!-- Decorative Divider with Title -->
+                    <div style="display: flex; align-items: center; width: 100%; margin: 2px 0;">
+                      <div style="flex: 1; height: 1px; background-color: #e2e8f0;"></div>
+                      <span style="font-size: 8px; font-weight: 800; color: #94a3b8; padding: 0 8px; letter-spacing: 0.08em; text-transform: uppercase;">Barcode Absensi</span>
+                      <div style="flex: 1; height: 1px; background-color: #e2e8f0;"></div>
+                    </div>
+
+                    <!-- QR Code Box -->
+                    <div style="background-color: #f8fafc; border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 8px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.04); flex-shrink: 0;">
+                      <img id="img-qrcode-emp" src="" alt="QR Code Karyawan" style="width: 145px; height: 145px; background-color: #ffffff; border-radius: 6px; padding: 3px; object-fit: contain; display: block;">
+                      <span style="font-size: 8.5px; font-weight: 700; color: #64748b; margin-top: 4px;">Scan saat Masuk & Pulang</span>
                     </div>
                   </div>
 
                   <!-- Card Footer -->
-                  <div style="height: 26px; flex-shrink: 0; padding: 0 12px; text-align: center; background-color: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-                    <p id="idcard-footer-text" style="font-size: 8px; font-weight: 800; color: #64748b; letter-spacing: 0.08em; margin: 0; line-height: 1; text-transform: uppercase;">Official Employee ID Card</p>
+                  <div style="height: 28px; flex-shrink: 0; padding: 0 12px; text-align: center; background-color: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                    <p id="idcard-footer-text" style="font-size: 8px; font-weight: 800; color: #64748b; letter-spacing: 0.08em; margin: 0; line-height: 1; text-transform: uppercase;">Official Employee ID Card • Medika Group</p>
                   </div>
                 </div>
               </div>
@@ -1506,35 +1513,42 @@
               <div class="flex flex-col items-center p-6 bg-amber-50/80 rounded-3xl border border-amber-200">
                 <span class="text-xs font-extrabold text-amber-800 uppercase tracking-wider mb-3">Barcode QR Lokasi Resmi (Pintu Masuk)</span>
 
-                <div id="printable-location-card" style="width: 300px; height: 475px; min-width: 300px; min-height: 475px; max-width: 300px; max-height: 475px; box-sizing: border-box;" class="bg-white rounded-3xl border-2 border-amber-700 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
+                <div id="printable-location-card" style="width: 320px; height: 510px; min-width: 320px; min-height: 510px; max-width: 320px; max-height: 510px; box-sizing: border-box;" class="bg-white rounded-3xl border-2 border-amber-700 shadow-xl overflow-hidden text-slate-900 select-none flex flex-col justify-between p-0 font-sans">
                   
-                  <div style="height: 56px; flex-shrink: 0; padding: 10px 14px; background-color: #b45309; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;">
+                  <div style="height: 64px; flex-shrink: 0; padding: 12px 16px; background-color: #b45309; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;">
                     <div style="text-align: left;">
-                      <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: #fde68a; display: block; line-height: 1; margin: 0 0 2px 0;">TITIK LOKASI</span>
-                      <h3 style="font-size: 13px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; letter-spacing: 0.02em;">GUDANG MEDIKA</h3>
+                      <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: #fde68a; display: block; line-height: 1; margin: 0 0 3px 0;">TITIK LOKASI RESMI</span>
+                      <h3 style="font-size: 14px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; letter-spacing: 0.02em;">GUDANG MEDIKA</h3>
                     </div>
-                    <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 6px; padding: 3px 9px; display: inline-flex; align-items: center; justify-content: center;">
+                    <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 8px; padding: 4px 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.4);">
                       <span style="font-size: 11px; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1;">RESMI</span>
                     </div>
                   </div>
 
-                  <div style="flex: 1; padding: 10px 14px 6px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; text-align: center; box-sizing: border-box; background: #ffffff;">
-                    <div style="width: 48px; height: 48px; border-radius: 14px; background-color: #fef3c7; border: 2px solid #fcd34d; display: flex; align-items: center; justify-content: center; color: #b45309; flex-shrink: 0;">
-                      <i data-lucide="map-pin" class="w-7 h-7"></i>
+                  <div style="flex: 1; padding: 14px 16px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; background: #ffffff; gap: 8px;">
+                    <div style="width: 60px; height: 60px; border-radius: 9999px; background-color: #fef3c7; border: 3px solid #f59e0b; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; color: #b45309; flex-shrink: 0;">
+                      <i data-lucide="map-pin" class="w-8 h-8"></i>
                     </div>
 
-                    <div style="width: 100%; padding: 0 4px;">
-                      <h4 style="font-size: 14.5px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; text-transform: uppercase;">QR CODE LOKASI GUDANG</h4>
-                      <p style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin: 3px 0 0 0; line-height: 1.2;">Scan sebelum scan ID Card</p>
+                    <div style="width: 100%;">
+                      <h4 style="font-size: 15px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; text-transform: uppercase;">QR CODE LOKASI GUDANG</h4>
+                      <p style="font-size: 10.5px; font-weight: 700; color: #b45309; text-transform: uppercase; letter-spacing: 0.04em; margin: 4px 0 0 0; line-height: 1.2;">Langkah 1: Scan Barcode Ini</p>
+                    </div>
+
+                    <div style="display: flex; align-items: center; width: 100%; margin: 2px 0;">
+                      <div style="flex: 1; height: 1px; background-color: #fef08a;"></div>
+                      <span style="font-size: 8px; font-weight: 800; color: #a16207; padding: 0 8px; letter-spacing: 0.08em; text-transform: uppercase;">Verifikasi Lokasi GPS (30m)</span>
+                      <div style="flex: 1; height: 1px; background-color: #fef08a;"></div>
                     </div>
                     
-                    <div style="padding: 5px; background-color: #fefce8; border-radius: 12px; border: 1.5px solid #fef08a; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-shrink: 0;">
-                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" style="width: 130px; height: 130px; background-color: #ffffff; border-radius: 4px; object-fit: contain; display: block;">
+                    <div style="background-color: #fefce8; border-radius: 14px; border: 1.5px solid #fef08a; padding: 8px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.04); flex-shrink: 0;">
+                      <img id="img-qrcode-location" src="" alt="QR Code Lokasi" style="width: 145px; height: 145px; background-color: #ffffff; border-radius: 6px; padding: 3px; object-fit: contain; display: block;">
+                      <span style="font-size: 8.5px; font-weight: 700; color: #854d0e; margin-top: 4px;">Pintu Masuk Gudang Medika</span>
                     </div>
                   </div>
 
-                  <div style="height: 26px; flex-shrink: 0; padding: 0 12px; text-align: center; background-color: #fefce8; border-top: 1px solid #fef08a; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-                    <p style="font-size: 8px; font-weight: 800; color: #854d0e; letter-spacing: 0.08em; margin: 0; line-height: 1; text-transform: uppercase;">Tempel di Pintu Masuk Gudang</p>
+                  <div style="height: 28px; flex-shrink: 0; padding: 0 12px; text-align: center; background-color: #fefce8; border-top: 1px solid #fef08a; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                    <p style="font-size: 8px; font-weight: 800; color: #854d0e; letter-spacing: 0.08em; margin: 0; line-height: 1; text-transform: uppercase;">Wajib Ditempel di Pintu Masuk Gudang</p>
                   </div>
                 </div>
               </div>
@@ -4181,52 +4195,60 @@
         `;
       }
 
-      // Layout Presisi Digital Screen & Image PNG Export (300px x 475px CR80 Ratio)
+      // Layout Presisi Digital Screen & Image PNG Export (320px x 510px CR80 Ratio)
       return `
-        <div ${idAttr} class="cr80-card-export" style="width: 300px; height: 475px; min-width: 300px; min-height: 475px; max-width: 300px; max-height: 475px; box-sizing: border-box; border: 2px solid #0f172a; border-radius: 16px; overflow: hidden; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; position: relative; box-shadow: 0 4px 10px rgba(0,0,0,0.08);">
+        <div ${idAttr} class="cr80-card-export" style="width: 320px; height: 510px; min-width: 320px; min-height: 510px; max-width: 320px; max-height: 510px; box-sizing: border-box; border: 2px solid #0f172a; border-radius: 18px; overflow: hidden; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; position: relative; box-shadow: 0 6px 16px rgba(0,0,0,0.1);">
           
           <!-- Card Header -->
-          <div style="height: 56px; flex-shrink: 0; padding: 10px 14px; background-color: ${headerColor}; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;">
+          <div style="height: 64px; flex-shrink: 0; padding: 12px 16px; background-color: ${headerColor}; color: #ffffff; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box;">
             <div style="text-align: left;">
-              <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: rgba(255,255,255,0.85); display: block; line-height: 1; margin: 0 0 2px 0;">WORKFORCE</span>
-              <h4 style="font-size: 13px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; text-transform: uppercase; letter-spacing: 0.02em;">MEDIKA GROUP</h4>
+              <span style="font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: #bae6fd; display: block; line-height: 1; margin: 0 0 3px 0;">WORKFORCE MANAGEMENT</span>
+              <h4 style="font-size: 14px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; text-transform: uppercase; letter-spacing: 0.02em;">MEDIKA GROUP</h4>
             </div>
-            <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 6px; padding: 3px 9px; display: inline-flex; align-items: center; justify-content: center;">
+            <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 8px; padding: 4px 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid rgba(255, 255, 255, 0.4);">
               <span style="font-size: 11px; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1;">${badgeText}</span>
             </div>
           </div>
 
           <!-- Card Body -->
-          <div style="flex: 1; padding: 10px 14px 6px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; text-align: center; box-sizing: border-box; background: #ffffff;">
+          <div style="flex: 1; padding: 14px 16px 8px; display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; background: #ffffff; gap: 8px;">
             
-            <div style="width: 48px; height: 48px; border-radius: 9999px; background-color: #f1f5f9; border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: #334155; font-weight: 900; font-size: 20px; line-height: 1; flex-shrink: 0;">
+            <!-- Avatar Frame -->
+            <div style="width: 60px; height: 60px; border-radius: 9999px; background-color: #f0fdfa; border: 3px solid #0284c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; color: #0369a1; font-weight: 900; font-size: 24px; line-height: 1; flex-shrink: 0;">
               ${(user.name || 'U').charAt(0).toUpperCase()}
             </div>
 
-            <div style="width: 100%; padding: 0 4px;">
-              <h4 style="font-size: 14.5px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; word-break: break-word; text-transform: uppercase; letter-spacing: 0.01em;">${user.name}</h4>
+            <!-- Employee Details -->
+            <div style="width: 100%;">
+              <h4 style="font-size: 16px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; word-break: break-word; text-transform: uppercase; letter-spacing: 0.02em;">${user.name}</h4>
               
-              <div style="display: flex; justify-content: center; margin-top: 3px;">
-                <span style="font-size: 10px; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border-radius: 6px; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block;">
+              <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
+                <span style="font-size: 10.5px; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 10px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block;">
                   ${user.dept || 'STAFF'}
                 </span>
-              </div>
-
-              <div style="display: flex; justify-content: center; margin-top: 4px;">
-                <div style="background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 9999px; padding: 2.5px 12px; display: inline-flex; align-items: center; justify-content: center;">
-                  <span style="font-size: 12px; font-family: monospace; font-weight: 900; color: #0f172a; line-height: 1;">${user.nik}</span>
-                </div>
+                <span style="font-size: 11.5px; font-family: monospace; font-weight: 800; color: #334155; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 10px; line-height: 1.2; display: inline-block;">
+                  ${user.nik}
+                </span>
               </div>
             </div>
 
-            <div style="padding: 5px; background-color: #ffffff; border-radius: 12px; border: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex-shrink: 0;">
-              <img src="${qrUrl}" alt="QR Code ${user.nik}" crossorigin="anonymous" style="width: 130px; height: 130px; background-color: #ffffff; border-radius: 4px; object-fit: contain; display: block;">
+            <!-- Decorative Divider with Title -->
+            <div style="display: flex; align-items: center; width: 100%; margin: 2px 0;">
+              <div style="flex: 1; height: 1px; background-color: #e2e8f0;"></div>
+              <span style="font-size: 8px; font-weight: 800; color: #94a3b8; padding: 0 8px; letter-spacing: 0.08em; text-transform: uppercase;">Barcode Absensi</span>
+              <div style="flex: 1; height: 1px; background-color: #e2e8f0;"></div>
+            </div>
+
+            <!-- QR Code Box -->
+            <div style="background-color: #f8fafc; border-radius: 14px; border: 1.5px solid #e2e8f0; padding: 8px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,0.04); flex-shrink: 0;">
+              <img src="${qrUrl}" alt="QR Code ${user.nik}" crossorigin="anonymous" style="width: 145px; height: 145px; background-color: #ffffff; border-radius: 6px; padding: 3px; object-fit: contain; display: block;">
+              <span style="font-size: 8.5px; font-weight: 700; color: #64748b; margin-top: 4px;">Scan saat Masuk & Pulang</span>
             </div>
           </div>
 
           <!-- Card Footer -->
-          <div style="height: 26px; flex-shrink: 0; padding: 0 12px; text-align: center; background-color: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-            <p style="font-size: 8px; font-weight: 800; color: #64748b; letter-spacing: 0.08em; margin: 0; line-height: 1; text-transform: uppercase;">Official Employee ID Card</p>
+          <div style="height: 28px; flex-shrink: 0; padding: 0 12px; text-align: center; background-color: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+            <p style="font-size: 8px; font-weight: 800; color: #64748b; letter-spacing: 0.08em; margin: 0; line-height: 1; text-transform: uppercase;">Official Employee ID Card • Medika Group</p>
           </div>
         </div>
       `;
@@ -4352,7 +4374,7 @@
       try {
         if (typeof html2canvas !== 'undefined') {
           const canvas = await html2canvas(cardEl, {
-            scale: 3.5,
+            scale: 3,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -4396,7 +4418,7 @@
           if (!cardEl) continue;
 
           const canvas = await html2canvas(cardEl, {
-            scale: 3.5,
+            scale: 3,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
@@ -4441,7 +4463,7 @@
 
         try {
           const canvas = await html2canvas(cardEl, {
-            scale: 3.5,
+            scale: 3,
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
