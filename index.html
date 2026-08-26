@@ -53,6 +53,31 @@
     }
     .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    /* Collapsible Sidebar Styles */
+    #app-sidebar {
+      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+    }
+    #app-sidebar.is-collapsed {
+      width: 4.5rem; /* 72px */
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    #app-sidebar.is-collapsed .sidebar-heading {
+      display: none;
+    }
+    #app-sidebar.is-collapsed .sidebar-text {
+      display: none;
+    }
+    #app-sidebar.is-collapsed .sidebar-link {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+      width: 100%;
+    }
+    #app-sidebar.is-collapsed .sidebar-link i {
+      margin: 0;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
@@ -463,6 +488,9 @@
     <!-- Top Navbar (Fixed di Posisi Atas) -->
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
       <div class="flex items-center gap-3">
+        <button id="btn-toggle-sidebar" onclick="toggleSidebarCollapse()" class="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition border border-slate-200 shadow-2xs" title="Sembunyikan / Buka Menu Samping (Minimize Sidebar)">
+          <i data-lucide="panel-left-close" class="w-4 h-4"></i>
+        </button>
         <div class="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-lg shadow-xs">M</div>
         <div>
           <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
@@ -511,12 +539,14 @@
         
         <!-- 1. Presensi & Operasional -->
         <div class="space-y-1">
-          <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
-          <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-            Dashboard
+          <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
+          <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+            <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
+            <span class="sidebar-text">Dashboard</span>
           </button>
-          <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition">
-            Absensi Barcode
+          <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5">
+            <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
+            <span class="sidebar-text">Absensi Barcode</span>
           </button>
         </div>
 
@@ -525,39 +555,45 @@
           
           <!-- Kelompok: Pengajuan & Lembur -->
           <div class="space-y-1">
-            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
-            <button onclick="switchView('leaves')" id="nav-leaves" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-              Form Pengajuan
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
+            <button onclick="switchView('leaves')" id="nav-leaves" title="Form Pengajuan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Form Pengajuan</span>
             </button>
-            <button onclick="switchView('overtime')" id="nav-overtime" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-              Input & Rekap Lembur
+            <button onclick="switchView('overtime')" id="nav-overtime" title="Input & Rekap Lembur" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Input & Rekap Lembur</span>
             </button>
           </div>
 
           <!-- Kelompok: Manajemen Karyawan -->
           <div class="space-y-1">
-            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
-            <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-              Data Karyawan
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
+            <button onclick="switchView('employees')" id="nav-employees" title="Data Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Data Karyawan</span>
             </button>
-            <button onclick="switchView('idcard')" id="nav-idcard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-              Kartu ID & QR Lokasi
+            <button onclick="switchView('idcard')" id="nav-idcard" title="Kartu ID & QR Lokasi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="contact" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Kartu ID & QR Lokasi</span>
             </button>
           </div>
 
           <!-- Kelompok: Laporan & Rekapitulasi -->
           <div class="space-y-1">
-            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
-            <button onclick="switchView('reports-group')" id="nav-reports-group" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-              Laporan & Rekap Absensi
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
+            <button onclick="switchView('reports-group')" id="nav-reports-group" title="Laporan & Rekap Absensi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Laporan & Rekap Absensi</span>
             </button>
           </div>
 
           <!-- Kelompok: Database & Cadangan -->
           <div class="space-y-1">
-            <p class="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-            <button onclick="switchView('github')" id="nav-github" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">
-              Database & Cadangan
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
+            <button onclick="switchView('github')" id="nav-github" title="Database & Cadangan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="database" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Database & Cadangan</span>
             </button>
           </div>
 
@@ -645,24 +681,24 @@
               <!-- Action Buttons Bersih, Rapi & Elegan -->
               <div class="flex items-center gap-2 flex-wrap">
                 <button onclick="openAddEmployeeModal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
                   Tambah Karyawan
                 </button>
                 <label class="cursor-pointer h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                  <i data-lucide="file-up" class="w-3.5 h-3.5 text-emerald-600"></i>
                   Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
                 <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Daftar Akun & Password">
-                  <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                  <i data-lucide="key-round" class="w-3.5 h-3.5 text-sky-600"></i>
                   Download Akun
                 </button>
                 <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                  <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
                   Template
                 </button>
                 <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="h-9 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition shadow-xs opacity-50 inline-flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i>
                   Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
               </div>
@@ -939,41 +975,56 @@
             <!-- TAB 1: RECORD ABSEN HARIAN -->
             <div id="tab-content-records" class="space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
-                      <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                
+                <!-- Collapsible Filter Box -->
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span class="text-xs font-bold text-slate-800">Filter & Pengurutan Record</span>
                     </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
-                      <select id="record-sort-order" onchange="renderRecordsTable()" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                        <option value="time_asc">Jam Masuk (Paling Awal &rarr; Akhir)</option>
-                        <option value="time_desc">Jam Masuk (Terbaru &rarr; Awal)</option>
-                        <option value="name_asc">Nama Karyawan (A - Z)</option>
-                        <option value="nik_asc">NIK Karyawan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
-                      <input type="date" id="record-start-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
-                      <input type="date" id="record-end-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                    </div>
+                    <button onclick="toggleFilterCard('filter-body-records', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                      <span class="card-toggle-text">Sembunyikan Filter</span>
+                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
+                    </button>
                   </div>
 
-                  <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                    <button onclick="renderRecordsTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                      Filter Record
-                    </button>
+                  <div id="filter-body-records" class="p-4 space-y-3.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
+                        <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
+                        <select id="record-sort-order" onchange="renderRecordsTable()" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="time_asc">Jam Masuk (Paling Awal &rarr; Akhir)</option>
+                          <option value="time_desc">Jam Masuk (Terbaru &rarr; Awal)</option>
+                          <option value="name_asc">Nama Karyawan (A - Z)</option>
+                          <option value="nik_asc">NIK Karyawan</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                        <input type="date" id="record-start-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                        <input type="date" id="record-end-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                    </div>
 
-                    <button onclick="exportRecordsToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                      <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                      Download Record Excel
-                    </button>
+                    <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
+                      <button onclick="renderRecordsTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                        Filter Record
+                      </button>
+
+                      <button onclick="exportRecordsToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        Download Record Excel
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1003,26 +1054,41 @@
             <!-- TAB 2: REKAP ABSEN MATRIKS -->
             <div id="tab-content-matrix" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div class="flex items-center gap-3 flex-wrap">
+                
+                <!-- Collapsible Matrix Filter Box -->
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="matrix-start-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                      <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span class="text-xs font-bold text-slate-800">Rentang Periode Matriks</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
-                    </div>
-                    <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                      Tarik Matriks
+                    <button onclick="toggleFilterCard('filter-body-matrix', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                      <span class="card-toggle-text">Sembunyikan Filter</span>
+                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                     </button>
                   </div>
 
-                  <button onclick="exportMatrixToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Download Matriks Excel
-                  </button>
+                  <div id="filter-body-matrix" class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 flex-wrap">
+                      <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
+                        <input type="date" id="matrix-start-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
+                        <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                      </div>
+                      <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        Tarik Matriks
+                      </button>
+                    </div>
+
+                    <button onclick="exportMatrixToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                      <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                      Download Matriks Excel
+                    </button>
+                  </div>
                 </div>
 
                 <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
@@ -1050,50 +1116,65 @@
             <!-- TAB 3: REKAP PENGAJUAN (IZIN / SAKIT / CUTI) -->
             <div id="tab-content-report-leaves" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
-                      <input type="text" id="report-leave-search" oninput="renderReportLeavesTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                
+                <!-- Collapsible Leaves Filter Box -->
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span class="text-xs font-bold text-slate-800">Filter Pengajuan Izin / Sakit / Cuti</span>
                     </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
-                      <input type="date" id="report-leave-start" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
-                      <input type="date" id="report-leave-end" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jenis</label>
-                      <select id="report-leave-type-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                        <option value="">Semua Jenis</option>
-                        <option value="sakit">Sakit</option>
-                        <option value="izin">Izin</option>
-                        <option value="cuti">Cuti</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status</label>
-                      <select id="report-leave-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                        <option value="">Semua Status</option>
-                        <option value="approved">Disetujui</option>
-                        <option value="pending">Pending</option>
-                        <option value="rejected">Ditolak</option>
-                      </select>
-                    </div>
+                    <button onclick="toggleFilterCard('filter-body-leaves', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                      <span class="card-toggle-text">Sembunyikan Filter</span>
+                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
+                    </button>
                   </div>
 
-                  <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                    <button onclick="renderReportLeavesTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                      Filter Pengajuan
-                    </button>
+                  <div id="filter-body-leaves" class="p-4 space-y-3.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
+                        <input type="text" id="report-leave-search" oninput="renderReportLeavesTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                        <input type="date" id="report-leave-start" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                        <input type="date" id="report-leave-end" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jenis</label>
+                        <select id="report-leave-type-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="">Semua Jenis</option>
+                          <option value="sakit">Sakit</option>
+                          <option value="izin">Izin</option>
+                          <option value="cuti">Cuti</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status</label>
+                        <select id="report-leave-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="">Semua Status</option>
+                          <option value="approved">Disetujui</option>
+                          <option value="pending">Pending</option>
+                          <option value="rejected">Ditolak</option>
+                        </select>
+                      </div>
+                    </div>
 
-                    <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                      <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                      Download Pengajuan Excel
-                    </button>
+                    <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
+                      <button onclick="renderReportLeavesTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                        Filter Pengajuan
+                      </button>
+
+                      <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        Download Pengajuan Excel
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1122,45 +1203,60 @@
             <!-- TAB 4: REKAP LEMBUR (EXCEL & LAPORAN TERPUSAT) -->
             <div id="tab-content-report-overtime" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
-                      <input type="text" id="report-ot-search" oninput="renderReportOvertimeTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                
+                <!-- Collapsible Overtime Report Filter Box -->
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+                  <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
+                    <div class="flex items-center gap-2">
+                      <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span class="text-xs font-bold text-slate-800">Filter Rekap Lembur</span>
                     </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
-                      <input type="date" id="report-ot-start" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
-                      <input type="date" id="report-ot-end" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
-                    </div>
-                    <div>
-                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status Approval</label>
-                      <select id="report-ot-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                        <option value="">Semua Status</option>
-                        <option value="approved">Disetujui</option>
-                        <option value="pending">Pending</option>
-                        <option value="rejected">Ditolak</option>
-                      </select>
-                    </div>
+                    <button onclick="toggleFilterCard('filter-body-overtime', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                      <span class="card-toggle-text">Sembunyikan Filter</span>
+                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
+                    </button>
                   </div>
 
-                  <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                    <button onclick="renderReportOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                      Filter Lembur
-                    </button>
+                  <div id="filter-body-overtime" class="p-4 space-y-3.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
+                        <input type="text" id="report-ot-search" oninput="renderReportOvertimeTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                        <input type="date" id="report-ot-start" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                        <input type="date" id="report-ot-end" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status Approval</label>
+                        <select id="report-ot-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="">Semua Status</option>
+                          <option value="approved">Disetujui</option>
+                          <option value="pending">Pending</option>
+                          <option value="rejected">Ditolak</option>
+                        </select>
+                      </div>
+                    </div>
 
-                    <div class="flex items-center gap-2.5 flex-wrap">
-                      <span id="report-ot-total-nominal-badge" class="h-9 px-4 bg-white text-slate-800 border border-slate-300 rounded-xl text-xs font-black inline-flex items-center shadow-2xs">
-                        Total Biaya: Rp 0
-                      </span>
-                      <button onclick="exportReportOvertimeToExcel()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Download Rekap Lembur (Excel)
+                    <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
+                      <button onclick="renderReportOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                        Filter Lembur
                       </button>
+
+                      <div class="flex items-center gap-2.5 flex-wrap">
+                        <span id="report-ot-total-nominal-badge" class="h-9 px-4 bg-white text-slate-800 border border-slate-300 rounded-xl text-xs font-black inline-flex items-center shadow-2xs">
+                          Total Biaya: Rp 0
+                        </span>
+                        <button onclick="exportReportOvertimeToExcel()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                          <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+                          Download Rekap Lembur (Excel)
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1204,93 +1300,103 @@
 
             <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
-            <!-- 1. FORM INPUT LEMBUR MASSAL DENGAN GRID CHECKBOX -->
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h3 class="font-extrabold text-sm text-slate-900">Form Penugasan Lembur Karyawan</h3>
-                <div id="ot-calc-summary-badge" class="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-extrabold">
-                  Estimasi: Rp 125.000 / orang (4 Jam Kerja Efektif)
+            <!-- 1. FORM INPUT LEMBUR MASSAL DENGAN GRID CHECKBOX (COLLAPSIBLE) -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+              <div class="p-5 flex items-center justify-between border-b border-slate-100 bg-slate-50/50 flex-wrap gap-2">
+                <div class="flex items-center gap-2.5">
+                  <i data-lucide="clock" class="w-4 h-4 text-slate-700"></i>
+                  <h3 class="font-extrabold text-sm text-slate-900">Form Penugasan Lembur Karyawan</h3>
+                  <div id="ot-calc-summary-badge" class="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded-lg text-[11px] font-extrabold">
+                    Estimasi: Rp 125.000 / orang (4 Jam Kerja)
+                  </div>
                 </div>
+                <button onclick="toggleFilterCard('form-body-overtime', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                  <span class="card-toggle-text">Sembunyikan Form</span>
+                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
+                </button>
               </div>
 
-              <form onsubmit="handleBatchOvertimeSubmit(event)" class="space-y-4">
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
-                    <input type="date" id="ot-date" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kategori Hari *</label>
-                    <select id="ot-day-type" onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                      <option value="hari_kerja">Hari Kerja (5 Jam Total = 4 Jam Kerja / Rp 125.000)</option>
-                      <option value="hari_libur">Hari Libur (Flat Rp 120.000)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Mulai *</label>
-                    <input type="time" id="ot-start" value="17:00" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold">
-                  </div>
-
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Selesai *</label>
-                    <input type="time" id="ot-end" value="22:00" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold">
-                  </div>
-                </div>
-
-                <!-- Row 2: Grid Pemilihan Karyawan Massal -->
-                <div>
-                  <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
-                    <div class="flex items-center gap-2">
-                      <button type="button" onclick="selectAllOvertimeEmployees(true)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
-                        Pilih Semua
-                      </button>
-                      <button type="button" onclick="selectAllOvertimeEmployees(false)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
-                        Batal Semua
-                      </button>
-                    </div>
-                    <div class="flex-1 min-w-[200px] max-w-xs">
-                      <input type="text" id="ot-emp-search" oninput="renderOvertimeEmployeeGrid()" placeholder="Cari nama / NIK karyawan..." class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                    </div>
-                    <span id="ot-selected-count-badge" class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
-                      0 dipilih
-                    </span>
-                  </div>
-
-                  <!-- Container Scrollable Grid -->
-                  <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 max-h-56 overflow-y-auto custom-scroll">
-                    <div id="ot-employee-checkbox-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                      <!-- Rendered by JS -->
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Row 3: Alasan Lembur & Tombol Submit -->
-                <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+              <div id="form-body-overtime" class="p-6 space-y-5">
+                <form onsubmit="handleBatchOvertimeSubmit(event)" class="space-y-4">
+                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <div>
-                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan Lembur *</label>
-                      <select id="ot-reason-select" onchange="toggleOvertimeManualReason(this.value)" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                        <option value="Menyelesaikan Orderan">Menyelesaikan Orderan</option>
-                        <option value="Stok Opname">Stok Opname</option>
-                        <option value="manual">Lainnya (Isi Manual)</option>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Lembur *</label>
+                      <input type="date" id="ot-date" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kategori Hari *</label>
+                      <select id="ot-day-type" onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <option value="hari_kerja">Hari Kerja (5 Jam Total = 4 Jam Kerja / Rp 125.000)</option>
+                        <option value="hari_libur">Hari Libur (Flat Rp 120.000)</option>
                       </select>
                     </div>
 
-                    <div id="ot-manual-reason-box" class="hidden">
-                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tulis Alasan Manual *</label>
-                      <input type="text" id="ot-reason-manual" placeholder="Tuliskan alasan lembur..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Mulai *</label>
+                      <input type="time" id="ot-start" value="17:00" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Selesai *</label>
+                      <input type="time" id="ot-end" value="22:00" required onchange="calculateOvertimeNominal()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold">
                     </div>
                   </div>
 
-                  <div class="flex justify-end pt-1">
-                    <button type="submit" class="w-full sm:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
-                      Ajukan Lembur (Menunggu Approval Supervisor)
-                    </button>
+                  <!-- Row 2: Grid Pemilihan Karyawan Massal -->
+                  <div>
+                    <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                      <div class="flex items-center gap-2">
+                        <button type="button" onclick="selectAllOvertimeEmployees(true)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
+                          Pilih Semua
+                        </button>
+                        <button type="button" onclick="selectAllOvertimeEmployees(false)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
+                          Batal Semua
+                        </button>
+                      </div>
+                      <div class="flex-1 min-w-[200px] max-w-xs">
+                        <input type="text" id="ot-emp-search" oninput="renderOvertimeEmployeeGrid()" placeholder="Cari nama / NIK karyawan..." class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <span id="ot-selected-count-badge" class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
+                        0 dipilih
+                      </span>
+                    </div>
+
+                    <!-- Container Scrollable Grid -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 max-h-56 overflow-y-auto custom-scroll">
+                      <div id="ot-employee-checkbox-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <!-- Rendered by JS -->
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </form>
+
+                  <!-- Row 3: Alasan Lembur & Tombol Submit -->
+                  <div class="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan Lembur *</label>
+                        <select id="ot-reason-select" onchange="toggleOvertimeManualReason(this.value)" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="Menyelesaikan Orderan">Menyelesaikan Orderan</option>
+                          <option value="Stok Opname">Stok Opname</option>
+                          <option value="manual">Lainnya (Isi Manual)</option>
+                        </select>
+                      </div>
+
+                      <div id="ot-manual-reason-box" class="hidden">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tulis Alasan Manual *</label>
+                        <input type="text" id="ot-reason-manual" placeholder="Tuliskan alasan lembur..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                    </div>
+
+                    <div class="flex justify-end pt-1">
+                      <button type="submit" class="w-full sm:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs inline-flex items-center justify-center gap-1.5">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        Ajukan Lembur (Menunggu Approval Supervisor)
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
             </div>
 
             <!-- 2. TABEL REKAP & DAFTAR PENGAJUAN LEMBUR -->
@@ -1310,7 +1416,7 @@
                     <input type="date" id="ot-filter-end" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                   </div>
                   <button onclick="renderOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    <i data-lucide="filter" class="w-3.5 h-3.5"></i>
                     Filter Data
                   </button>
                 </div>
@@ -2309,6 +2415,8 @@
         }
       });
 
+      initSidebarState();
+
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
         loginUserSession(JSON.parse(savedUser));
@@ -2761,6 +2869,55 @@
       document.getElementById('ot-wh-label').innerText = `Gudang ${activeWarehouse}`;
     }
 
+    // =========================================================
+    // FITUR MINIMIZE / COLLAPSIBLE SIDEBAR & CARDS
+    // =========================================================
+    function toggleSidebarCollapse() {
+      const sidebar = document.getElementById('app-sidebar');
+      if (!sidebar) return;
+      sidebar.classList.toggle('is-collapsed');
+      const isCollapsed = sidebar.classList.contains('is-collapsed');
+      localStorage.setItem('wfm_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+      
+      const toggleBtn = document.getElementById('btn-toggle-sidebar');
+      if (toggleBtn) {
+        toggleBtn.innerHTML = isCollapsed 
+          ? '<i data-lucide="panel-left-open" class="w-4 h-4"></i>'
+          : '<i data-lucide="panel-left-close" class="w-4 h-4"></i>';
+      }
+      lucide.createIcons();
+    }
+
+    function initSidebarState() {
+      const saved = localStorage.getItem('wfm_sidebar_collapsed');
+      const sidebar = document.getElementById('app-sidebar');
+      const toggleBtn = document.getElementById('btn-toggle-sidebar');
+      if (saved === 'true' && sidebar) {
+        sidebar.classList.add('is-collapsed');
+        if (toggleBtn) {
+          toggleBtn.innerHTML = '<i data-lucide="panel-left-open" class="w-4 h-4"></i>';
+        }
+      }
+      lucide.createIcons();
+    }
+
+    function toggleFilterCard(bodyId, btnEl) {
+      const body = document.getElementById(bodyId);
+      if (!body) return;
+      body.classList.toggle('hidden');
+      const isHidden = body.classList.contains('hidden');
+      
+      const label = btnEl.querySelector('.card-toggle-text');
+      const icon = btnEl.querySelector('.card-toggle-icon');
+      if (label) {
+        label.innerText = isHidden ? 'Buka Filter' : 'Sembunyikan Filter';
+      }
+      if (icon) {
+        icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+      }
+      lucide.createIcons();
+    }
+
     function switchView(viewName) {
       const userRole = (currentUser?.role || 'staff').toLowerCase();
       const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
@@ -2770,7 +2927,7 @@
 
       document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.sidebar-link').forEach(el => {
-        el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition';
+        el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5';
       });
 
       // Pastikan admin-menu-section dan nav-dashboard selalu tersembunyi bagi staff biasa
@@ -2790,7 +2947,7 @@
       if (activeView) activeView.classList.remove('hidden');
 
       const activeNav = document.getElementById('nav-' + viewName);
-      if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition';
+      if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5';
 
       if (viewName === 'employees') renderEmployeeTable();
       if (viewName === 'reports-group') {
