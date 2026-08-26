@@ -941,6 +941,15 @@
                       <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
                     </div>
                     <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Urutan:</label>
+                      <select id="record-sort-order" onchange="renderRecordsTable()" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                        <option value="time_asc">Jam Masuk (Paling Awal &rarr; Akhir)</option>
+                        <option value="time_desc">Jam Masuk (Terbaru &rarr; Awal)</option>
+                        <option value="name_asc">Nama Karyawan (A - Z)</option>
+                        <option value="nik_asc">NIK Karyawan</option>
+                      </select>
+                    </div>
+                    <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
                       <input type="date" id="record-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
@@ -1824,20 +1833,42 @@
 
     function mergeRecordArrays(localRecords, incomingRecords) {
       const recordMap = new Map();
-      (localRecords || []).forEach(r => {
-        if (r && (r.id || (r.userNik && r.date))) {
-          const key = r.id || `${r.userNik}_${r.date}_${r.startTime || ''}`;
-          recordMap.set(key, r);
+      const getRecordKey = (r) => {
+        if (!r) return '';
+        // 1. Presensi Harian (Unik per NIK dan Tanggal)
+        if (r.userNik && r.date && (r.checkInTime || r.checkInStatus !== undefined || r.checkOutTime !== undefined)) {
+          return `ATT_${cleanStr(r.userNik)}_${r.date}`;
         }
+        // 2. Data Lembur (Unik per NIK, Tanggal, dan Jam Mulai)
+        if (r.userNik && r.date && r.startTime) {
+          return `OT_${cleanStr(r.userNik)}_${r.date}_${r.startTime}`;
+        }
+        // 3. Pengajuan Izin/Sakit/Cuti (Unik per NIK, Rentang Tanggal, dan Jenis)
+        if (r.userNik && r.startDate && r.type) {
+          return `LV_${cleanStr(r.userNik)}_${r.startDate}_${r.endDate}_${r.type}`;
+        }
+        return r.id || `${cleanStr(r.userNik || '')}_${r.date || ''}_${r.startTime || ''}`;
+      };
+
+      (localRecords || []).forEach(r => {
+        const key = getRecordKey(r);
+        if (key) recordMap.set(key, r);
       });
+
       (incomingRecords || []).forEach(r => {
-        if (r && (r.id || (r.userNik && r.date))) {
-          const key = r.id || `${r.userNik}_${r.date}_${r.startTime || ''}`;
+        const key = getRecordKey(r);
+        if (key) {
           if (!recordMap.has(key)) {
             recordMap.set(key, r);
           } else {
             const existing = recordMap.get(key);
-            recordMap.set(key, { ...existing, ...r });
+            recordMap.set(key, {
+              ...existing,
+              ...r,
+              checkInTime: existing.checkInTime || r.checkInTime,
+              checkOutTime: r.checkOutTime || existing.checkOutTime,
+              checkInStatus: existing.checkInStatus || r.checkInStatus || 'on_time'
+            });
           }
         }
       });
@@ -4223,6 +4254,9 @@
         return inDate && inType && inStatus && inSearch;
       });
 
+      // Urutkan tanggal pengajuan terbaru di atas
+      filtered.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
+
       const rows = filtered.map((lv, i) => {
         const emp = users.find(u => u.nik === lv.userNik);
         return {
@@ -4257,6 +4291,12 @@
         const inStatus = !statusFilter || o.status === statusFilter;
         const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
         return inDate && inStatus && inSearch;
+      });
+
+      // Urutkan lembur: Tanggal terbaru di atas, lalu jam mulai
+      filtered.sort((a, b) => {
+        if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+        return (a.startTime || '').localeCompare(b.startTime || '');
       });
 
       let totalNominal = 0;
@@ -4325,6 +4365,12 @@
         return;
       }
 
+      // Urutkan lembur: Tanggal terbaru di atas, lalu jam mulai
+      filtered.sort((a, b) => {
+        if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+        return (a.startTime || '').localeCompare(b.startTime || '');
+      });
+
       const rows = filtered.map((r, i) => ({
         "No": i + 1,
         "Tanggal": r.date,
@@ -4356,6 +4402,7 @@
       const startStr = document.getElementById('record-start-date').value;
       const endStr = document.getElementById('record-end-date').value;
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
+      const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
 
@@ -4363,6 +4410,31 @@
         const inDate = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
         const inSearch = !searchQ || (a.userName && a.userName.toLowerCase().includes(searchQ)) || (a.userNik && a.userNik.toLowerCase().includes(searchQ));
         return inDate && inSearch;
+      });
+
+      // PENGURUTAN RAPI & KRONOLOGIS:
+      filtered.sort((a, b) => {
+        // 1. Tanggal (Terbaru di atas)
+        if (a.date !== b.date) {
+          return b.date.localeCompare(a.date);
+        }
+        // 2. Di dalam tanggal yang sama, urutkan sesuai mode sort:
+        if (sortOrder === 'time_asc') {
+          // Jam Masuk dari yang paling awal (kronologis: pagi -> siang -> sore)
+          const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return timeA - timeB;
+        } else if (sortOrder === 'time_desc') {
+          // Jam Masuk terbaru di atas
+          const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return timeB - timeA;
+        } else if (sortOrder === 'name_asc') {
+          return (a.userName || '').localeCompare(b.userName || '');
+        } else if (sortOrder === 'nik_asc') {
+          return (a.userNik || '').localeCompare(b.userNik || '', undefined, { numeric: true });
+        }
+        return 0;
       });
 
       const tbody = document.getElementById('records-table-body');
@@ -4422,6 +4494,7 @@
       const startStr = document.getElementById('record-start-date').value;
       const endStr = document.getElementById('record-end-date').value;
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
+      const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
 
@@ -4435,6 +4508,27 @@
         alert('Tidak ada data record presensi yang cocok dengan pencarian / filter untuk diekspor ke Excel.');
         return;
       }
+
+      // PENGURUTAN RAPI & KRONOLOGIS UNTUK FILE EXCEL:
+      filtered.sort((a, b) => {
+        if (a.date !== b.date) {
+          return b.date.localeCompare(a.date);
+        }
+        if (sortOrder === 'time_asc') {
+          const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return timeA - timeB;
+        } else if (sortOrder === 'time_desc') {
+          const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return timeB - timeA;
+        } else if (sortOrder === 'name_asc') {
+          return (a.userName || '').localeCompare(b.userName || '');
+        } else if (sortOrder === 'nik_asc') {
+          return (a.userNik || '').localeCompare(b.userNik || '', undefined, { numeric: true });
+        }
+        return 0;
+      });
 
       const rows = filtered.map((r, i) => {
         const emp = users.find(u => u.nik === r.userNik);
