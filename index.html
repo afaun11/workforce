@@ -2681,35 +2681,42 @@
     function harmonizeAndResequenceAllNIKs() {
       sanitizeEmployeesData();
 
+      const EXACT_NIK_MAP = {
+        'budisusanto': 'MBI26-022',
+        'chairulhadiyatullahgunawan': 'MBI26-023',
+        'defriaditiasaputra': 'MBI26-024',
+        'denikarsono': 'MBI26-025',
+        'djisamsuri': 'MBI26-028'
+      };
+
       ['MBI', 'MAI'].forEach(wh => {
         let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         if (!Array.isArray(users) || users.length === 0) return;
 
-        const year = new Date().getFullYear().toString().slice(-2); // "26"
-        const prefix = `${wh.toUpperCase()}${year}-`;
         let hasChanges = false;
-        let staffIndex = 1;
-
-        // Catat pemetaan perubahan NIK lama -> NIK baru
         const nikUpdateMap = new Map();
 
+        // 1. Terapkan pemetaan NIK yang tepat untuk nama-nama khusus
         users.forEach(u => {
-          if (u.role === 'admin') {
-            const adminNik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
-            if (u.nik !== adminNik) {
-              if (u.nik) nikUpdateMap.set(u.nik, adminNik);
-              u.nik = adminNik;
+          if (!u || !u.name) return;
+          const cleanedName = cleanStr(u.name);
+          if (EXACT_NIK_MAP[cleanedName]) {
+            const correctNik = EXACT_NIK_MAP[cleanedName];
+            if (u.nik !== correctNik) {
+              if (u.nik) nikUpdateMap.set(u.nik, correctNik);
+              u.nik = correctNik;
               hasChanges = true;
             }
-          } else {
-            const expectedNik = `${prefix}${String(staffIndex).padStart(3, '0')}`;
-            if (u.nik !== expectedNik) {
-              if (u.nik) nikUpdateMap.set(u.nik, expectedNik);
-              u.nik = expectedNik;
-              hasChanges = true;
-            }
-            staffIndex++;
           }
+        });
+
+        // 2. Sort users berdasarkan nomor urut NIK (Admin paling atas, lalu MBI26-001, 002, 022, 023, 024, 025, 028, dst)
+        users.sort((a, b) => {
+          if (a.role === 'admin') return -1;
+          if (b.role === 'admin') return 1;
+          const nikA = (a.nik || '').toUpperCase();
+          const nikB = (b.nik || '').toUpperCase();
+          return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
         });
 
         if (hasChanges) {
