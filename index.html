@@ -3259,11 +3259,9 @@
         }
       } catch (e) {}
 
-      const actionText = type === 'check_in' ? 'Absen masuk berhasil' : 'Absen keluar berhasil';
-      const text = userName ? `${actionText}, ${userName}` : actionText;
       setTimeout(() => {
-        speakNotification(text);
-      }, 350);
+        speakNotification('Sukses, terima kasih');
+      }, 300);
     }
 
     function playAttendanceErrorSound(reason = '') {
@@ -3289,10 +3287,9 @@
         }
       } catch (e) {}
 
-      const text = reason ? `Absen gagal. ${reason}` : 'Absen gagal';
       setTimeout(() => {
-        speakNotification(text);
-      }, 300);
+        speakNotification('Gagal, coba lagi');
+      }, 250);
     }
 
     function playLocationVerifiedSound() {
@@ -3318,8 +3315,8 @@
       } catch (e) {}
 
       setTimeout(() => {
-        speakNotification('Lokasi gudang terverifikasi. Silakan scan kartu identitas.');
-      }, 250);
+        speakNotification('Lokasi sukses');
+      }, 200);
     }
 
     // Variabel Pengatur Sensitivitas & Anti Double-Scan
@@ -3373,9 +3370,9 @@
 
         const gpsCheck = await verifyGPSLocation();
         if (!gpsCheck.valid) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-          alertEl.innerText = 'Lokasi Tidak Valid: ' + (gpsCheck.error || 'GPS Anda tidak berada di titik lokasi gudang resmi!');
-          playAttendanceErrorSound('Lokasi GPS tidak berada di area gudang');
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
+          alertEl.innerText = 'Gagal, coba lagi (Lokasi tidak sesuai)';
+          playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
@@ -3391,9 +3388,9 @@
         lastScannedCode = trimmed;
         lastScannedTime = now;
 
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-        alertEl.innerText = 'Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
-        playAttendanceErrorSound('Scan barcode lokasi terlebih dahulu');
+        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
+        alertEl.innerText = 'Gagal, coba lagi (Scan QR lokasi dulu)';
+        playAttendanceErrorSound();
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
@@ -3416,23 +3413,21 @@
       alertEl.classList.remove('hidden');
 
       if (!matchedUser) {
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-        alertEl.innerText = `Kode Barcode "${nikCode}" tidak terdaftar di Gudang ${activeWarehouse}!`;
-        playAttendanceErrorSound('Kode barcode tidak terdaftar');
+        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
+        alertEl.innerText = 'Gagal, coba lagi (Barcode tidak terdaftar)';
+        playAttendanceErrorSound();
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
 
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const existing = attendances.find(a => a.userNik === matchedUser.nik && a.date === todayStr);
-      const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001');
-      const locNotice = isAdmin ? '(Mode Uji Coba Admin: Luar Lokasi)' : '(Lokasi Terverifikasi)';
 
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-          alertEl.innerText = `${matchedUser.name} sudah melakukan Absen Masuk untuk hari ini!`;
-          playAttendanceErrorSound('Anda sudah absen masuk hari ini');
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center';
+          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} sudah absen masuk)`;
+          playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
@@ -3456,21 +3451,21 @@
 
         setWhDB(activeWarehouse, 'attendance', attendances);
         saveFullDatabaseToCloud();
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-md';
-        alertEl.innerText = `Absen MASUK Berhasil: ${matchedUser.name} ${locNotice}!`;
+        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
+        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name})`;
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
-          alertEl.innerText = `${matchedUser.name} belum Absen Masuk hari ini!`;
-          playAttendanceErrorSound('Anda belum absen masuk hari ini');
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
+          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} belum absen masuk)`;
+          playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
         if (existing.checkOutTime) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
-          alertEl.innerText = `${matchedUser.name} sudah Absen Keluar sebelumnya.`;
-          playAttendanceErrorSound('Anda sudah absen keluar sebelumnya');
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center';
+          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} sudah absen keluar)`;
+          playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
@@ -3478,18 +3473,18 @@
         existing.checkOutTime = new Date().toISOString();
         setWhDB(activeWarehouse, 'attendance', attendances);
         saveFullDatabaseToCloud();
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200 shadow-md';
-        alertEl.innerText = `Absen KELUAR Berhasil: ${matchedUser.name}! ${locNotice}`;
+        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
+        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name})`;
         playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
       refreshAllDashboardData();
 
-      // Beri jeda 3 detik agar karyawan berikutnya bisa absen dengan nyaman dan notifikasi berhasil terbaca jelas
+      // Beri jeda 3 detik agar karyawan berikutnya bisa absen dengan nyaman dan notifikasi terbaca jelas
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-      }, 3500);
+      }, 3000);
     }
 
     // =========================================================
