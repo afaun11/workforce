@@ -535,9 +535,9 @@
       <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
         
         <div class="space-y-4">
-          <!-- 1. Presensi & Akun -->
+          <!-- 1. Presensi & Operasional -->
           <div class="space-y-1">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Akun</p>
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
             <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
               <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Dashboard</span>
@@ -545,10 +545,6 @@
             <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5">
               <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Absensi Barcode</span>
-            </button>
-            <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="user-cog" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Pengaturan Akun</span>
             </button>
           </div>
 
@@ -589,15 +585,19 @@
                 <span class="sidebar-text">Laporan & Rekap Absensi</span>
               </button>
             </div>
+          </div>
 
-            <!-- Kelompok: Database & Cadangan -->
-            <div class="space-y-1">
-              <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-              <button onclick="switchView('github')" id="nav-github" title="Database & Cadangan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-                <i data-lucide="database" class="w-4 h-4 flex-shrink-0"></i>
-                <span class="sidebar-text">Database & Cadangan</span>
-              </button>
-            </div>
+          <!-- 3. Sistem & Pengaturan (Dikelompokkan Paling Bawah) -->
+          <div id="system-settings-section" class="space-y-1 pt-2 border-t border-slate-800">
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
+            <button onclick="switchView('github')" id="nav-github" title="Database & Cadangan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="database" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Database & Cadangan</span>
+            </button>
+            <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="user-cog" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Pengaturan Akun</span>
+            </button>
           </div>
         </div>
 
@@ -3014,13 +3014,17 @@
         if (adminSection) adminSection.classList.remove('hidden');
         const navDash = document.getElementById('nav-dashboard');
         if (navDash) navDash.classList.remove('hidden');
+        const navGithub = document.getElementById('nav-github');
+        if (navGithub) navGithub.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       } else {
-        // Akun Karyawan Biasa: HANYA ADA MENU ABSEN SAJA
+        // Akun Karyawan Biasa: HANYA ADA MENU ABSEN & PENGATURAN
         if (adminSection) adminSection.classList.add('hidden');
         const navDash = document.getElementById('nav-dashboard');
         if (navDash) navDash.classList.add('hidden');
+        const navGithub = document.getElementById('nav-github');
+        if (navGithub) navGithub.classList.add('hidden');
         switchView('attendance');
       }
 
@@ -3140,17 +3144,18 @@
         el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5';
       });
 
-      // Pastikan admin-menu-section dan nav-dashboard selalu tersembunyi bagi staff biasa
+      // Pastikan admin-menu-section, nav-dashboard, dan nav-github selalu tersembunyi bagi staff biasa
       const adminSection = document.getElementById('admin-menu-section');
       const navDash = document.getElementById('nav-dashboard');
-      if (adminSection) {
-        if (!isManagement) {
-          adminSection.classList.add('hidden');
-          if (navDash) navDash.classList.add('hidden');
-        } else {
-          adminSection.classList.remove('hidden');
-          if (navDash) navDash.classList.remove('hidden');
-        }
+      const navGithub = document.getElementById('nav-github');
+      if (!isManagement) {
+        if (adminSection) adminSection.classList.add('hidden');
+        if (navDash) navDash.classList.add('hidden');
+        if (navGithub) navGithub.classList.add('hidden');
+      } else {
+        if (adminSection) adminSection.classList.remove('hidden');
+        if (navDash) navDash.classList.remove('hidden');
+        if (navGithub) navGithub.classList.remove('hidden');
       }
 
       const activeView = document.getElementById('view-' + viewName);
