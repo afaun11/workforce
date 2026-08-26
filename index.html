@@ -835,7 +835,8 @@
                 <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
-                    <select id="leave-employee" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <input type="text" id="leave-emp-search-input" oninput="filterLeaveEmployeeDropdown(this.value)" placeholder="Cari nama / NIK karyawan..." class="w-full mb-1.5 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <select id="leave-employee" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <!-- Rendered by JS -->
                     </select>
                   </div>
@@ -873,7 +874,10 @@
 
               <!-- List Pengajuan Izin/Sakit/Cuti -->
               <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
-                <h3 class="font-extrabold text-sm text-slate-900 mb-4">Daftar Riwayat Izin / Sakit / Cuti</h3>
+                <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                  <h3 class="font-extrabold text-sm text-slate-900">Daftar Riwayat Izin / Sakit / Cuti</h3>
+                  <input type="text" id="leave-table-search" oninput="renderLeavesTable()" placeholder="Cari nama / NIK pengajuan..." class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none min-w-[200px]">
+                </div>
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-xs">
                     <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
@@ -932,6 +936,10 @@
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Cari:</label>
+                      <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                    </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
                       <input type="date" id="record-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
@@ -1024,6 +1032,10 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div class="flex items-center gap-3 flex-wrap">
                     <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Cari:</label>
+                      <input type="text" id="report-leave-search" oninput="renderReportLeavesTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                    </div>
+                    <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
                       <input type="date" id="report-leave-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
                     </div>
@@ -1086,6 +1098,10 @@
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                   <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-2">
+                      <label class="text-xs font-bold text-slate-700">Cari:</label>
+                      <input type="text" id="report-ot-search" oninput="renderReportOvertimeTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                    </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
                       <input type="date" id="report-ot-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
@@ -1194,7 +1210,7 @@
 
                 <!-- Row 2: Grid Pemilihan Karyawan Massal -->
                 <div>
-                  <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center justify-between mb-2 gap-2 flex-wrap">
                     <div class="flex items-center gap-2">
                       <button type="button" onclick="selectAllOvertimeEmployees(true)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
                         Pilih Semua
@@ -1202,6 +1218,9 @@
                       <button type="button" onclick="selectAllOvertimeEmployees(false)" class="px-3 py-1 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 shadow-2xs transition">
                         Batal Semua
                       </button>
+                    </div>
+                    <div class="flex-1 min-w-[200px] max-w-xs">
+                      <input type="text" id="ot-emp-search" oninput="renderOvertimeEmployeeGrid()" placeholder="Cari nama / NIK karyawan..." class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
                     <span id="ot-selected-count-badge" class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
                       0 dipilih
@@ -1247,6 +1266,10 @@
             <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div class="flex items-center gap-3 flex-wrap">
+                  <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-700">Cari:</label>
+                    <input type="text" id="ot-filter-search" oninput="renderOvertimeTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                  </div>
                   <div class="flex items-center gap-2">
                     <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
                     <input type="date" id="ot-filter-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
@@ -3100,7 +3123,8 @@
         }
 
         const now = new Date();
-        const isLate = now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 15);
+        const minute = now.getMinutes();
+        const isLate = minute >= 1 && minute <= 30;
 
         attendances.unshift({
           id: `att-${activeWarehouse.toLowerCase()}-${Date.now()}`,
@@ -3243,17 +3267,38 @@
         });
       }
 
+      filterLeaveEmployeeDropdown(document.getElementById('leave-emp-search-input')?.value || '');
+    }
+
+    function filterLeaveEmployeeDropdown(query = '') {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const leaveSelect = document.getElementById('leave-employee');
-      if (leaveSelect) {
-        leaveSelect.innerHTML = '';
-        users.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.nik;
-          opt.innerText = `${u.name} (${u.nik})`;
-          if (currentUser && u.nik === currentUser.nik) opt.selected = true;
-          leaveSelect.appendChild(opt);
-        });
+      if (!leaveSelect) return;
+
+      const currentVal = leaveSelect.value;
+      const q = query.toLowerCase().trim();
+      const filtered = users.filter(u => !q || (u.name && u.name.toLowerCase().includes(q)) || (u.nik && u.nik.toLowerCase().includes(q)) || (u.dept && u.dept.toLowerCase().includes(q)));
+
+      leaveSelect.innerHTML = '';
+      if (filtered.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.innerText = '-- Karyawan tidak ditemukan --';
+        leaveSelect.appendChild(opt);
+        return;
       }
+
+      filtered.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value = u.nik;
+        opt.innerText = `${u.name} (${u.nik}) - ${u.dept}`;
+        if (currentVal && u.nik === currentVal) {
+          opt.selected = true;
+        } else if (!currentVal && currentUser && u.nik === currentUser.nik) {
+          opt.selected = true;
+        }
+        leaveSelect.appendChild(opt);
+      });
     }
 
     function renderSelectedIDCard() {
@@ -4008,6 +4053,7 @@
       const endStr = document.getElementById('report-leave-end')?.value || '';
       const typeFilter = document.getElementById('report-leave-type-filter')?.value || '';
       const statusFilter = document.getElementById('report-leave-status-filter')?.value || '';
+      const searchQ = (document.getElementById('report-leave-search')?.value || '').toLowerCase().trim();
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
@@ -4016,7 +4062,8 @@
         const inDate = (!startStr || lv.startDate >= startStr || lv.endDate >= startStr) && (!endStr || lv.startDate <= endStr || lv.endDate <= endStr);
         const inType = !typeFilter || lv.type === typeFilter;
         const inStatus = !statusFilter || lv.status === statusFilter;
-        return inDate && inType && inStatus;
+        const inSearch = !searchQ || (lv.userName && lv.userName.toLowerCase().includes(searchQ)) || (lv.userNik && lv.userNik.toLowerCase().includes(searchQ)) || (lv.reason && lv.reason.toLowerCase().includes(searchQ));
+        return inDate && inType && inStatus && inSearch;
       });
 
       const tbody = document.getElementById('report-leaves-table-body');
@@ -4062,6 +4109,7 @@
       const endStr = document.getElementById('report-leave-end')?.value || '';
       const typeFilter = document.getElementById('report-leave-type-filter')?.value || '';
       const statusFilter = document.getElementById('report-leave-status-filter')?.value || '';
+      const searchQ = (document.getElementById('report-leave-search')?.value || '').toLowerCase().trim();
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
@@ -4070,7 +4118,8 @@
         const inDate = (!startStr || lv.startDate >= startStr || lv.endDate >= startStr) && (!endStr || lv.startDate <= endStr || lv.endDate <= endStr);
         const inType = !typeFilter || lv.type === typeFilter;
         const inStatus = !statusFilter || lv.status === statusFilter;
-        return inDate && inType && inStatus;
+        const inSearch = !searchQ || (lv.userName && lv.userName.toLowerCase().includes(searchQ)) || (lv.userNik && lv.userNik.toLowerCase().includes(searchQ)) || (lv.reason && lv.reason.toLowerCase().includes(searchQ));
+        return inDate && inType && inStatus && inSearch;
       });
 
       const rows = filtered.map((lv, i) => {
@@ -4099,12 +4148,14 @@
       const startStr = document.getElementById('report-ot-start')?.value || '';
       const endStr = document.getElementById('report-ot-end')?.value || '';
       const statusFilter = document.getElementById('report-ot-status-filter')?.value || '';
+      const searchQ = (document.getElementById('report-ot-search')?.value || '').toLowerCase().trim();
 
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const filtered = overtimes.filter(o => {
         const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
         const inStatus = !statusFilter || o.status === statusFilter;
-        return inDate && inStatus;
+        const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
+        return inDate && inStatus && inSearch;
       });
 
       let totalNominal = 0;
@@ -4158,12 +4209,14 @@
       const startStr = document.getElementById('report-ot-start')?.value || '';
       const endStr = document.getElementById('report-ot-end')?.value || '';
       const statusFilter = document.getElementById('report-ot-status-filter')?.value || '';
+      const searchQ = (document.getElementById('report-ot-search')?.value || '').toLowerCase().trim();
 
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const filtered = overtimes.filter(o => {
         const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
         const inStatus = !statusFilter || o.status === statusFilter;
-        return inDate && inStatus;
+        const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
+        return inDate && inStatus && inSearch;
       });
 
       if (filtered.length === 0) {
@@ -4201,10 +4254,16 @@
     function renderRecordsTable() {
       const startStr = document.getElementById('record-start-date').value;
       const endStr = document.getElementById('record-end-date').value;
+      const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
 
-      const filtered = attendances.filter(a => (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr));
+      const filtered = attendances.filter(a => {
+        const inDate = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
+        const inSearch = !searchQ || (a.userName && a.userName.toLowerCase().includes(searchQ)) || (a.userNik && a.userNik.toLowerCase().includes(searchQ));
+        return inDate && inSearch;
+      });
+
       const tbody = document.getElementById('records-table-body');
       tbody.innerHTML = '';
 
@@ -4231,7 +4290,8 @@
 
         // Status Masuk (Late In / Oke) & Status Pulang (Belum Pulang / Selesai)
         const checkInDate = new Date(rec.checkInTime);
-        const isLate = rec.checkInStatus === 'late' || checkInDate.getHours() > 8 || (checkInDate.getHours() === 8 && checkInDate.getMinutes() > 15);
+        const minute = checkInDate.getMinutes();
+        const isLate = rec.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         const lateBadge = isLate 
           ? '<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">Late In</span>' 
           : '<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">Oke</span>';
@@ -4260,10 +4320,15 @@
     function exportRecordsToExcel() {
       const startStr = document.getElementById('record-start-date').value;
       const endStr = document.getElementById('record-end-date').value;
+      const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
 
-      const filtered = attendances.filter(a => (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr));
+      const filtered = attendances.filter(a => {
+        const inDate = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
+        const inSearch = !searchQ || (a.userName && a.userName.toLowerCase().includes(searchQ)) || (a.userNik && a.userNik.toLowerCase().includes(searchQ));
+        return inDate && inSearch;
+      });
 
       const rows = filtered.map((r, i) => {
         const emp = users.find(u => u.nik === r.userNik);
@@ -4277,7 +4342,8 @@
           }
         }
         const checkInDate = new Date(r.checkInTime);
-        const isLate = r.checkInStatus === 'late' || checkInDate.getHours() > 8 || (checkInDate.getHours() === 8 && checkInDate.getMinutes() > 15);
+        const minute = checkInDate.getMinutes();
+        const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         const statusMasuk = isLate ? 'Late In' : 'Oke';
         const statusPulang = r.checkOutTime ? 'Selesai' : 'Belum Pulang';
 
@@ -4529,24 +4595,24 @@
       document.getElementById('leave-reason').value = '';
       const alertEl = document.getElementById('leave-alert');
       alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300';
-      alertEl.innerText = `Pengajuan ${type.toUpperCase()} untuk ${emp.name} berhasil dikirim dan masuk daftar approval Supervisor!`;
-      alertEl.classList.remove('hidden');
-
       renderLeavesTable();
       refreshAllDashboardData();
     }
 
     function renderLeavesTable() {
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const searchQ = (document.getElementById('leave-table-search')?.value || '').toLowerCase().trim();
       const tbody = document.getElementById('leave-table-body');
       tbody.innerHTML = '';
 
-      if (leaves.length === 0) {
+      const filtered = leaves.filter(lv => !searchQ || (lv.userName && lv.userName.toLowerCase().includes(searchQ)) || (lv.userNik && lv.userNik.toLowerCase().includes(searchQ)) || (lv.reason && lv.reason.toLowerCase().includes(searchQ)));
+
+      if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada pengajuan izin/sakit/cuti di Gudang ${activeWarehouse}.</td></tr>`;
         return;
       }
 
-      leaves.forEach(lv => {
+      filtered.forEach(lv => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         
@@ -4556,9 +4622,9 @@
         else typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200 uppercase">Cuti</span>';
 
         let statusBadge = '';
-        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
-        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">MENUNGGU APPROVAL</span>';
+        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
+        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">MENUNGGU APPROVAL</span>';
 
         tr.innerHTML = `
           <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
@@ -4634,8 +4700,16 @@
       const container = document.getElementById('ot-employee-checkbox-grid');
       if (!container) return;
 
+      const searchQ = (document.getElementById('ot-emp-search')?.value || '').toLowerCase().trim();
+      const filtered = users.filter(u => !searchQ || (u.name && u.name.toLowerCase().includes(searchQ)) || (u.nik && u.nik.toLowerCase().includes(searchQ)) || (u.dept && u.dept.toLowerCase().includes(searchQ)));
+
       container.innerHTML = '';
-      users.forEach(u => {
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="col-span-full p-4 text-center text-xs text-slate-400">Tidak ada karyawan yang cocok dengan pencarian.</div>';
+        return;
+      }
+
+      filtered.forEach(u => {
         const div = document.createElement('label');
         div.className = 'cursor-pointer p-2.5 rounded-xl border border-amber-200/80 bg-white hover:bg-amber-50/60 transition flex items-center justify-between gap-2 text-xs select-none shadow-xs';
         div.innerHTML = `
@@ -4754,11 +4828,17 @@
     function renderOvertimeTable() {
       const startStr = document.getElementById('ot-filter-start')?.value || '';
       const endStr = document.getElementById('ot-filter-end')?.value || '';
+      const searchQ = (document.getElementById('ot-filter-search')?.value || '').toLowerCase().trim();
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const tbody = document.getElementById('ot-table-body');
       tbody.innerHTML = '';
 
-      const filtered = overtimes.filter(o => (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr));
+      const filtered = overtimes.filter(o => {
+        const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
+        const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
+        return inDate && inSearch;
+      });
+
       const totalBadge = document.getElementById('ot-total-badge');
       if (totalBadge) totalBadge.innerText = `Total: ${filtered.length} Data Lembur (${activeWarehouse})`;
 
