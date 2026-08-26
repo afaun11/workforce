@@ -2678,107 +2678,102 @@
       });
     }
 
-    function deduplicateAndFixNIKs() {
+    function harmonizeAndResequenceAllNIKs() {
       sanitizeEmployeesData();
 
       ['MBI', 'MAI'].forEach(wh => {
         let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         if (!Array.isArray(users) || users.length === 0) return;
 
-        let hasChanges = false;
         const year = new Date().getFullYear().toString().slice(-2); // "26"
         const prefix = `${wh.toUpperCase()}${year}-`;
+        let hasChanges = false;
+        let staffIndex = 1;
 
-        // TAHAP 1: Kumpulkan semua NIK unik yang sah dan sudah dipakai
-        // Mengunci NIK karyawan lain agar tidak ada yang bergeser/berubah
-        const nikOwnerMap = new Map();
-        const duplicateUsers = [];
+        // Catat pemetaan perubahan NIK lama -> NIK baru
+        const nikUpdateMap = new Map();
 
-        // 1a. Pastikan Admin selalu memiliki NIK resmi (ADM001 / ADM-MAI)
         users.forEach(u => {
           if (u.role === 'admin') {
             const adminNik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
             if (u.nik !== adminNik) {
+              if (u.nik) nikUpdateMap.set(u.nik, adminNik);
               u.nik = adminNik;
               hasChanges = true;
             }
-            nikOwnerMap.set(adminNik.toUpperCase(), u);
-          }
-        });
-
-        // 1b. Kunci NIK karyawan sah, pisahkan karyawan yang duplikat
-        users.forEach(u => {
-          if (u.role === 'admin') return;
-
-          const currentNik = (u.nik || '').trim().toUpperCase();
-          if (currentNik && !nikOwnerMap.has(currentNik)) {
-            nikOwnerMap.set(currentNik, u);
           } else {
-            duplicateUsers.push(u);
-          }
-        });
-
-        // TAHAP 2: Hanya berikan NIK baru ke user yang duplikat (KARYAWAN LAIN 100% AMAN & TIDAK BERGESER)
-        duplicateUsers.forEach(u => {
-          let newNik = '';
-          for (let num = 1; num <= 9999; num++) {
-            const candidate = `${prefix}${String(num).padStart(3, '0')}`;
-            if (!nikOwnerMap.has(candidate)) {
-              newNik = candidate;
-              break;
+            const expectedNik = `${prefix}${String(staffIndex).padStart(3, '0')}`;
+            if (u.nik !== expectedNik) {
+              if (u.nik) nikUpdateMap.set(u.nik, expectedNik);
+              u.nik = expectedNik;
+              hasChanges = true;
             }
-          }
-          if (!newNik) newNik = `${prefix}${Date.now().toString().slice(-4)}`;
-
-          const oldNik = u.nik;
-          u.nik = newNik;
-          nikOwnerMap.set(newNik, u);
-          hasChanges = true;
-
-          // Sinkronkan riwayat absensi, izin, dan lembur untuk user terkait
-          if (oldNik && oldNik !== newNik) {
-            let att = getWhDB(wh, 'attendance', []);
-            let attChanged = false;
-            att.forEach(a => {
-              if (a.userId === u.id || (a.userNik === oldNik && a.userName === u.name)) {
-                a.userNik = newNik;
-                attChanged = true;
-              }
-            });
-            if (attChanged) setWhDB(wh, 'attendance', att);
-
-            let lvs = getWhDB(wh, 'leaves', []);
-            let lvsChanged = false;
-            lvs.forEach(l => {
-              if (l.userNik === oldNik && l.userName === u.name) {
-                l.userNik = newNik;
-                lvsChanged = true;
-              }
-            });
-            if (lvsChanged) setWhDB(wh, 'leaves', lvs);
-
-            let ots = getWhDB(wh, 'overtime', []);
-            let otsChanged = false;
-            ots.forEach(o => {
-              if (o.userId === u.id || (o.userNik === oldNik && o.userName === u.name)) {
-                o.userNik = newNik;
-                otsChanged = true;
-              }
-            });
-            if (otsChanged) setWhDB(wh, 'overtime', ots);
+            staffIndex++;
           }
         });
 
         if (hasChanges) {
           const storageKey = `wfm_${wh.toLowerCase()}_users`;
           localStorage.setItem(storageKey, JSON.stringify(users));
+
+          // 1. Sinkronkan seluruh riwayat absensi Masuk & Pulang seketika
+          let att = getWhDB(wh, 'attendance', []);
+          let attChanged = false;
+          att.forEach(a => {
+            const user = users.find(u => u.id === a.userId || (a.userName && cleanStr(u.name) === cleanStr(a.userName)) || u.nik === a.userNik || nikUpdateMap.get(a.userNik) === u.nik);
+            if (user) {
+              if (a.userNik !== user.nik || a.userName !== user.name || a.userId !== user.id) {
+                a.userNik = user.nik;
+                a.userName = user.name;
+                a.userId = user.id;
+                attChanged = true;
+              }
+            }
+          });
+          if (attChanged) setWhDB(wh, 'attendance', att);
+
+          // 2. Sinkronkan seluruh data lembur
+          let ots = getWhDB(wh, 'overtime', []);
+          let otsChanged = false;
+          ots.forEach(o => {
+            const user = users.find(u => u.id === o.userId || (o.userName && cleanStr(u.name) === cleanStr(o.userName)) || o.userNik === u.nik || nikUpdateMap.get(o.userNik) === u.nik);
+            if (user) {
+              if (o.userNik !== user.nik || o.userName !== user.name || o.userId !== user.id) {
+                o.userNik = user.nik;
+                o.userName = user.name;
+                o.userId = user.id;
+                otsChanged = true;
+              }
+            }
+          });
+          if (otsChanged) setWhDB(wh, 'overtime', ots);
+
+          // 3. Sinkronkan seluruh pengajuan izin / cuti
+          let lvs = getWhDB(wh, 'leaves', []);
+          let lvsChanged = false;
+          lvs.forEach(l => {
+            const user = users.find(u => (l.userName && cleanStr(u.name) === cleanStr(l.userName)) || l.userNik === u.nik || nikUpdateMap.get(l.userNik) === u.nik);
+            if (user) {
+              if (l.userNik !== user.nik || l.userName !== user.name) {
+                l.userNik = user.nik;
+                l.userName = user.name;
+                lvsChanged = true;
+              }
+            }
+          });
+          if (lvsChanged) setWhDB(wh, 'leaves', lvs);
+
           saveFullDatabaseToCloud();
         }
       });
     }
 
+    function deduplicateAndFixNIKs() {
+      harmonizeAndResequenceAllNIKs();
+    }
+
     function migrateAllUsersNIK() {
-      deduplicateAndFixNIKs();
+      harmonizeAndResequenceAllNIKs();
     }
 
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
@@ -3973,7 +3968,7 @@
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const cleanCode = cleanStr(nikCode);
-      const matchedUser = users.find(u => cleanStr(u.nik) === cleanCode || cleanStr(u.name) === cleanCode);
+      const matchedUser = users.find(u => cleanStr(u.nik) === cleanCode || cleanStr(u.name) === cleanCode || u.id === cleanCode);
 
       const alertEl = document.getElementById('att-alert');
       alertEl.classList.remove('hidden');
@@ -3987,7 +3982,14 @@
       }
 
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-      const existing = attendances.find(a => a.userNik === matchedUser.nik && a.date === todayStr);
+      // Cocokkan presensi hari ini berdasarkan NIK, User ID, atau Nama Karyawan agar Masuk & Pulang selalu sinkron 100%
+      const existing = attendances.find(a => 
+        a.date === todayStr && (
+          a.userNik === matchedUser.nik || 
+          (a.userId && a.userId === matchedUser.id) || 
+          (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name))
+        )
+      );
 
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
@@ -4037,6 +4039,9 @@
         }
 
         existing.checkOutTime = new Date().toISOString();
+        existing.userNik = matchedUser.nik;
+        existing.userName = matchedUser.name;
+        existing.userId = matchedUser.id;
         setWhDB(activeWarehouse, 'attendance', attendances);
         saveFullDatabaseToCloud();
         alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
