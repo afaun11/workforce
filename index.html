@@ -644,20 +644,25 @@
 
               <!-- Action Buttons Bersih, Rapi & Elegan -->
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="openAddEmployeeModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                <button onclick="openAddEmployeeModal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                   Tambah Karyawan
                 </button>
-                <label class="cursor-pointer px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                <label class="cursor-pointer h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                   Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="downloadAccountsExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs" title="Download Daftar Akun & Password">
+                <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Daftar Akun & Password">
+                  <svg class="w-3.5 h-3.5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                   Download Akun
                 </button>
-                <button onclick="downloadEmployeeTemplate()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                   Template
                 </button>
-                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition shadow-xs opacity-50">
+                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="h-9 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition shadow-xs opacity-50 inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                   Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
               </div>
@@ -835,38 +840,38 @@
                 <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
-                    <input type="text" id="leave-emp-search-input" oninput="filterLeaveEmployeeDropdown(this.value)" placeholder="Cari nama / NIK karyawan..." class="w-full mb-1.5 px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                    <select id="leave-employee" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <input type="text" id="leave-emp-search-input" oninput="filterLeaveEmployeeDropdown(this.value)" placeholder="Cari nama / NIK karyawan..." class="w-full mb-1.5 h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <select id="leave-employee" required class="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <!-- Rendered by JS -->
                     </select>
                   </div>
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jenis Ketidakhadiran *</label>
-                    <select id="leave-type" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    <select id="leave-type" required class="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <option value="sakit">Sakit</option>
                       <option value="izin">Izin</option>
                       <option value="cuti">Cuti</option>
                     </select>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-2">
+                  <div class="grid grid-cols-2 gap-3">
                     <div>
                       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Dari Tanggal *</label>
-                      <input type="date" id="leave-start-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      <input type="date" id="leave-start-date" required class="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
                     <div>
                       <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Sampai Tanggal *</label>
-                      <input type="date" id="leave-end-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      <input type="date" id="leave-end-date" required class="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
                   </div>
 
                   <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alasan / Keterangan *</label>
-                    <textarea id="leave-reason" required rows="3" placeholder="Masukkan alasan pengajuan" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none"></textarea>
+                    <textarea id="leave-reason" required rows="3" placeholder="Masukkan alasan pengajuan" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none"></textarea>
                   </div>
 
-                  <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
+                  <button type="submit" class="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs inline-flex items-center justify-center">
                     Kirim Pengajuan
                   </button>
                 </form>
@@ -876,7 +881,7 @@
               <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
                 <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
                   <h3 class="font-extrabold text-sm text-slate-900">Daftar Riwayat Izin / Sakit / Cuti</h3>
-                  <input type="text" id="leave-table-search" oninput="renderLeavesTable()" placeholder="Cari nama / NIK pengajuan..." class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none min-w-[200px]">
+                  <input type="text" id="leave-table-search" oninput="renderLeavesTable()" placeholder="Cari nama / NIK pengajuan..." class="h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none min-w-[220px]">
                 </div>
                 <div class="overflow-x-auto">
                   <table class="w-full text-left text-xs">
@@ -934,37 +939,42 @@
             <!-- TAB 1: RECORD ABSEN HARIAN -->
             <div id="tab-content-records" class="space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Cari:</label>
-                      <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
+                      <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Urutan:</label>
-                      <select id="record-sort-order" onchange="renderRecordsTable()" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
+                      <select id="record-sort-order" onchange="renderRecordsTable()" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                         <option value="time_asc">Jam Masuk (Paling Awal &rarr; Akhir)</option>
                         <option value="time_desc">Jam Masuk (Terbaru &rarr; Awal)</option>
                         <option value="name_asc">Nama Karyawan (A - Z)</option>
                         <option value="nik_asc">NIK Karyawan</option>
                       </select>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="record-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                      <input type="date" id="record-start-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="record-end-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                      <input type="date" id="record-end-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <button onclick="renderRecordsTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
-                      Filter Record
-                    </button>
                   </div>
 
-                  <button onclick="exportRecordsToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
-                    Download Record Excel
-                  </button>
+                  <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
+                    <button onclick="renderRecordsTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                      Filter Record
+                    </button>
+
+                    <button onclick="exportRecordsToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                      <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                      Download Record Excel
+                    </button>
+                  </div>
                 </div>
 
                 <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
@@ -993,22 +1003,24 @@
             <!-- TAB 2: REKAP ABSEN MATRIKS -->
             <div id="tab-content-matrix" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div class="flex items-center gap-3 flex-wrap">
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="matrix-start-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                      <input type="date" id="matrix-start-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                     </div>
                     <div class="flex items-center gap-2">
                       <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="matrix-end-date" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                      <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                     </div>
-                    <button onclick="renderMatrixTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                    <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                       Tarik Matriks
                     </button>
                   </div>
 
-                  <button onclick="exportMatrixToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                  <button onclick="exportMatrixToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Download Matriks Excel
                   </button>
                 </div>
@@ -1038,46 +1050,51 @@
             <!-- TAB 3: REKAP PENGAJUAN (IZIN / SAKIT / CUTI) -->
             <div id="tab-content-report-leaves" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Cari:</label>
-                      <input type="text" id="report-leave-search" oninput="renderReportLeavesTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
+                      <input type="text" id="report-leave-search" oninput="renderReportLeavesTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="report-leave-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                      <input type="date" id="report-leave-start" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="report-leave-end" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                      <input type="date" id="report-leave-end" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Jenis:</label>
-                      <select id="report-leave-type-filter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Jenis</label>
+                      <select id="report-leave-type-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                         <option value="">Semua Jenis</option>
                         <option value="sakit">Sakit</option>
                         <option value="izin">Izin</option>
                         <option value="cuti">Cuti</option>
                       </select>
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Status:</label>
-                      <select id="report-leave-status-filter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status</label>
+                      <select id="report-leave-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                         <option value="">Semua Status</option>
                         <option value="approved">Disetujui</option>
                         <option value="pending">Pending</option>
                         <option value="rejected">Ditolak</option>
                       </select>
                     </div>
-                    <button onclick="renderReportLeavesTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
-                      Filter Pengajuan
-                    </button>
                   </div>
 
-                  <button onclick="exportReportLeavesToExcel()" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
-                    Download Pengajuan Excel
-                  </button>
+                  <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
+                    <button onclick="renderReportLeavesTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                      Filter Pengajuan
+                    </button>
+
+                    <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                      <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                      Download Pengajuan Excel
+                    </button>
+                  </div>
                 </div>
 
                 <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
@@ -1105,41 +1122,46 @@
             <!-- TAB 4: REKAP LEMBUR (EXCEL & LAPORAN TERPUSAT) -->
             <div id="tab-content-report-overtime" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Cari:</label>
-                      <input type="text" id="report-ot-search" oninput="renderReportOvertimeTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3.5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
+                      <input type="text" id="report-ot-search" oninput="renderReportOvertimeTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                      <input type="date" id="report-ot-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
+                      <input type="date" id="report-ot-start" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                      <input type="date" id="report-ot-end" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
+                      <input type="date" id="report-ot-end" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                     </div>
-                    <div class="flex items-center gap-2">
-                      <label class="text-xs font-bold text-slate-700">Status:</label>
-                      <select id="report-ot-status-filter" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Status Approval</label>
+                      <select id="report-ot-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                         <option value="">Semua Status</option>
                         <option value="approved">Disetujui</option>
                         <option value="pending">Pending</option>
                         <option value="rejected">Ditolak</option>
                       </select>
                     </div>
-                    <button onclick="renderReportOvertimeTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
-                      Filter Lembur
-                    </button>
                   </div>
 
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span id="report-ot-total-nominal-badge" class="px-3 py-2 bg-slate-100 text-slate-800 border border-slate-200 rounded-xl text-xs font-extrabold">
-                      Total Biaya: Rp 0
-                    </span>
-                    <button onclick="exportReportOvertimeToExcel()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
-                      Download Rekap Lembur (Excel)
+                  <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
+                    <button onclick="renderReportOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                      Filter Lembur
                     </button>
+
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                      <span id="report-ot-total-nominal-badge" class="h-9 px-4 bg-white text-slate-800 border border-slate-300 rounded-xl text-xs font-black inline-flex items-center shadow-2xs">
+                        Total Biaya: Rp 0
+                      </span>
+                      <button onclick="exportReportOvertimeToExcel()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Download Rekap Lembur (Excel)
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1156,7 +1178,7 @@
                         <th class="p-3.5 border-r border-slate-200">Jam Lembur</th>
                         <th class="p-3.5 border-r border-slate-200">Jam Efektif</th>
                         <th class="p-3.5 border-r border-slate-200">Upah Lembur</th>
-                        <th class="p-3.5 border-r border-slate-200">Alasan Lembur</th>
+                        <th class="p-3.5 border-r border-slate-200">Alasan</th>
                         <th class="p-3.5 text-center">Status</th>
                       </tr>
                     </thead>
@@ -1273,25 +1295,26 @@
 
             <!-- 2. TABEL REKAP & DAFTAR PENGAJUAN LEMBUR -->
             <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div class="flex items-center gap-3 flex-wrap">
+              <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3 flex-wrap flex-1">
                   <div class="flex items-center gap-2">
                     <label class="text-xs font-bold text-slate-700">Cari:</label>
-                    <input type="text" id="ot-filter-search" oninput="renderOvertimeTable()" placeholder="Cari nama / NIK..." class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none min-w-[180px]">
+                    <input type="text" id="ot-filter-search" oninput="renderOvertimeTable()" placeholder="Cari nama / NIK..." class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none min-w-[170px]">
                   </div>
                   <div class="flex items-center gap-2">
                     <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                    <input type="date" id="ot-filter-start" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <input type="date" id="ot-filter-start" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                   </div>
                   <div class="flex items-center gap-2">
                     <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                    <input type="date" id="ot-filter-end" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:outline-none">
+                    <input type="date" id="ot-filter-end" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                   </div>
-                  <button onclick="renderOvertimeTable()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
+                  <button onclick="renderOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                     Filter Data
                   </button>
                 </div>
-                <span id="ot-total-badge" class="text-xs font-bold text-slate-700">Total: 0 Data Lembur</span>
+                <span id="ot-total-badge" class="h-9 px-3.5 bg-white text-slate-800 border border-slate-300 rounded-xl text-xs font-bold inline-flex items-center shadow-2xs">Total: 0 Data Lembur</span>
               </div>
 
               <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl">
@@ -1334,19 +1357,23 @@
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
-                <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
+                <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="h-9 px-3.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
                   <!-- Rendered by JS -->
                 </select>
-                <button onclick="downloadIDCardImage()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs" title="Download gambar PNG kartu ID">
+                <button onclick="downloadIDCardImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download gambar PNG kartu ID">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                   Download ID Card (PNG)
                 </button>
-                <button onclick="printCard('idcard')" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                <button onclick="printCard('idcard')" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                   Cetak ID Card
                 </button>
-                <button onclick="downloadLocationQRCodeImage()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs" title="Download QR Lokasi format PNG">
+                <button onclick="downloadLocationQRCodeImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download QR Lokasi format PNG">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                   Download QR Lokasi
                 </button>
-                <button onclick="printCard('location')" class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
+                <button onclick="printCard('location')" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                  <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                   Cetak QR Lokasi
                 </button>
               </div>
