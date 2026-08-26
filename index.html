@@ -33,24 +33,95 @@
 
   <style>
     @media print {
-      @page { size: portrait; margin: 10mm; }
-      body > *:not(#printable-area) { display: none !important; }
+      @page {
+        size: A4 portrait;
+        margin: 6mm;
+      }
+      body > *:not(#printable-area) {
+        display: none !important;
+      }
       #printable-area {
         display: block !important;
         position: relative !important;
-        margin: 20mm auto !important;
-        width: 54mm !important;
-        min-height: 85.6mm !important;
-        max-width: 54mm !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        width: 100% !important;
         background: #ffffff !important;
-        border: 2px solid #0f172a !important;
-        border-radius: 4mm !important;
-        overflow: hidden !important;
+        border: none !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
-      .no-print { display: none !important; }
+      .no-print {
+        display: none !important;
+      }
+      .a4-sheet {
+        width: 198mm !important;
+        min-height: 285mm !important;
+        margin: 0 auto !important;
+        padding: 2mm !important;
+        box-sizing: border-box !important;
+        display: grid !important;
+        grid-template-columns: repeat(3, 54mm) !important;
+        grid-auto-rows: 85.6mm !important;
+        gap: 3.5mm 5mm !important;
+        justify-content: center !important;
+        align-content: start !important;
+        page-break-after: always !important;
+        background: #ffffff !important;
+      }
+      .a4-sheet:last-child {
+        page-break-after: avoid !important;
+      }
+      .cr80-print-card {
+        width: 54mm !important;
+        height: 85.6mm !important;
+        max-width: 54mm !important;
+        max-height: 85.6mm !important;
+        box-sizing: border-box !important;
+        border: 1px dashed #94a3b8 !important;
+        border-radius: 3.5mm !important;
+        overflow: hidden !important;
+        background: #ffffff !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
     }
+
+    /* Screen Preview Styling for A4 Sheets */
+    .preview-a4-sheet {
+      width: 198mm;
+      min-height: 285mm;
+      background: #ffffff;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      padding: 5mm;
+      border-radius: 8px;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: repeat(3, 54mm);
+      grid-auto-rows: 85.6mm;
+      gap: 3.5mm 5mm;
+      justify-content: center;
+      align-content: start;
+    }
+    .preview-cr80-card {
+      width: 54mm;
+      height: 85.6mm;
+      box-sizing: border-box;
+      border: 1px dashed #94a3b8;
+      border-radius: 3.5mm;
+      overflow: hidden;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      user-select: none;
+    }
+
     .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
@@ -1352,6 +1423,10 @@
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="openAllIDCardsA4Modal()" class="h-9 px-4 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download dan Cetak Semua Kartu ID Sekaligus Ukuran Kertas A4 (Standar CR80)">
+                  <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                  <span>Cetak Semua ID Card (A4)</span>
+                </button>
                 <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="h-9 px-3.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
                   <!-- Rendered by JS -->
                 </select>
@@ -1878,6 +1953,46 @@
           <button type="submit" class="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">Simpan Koordinat</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL PREVIEW & CETAK SEMUA KARTU ID SEKALIGUS (KERTAS A4) -->
+  <!-- ========================================================= -->
+  <div id="all-idcards-modal" class="hidden fixed inset-0 z-50 bg-slate-900/85 backdrop-blur flex items-center justify-center p-3 sm:p-5">
+    <div class="bg-white rounded-3xl max-w-5xl w-full p-4 sm:p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[95vh] flex flex-col">
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 flex-shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="layers" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-black text-sm sm:text-base text-slate-900 flex items-center gap-2 flex-wrap">
+              <span>Cetak / Download Semua ID Card (A4)</span>
+              <span id="all-idcards-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-teal-100 text-teal-900">Gudang MBI</span>
+            </h3>
+            <p id="all-idcards-desc" class="text-xs text-slate-500">Ukuran setiap kartu pas standar ID Card CR80 (54mm × 85.6mm) • Siap dipotong rapi</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+          <button type="button" onclick="printAllIDCardsA4()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            <span>Cetak / Simpan PDF (A4)</span>
+          </button>
+          <button type="button" onclick="downloadAllIDCardsA4Images()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Download Gambar (PNG)</span>
+          </button>
+          <button onclick="closeAllIDCardsA4Modal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+      </div>
+
+      <!-- Preview Sheets Container -->
+      <div id="all-idcards-preview-container" class="flex-1 overflow-y-auto custom-scroll p-4 bg-slate-100 rounded-2xl space-y-6 flex flex-col items-center">
+        <!-- Rendered by JS -->
+      </div>
     </div>
   </div>
 
@@ -3905,10 +4020,10 @@
       const printArea = document.getElementById('printable-area');
       if (type === 'idcard') {
         const idCardHtml = document.getElementById('printable-id-card').outerHTML;
-        printArea.innerHTML = idCardHtml;
+        printArea.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; min-height:80vh; padding:15mm 0;">${idCardHtml}</div>`;
       } else {
         const locCardHtml = document.getElementById('printable-location-card').outerHTML;
-        printArea.innerHTML = locCardHtml;
+        printArea.innerHTML = `<div style="display:flex; justify-content:center; align-items:center; min-height:80vh; padding:15mm 0;">${locCardHtml}</div>`;
       }
       setTimeout(() => {
         window.print();
@@ -3966,6 +4081,181 @@
         console.error('Download QR location error:', err);
         window.print();
       }
+    }
+
+    // =========================================================
+    // CETAK & DOWNLOAD MASAL SEMUA ID CARD (KERTAS A4 - CR80)
+    // =========================================================
+    function createSingleCR80CardHTML(user, isPrint = false) {
+      const isMBI = (user.warehouse || activeWarehouse) === 'MBI';
+      const headerColor = isMBI ? '#0369a1' : '#7c3aed';
+      const badgeText = user.warehouse || activeWarehouse;
+      const qrUrl = getQrCodeUrl(user.nik);
+      const cardClass = isPrint ? 'cr80-print-card' : 'preview-cr80-card';
+
+      return `
+        <div class="${cardClass}" style="width: 54mm; height: 85.6mm; max-width: 54mm; max-height: 85.6mm; box-sizing: border-box; border: 1px dashed #94a3b8; border-radius: 3.5mm; overflow: hidden; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; position: relative;">
+          
+          <!-- Card Header (Color Coded per Warehouse) -->
+          <div style="padding: 5px 8px; background-color: ${headerColor}; color: #ffffff; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.1); -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div style="text-align: left;">
+              <span style="font-size: 6.5px; font-weight: 800; letter-spacing: 0.1em; color: rgba(255,255,255,0.85); display: block; line-height: 1; margin: 0 0 1px 0;">WORKFORCE</span>
+              <h4 style="font-size: 8.5px; font-weight: 900; line-height: 1.1; margin: 0; color: #ffffff; text-transform: uppercase;">MEDIKA GROUP</h4>
+            </div>
+            <div style="background-color: rgba(255, 255, 255, 0.25); border-radius: 3px; padding: 2px 6px; display: inline-flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+              <span style="font-size: 8px; font-weight: 900; font-family: monospace; color: #ffffff; line-height: 1;">${badgeText}</span>
+            </div>
+          </div>
+
+          <!-- Card Body -->
+          <div style="padding: 5px 6px 4px; display: flex; flex-direction: column; align-items: center; text-align: center; flex: 1; justify-content: space-between; box-sizing: border-box;">
+            
+            <!-- User Avatar & Info -->
+            <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+              <div style="width: 26px; height: 26px; border-radius: 9999px; background-color: #f1f5f9; border: 1.5px solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: #475569; font-weight: 900; font-size: 11px; margin-bottom: 3px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                ${(user.name || 'U').charAt(0).toUpperCase()}
+              </div>
+
+              <div style="font-size: 9.5px; font-weight: 900; color: #0f172a; line-height: 1.2; width: 100%; word-break: break-word; max-height: 23px; overflow: hidden;">
+                ${user.name}
+              </div>
+              <div style="font-size: 7.5px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px;">
+                ${user.dept || 'STAFF'}
+              </div>
+
+              <div style="display: flex; justify-content: center; margin-top: 2px;">
+                <div style="background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 2px 8px; display: inline-flex; align-items: center; justify-content: center; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                  <span style="font-size: 8.5px; font-family: monospace; font-weight: 800; color: #1e293b; line-height: 1;">${user.nik}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- QR Code Absen (Sharp & Scannable) -->
+            <div style="padding: 3px; background-color: #ffffff; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; margin-top: 2px;">
+              <img src="${qrUrl}" alt="QR Code ${user.nik}" crossorigin="anonymous" style="width: 25mm; height: 25mm; max-width: 25mm; max-height: 25mm; background-color: #ffffff; object-fit: contain; display: block;">
+            </div>
+          </div>
+
+          <!-- Card Footer -->
+          <div style="padding: 3px 6px 4px; text-align: center; background-color: #f8fafc; border-top: 1px solid #f1f5f9; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <p style="font-size: 6.5px; font-weight: 700; color: #94a3b8; letter-spacing: 0.05em; margin: 0; line-height: 1;">Official Employee ID Card</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function openAllIDCardsA4Modal() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      if (!users || users.length === 0) {
+        alert('Tidak ada data karyawan di Gudang ' + activeWarehouse);
+        return;
+      }
+
+      const badgeEl = document.getElementById('all-idcards-badge');
+      if (badgeEl) badgeEl.innerText = `Gudang ${activeWarehouse}`;
+
+      const totalPages = Math.ceil(users.length / 9);
+      const descEl = document.getElementById('all-idcards-desc');
+      if (descEl) {
+        descEl.innerText = `Terdapat ${users.length} Kartu Karyawan • Tersusun rapi dalam ${totalPages} Lembar A4 (9 kartu per lembar) • Standar CR80 (54mm × 85.6mm)`;
+      }
+
+      const container = document.getElementById('all-idcards-preview-container');
+      container.innerHTML = '';
+
+      for (let i = 0; i < users.length; i += 9) {
+        const pageNum = Math.floor(i / 9) + 1;
+        const pageUsers = users.slice(i, i + 9);
+
+        const pageWrapper = document.createElement('div');
+        pageWrapper.className = 'w-full flex flex-col items-center space-y-2';
+
+        const pageLabel = document.createElement('div');
+        pageLabel.className = 'text-xs font-extrabold text-slate-500 flex items-center justify-between w-full max-w-[198mm] px-1';
+        pageLabel.innerHTML = `<span>📄 Lembar A4 - Halaman ${pageNum} dari ${totalPages} (${pageUsers.length} Kartu)</span><span class="text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded font-bold">Siap Cetak / Potong</span>`;
+        pageWrapper.appendChild(pageLabel);
+
+        const sheetDiv = document.createElement('div');
+        sheetDiv.className = 'preview-a4-sheet a4-sheet-canvas-target';
+        sheetDiv.id = `preview-sheet-${pageNum}`;
+        
+        let cardsHtml = '';
+        pageUsers.forEach(u => {
+          cardsHtml += createSingleCR80CardHTML(u, false);
+        });
+        sheetDiv.innerHTML = cardsHtml;
+        pageWrapper.appendChild(sheetDiv);
+
+        container.appendChild(pageWrapper);
+      }
+
+      document.getElementById('all-idcards-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeAllIDCardsA4Modal() {
+      document.getElementById('all-idcards-modal').classList.add('hidden');
+    }
+
+    function printAllIDCardsA4() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      if (!users || users.length === 0) return;
+
+      const printArea = document.getElementById('printable-area');
+      let fullPrintHtml = '';
+
+      for (let i = 0; i < users.length; i += 9) {
+        const pageUsers = users.slice(i, i + 9);
+        fullPrintHtml += `<div class="a4-sheet">`;
+        pageUsers.forEach(u => {
+          fullPrintHtml += createSingleCR80CardHTML(u, true);
+        });
+        fullPrintHtml += `</div>`;
+      }
+
+      printArea.innerHTML = fullPrintHtml;
+
+      setTimeout(() => {
+        window.print();
+      }, 300);
+    }
+
+    async function downloadAllIDCardsA4Images() {
+      const sheets = document.querySelectorAll('.a4-sheet-canvas-target');
+      if (!sheets || sheets.length === 0) return;
+
+      if (typeof html2canvas === 'undefined') {
+        alert('Fitur download gambar memerlukan library html2canvas. Anda dapat menggunakan tombol "Cetak / Simpan PDF" untuk menyimpan file PDF A4.');
+        window.print();
+        return;
+      }
+
+      const total = sheets.length;
+      let downloaded = 0;
+
+      for (let i = 0; i < total; i++) {
+        const sheet = sheets[i];
+        const pageNum = i + 1;
+        try {
+          const canvas = await html2canvas(sheet, {
+            scale: 2.5,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false
+          });
+          const a = document.createElement('a');
+          a.download = `ID_Cards_A4_Lembar_${pageNum}_Gudang_${activeWarehouse}.png`;
+          a.href = canvas.toDataURL('image/png');
+          a.click();
+          downloaded++;
+          await new Promise(r => setTimeout(r, 600));
+        } catch(err) {
+          console.error(`Error downloading page ${pageNum}:`, err);
+        }
+      }
+
+      alert(`✅ Berhasil mendownload ${downloaded} lembar gambar ID Card A4 Gudang ${activeWarehouse}!`);
     }
 
     // =========================================================
