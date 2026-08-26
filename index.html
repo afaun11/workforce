@@ -1459,6 +1459,32 @@
                 </div>
               </div>
 
+              <!-- 3. PENGATURAN KOORDINAT LOKASI & RADIUS 80 METER -->
+              <div id="gps-config-box" class="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center">
+                      <i data-lucide="map-pin" class="w-4 h-4"></i>
+                    </div>
+                    <h4 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Titik Koordinat Gudang Resmi (Radius 80 Meter)</h4>
+                  </div>
+                  <p class="text-xs text-slate-500">
+                    Titik Terdaftar: <span id="lbl-registered-coords" class="font-mono font-bold text-slate-800">-6.208800, 106.845600</span> 
+                    • Radius Validasi: <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">80 METER</span>
+                  </p>
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                  <button type="button" onclick="calibrateCurrentWarehouseGPS()" class="flex-1 sm:flex-initial px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs">
+                    <i data-lucide="crosshair" class="w-3.5 h-3.5 text-teal-400"></i>
+                    <span>Daftarkan GPS Saat Ini</span>
+                  </button>
+                  <button type="button" onclick="openManualGPSModal()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition border border-slate-200">
+                    Input Manual
+                  </button>
+                </div>
+              </div>
+
             </div>
 
             <div id="printable-area" class="hidden"></div>
@@ -1813,16 +1839,136 @@
   </div>
 
   <!-- ========================================================= -->
+  <!-- MODAL INPUT KOORDINAT GPS MANUAL (RADIUS 80M) -->
+  <!-- ========================================================= -->
+  <div id="manual-gps-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-extrabold text-sm text-slate-900">
+            Set Titik GPS Gudang
+          </h3>
+          <p class="text-[11px] text-slate-500">Radius absensi dikunci <span class="font-bold text-teal-700">80 Meter</span></p>
+        </div>
+        <button onclick="closeManualGPSModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="handleSaveManualGPS(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Gudang Aktif</label>
+          <input type="text" id="gps-wh-name" readonly class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Latitude (Lintang) *</label>
+          <input type="number" step="any" id="gps-input-lat" required placeholder="Contoh: -6.208800" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Longitude (Bujur) *</label>
+          <input type="number" step="any" id="gps-input-lng" required placeholder="Contoh: 106.845600" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+        </div>
+
+        <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 font-semibold">
+          ✓ Staf hanya bisa absen jika berada dalam jarak <b>maksimal 80 meter</b> dari titik ini.
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button type="button" onclick="closeManualGPSModal()" class="flex-1 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition">Batal</button>
+          <button type="submit" class="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">Simpan Koordinat</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
   <!-- JAVASCRIPT ENGINE (BULLETPROOF EXCEL & FUZZY LOGIN) -->
   <!-- ========================================================= -->
   <script>
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
-    const OFFICIAL_COORDS = {
-      lat: -6.2088,
-      lng: 106.8456,
-      maxRadiusMeters: 500
+    const DEFAULT_COORDS = {
+      MBI: { lat: -6.2088, lng: 106.8456, radius: 80, name: 'Gudang MBI' },
+      MAI: { lat: -6.2088, lng: 106.8456, radius: 80, name: 'Gudang MAI' }
     };
+
+    function getWarehouseCoords(wh = activeWarehouse) {
+      try {
+        const saved = localStorage.getItem(`wfm_${wh.toLowerCase()}_coords`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+            return { ...parsed, radius: 80 };
+          }
+        }
+      } catch(e) {}
+      return DEFAULT_COORDS[wh] || { lat: -6.2088, lng: 106.8456, radius: 80, name: `Gudang ${wh}` };
+    }
+
+    function setWarehouseCoords(wh, lat, lng) {
+      const coords = { lat: parseFloat(lat), lng: parseFloat(lng), radius: 80, name: `Gudang ${wh}`, updatedAt: new Date().toISOString() };
+      localStorage.setItem(`wfm_${wh.toLowerCase()}_coords`, JSON.stringify(coords));
+      saveFullDatabaseToCloud();
+      updateRegisteredCoordsDisplay();
+      return coords;
+    }
+
+    function updateRegisteredCoordsDisplay() {
+      const lbl = document.getElementById('lbl-registered-coords');
+      if (lbl) {
+        const c = getWarehouseCoords(activeWarehouse);
+        lbl.innerText = `${c.lat.toFixed(6)}, ${c.lng.toFixed(6)}`;
+      }
+    }
+
+    function calibrateCurrentWarehouseGPS() {
+      if (!navigator.geolocation) {
+        alert('Fitur GPS tidak didukung di browser ini.');
+        return;
+      }
+      if (!confirm(`Daftarkan lokasi GPS HP/Laptop Anda saat ini sebagai titik resmi Gudang ${activeWarehouse} (Radius 80 Meter)?`)) {
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setWarehouseCoords(activeWarehouse, lat, lng);
+          alert(`✅ Sukses Mendaftarkan Titik Koordinat Gudang ${activeWarehouse}!\n\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}\nRadius Validasi: 80 Meter\n\nSemua staf kini wajib berada dalam jarak maksimal 80 meter untuk bisa absen.`);
+        },
+        (err) => {
+          alert('Gagal mengambil titik GPS: ' + err.message + '\nPastikan izin lokasi diaktifkan di browser.');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    function openManualGPSModal() {
+      const c = getWarehouseCoords(activeWarehouse);
+      document.getElementById('gps-wh-name').value = `Gudang ${activeWarehouse}`;
+      document.getElementById('gps-input-lat').value = c.lat;
+      document.getElementById('gps-input-lng').value = c.lng;
+      document.getElementById('manual-gps-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeManualGPSModal() {
+      document.getElementById('manual-gps-modal').classList.add('hidden');
+    }
+
+    function handleSaveManualGPS(e) {
+      e.preventDefault();
+      const lat = parseFloat(document.getElementById('gps-input-lat').value);
+      const lng = parseFloat(document.getElementById('gps-input-lng').value);
+      if (isNaN(lat) || isNaN(lng)) {
+        alert('Format koordinat tidak valid.');
+        return;
+      }
+      setWarehouseCoords(activeWarehouse, lat, lng);
+      closeManualGPSModal();
+      alert(`✅ Koordinat Gudang ${activeWarehouse} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)} (Radius 80 Meter)`);
+    }
 
     const SEED_MBI_USERS = [
       { id: 'mbi-admin', name: 'Admin Gudang MBI', dept: 'supervisor', outsource: 'Internal', phone: '081234567890', email: 'admin.mbi@medika.com', joinDate: '2023-01-01', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' }
@@ -2933,6 +3079,7 @@
       renderOvertimeTable();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
+      updateRegisteredCoordsDisplay();
       resetVerificationState();
       lucide.createIcons();
     }
@@ -3047,6 +3194,7 @@
         populateDropdownEmployees();
         renderSelectedIDCard();
         renderLocationQRCode();
+        updateRegisteredCoordsDisplay();
       }
       if (viewName === 'settings') renderAccountSettingsForm();
       if (viewName === 'github') renderGitHubConfig();
@@ -3104,22 +3252,37 @@
     function verifyGPSLocation() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) {
-          resolve({ valid: true, note: 'GPS tidak didukung browser' });
+          resolve({ valid: false, error: 'Fitur GPS tidak didukung di browser ini. Gunakan browser Chrome/Safari pada smartphone.' });
           return;
         }
+
+        const targetCoords = getWarehouseCoords(activeWarehouse);
+        const maxRadius = targetCoords.radius || 80;
 
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const userLat = pos.coords.latitude;
             const userLng = pos.coords.longitude;
-            const dist = getDistanceMeters(userLat, userLng, OFFICIAL_COORDS.lat, OFFICIAL_COORDS.lng);
-            resolve({ valid: true, distance: dist, lat: userLat, lng: userLng });
+            const dist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
+
+            if (dist <= maxRadius) {
+              resolve({ valid: true, distance: dist, lat: userLat, lng: userLng });
+            } else {
+              resolve({ 
+                valid: false, 
+                distance: dist, 
+                error: `Gagal, coba lagi (Jarak Anda ${dist} meter dari titik gudang, maksimal radius ${maxRadius} meter)` 
+              });
+            }
           },
           (err) => {
-            // Jika GPS indoor/sinyal lemah, scanning barcode QR fisik di pintu gudang tetap sah
-            resolve({ valid: true, note: 'QR Lokasi Fisik Terverifikasi (Indoor)' });
+            let errMsg = 'GPS lokasi wajib diaktifkan dan diizinkan di pengaturan HP!';
+            if (err.code === 1) errMsg = 'Izin akses GPS ditolak. Izinkan akses lokasi pada browser HP Anda.';
+            else if (err.code === 2) errMsg = 'Posisi GPS tidak ditemukan. Pastikan Anda berada di area terbuka.';
+            else if (err.code === 3) errMsg = 'Waktu permintaan GPS habis. Silakan coba scan kembali.';
+            resolve({ valid: false, error: errMsg });
           },
-          { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
         );
       });
     }
@@ -3410,8 +3573,8 @@
         return;
       }
 
-      // PROTEKSI 3: Jeda Minimal Antar Scan Berbeda (1.5 Detik) agar tidak tumpang tindih
-      if (now - lastScannedTime < 1500) {
+      // PROTEKSI 3: Jeda Minimal Antar Scan Berbeda (2.5 Detik) agar teratur sesuai aturan
+      if (now - lastScannedTime < 2500) {
         return;
       }
 
@@ -3436,9 +3599,33 @@
         lastScannedCode = trimmed;
         lastScannedTime = now;
 
+        if (isAdmin) {
+          setLocationVerifiedSuccess();
+          playLocationVerifiedSound();
+          // Beri jeda 2 detik sebelum siap membaca barcode ID card
+          setTimeout(() => { isScanProcessing = false; }, 2000);
+          return;
+        }
+
+        // Verifikasi GPS Radius 80 Meter untuk Akun Staf
+        const statusMsg = document.getElementById('cam-status-msg');
+        if (statusMsg) statusMsg.innerText = 'Memverifikasi radius GPS (maks 80m)...';
+
+        const gpsCheck = await verifyGPSLocation();
+        if (!gpsCheck.valid) {
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
+          alertEl.innerText = gpsCheck.error || 'Gagal, coba lagi (Di luar radius 80m)';
+          playAttendanceErrorSound();
+          if (statusMsg) statusMsg.innerText = 'Verifikasi GPS gagal (di luar radius 80m).';
+          setTimeout(() => { isScanProcessing = false; }, 3000);
+          return;
+        }
+
+        if (statusMsg) statusMsg.innerText = `GPS Valid (${gpsCheck.distance}m)! Silakan scan ID Card.`;
         setLocationVerifiedSuccess();
         playLocationVerifiedSound();
-        setTimeout(() => { isScanProcessing = false; }, 1800);
+        // Beri jeda 2 detik agar transisi dari scan lokasi ke scan ID Card berjalan tertib dan tidak terlalu cepat
+        setTimeout(() => { isScanProcessing = false; }, 2000);
         return;
       }
 
@@ -3447,7 +3634,7 @@
         lastScannedCode = trimmed;
         lastScannedTime = now;
 
-        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
+        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
         alertEl.innerText = 'Gagal, coba lagi (Scan QR lokasi dulu)';
         playAttendanceErrorSound();
         setTimeout(() => { isScanProcessing = false; }, 2500);
@@ -3539,11 +3726,11 @@
 
       refreshAllDashboardData();
 
-      // Beri jeda 3 detik agar karyawan berikutnya bisa absen dengan nyaman dan notifikasi terbaca jelas
+      // Beri jeda 3.5 detik agar karyawan berikutnya bisa absen dengan tertib dan notifikasi terbaca jelas
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-      }, 3000);
+      }, 3500);
     }
 
     // =========================================================
