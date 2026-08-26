@@ -3102,8 +3102,33 @@
       }, 250);
     }
 
+    // Variabel Pengatur Sensitivitas & Anti Double-Scan
+    let isScanProcessing = false;
+    let lastScannedCode = '';
+    let lastScannedTime = 0;
+
     async function processScannedText(decodedText) {
-      const trimmed = decodedText.trim();
+      const trimmed = decodedText ? decodedText.trim() : '';
+      if (!trimmed) return;
+
+      const now = Date.now();
+
+      // PROTEKSI 1: Jika sistem sedang memproses hasil scan (audio/feedback sedang berjalan) -> Abaikan scan lanjutan
+      if (isScanProcessing) {
+        return;
+      }
+
+      // PROTEKSI 2: Anti-Double Read untuk Barcode yang Sama (Cooldown 4 Detik)
+      // Mencegah kamera membaca kartu yang masih berada di depan lensa berulang-ulang dalam sepersekian detik
+      if (trimmed === lastScannedCode && (now - lastScannedTime < 4000)) {
+        return;
+      }
+
+      // PROTEKSI 3: Jeda Minimal Antar Scan Berbeda (1.5 Detik) agar tidak tumpang tindih
+      if (now - lastScannedTime < 1500) {
+        return;
+      }
+
       const alertEl = document.getElementById('att-alert');
       alertEl.classList.remove('hidden');
 
@@ -3115,9 +3140,14 @@
       const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001');
 
       if (isLocationBarcode) {
+        isScanProcessing = true;
+        lastScannedCode = trimmed;
+        lastScannedTime = now;
+
         if (isAdmin) {
           setLocationVerifiedSuccess();
           playLocationVerifiedSound();
+          setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
 
@@ -3126,20 +3156,32 @@
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
           alertEl.innerText = 'Lokasi Tidak Valid: ' + (gpsCheck.error || 'GPS Anda tidak berada di titik lokasi gudang resmi!');
           playAttendanceErrorSound('Lokasi GPS tidak berada di area gudang');
+          setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
 
         setLocationVerifiedSuccess();
         playLocationVerifiedSound();
+        setTimeout(() => { isScanProcessing = false; }, 2000);
         return;
       }
 
       if (!isLocationVerified && !isAdmin) {
+        isScanProcessing = true;
+        lastScannedCode = trimmed;
+        lastScannedTime = now;
+
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
         alertEl.innerText = 'Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
         playAttendanceErrorSound('Scan barcode lokasi terlebih dahulu');
+        setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
+
+      // Kunci proses scan ID Card
+      isScanProcessing = true;
+      lastScannedCode = trimmed;
+      lastScannedTime = now;
 
       processAttendanceScan(trimmed);
     }
@@ -3157,6 +3199,7 @@
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
         alertEl.innerText = `Kode Barcode "${nikCode}" tidak terdaftar di Gudang ${activeWarehouse}!`;
         playAttendanceErrorSound('Kode barcode tidak terdaftar');
+        setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
 
@@ -3170,6 +3213,7 @@
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
           alertEl.innerText = `${matchedUser.name} sudah melakukan Absen Masuk untuk hari ini!`;
           playAttendanceErrorSound('Anda sudah absen masuk hari ini');
+          setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
 
@@ -3191,7 +3235,8 @@
         });
 
         setWhDB(activeWarehouse, 'attendance', attendances);
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+        saveFullDatabaseToCloud();
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-md';
         alertEl.innerText = `Absen MASUK Berhasil: ${matchedUser.name} ${locNotice}!`;
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
@@ -3199,27 +3244,32 @@
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
           alertEl.innerText = `${matchedUser.name} belum Absen Masuk hari ini!`;
           playAttendanceErrorSound('Anda belum absen masuk hari ini');
+          setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
         if (existing.checkOutTime) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200';
           alertEl.innerText = `${matchedUser.name} sudah Absen Keluar sebelumnya.`;
           playAttendanceErrorSound('Anda sudah absen keluar sebelumnya');
+          setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
 
         existing.checkOutTime = new Date().toISOString();
         setWhDB(activeWarehouse, 'attendance', attendances);
-        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
+        saveFullDatabaseToCloud();
+        alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200 shadow-md';
         alertEl.innerText = `Absen KELUAR Berhasil: ${matchedUser.name}! ${locNotice}`;
         playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
       refreshAllDashboardData();
 
+      // Beri jeda 3 detik agar karyawan berikutnya bisa absen dengan nyaman dan notifikasi berhasil terbaca jelas
       setTimeout(() => {
+        isScanProcessing = false;
         resetVerificationState();
-      }, 4000);
+      }, 3500);
     }
 
     // =========================================================
@@ -3235,7 +3285,7 @@
           html5QrScanner = new Html5Qrcode("qr-reader");
           await html5QrScanner.start(
             { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+            { fps: 5, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 },
             (decodedText) => {
               processScannedText(decodedText);
             },
