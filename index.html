@@ -2751,6 +2751,7 @@
         renderLocationQRCode();
       }
       if (viewName === 'github') renderGitHubConfig();
+      if (viewName === 'attendance') resetVerificationState();
 
       if (viewName !== 'attendance') {
         stopScanner();
@@ -2803,6 +2804,12 @@
 
     function verifyGPSLocation() {
       return new Promise((resolve) => {
+        // Mode Uji Coba: Akun Admin diberi izin absen di luar lokasi
+        if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001')) {
+          resolve({ valid: true, distance: 0, isAdminBypass: true });
+          return;
+        }
+
         if (!navigator.geolocation) {
           resolve({ valid: false, error: 'GPS Geolocation tidak didukung di browser ini.' });
           return;
@@ -2832,7 +2839,8 @@
     // 2-STEP VERIFICATION
     // =========================================================
     function resetVerificationState() {
-      isLocationVerified = false;
+      const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001');
+      isLocationVerified = isAdmin ? true : false;
       
       const s1Card = document.getElementById('step-1-card');
       const s1Icon = document.getElementById('step-1-icon');
@@ -2848,35 +2856,68 @@
       const boxBorder = document.getElementById('scanner-box-border');
       const boxTag = document.getElementById('scanner-box-tag');
 
-      if (s1Card) {
-        s1Card.className = 'p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition';
-        s1Icon.className = 'w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm';
-        s1Icon.innerText = '1';
-        s1Status.innerText = 'Menunggu scan barcode lokasi di pintu gudang...';
-        s1Status.className = 'text-[11px] text-amber-800 font-semibold';
-        s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900';
-        s1Badge.innerText = 'WAJIB';
-      }
+      if (isAdmin) {
+        if (s1Card) {
+          s1Card.className = 'p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/80 flex items-center justify-between transition';
+          s1Icon.className = 'w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-xs';
+          s1Icon.innerText = '⚡';
+          s1Status.innerText = 'Mode Uji Coba Admin: Izin Absen Luar Lokasi (Bypass GPS Aktif)';
+          s1Status.className = 'text-[11px] text-indigo-900 font-bold';
+          s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-indigo-200 text-indigo-900';
+          s1Badge.innerText = 'TEST MODE';
+        }
 
-      if (s2Card) {
-        s2Card.className = 'p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between opacity-60 transition';
-        s2Icon.className = 'w-8 h-8 rounded-xl bg-slate-300 text-slate-700 flex items-center justify-center font-black text-xs';
-        s2Icon.innerText = '2';
-        s2Status.innerText = 'Terkunci (Scan lokasi terlebih dahulu)';
-        s2Status.className = 'text-[11px] text-slate-500';
-        s2Badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600';
-        s2Badge.innerText = 'TERKUNCI';
-      }
+        if (s2Card) {
+          s2Card.className = 'p-3.5 rounded-2xl border-2 border-emerald-400 bg-emerald-50 flex items-center justify-between opacity-100 transition shadow-xs';
+          s2Icon.className = 'w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-xs';
+          s2Icon.innerText = '✓';
+          s2Status.innerText = 'SIAP! Langsung Scan Barcode ID Card (Bebas Lokasi)';
+          s2Status.className = 'text-[11px] text-emerald-800 font-bold animate-pulse';
+          s2Badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900';
+          s2Badge.innerText = 'AKTIF';
+        }
 
-      if (instr) {
-        instr.className = 'w-full mb-3 p-3 rounded-2xl bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold text-center flex items-center justify-center gap-2';
-        instr.innerHTML = '<i data-lucide="map-pin" class="w-4 h-4 text-amber-700"></i> <span>Langkah 1: Arahkan kamera ke Barcode QR Lokasi Gudang</span>';
-      }
+        if (instr) {
+          instr.className = 'w-full mb-3 p-3 rounded-2xl bg-indigo-100 border border-indigo-300 text-indigo-950 text-xs font-bold text-center flex items-center justify-center gap-2';
+          instr.innerHTML = '<i data-lucide="shield-check" class="w-4 h-4 text-indigo-700"></i> <span>Mode Uji Coba Admin: Arahkan kamera langsung ke Barcode ID Card</span>';
+        }
 
-      if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
-      if (boxTag) {
-        boxTag.className = 'text-[10px] text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
-        boxTag.innerText = 'SCAN QR LOKASI';
+        if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-emerald-500 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
+        if (boxTag) {
+          boxTag.className = 'text-[10px] text-emerald-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
+          boxTag.innerText = 'SCAN ID CARD (ADMIN)';
+        }
+      } else {
+        if (s1Card) {
+          s1Card.className = 'p-3.5 rounded-2xl border-2 border-amber-400 bg-amber-50 flex items-center justify-between transition';
+          s1Icon.className = 'w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm';
+          s1Icon.innerText = '1';
+          s1Status.innerText = 'Menunggu scan barcode lokasi di pintu gudang...';
+          s1Status.className = 'text-[11px] text-amber-800 font-semibold';
+          s1Badge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-200 text-amber-900';
+          s1Badge.innerText = 'WAJIB';
+        }
+
+        if (s2Card) {
+          s2Card.className = 'p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between opacity-60 transition';
+          s2Icon.className = 'w-8 h-8 rounded-xl bg-slate-300 text-slate-700 flex items-center justify-center font-black text-xs';
+          s2Icon.innerText = '2';
+          s2Status.innerText = 'Terkunci (Scan lokasi terlebih dahulu)';
+          s2Status.className = 'text-[11px] text-slate-500';
+          s2Badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-600';
+          s2Badge.innerText = 'TERKUNCI';
+        }
+
+        if (instr) {
+          instr.className = 'w-full mb-3 p-3 rounded-2xl bg-amber-100 border border-amber-300 text-amber-950 text-xs font-bold text-center flex items-center justify-center gap-2';
+          instr.innerHTML = '<i data-lucide="map-pin" class="w-4 h-4 text-amber-700"></i> <span>Langkah 1: Arahkan kamera ke Barcode QR Lokasi Gudang</span>';
+        }
+
+        if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-amber-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
+        if (boxTag) {
+          boxTag.className = 'text-[10px] text-amber-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
+          boxTag.innerText = 'SCAN QR LOKASI';
+        }
       }
 
       lucide.createIcons();
@@ -3071,7 +3112,15 @@
                                  trimmed.includes("rDZysrj5TJ1NmdGD7") || 
                                  trimmed.toUpperCase().includes("LOKASI-GUDANG");
 
+      const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001');
+
       if (isLocationBarcode) {
+        if (isAdmin) {
+          setLocationVerifiedSuccess();
+          playLocationVerifiedSound();
+          return;
+        }
+
         const gpsCheck = await verifyGPSLocation();
         if (!gpsCheck.valid) {
           alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
@@ -3085,7 +3134,7 @@
         return;
       }
 
-      if (!isLocationVerified) {
+      if (!isLocationVerified && !isAdmin) {
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
         alertEl.innerText = 'Harap Scan Barcode QR Lokasi Gudang Terlebih Dahulu Sebelum Scan ID Card!';
         playAttendanceErrorSound('Scan barcode lokasi terlebih dahulu');
@@ -3113,6 +3162,8 @@
 
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const existing = attendances.find(a => a.userNik === matchedUser.nik && a.date === todayStr);
+      const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001');
+      const locNotice = isAdmin ? '(Mode Uji Coba Admin: Luar Lokasi)' : '(Lokasi Terverifikasi)';
 
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
@@ -3141,7 +3192,7 @@
 
         setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-        alertEl.innerText = `Absen MASUK Berhasil: ${matchedUser.name} (Lokasi Terverifikasi)!`;
+        alertEl.innerText = `Absen MASUK Berhasil: ${matchedUser.name} ${locNotice}!`;
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
@@ -3160,7 +3211,7 @@
         existing.checkOutTime = new Date().toISOString();
         setWhDB(activeWarehouse, 'attendance', attendances);
         alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200';
-        alertEl.innerText = `Absen KELUAR Berhasil: ${matchedUser.name}! (Lokasi Terverifikasi)`;
+        alertEl.innerText = `Absen KELUAR Berhasil: ${matchedUser.name}! ${locNotice}`;
         playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
@@ -4330,6 +4381,11 @@
         return inDate && inSearch;
       });
 
+      if (filtered.length === 0) {
+        alert('Tidak ada data record presensi yang cocok dengan pencarian / filter untuk diekspor ke Excel.');
+        return;
+      }
+
       const rows = filtered.map((r, i) => {
         const emp = users.find(u => u.nik === r.userNik);
         let durationStr = 'Sedang Berjalan';
@@ -4366,7 +4422,9 @@
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, `Record_Absen_${activeWarehouse}`);
-      XLSX.writeFile(wb, `Record_Absen_Harian_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+      const searchTag = searchQ ? `_${searchQ.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+      const periodTag = (startStr || endStr) ? `_${startStr || 'awal'}_sd_${endStr || 'akhir'}` : '_semua';
+      XLSX.writeFile(wb, `Record_Absen_${activeWarehouse}${searchTag}${periodTag}.xlsx`);
     }
 
     function getDatesInRange(startDateStr, endDateStr) {
