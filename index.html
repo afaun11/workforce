@@ -360,127 +360,6 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- MODAL EDIT DATA KARYAWAN (SUPERVISOR, COORD, ADMIN) -->
-  <!-- ========================================================= -->
-  <div id="edit-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div>
-          <h3 class="font-black text-sm text-slate-900">
-            Edit Data Karyawan
-          </h3>
-          <p class="text-[11px] text-slate-500">Perbarui profil atau reset password karyawan</p>
-        </div>
-        <button onclick="closeEditEmployeeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-
-      <form onsubmit="handleSaveEditEmployee(event)" class="space-y-3">
-        <input type="hidden" id="edit-emp-id">
-        <input type="hidden" id="edit-emp-wh">
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap *</label>
-          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
-            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="edit-emp-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-              <option value="staff">Staff</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-            <select id="edit-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-              <option value="inbound">inbound</option>
-              <option value="packer">packer</option>
-              <option value="packing">packing</option>
-              <option value="picking plan">picking plan</option>
-              <option value="admin so">admin so</option>
-              <option value="dispatch">dispatch</option>
-              <option value="driver">driver</option>
-              <option value="staff office">staff office</option>
-              <option value="coordinator">coordinator</option>
-              <option value="supervisor">supervisor</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource / Vendor</label>
-            <input type="text" id="edit-emp-outsource" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon</label>
-            <input type="text" id="edit-emp-phone" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE</label>
-            <input type="date" id="edit-emp-joindate" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          </div>
-        </div>
-
-        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-          <label class="block text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-1">Reset Password Akun (Opsional)</label>
-          <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tidak diubah" class="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
-        </div>
-
-        <div class="flex items-center gap-2 pt-2">
-          <button type="button" onclick="closeEditEmployeeModal()" class="flex-1 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition">Batal</button>
-          <button type="submit" class="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">Simpan Perubahan</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ========================================================= -->
-  <!-- MODAL PENGATURAN / GANTI PASSWORD MANDIRI -->
-  <!-- ========================================================= -->
-  <div id="setting-password-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div>
-          <h3 class="font-black text-sm text-slate-900">
-            Ubah Kata Sandi
-          </h3>
-          <p class="text-[11px] text-slate-500">Ubah kata sandi akun Anda</p>
-        </div>
-        <button onclick="closeChangePasswordSettingModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-
-      <div id="setting-pwd-alert" class="hidden p-3 rounded-xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200"></div>
-
-      <form onsubmit="handleSaveSelfPassword(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password Baru *</label>
-          <input type="password" id="self-new-pwd-1" required placeholder="Minimal 6 karakter" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Ulangi Password Baru *</label>
-          <input type="password" id="self-new-pwd-2" required placeholder="Ulangi password baru" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-        </div>
-
-        <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
-          Simpan Password Baru
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ========================================================= -->
   <!-- 2. MAIN APPLICATION DASHBOARD SCREEN -->
   <!-- ========================================================= -->
   <div id="app-container" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
@@ -2148,9 +2027,9 @@
       const normalizeUserKey = (u) => {
         if (!u) return '';
         if (u.role === 'admin') return `ADMIN_${u.warehouse || 'MBI'}`;
-        if (u.name) return cleanStr(u.name);
-        if (u.nik) return cleanStr(u.nik);
-        return u.id || '';
+        if (u.id) return `${u.warehouse || 'MBI'}_${u.id}`;
+        if (u.nik) return `${u.warehouse || 'MBI'}_${u.nik}`;
+        return u.name ? `${u.warehouse || 'MBI'}_${cleanStr(u.name)}` : '';
       };
 
       (localUsers || []).forEach(u => {
@@ -2292,19 +2171,23 @@
       }
     }
 
+    let renderScreensTimeout = null;
     function renderAllLiveScreens() {
-      migrateAllUsersNIK();
-      renderAccountLookupList();
-      renderEmployeeTable();
-      populateDropdownEmployees();
-      renderOvertimeEmployeeGrid();
-      renderOvertimeTable();
-      renderReportOvertimeTable();
-      renderLeavesTable();
-      renderReportLeavesTable();
-      renderRecordsTable();
-      renderMatrixTable();
-      refreshAllDashboardData();
+      if (renderScreensTimeout) clearTimeout(renderScreensTimeout);
+      renderScreensTimeout = setTimeout(() => {
+        renderAccountLookupList();
+        renderEmployeeTable();
+        populateDropdownEmployees();
+        renderOvertimeEmployeeGrid();
+        renderOvertimeTable();
+        renderReportOvertimeTable();
+        renderLeavesTable();
+        renderReportLeavesTable();
+        renderRecordsTable();
+        renderMatrixTable();
+        refreshAllDashboardData();
+        lucide.createIcons();
+      }, 80);
     }
 
     function updateCloudSyncStatusBadge(status) {
@@ -2336,49 +2219,59 @@
       }
     }
 
+    let cloudSaveTimeout = null;
     async function saveFullDatabaseToCloud(forceAlert = false) {
-      const payload = {
-        mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
-        mbi_attendance: getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE),
-        mbi_leaves: getWhDB('MBI', 'leaves', SEED_MBI_LEAVES),
-        mbi_overtime: getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES),
-        mai_users: getWhDB('MAI', 'users', SEED_MAI_USERS),
-        mai_attendance: getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE),
-        mai_leaves: getWhDB('MAI', 'leaves', []),
-        mai_overtime: getWhDB('MAI', 'overtime', []),
-        updatedAt: new Date().toISOString()
+      const executeSave = async () => {
+        const payload = {
+          mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
+          mbi_attendance: getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE),
+          mbi_leaves: getWhDB('MBI', 'leaves', SEED_MBI_LEAVES),
+          mbi_overtime: getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES),
+          mai_users: getWhDB('MAI', 'users', SEED_MAI_USERS),
+          mai_attendance: getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE),
+          mai_leaves: getWhDB('MAI', 'leaves', []),
+          mai_overtime: getWhDB('MAI', 'overtime', []),
+          updatedAt: new Date().toISOString()
+        };
+
+        // 1. Broadcast instant realtime message to all devices (<100ms)
+        broadcastRealtimeUpdate(payload);
+
+        // 2. Background HTTP upload for persistent storage
+        updateCloudSyncStatusBadge('uploading');
+        let success = false;
+
+        for (const endpoint of CLOUD_ENDPOINTS) {
+          try {
+            const method = endpoint.includes('firebase') ? 'PUT' : 'POST';
+            await fetch(endpoint, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            success = true;
+            break;
+          } catch (e) {
+            console.warn('Cloud upload failed on endpoint:', endpoint, e);
+          }
+        }
+
+        updateCloudSyncStatusBadge((isMqttConnected || success) ? 'synced' : 'local');
+        if (forceAlert) {
+          if (success || isMqttConnected) {
+            alert(`✅ Sukses Realtime Sinkron!\nSemua data karyawan (${payload.mbi_users.length} MBI), data lembur (${payload.mbi_overtime.length} data), dan absensi otomatis disinkronkan secara LIVE ke seluruh HP & Laptop.`);
+          } else {
+            alert('⚠️ Gagal terhubung ke Cloud Server. Periksa koneksi internet laptop Anda.');
+          }
+        }
       };
 
-      // 1. Broadcast instant realtime message to all devices (<100ms)
-      broadcastRealtimeUpdate(payload);
-
-      // 2. Background HTTP upload for persistent storage
-      updateCloudSyncStatusBadge('uploading');
-      let success = false;
-
-      for (const endpoint of CLOUD_ENDPOINTS) {
-        try {
-          const method = endpoint.includes('firebase') ? 'PUT' : 'POST';
-          await fetch(endpoint, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          success = true;
-          break;
-        } catch (e) {
-          console.warn('Cloud upload failed on endpoint:', endpoint, e);
-        }
-      }
-
-      updateCloudSyncStatusBadge((isMqttConnected || success) ? 'synced' : 'local');
       if (forceAlert) {
-        if (success || isMqttConnected) {
-          alert(`✅ Sukses Realtime Sinkron!\nSemua data karyawan (${payload.mbi_users.length} MBI), data lembur (${payload.mbi_overtime.length} data), dan absensi otomatis disinkronkan secara LIVE ke seluruh HP & Laptop.`);
-        } else {
-          alert('⚠️ Gagal terhubung ke Cloud Server. Periksa koneksi internet laptop Anda.');
-        }
+        return await executeSave();
       }
+
+      if (cloudSaveTimeout) clearTimeout(cloudSaveTimeout);
+      cloudSaveTimeout = setTimeout(executeSave, 300);
     }
 
     function sanitizeEmployeesData() {
@@ -2391,9 +2284,9 @@
           if (!Array.isArray(users)) return;
           let hasChanges = false;
 
-          // 1. Buang seluruh akun contoh bawaan sistem (mock seed users)
+          // Buang mock seed users jika ada
           const MOCK_SEED_IDS = new Set(['mbi-1', 'mbi-2', 'mbi-3', 'mbi-4', 'mbi-5', 'mbi-6', 'mbi-7', 'mbi-8', 'mbi-9', 'mai-1', 'mai-2', 'mai-3']);
-          users = users.filter(u => {
+          const cleanUsers = users.filter(u => {
             if (!u) return false;
             if (u.role !== 'admin' && MOCK_SEED_IDS.has(u.id)) {
               hasChanges = true;
@@ -2402,35 +2295,19 @@
             return true;
           });
 
-          // 2. Deduplikasi karyawan berdasarkan nama asli agar akun tidak berlipat ganda
-          const seenNames = new Map();
-          const cleanUsers = [];
-          users.forEach(u => {
-            if (!u) return;
-            const normName = u.role === 'admin' ? `ADMIN_${wh}` : cleanStr(u.name);
-            if (!seenNames.has(normName)) {
-              seenNames.set(normName, u);
-              cleanUsers.push(u);
-            } else {
-              hasChanges = true;
-            }
-          });
-          users = cleanUsers;
-
-          users.forEach(u => {
-            // Perbaiki nomor telepon jika tertukar dengan nama atau tidak memiliki digit nomor
+          cleanUsers.forEach(u => {
             if (u.phone && (u.phone === u.name || !/\d{4,}/.test(u.phone)) && u.phone !== '-') {
               u.phone = '-';
               hasChanges = true;
             }
-            // Perbaiki tanggal jika masih berupa serial date Excel seperti 46225
             if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
               u.joinDate = formatExcelDate(u.joinDate);
               hasChanges = true;
             }
           });
+
           if (hasChanges) {
-            localStorage.setItem(storageKey, JSON.stringify(users));
+            localStorage.setItem(storageKey, JSON.stringify(cleanUsers));
           }
         } catch (e) {}
       });
@@ -2438,30 +2315,21 @@
 
     function migrateAllUsersNIK() {
       sanitizeEmployeesData();
-      const year = new Date().getFullYear().toString().slice(-2); // "26"
 
       ['MBI', 'MAI'].forEach(wh => {
         let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         let hasChanges = false;
-        const prefix = `${wh}${year}-`;
-        
-        let counter = 1;
+
         users.forEach(u => {
-          if (u.role === 'admin' && (u.nik === 'ADM001' || u.nik === `ADM-${wh}`)) {
-            return;
-          }
-          const expectedNik = `${prefix}${String(counter).padStart(3, '0')}`;
-          if (u.nik !== expectedNik) {
-            u.nik = expectedNik;
+          if (!u.nik || u.nik.trim() === '') {
+            u.nik = generateUniqueNIK(wh, u.name, users);
             hasChanges = true;
           }
-          counter++;
         });
 
         if (hasChanges) {
           const storageKey = `wfm_${wh.toLowerCase()}_users`;
           localStorage.setItem(storageKey, JSON.stringify(users));
-          saveFullDatabaseToCloud();
         }
       });
     }
