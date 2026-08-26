@@ -1459,18 +1459,18 @@
                 </div>
               </div>
 
-              <!-- 3. PENGATURAN KOORDINAT LOKASI & RADIUS 80 METER -->
+              <!-- 3. PENGATURAN KOORDINAT LOKASI & RADIUS 30 METER -->
               <div id="gps-config-box" class="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div class="space-y-1">
                   <div class="flex items-center gap-2">
                     <div class="w-7 h-7 rounded-lg bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center">
                       <i data-lucide="map-pin" class="w-4 h-4"></i>
                     </div>
-                    <h4 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Titik Koordinat Gudang Resmi (Radius 80 Meter)</h4>
+                    <h4 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Titik Koordinat Gudang Resmi (Radius 30 Meter)</h4>
                   </div>
                   <p class="text-xs text-slate-500">
                     Titik Terdaftar: <span id="lbl-registered-coords" class="font-mono font-bold text-slate-800">-6.208800, 106.845600</span> 
-                    • Radius Validasi: <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">80 METER</span>
+                    • Radius Validasi: <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">30 METER</span>
                   </p>
                 </div>
 
@@ -1839,7 +1839,7 @@
   </div>
 
   <!-- ========================================================= -->
-  <!-- MODAL INPUT KOORDINAT GPS MANUAL (RADIUS 80M) -->
+  <!-- MODAL INPUT KOORDINAT GPS MANUAL (RADIUS 30M) -->
   <!-- ========================================================= -->
   <div id="manual-gps-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-200">
@@ -1848,7 +1848,7 @@
           <h3 class="font-extrabold text-sm text-slate-900">
             Set Titik GPS Gudang
           </h3>
-          <p class="text-[11px] text-slate-500">Radius absensi dikunci <span class="font-bold text-teal-700">80 Meter</span></p>
+          <p class="text-[11px] text-slate-500">Radius absensi dikunci <span class="font-bold text-teal-700">30 Meter</span></p>
         </div>
         <button onclick="closeManualGPSModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
@@ -1870,7 +1870,7 @@
         </div>
 
         <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 font-semibold">
-          ✓ Staf hanya bisa absen jika berada dalam jarak <b>maksimal 80 meter</b> dari titik ini.
+          ✓ Staf hanya bisa absen jika berada dalam jarak <b>maksimal 30 meter</b> dari titik ini.
         </div>
 
         <div class="flex items-center gap-2 pt-2">
@@ -1888,8 +1888,8 @@
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
     const DEFAULT_COORDS = {
-      MBI: { lat: -6.2088, lng: 106.8456, radius: 80, name: 'Gudang MBI' },
-      MAI: { lat: -6.2088, lng: 106.8456, radius: 80, name: 'Gudang MAI' }
+      MBI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MBI' },
+      MAI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MAI' }
     };
 
     function getWarehouseCoords(wh = activeWarehouse) {
@@ -1898,15 +1898,15 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-            return { ...parsed, radius: 80 };
+            return { ...parsed, radius: 30 };
           }
         }
       } catch(e) {}
-      return DEFAULT_COORDS[wh] || { lat: -6.2088, lng: 106.8456, radius: 80, name: `Gudang ${wh}` };
+      return DEFAULT_COORDS[wh] || { lat: -6.2088, lng: 106.8456, radius: 30, name: `Gudang ${wh}` };
     }
 
     function setWarehouseCoords(wh, lat, lng) {
-      const coords = { lat: parseFloat(lat), lng: parseFloat(lng), radius: 80, name: `Gudang ${wh}`, updatedAt: new Date().toISOString() };
+      const coords = { lat: parseFloat(lat), lng: parseFloat(lng), radius: 30, name: `Gudang ${wh}`, updatedAt: new Date().toISOString() };
       localStorage.setItem(`wfm_${wh.toLowerCase()}_coords`, JSON.stringify(coords));
       saveFullDatabaseToCloud();
       updateRegisteredCoordsDisplay();
@@ -1926,7 +1926,7 @@
         alert('Fitur GPS tidak didukung di browser ini.');
         return;
       }
-      if (!confirm(`Daftarkan lokasi GPS HP/Laptop Anda saat ini sebagai titik resmi Gudang ${activeWarehouse} (Radius 80 Meter)?`)) {
+      if (!confirm(`Daftarkan lokasi GPS HP/Laptop Anda saat ini sebagai titik resmi Gudang ${activeWarehouse} (Radius 30 Meter)?`)) {
         return;
       }
 
@@ -1935,7 +1935,7 @@
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           setWarehouseCoords(activeWarehouse, lat, lng);
-          alert(`✅ Sukses Mendaftarkan Titik Koordinat Gudang ${activeWarehouse}!\n\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}\nRadius Validasi: 80 Meter\n\nSemua staf kini wajib berada dalam jarak maksimal 80 meter untuk bisa absen.`);
+          alert(`✅ Sukses Mendaftarkan Titik Koordinat Gudang ${activeWarehouse}!\n\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}\nRadius Validasi: 30 Meter\n\nSemua staf kini wajib berada dalam jarak maksimal 30 meter untuk bisa absen.`);
         },
         (err) => {
           alert('Gagal mengambil titik GPS: ' + err.message + '\nPastikan izin lokasi diaktifkan di browser.');
@@ -1967,7 +1967,7 @@
       }
       setWarehouseCoords(activeWarehouse, lat, lng);
       closeManualGPSModal();
-      alert(`✅ Koordinat Gudang ${activeWarehouse} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)} (Radius 80 Meter)`);
+      alert(`✅ Koordinat Gudang ${activeWarehouse} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)} (Radius 30 Meter)`);
     }
 
     const SEED_MBI_USERS = [
@@ -3257,7 +3257,7 @@
         }
 
         const targetCoords = getWarehouseCoords(activeWarehouse);
-        const maxRadius = targetCoords.radius || 80;
+        const maxRadius = targetCoords.radius || 30;
 
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -3607,16 +3607,16 @@
           return;
         }
 
-        // Verifikasi GPS Radius 80 Meter untuk Akun Staf
+        // Verifikasi GPS Radius 30 Meter untuk Akun Staf
         const statusMsg = document.getElementById('cam-status-msg');
-        if (statusMsg) statusMsg.innerText = 'Memverifikasi radius GPS (maks 80m)...';
+        if (statusMsg) statusMsg.innerText = 'Memverifikasi radius GPS (maks 30m)...';
 
         const gpsCheck = await verifyGPSLocation();
         if (!gpsCheck.valid) {
           alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
-          alertEl.innerText = gpsCheck.error || 'Gagal, coba lagi (Di luar radius 80m)';
+          alertEl.innerText = gpsCheck.error || 'Gagal, coba lagi (Di luar radius 30m)';
           playAttendanceErrorSound();
-          if (statusMsg) statusMsg.innerText = 'Verifikasi GPS gagal (di luar radius 80m).';
+          if (statusMsg) statusMsg.innerText = 'Verifikasi GPS gagal (di luar radius 30m).';
           setTimeout(() => { isScanProcessing = false; }, 3000);
           return;
         }
