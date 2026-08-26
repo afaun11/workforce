@@ -488,9 +488,6 @@
     <!-- Top Navbar (Fixed di Posisi Atas) -->
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
       <div class="flex items-center gap-3">
-        <button id="btn-toggle-sidebar" onclick="toggleSidebarCollapse()" class="p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition border border-slate-200 shadow-2xs" title="Sembunyikan / Buka Menu Samping (Minimize Sidebar)">
-          <i data-lucide="panel-left-close" class="w-4 h-4"></i>
-        </button>
         <div class="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-lg shadow-xs">M</div>
         <div>
           <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
@@ -535,68 +532,77 @@
     <div class="flex-1 flex overflow-hidden">
       
       <!-- Sidebar Navigasi Bersih, Minimalis & Profesional -->
-      <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col p-4 space-y-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
+      <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
         
-        <!-- 1. Presensi & Operasional -->
-        <div class="space-y-1">
-          <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
-          <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-            <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
-            <span class="sidebar-text">Dashboard</span>
-          </button>
-          <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5">
-            <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
-            <span class="sidebar-text">Absensi Barcode</span>
-          </button>
+        <div class="space-y-4">
+          <!-- 1. Presensi & Operasional -->
+          <div class="space-y-1">
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
+            <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Dashboard</span>
+            </button>
+            <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5">
+              <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Absensi Barcode</span>
+            </button>
+          </div>
+
+          <!-- 2. Manajemen & Kontrol (Khusus Coordinator, Supervisor, Admin) -->
+          <div id="admin-menu-section" class="space-y-4 pt-2 border-t border-slate-800">
+            
+            <!-- Kelompok: Pengajuan & Lembur -->
+            <div class="space-y-1">
+              <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
+              <button onclick="switchView('leaves')" id="nav-leaves" title="Form Pengajuan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+                <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i>
+                <span class="sidebar-text">Form Pengajuan</span>
+              </button>
+              <button onclick="switchView('overtime')" id="nav-overtime" title="Input & Rekap Lembur" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+                <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
+                <span class="sidebar-text">Input & Rekap Lembur</span>
+              </button>
+            </div>
+
+            <!-- Kelompok: Manajemen Karyawan -->
+            <div class="space-y-1">
+              <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
+              <button onclick="switchView('employees')" id="nav-employees" title="Data Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+                <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i>
+                <span class="sidebar-text">Data Karyawan</span>
+              </button>
+              <button onclick="switchView('idcard')" id="nav-idcard" title="Kartu ID & QR Lokasi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+                <i data-lucide="contact" class="w-4 h-4 flex-shrink-0"></i>
+                <span class="sidebar-text">Kartu ID & QR Lokasi</span>
+              </button>
+            </div>
+
+            <!-- Kelompok: Laporan & Rekapitulasi -->
+            <div class="space-y-1">
+              <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
+              <button onclick="switchView('reports-group')" id="nav-reports-group" title="Laporan & Rekap Absensi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+                <i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i>
+                <span class="sidebar-text">Laporan & Rekap Absensi</span>
+              </button>
+            </div>
+
+            <!-- Kelompok: Database & Cadangan -->
+            <div class="space-y-1">
+              <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
+              <button onclick="switchView('github')" id="nav-github" title="Database & Cadangan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+                <i data-lucide="database" class="w-4 h-4 flex-shrink-0"></i>
+                <span class="sidebar-text">Database & Cadangan</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- 2. Manajemen & Kontrol (Khusus Coordinator, Supervisor, Admin) -->
-        <div id="admin-menu-section" class="space-y-4 pt-2 border-t border-slate-800">
-          
-          <!-- Kelompok: Pengajuan & Lembur -->
-          <div class="space-y-1">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
-            <button onclick="switchView('leaves')" id="nav-leaves" title="Form Pengajuan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Form Pengajuan</span>
-            </button>
-            <button onclick="switchView('overtime')" id="nav-overtime" title="Input & Rekap Lembur" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Input & Rekap Lembur</span>
-            </button>
-          </div>
-
-          <!-- Kelompok: Manajemen Karyawan -->
-          <div class="space-y-1">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
-            <button onclick="switchView('employees')" id="nav-employees" title="Data Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Data Karyawan</span>
-            </button>
-            <button onclick="switchView('idcard')" id="nav-idcard" title="Kartu ID & QR Lokasi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="contact" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Kartu ID & QR Lokasi</span>
-            </button>
-          </div>
-
-          <!-- Kelompok: Laporan & Rekapitulasi -->
-          <div class="space-y-1">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
-            <button onclick="switchView('reports-group')" id="nav-reports-group" title="Laporan & Rekap Absensi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Laporan & Rekap Absensi</span>
-            </button>
-          </div>
-
-          <!-- Kelompok: Database & Cadangan -->
-          <div class="space-y-1">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-            <button onclick="switchView('github')" id="nav-github" title="Database & Cadangan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="database" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Database & Cadangan</span>
-            </button>
-          </div>
-
+        <!-- Tombol Minimize / Expand di Bagian Bawah Sidebar (Footer) -->
+        <div class="pt-3 border-t border-slate-800 mt-4 flex-shrink-0">
+          <button id="btn-toggle-sidebar" onclick="toggleSidebarCollapse()" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5" title="Sembunyikan / Buka Menu Samping">
+            <i data-lucide="chevrons-left" class="w-4 h-4 flex-shrink-0"></i>
+            <span class="sidebar-text font-bold">Ciutkan Menu</span>
+          </button>
         </div>
       </aside>
 
@@ -2882,8 +2888,8 @@
       const toggleBtn = document.getElementById('btn-toggle-sidebar');
       if (toggleBtn) {
         toggleBtn.innerHTML = isCollapsed 
-          ? '<i data-lucide="panel-left-open" class="w-4 h-4"></i>'
-          : '<i data-lucide="panel-left-close" class="w-4 h-4"></i>';
+          ? '<i data-lucide="chevrons-right" class="w-4 h-4 flex-shrink-0"></i>'
+          : '<i data-lucide="chevrons-left" class="w-4 h-4 flex-shrink-0"></i><span class="sidebar-text font-bold">Ciutkan Menu</span>';
       }
       lucide.createIcons();
     }
@@ -2895,7 +2901,7 @@
       if (saved === 'true' && sidebar) {
         sidebar.classList.add('is-collapsed');
         if (toggleBtn) {
-          toggleBtn.innerHTML = '<i data-lucide="panel-left-open" class="w-4 h-4"></i>';
+          toggleBtn.innerHTML = '<i data-lucide="chevrons-right" class="w-4 h-4 flex-shrink-0"></i>';
         }
       }
       lucide.createIcons();
