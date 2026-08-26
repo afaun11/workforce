@@ -518,8 +518,8 @@
             <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
             <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
           </div>
-          <button onclick="openChangePasswordSettingModal()" class="p-2 rounded-xl text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition" title="Ubah Kata Sandi Akun">
-            <i data-lucide="key-round" class="w-4 h-4"></i>
+          <button onclick="switchView('settings')" class="p-2 rounded-xl text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition" title="Pengaturan Profil & Akun">
+            <i data-lucide="user-cog" class="w-4 h-4"></i>
           </button>
           <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="Logout">
             <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -535,9 +535,9 @@
       <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
         
         <div class="space-y-4">
-          <!-- 1. Presensi & Operasional -->
+          <!-- 1. Presensi & Akun -->
           <div class="space-y-1">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Akun</p>
             <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
               <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Dashboard</span>
@@ -545,6 +545,10 @@
             <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5">
               <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Absensi Barcode</span>
+            </button>
+            <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="user-cog" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Pengaturan Akun</span>
             </button>
           </div>
 
@@ -735,6 +739,7 @@
                       <th class="p-3.5 border-r border-slate-200">Departemen</th>
                       <th class="p-3.5 border-r border-slate-200">Outsource</th>
                       <th class="p-3.5 border-r border-slate-200">No Telpon</th>
+                      <th class="p-3.5 border-r border-slate-200">Email</th>
                       <th class="p-3.5 border-r border-slate-200">JOIN DATE</th>
                       <th class="p-3.5 border-r border-slate-200">Posisi</th>
                       <th class="p-3.5 text-right min-w-[120px]">Aksi</th>
@@ -1649,6 +1654,112 @@
             </div>
           </div>
 
+          <!-- ========================================================= -->
+          <!-- VIEW 9: PENGATURAN AKUN & PROFIL -->
+          <!-- ========================================================= -->
+          <div id="view-settings" class="view-panel hidden space-y-6 max-w-4xl mx-auto">
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <i data-lucide="user-cog" class="w-5 h-5 text-teal-700"></i>
+                  Pengaturan Akun & Profil
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">Kelola identitas, nomor telepon, email, dan kata sandi akun Anda.</p>
+              </div>
+              <div id="settings-status-badge" class="px-3 py-1.5 bg-teal-50 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                Akun Terverifikasi
+              </div>
+            </div>
+
+            <div id="settings-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
+
+            <!-- Kartu Utama Pengaturan Profil -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+              <!-- Header Ringkasan Akun -->
+              <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-lg shadow-xs" id="settings-avatar">
+                    U
+                  </div>
+                  <div>
+                    <h3 class="font-extrabold text-sm text-slate-900" id="settings-header-name">Nama Karyawan</h3>
+                    <p class="text-xs text-slate-500 font-mono" id="settings-header-nik">NIK: -</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span id="settings-wh-badge" class="px-2.5 py-1 bg-slate-100 text-slate-800 border border-slate-200 rounded-lg text-xs font-bold">Gudang MBI</span>
+                  <span id="settings-role-badge" class="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-bold">STAFF</span>
+                  <span id="settings-dept-badge" class="px-2.5 py-1 bg-teal-50 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold">INBOUND</span>
+                </div>
+              </div>
+
+              <!-- Form Edit Profil & Kata Sandi -->
+              <form onsubmit="handleSaveAccountSettings(event)" class="p-6 space-y-6">
+                <!-- Bagian 1: Data Identitas & Kontak -->
+                <div class="space-y-4">
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                    <i data-lucide="contact" class="w-3.5 h-3.5"></i>
+                    Informasi Pribadi & Kontak
+                  </h4>
+                  
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">ID Karyawan / NIK (ID Login)</label>
+                      <input type="text" id="setting-nik" readonly class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-600 cursor-not-allowed">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
+                      <input type="text" id="setting-name" required placeholder="Masukkan nama lengkap..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No. Telepon / WhatsApp</label>
+                      <input type="text" id="setting-phone" placeholder="Contoh: 081234567890" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Alamat Email</label>
+                      <input type="email" id="setting-email" placeholder="Contoh: karyawan@medika.com" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Bagian 2: Kata Sandi Akun -->
+                <div class="space-y-4 pt-4 border-t border-slate-100">
+                  <div>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+                      Keamanan & Kata Sandi
+                    </h4>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Kosongkan jika Anda tidak ingin mengganti kata sandi akun saat ini.</p>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kata Sandi Baru (Opsional)</label>
+                      <input type="password" id="setting-pwd-1" placeholder="Minimal 6 karakter..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Konfirmasi Kata Sandi Baru</label>
+                      <input type="password" id="setting-pwd-2" placeholder="Ulangi kata sandi baru..." class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Tombol Submit -->
+                <div class="pt-2 flex justify-end">
+                  <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center justify-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Simpan Perubahan Akun
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
         </div>
       </main>
     </div>
@@ -1715,14 +1826,108 @@
             <input type="text" id="m-emp-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
-            <input type="date" id="m-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email (Opsional)</label>
+            <input type="email" id="m-emp-email" placeholder="nama@email.com" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
           </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
+          <input type="date" id="m-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeAddEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
           <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md">Simpan & Buat Akun</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL EDIT DATA KARYAWAN -->
+  <!-- ========================================================= -->
+  <div id="edit-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between pb-3 border-b">
+        <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+          <i data-lucide="user-cog" class="w-5 h-5 text-teal-600"></i>
+          Edit Data Karyawan
+        </h3>
+        <button onclick="closeEditEmployeeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="handleSaveEditEmployee(event)" class="space-y-3">
+        <input type="hidden" id="edit-emp-id">
+        <input type="hidden" id="edit-emp-wh">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
+          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK (ID Login) *</label>
+            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
+            <select id="edit-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
+              <option value="staff">Staff</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
+          <select id="edit-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="staff office">staff office</option>
+            <option value="supervisor">supervisor</option>
+            <option value="coordinator">coordinator</option>
+            <option value="inbound">inbound</option>
+            <option value="packer">packer</option>
+            <option value="packing">packing</option>
+            <option value="admin so">admin so</option>
+            <option value="picking plan">picking plan</option>
+            <option value="dispatch">dispatch</option>
+            <option value="driver">driver</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
+          <input type="text" id="edit-emp-outsource" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon *</label>
+            <input type="text" id="edit-emp-phone" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email</label>
+            <input type="email" id="edit-emp-email" placeholder="nama@email.com" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
+            <input type="date" id="edit-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Reset Password Baru</label>
+            <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tdk ubah" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeEditEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md">Simpan Perubahan</button>
         </div>
       </form>
     </div>
@@ -1741,11 +1946,11 @@
     };
 
     const SEED_MBI_USERS = [
-      { id: 'mbi-admin', name: 'Admin Gudang MBI', dept: 'supervisor', outsource: 'Internal', phone: '081234567890', joinDate: '2023-01-01', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' }
+      { id: 'mbi-admin', name: 'Admin Gudang MBI', dept: 'supervisor', outsource: 'Internal', phone: '081234567890', email: 'admin.mbi@medika.com', joinDate: '2023-01-01', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
-      { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' }
+      { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', email: 'admin.mai@medika.com', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' }
     ];
 
     const SEED_MBI_ATTENDANCE = [];
@@ -2926,7 +3131,7 @@
     function switchView(viewName) {
       const userRole = (currentUser?.role || 'staff').toLowerCase();
       const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
-      if (!isManagement && viewName !== 'attendance') {
+      if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
         viewName = 'attendance';
       }
 
@@ -2970,6 +3175,7 @@
         renderSelectedIDCard();
         renderLocationQRCode();
       }
+      if (viewName === 'settings') renderAccountSettingsForm();
       if (viewName === 'github') renderGitHubConfig();
       if (viewName === 'attendance') resetVerificationState();
 
@@ -3728,7 +3934,7 @@
     function renderEmployeeTable() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
-      const filtered = users.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)));
+      const filtered = users.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query)));
 
       const tbody = document.getElementById('emp-table-body');
       tbody.innerHTML = '';
@@ -3739,7 +3945,7 @@
       updateSelectedEmployeesCount();
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
         return;
       }
 
@@ -3753,10 +3959,11 @@
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${emp.name} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
           <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
-          <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource}</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone}</td>
-          <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate}</td>
-          <td class="p-3.5 border-r border-slate-100"><span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-slate-900 text-white' : (emp.role === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200')}">${emp.role.toUpperCase()}</span></td>
+          <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-slate-900 text-white' : (emp.role === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200')}">${(emp.role || 'staff').toUpperCase()}</span></td>
           <td class="p-3.5 text-right">
             <div class="flex items-center justify-end gap-1.5">
               <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
@@ -3789,6 +3996,7 @@
       document.getElementById('edit-emp-dept').value = user.dept || 'inbound';
       document.getElementById('edit-emp-outsource').value = user.outsource || '';
       document.getElementById('edit-emp-phone').value = user.phone || '';
+      if (document.getElementById('edit-emp-email')) document.getElementById('edit-emp-email').value = user.email || '';
       document.getElementById('edit-emp-joindate').value = user.joinDate || '';
       document.getElementById('edit-emp-pass').value = '';
 
@@ -3820,6 +4028,7 @@
       const dept = document.getElementById('edit-emp-dept').value;
       const outsource = document.getElementById('edit-emp-outsource').value.trim();
       const phone = document.getElementById('edit-emp-phone').value.trim();
+      const email = document.getElementById('edit-emp-email') ? document.getElementById('edit-emp-email').value.trim() : '';
       const joinDate = document.getElementById('edit-emp-joindate').value;
       const customPass = document.getElementById('edit-emp-pass').value.trim();
 
@@ -3836,6 +4045,7 @@
         users[idx].dept = dept;
         users[idx].outsource = outsource;
         users[idx].phone = phone;
+        users[idx].email = email;
         users[idx].joinDate = joinDate;
         if (customPass) {
           users[idx].password = customPass;
@@ -3891,6 +4101,7 @@
           currentUser.dept = dept;
           currentUser.outsource = outsource;
           currentUser.phone = phone;
+          currentUser.email = email;
           currentUser.joinDate = joinDate;
           if (customPass) currentUser.password = customPass;
 
@@ -3916,16 +4127,7 @@
     }
 
     function openChangePasswordSettingModal() {
-      document.getElementById('self-new-pwd-1').value = '';
-      document.getElementById('self-new-pwd-2').value = '';
-      const alertEl = document.getElementById('setting-pwd-alert');
-      if (alertEl) alertEl.classList.add('hidden');
-      document.getElementById('setting-password-modal').classList.remove('hidden');
-      lucide.createIcons();
-    }
-
-    function closeChangePasswordSettingModal() {
-      document.getElementById('setting-password-modal').classList.add('hidden');
+      switchView('settings');
     }
 
     function handleSaveSelfPassword(e) {
@@ -4051,6 +4253,7 @@
       document.getElementById('modal-emp-wh').innerText = activeWarehouse;
       document.getElementById('m-emp-joindate').value = new Date().toISOString().split('T')[0];
       document.getElementById('m-emp-nik').value = '';
+      if (document.getElementById('m-emp-email')) document.getElementById('m-emp-email').value = '';
       document.getElementById('add-emp-modal').classList.remove('hidden');
     }
 
@@ -4065,6 +4268,7 @@
       const dept = document.getElementById('m-emp-dept').value;
       const outsource = document.getElementById('m-emp-outsource').value.trim();
       const phone = document.getElementById('m-emp-phone').value.trim();
+      const email = document.getElementById('m-emp-email') ? document.getElementById('m-emp-email').value.trim() : '';
       const joinDate = document.getElementById('m-emp-joindate').value;
       const role = document.getElementById('m-emp-position').value;
       
@@ -4072,16 +4276,18 @@
       const defaultPass = 'medika123';
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const newEmp = { id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, name, dept, outsource, phone, joinDate, nik: autoNik, role, password: defaultPass, isFirstLogin: true, warehouse: activeWarehouse };
+      const newEmp = { id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, name, dept, outsource, phone, email, joinDate, nik: autoNik, role, password: defaultPass, isFirstLogin: true, warehouse: activeWarehouse };
       
       users.push(newEmp);
       setWhDB(activeWarehouse, 'users', users);
+      saveFullDatabaseToCloud();
 
       closeAddEmployeeModal();
       renderEmployeeTable();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
+      renderAccountLookupList();
       
       newlyCreatedUser = newEmp;
       showAccountCreatedModal(newEmp);
@@ -4095,11 +4301,12 @@
         "NIK Karyawan (ID Login)": u.nik,
         "Nama Karyawan": u.name,
         "Departemen": u.dept,
-        "Outsource": u.outsource,
+        "Outsource": u.outsource || '-',
         "Posisi / Role": (u.role || 'staff').toUpperCase(),
-        "Kata Sandi / Password Aktif": u.password || 'medika123',
-        "Status Password": u.isFirstLogin === false ? "Sudah Diubah Mandiri / Kustom" : "Default (medika123)",
         "No Telepon": u.phone || '-',
+        "Email": u.email || '-',
+        "Kata Sandi / Password Terbaru": u.password || 'medika123',
+        "Status Password": u.isFirstLogin === false ? "Sudah Diubah Mandiri / Kustom" : "Default (medika123)",
         "Join Date": u.joinDate || '-',
         "Gudang": u.warehouse || activeWarehouse
       }));
@@ -4112,8 +4319,8 @@
 
     function downloadEmployeeTemplate() {
       const templateData = [
-        { "No": 1, "Nama Karyawan": "Afuani Huyan", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
-        { "No": 2, "Nama Karyawan": "Budi Santoso", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "JOIN DATE": "2023-02-01", "Posisi": "staff" }
+        { "No": 1, "Nama Karyawan": "Afuani Huyan", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
+        { "No": 2, "Nama Karyawan": "Budi Santoso", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "budi@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -4127,12 +4334,13 @@
       const exportData = users.map(u => ({
         "Nama Karyawan": u.name,
         "Departemen": u.dept,
-        "Outsource": u.outsource,
-        "No Telpon": u.phone,
-        "JOIN DATE": u.joinDate,
+        "Outsource": u.outsource || '-',
+        "No Telpon": u.phone || '-',
+        "Email": u.email || '-',
+        "JOIN DATE": u.joinDate || '-',
         "NIK": u.nik,
-        "Posisi": u.role,
-        "Gudang": u.warehouse
+        "Posisi": u.role || 'staff',
+        "Gudang": u.warehouse || activeWarehouse
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -4256,7 +4464,7 @@
           const adminAccounts = existingUsers.filter(u => u.role === 'admin' || (u.role === 'supervisor' && u.nik === 'ADM001'));
           
           let users = adminAccounts.length > 0 ? [...adminAccounts] : [
-            { id: `${targetWh.toLowerCase()}-admin`, name: 'Admin Gudang', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
+            { id: `${targetWh.toLowerCase()}-admin`, name: 'Admin Gudang', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', email: 'admin@medika.com', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
           ];
 
           let countAdded = 0;
@@ -4265,18 +4473,21 @@
             const name = getExcelVal(r, ['nama', 'name', 'karyawan', 'pegawai'], '').trim();
             if (!name) return; // Lewati jika baris tanpa nama
 
-            const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], 'packer', ['nama', 'telp', 'phone', 'outsource', 'nik']).toLowerCase();
-            let rawOutsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi', 'pt', 'cv'], 'Internal', ['nama', 'telp', 'phone', 'nik', 'dept']);
+            const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], 'packer', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
+            let rawOutsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi', 'pt', 'cv'], 'Internal', ['nama', 'telp', 'phone', 'nik', 'dept', 'email']);
             const outsource = (rawOutsource === name) ? 'Internal' : rawOutsource;
             
-            const rawPhone = getExcelVal(r, ['no telp', 'no hp', 'nomor hp', 'nomor telp', 'no telepon', 'telepon', 'phone', 'mobile', 'whatsapp', 'wa', 'telp', 'kontak'], '-', ['nama', 'name', 'dept', 'departemen', 'outsource', 'vendor', 'nik', 'join', 'tgl']);
+            const rawPhone = getExcelVal(r, ['no telp', 'no hp', 'nomor hp', 'nomor telp', 'no telepon', 'telepon', 'phone', 'mobile', 'whatsapp', 'wa', 'telp', 'kontak'], '-', ['nama', 'name', 'dept', 'departemen', 'outsource', 'vendor', 'nik', 'join', 'tgl', 'email']);
             const phone = cleanExcelPhone(rawPhone, name, dept);
+
+            const rawEmail = getExcelVal(r, ['email', 'surel', 'e-mail', 'alamat email', 'mail'], '', ['nama', 'telp', 'phone', 'nik', 'dept', 'outsource']).trim();
+            const email = rawEmail;
             
-            const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], new Date().toISOString().split('T')[0], ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept']);
+            const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], new Date().toISOString().split('T')[0], ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept', 'email']);
             const joinDate = formatExcelDate(rawJoin);
 
             // Kolom NIK: Hanya jika ada kolom NIK resmi
-            let rawNik = getExcelVal(r, ['nik karyawan', 'id karyawan', 'nik', 'kode karyawan'], '', ['telp', 'phone', 'hp', 'wa', 'kontak', 'urut', 'no.', 'no ']);
+            let rawNik = getExcelVal(r, ['nik karyawan', 'id karyawan', 'nik', 'kode karyawan'], '', ['telp', 'phone', 'hp', 'wa', 'kontak', 'urut', 'no.', 'no ', 'email']);
             if (rawNik) {
               const cleanDigits = rawNik.replace(/\D/g, '');
               if (rawNik.startsWith('08') || rawNik.startsWith('62') || cleanDigits.length >= 8 || /^\d{1,4}$/.test(rawNik.trim())) {
@@ -4285,7 +4496,7 @@
             }
 
             const nik = rawNik ? rawNik.toUpperCase() : generateUniqueNIK(targetWh, name, users);
-            const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik']).toLowerCase();
+            const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
 
             users.push({
               id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
@@ -4293,6 +4504,7 @@
               dept,
               outsource,
               phone,
+              email,
               joinDate,
               nik,
               role,
@@ -4320,6 +4532,173 @@
         }
       };
       reader.readAsArrayBuffer(file);
+    }
+
+    // =========================================================
+    // FITUR PENGATURAN AKUN & PROFIL (GANTI NAMA, TELP, EMAIL, PASSWORD)
+    // =========================================================
+    function renderAccountSettingsForm() {
+      if (!currentUser) return;
+      const wh = currentUser.warehouse || activeWarehouse || 'MBI';
+      const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const freshUser = users.find(u => u.id === currentUser.id || u.nik === currentUser.nik) || currentUser;
+
+      const nikEl = document.getElementById('setting-nik');
+      if (nikEl) nikEl.value = freshUser.nik || '';
+
+      const nameEl = document.getElementById('setting-name');
+      if (nameEl) nameEl.value = freshUser.name || '';
+
+      const phoneEl = document.getElementById('setting-phone');
+      if (phoneEl) phoneEl.value = freshUser.phone || '';
+
+      const emailEl = document.getElementById('setting-email');
+      if (emailEl) emailEl.value = freshUser.email || '';
+
+      const p1El = document.getElementById('setting-pwd-1');
+      if (p1El) p1El.value = '';
+
+      const p2El = document.getElementById('setting-pwd-2');
+      if (p2El) p2El.value = '';
+
+      const avatarEl = document.getElementById('settings-avatar');
+      if (avatarEl) avatarEl.innerText = (freshUser.name || 'U').charAt(0).toUpperCase();
+
+      const headName = document.getElementById('settings-header-name');
+      if (headName) headName.innerText = freshUser.name || 'User';
+
+      const headNik = document.getElementById('settings-header-nik');
+      if (headNik) headNik.innerText = `NIK: ${freshUser.nik || '-'}`;
+
+      const whBadge = document.getElementById('settings-wh-badge');
+      if (whBadge) whBadge.innerText = `Gudang ${freshUser.warehouse || activeWarehouse}`;
+
+      const roleBadge = document.getElementById('settings-role-badge');
+      if (roleBadge) roleBadge.innerText = (freshUser.role || 'staff').toUpperCase();
+
+      const deptBadge = document.getElementById('settings-dept-badge');
+      if (deptBadge) deptBadge.innerText = (freshUser.dept || 'Staff').toUpperCase();
+
+      const alertEl = document.getElementById('settings-alert');
+      if (alertEl) alertEl.classList.add('hidden');
+
+      lucide.createIcons();
+    }
+
+    function handleSaveAccountSettings(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const newName = document.getElementById('setting-name').value.trim();
+      const newPhone = document.getElementById('setting-phone').value.trim();
+      const newEmail = document.getElementById('setting-email').value.trim();
+      const p1 = document.getElementById('setting-pwd-1').value.trim();
+      const p2 = document.getElementById('setting-pwd-2').value.trim();
+      const alertEl = document.getElementById('settings-alert');
+
+      if (!newName) {
+        if (alertEl) {
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+          alertEl.innerText = 'Nama lengkap karyawan tidak boleh kosong!';
+          alertEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (p1 || p2) {
+        if (p1.length < 6) {
+          if (alertEl) {
+            alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+            alertEl.innerText = 'Kata sandi baru minimal 6 karakter!';
+            alertEl.classList.remove('hidden');
+          }
+          return;
+        }
+        if (p1 !== p2) {
+          if (alertEl) {
+            alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200';
+            alertEl.innerText = 'Konfirmasi kata sandi baru tidak cocok!';
+            alertEl.classList.remove('hidden');
+          }
+          return;
+        }
+      }
+
+      const wh = currentUser.warehouse || activeWarehouse || 'MBI';
+      let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const idx = users.findIndex(u => u.id === currentUser.id || u.nik === currentUser.nik);
+
+      if (idx !== -1) {
+        const oldName = users[idx].name;
+        const oldNik = users[idx].nik;
+
+        users[idx].name = newName;
+        users[idx].phone = newPhone;
+        users[idx].email = newEmail;
+        if (p1) {
+          users[idx].password = p1;
+          users[idx].isFirstLogin = false;
+        }
+
+        // Update currentUser session
+        currentUser.name = newName;
+        currentUser.phone = newPhone;
+        currentUser.email = newEmail;
+        if (p1) {
+          currentUser.password = p1;
+          currentUser.isFirstLogin = false;
+        }
+
+        setWhDB(wh, 'users', users);
+        localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+        saveFullDatabaseToCloud();
+
+        // Jika nama berubah, sinkronkan ke riwayat absensi, leaves, overtime
+        if (oldName !== newName) {
+          let att = getWhDB(wh, 'attendance', []);
+          att.forEach(a => {
+            if (a.userNik === oldNik || a.userId === currentUser.id) {
+              a.userName = newName;
+            }
+          });
+          setWhDB(wh, 'attendance', att);
+
+          let lvs = getWhDB(wh, 'leaves', []);
+          lvs.forEach(l => {
+            if (l.userNik === oldNik) {
+              l.userName = newName;
+            }
+          });
+          setWhDB(wh, 'leaves', lvs);
+
+          let ots = getWhDB(wh, 'overtime', []);
+          ots.forEach(o => {
+            if (o.userNik === oldNik || o.userId === currentUser.id) {
+              o.userName = newName;
+            }
+          });
+          setWhDB(wh, 'overtime', ots);
+        }
+
+        // Update DOM Top Navbar
+        const navName = document.getElementById('nav-user-name');
+        if (navName) navName.innerText = newName;
+
+        // Re-render
+        renderAccountSettingsForm();
+        renderEmployeeTable();
+        populateDropdownEmployees();
+        renderOvertimeEmployeeGrid();
+        refreshAllDashboardData();
+        renderAccountLookupList();
+
+        if (alertEl) {
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
+          alertEl.innerText = '✅ Perubahan akun & data karyawan berhasil disimpan! Data kata sandi terbaru otomatis diperbarui di sistem.';
+          alertEl.classList.remove('hidden');
+        }
+        alert('Pengaturan akun berhasil disimpan!\nData profil dan kata sandi terbaru Anda telah tersinkronisasi.');
+      }
     }
 
     // =========================================================
