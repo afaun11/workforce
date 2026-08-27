@@ -2151,7 +2151,56 @@
       return cleanList;
     }
 
+    function sanitizeAttendanceDatabase(warehouse) {
+      const storageKey = `wfm_${warehouse.toLowerCase()}_attendance`;
+      const data = localStorage.getItem(storageKey);
+      if (!data) return [];
+      try {
+        let attendances = JSON.parse(data);
+        if (!Array.isArray(attendances)) return [];
+
+        const usersKey = `wfm_${warehouse.toLowerCase()}_users`;
+        const rawUsers = localStorage.getItem(usersKey);
+        const users = rawUsers ? JSON.parse(rawUsers) : (warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+
+        let hasChanges = false;
+        attendances.forEach(a => {
+          if (!a) return;
+          // Cari user master berdasarkan nama lengkap
+          let matchedUser = users.find(u => a.userName && cleanStr(u.name) === cleanStr(a.userName));
+          if (!matchedUser && a.userNik) {
+            matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
+          }
+          if (!matchedUser && a.userId) {
+            matchedUser = users.find(u => u.id === a.userId);
+          }
+
+          if (matchedUser) {
+            if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept) {
+              a.userName = matchedUser.name;
+              a.userNik = matchedUser.nik;
+              a.userId = matchedUser.id;
+              a.dept = matchedUser.dept;
+              hasChanges = true;
+            }
+          }
+        });
+
+        if (hasChanges) {
+          localStorage.setItem(storageKey, JSON.stringify(attendances));
+        }
+        return attendances;
+      } catch (e) {
+        return [];
+      }
+    }
+
     function getWhDB(warehouse, key, defaultVal) {
+      if (key === 'attendance') {
+        const cleanedAtt = sanitizeAttendanceDatabase(warehouse);
+        if (cleanedAtt.length > 0) return cleanedAtt;
+      }
+
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       const data = localStorage.getItem(storageKey);
       if (!data) {
@@ -3898,28 +3947,44 @@
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const rawCode = (nikCode || '').trim();
-      const cleanCode = cleanStr(nikCode);
+      
+      let scannedNik = rawCode;
+      let scannedName = '';
 
-      // Ekstraksi pola NIK jika barcode/QR berisi URL atau teks tambahan
+      if (rawCode.includes('|')) {
+        const parts = rawCode.split('|').map(s => s.trim());
+        scannedNik = parts[0];
+        scannedName = parts[1] || '';
+      }
+
+      // 1. Jika QR Code memuat Nama Karyawan, cari langsung berdasarkan Nama Karyawan (100% Akurat)
+      let matchedUser = null;
+      if (scannedName) {
+        matchedUser = users.find(u => cleanStr(u.name) === cleanStr(scannedName));
+      }
+
+      // 2. Ekstraksi pola NIK jika barcode/QR berisi URL atau teks tambahan
       let extractedNik = '';
-      const nikMatch = rawCode.match(/(MBI|MAI)\d{2}-\d{3,4}/i) || rawCode.match(/ADM\d+/i) || rawCode.match(/ADM-MAI/i);
+      const nikMatch = scannedNik.match(/(MBI|MAI)\d{2}-\d{3,4}/i) || scannedNik.match(/ADM\d+/i) || scannedNik.match(/ADM-MAI/i);
       if (nikMatch) {
         extractedNik = nikMatch[0].toUpperCase();
       }
 
-      // 1. Prioritas Utama: Cari berdasarkan NIK resmi sama persis
-      let matchedUser = users.find(u => u.nik && (
-        u.nik.toUpperCase() === rawCode.toUpperCase() ||
-        (extractedNik && u.nik.toUpperCase() === extractedNik) ||
-        cleanStr(u.nik) === cleanCode
-      ));
-
-      // 2. Prioritas Kedua: Cari berdasarkan Nama Lengkap sama persis
+      // 3. Prioritas: Cari berdasarkan NIK resmi sama persis
       if (!matchedUser) {
-        matchedUser = users.find(u => cleanStr(u.name) === cleanCode);
+        matchedUser = users.find(u => u.nik && (
+          u.nik.toUpperCase() === scannedNik.toUpperCase() ||
+          (extractedNik && u.nik.toUpperCase() === extractedNik) ||
+          cleanStr(u.nik) === cleanStr(scannedNik)
+        ));
       }
 
-      // 3. Prioritas Ketiga: Cari berdasarkan ID internal
+      // 4. Prioritas: Cari berdasarkan Nama Lengkap sama persis dari teks barcode
+      if (!matchedUser) {
+        matchedUser = users.find(u => cleanStr(u.name) === cleanStr(rawCode));
+      }
+
+      // 5. Prioritas: Cari berdasarkan ID internal
       if (!matchedUser) {
         matchedUser = users.find(u => u.id === rawCode);
       }
@@ -4176,7 +4241,7 @@
 
       const img = document.getElementById('img-qrcode-emp');
       if (img) {
-        img.src = getQrCodeUrl(user.nik);
+        img.src = getQrCodeUrl(`${user.nik}|${user.name}`);
       }
     }
 
@@ -4415,7 +4480,7 @@
         await new Promise((resolve) => {
           qrImg.onload = () => resolve();
           qrImg.onerror = () => resolve();
-          qrImg.src = getQrCodeUrl(user.nik);
+          qrImg.src = getQrCodeUrl(`${user.nik}|${user.name}`);
         });
         ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
       } catch (err) {
