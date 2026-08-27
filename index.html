@@ -558,6 +558,10 @@
                   <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i>
                   Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
+                <button onclick="deleteAllEmployees()" class="h-9 px-3.5 bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Kosongkan Seluruh Data Karyawan untuk Upload Excel Bersih">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-rose-500"></i>
+                  Reset Semua
+                </button>
               </div>
             </div>
 
@@ -5516,22 +5520,30 @@
             return;
           }
 
-          const selectedLoginWh = document.querySelector('input[name="login-warehouse"]:checked')?.value;
-          const targetWh = activeWarehouse || selectedLoginWh || 'MBI';
+          const targetWh = activeWarehouse || 'MBI';
+          const replaceMode = confirm(`📊 Ditemukan ${rows.length} data karyawan pada file Excel.\n\nKlik [OK] untuk MENGGANTI TOTAL & BERSIH seluruh data karyawan lama di Gudang ${targetWh} dengan data Excel ini (Sangat Direkomendasikan agar TIDAK DOBEL).\n\nKlik [Cancel] untuk menggabungkan.`);
 
           // Ambil data users aktif & pisahkan admin
           let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
           const adminAccounts = existingUsers.filter(u => u.role === 'admin' || (u.role === 'supervisor' && u.nik === 'ADM001'));
           
           let users = adminAccounts.length > 0 ? [...adminAccounts] : [
-            { id: `${targetWh.toLowerCase()}-admin`, name: 'Admin Gudang', dept: 'supervisor', outsource: 'Internal', phone: '081234567891', email: 'admin@medika.com', joinDate: '2023-01-10', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
+            { id: `${targetWh.toLowerCase()}-admin`, name: `Admin Gudang ${targetWh}`, dept: 'supervisor', outsource: 'Internal', phone: '081234567891', email: `admin.${targetWh.toLowerCase()}@medika.com`, joinDate: '2023-01-10', nik: targetWh === 'MBI' ? 'ADM001' : 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
           ];
 
+          if (!replaceMode) {
+            users = [...existingUsers];
+          }
+
           let countAdded = 0;
+          const seenNames = new Set(users.map(u => cleanStr(u.name)));
 
           rows.forEach((r, idx) => {
             const name = getExcelVal(r, ['nama', 'name', 'karyawan', 'pegawai'], '').trim();
             if (!name) return; // Lewati jika baris tanpa nama
+            
+            const cleanName = cleanStr(name);
+            if (replaceMode && seenNames.has(cleanName)) return; // Cegah dobel nama di file Excel itu sendiri
 
             const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], 'packer', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
             let rawOutsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi', 'pt', 'cv'], 'Internal', ['nama', 'telp', 'phone', 'nik', 'dept', 'email']);
@@ -5546,7 +5558,7 @@
             const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], new Date().toISOString().split('T')[0], ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept', 'email']);
             const joinDate = formatExcelDate(rawJoin);
 
-            // Kolom NIK: Hanya jika ada kolom NIK resmi
+            // Kolom NIK
             let rawNik = getExcelVal(r, ['nik karyawan', 'id karyawan', 'nik', 'kode karyawan'], '', ['telp', 'phone', 'hp', 'wa', 'kontak', 'urut', 'no.', 'no ', 'email']);
             if (rawNik) {
               const cleanDigits = rawNik.replace(/\D/g, '');
@@ -5555,7 +5567,6 @@
               }
             }
 
-            // Jika rawNik kosong atau sudah terpakai (duplikat di Excel), berikan NIK unik berikutnya
             let finalNik = rawNik ? rawNik.toUpperCase() : '';
             if (!finalNik || users.some(u => (u.nik || '').toUpperCase() === finalNik)) {
               finalNik = generateUniqueNIK(targetWh, name, users);
@@ -5577,19 +5588,20 @@
               isFirstLogin: true,
               warehouse: targetWh
             });
+            seenNames.add(cleanName);
             countAdded++;
           });
 
-          setWhDB(targetWh, 'users', users);
+          const finalCleanUsers = deduplicateUserList(users, targetWh);
+          setWhDB(targetWh, 'users', finalCleanUsers);
           harmonizeAndResequenceAllNIKs();
-          saveFullDatabaseToCloud();
+          saveFullDatabaseToCloud(true);
           renderEmployeeTable();
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
-          renderAccountLookupList();
           
-          alert(`Selesai Upload Excel:\nSemua ${countAdded} data karyawan di Excel BERHASIL DITAMBAHKAN!\nTotal Karyawan di Gudang ${targetWh}: ${users.length} orang.`);
+          alert(`✅ BERHASIL UPLOAD EXCEL!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Akun Login: 100% Otomatis Dibuat (Password: medika123)\n• Total Karyawan Gudang ${targetWh}: ${finalCleanUsers.length} orang\n• Duplikasi: 0 (Semua data telah dibersihkan dan terurut rapi)`);
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
