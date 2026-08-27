@@ -207,84 +207,13 @@
             Masuk ke Portal
           </button>
 
-          <!-- Link Bantuan Sederhana -->
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button type="button" onclick="openAccountLookupModal()" class="text-sky-600 hover:text-sky-800 font-bold underline text-[11px] inline-flex items-center gap-1">
-              <i data-lucide="search" class="w-3.5 h-3.5"></i> Cek NIK / Daftar Akun
+          <!-- Tombol Cek Daftar Akun -->
+          <div class="pt-3 border-t border-slate-100 space-y-2">
+            <button type="button" onclick="openAccountLookupModal()" class="w-full py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 border border-sky-200 shadow-xs">
+              <i data-lucide="search" class="w-4 h-4 text-sky-600"></i> Cek NIK / Daftar Semua Akun Karyawan
             </button>
-            <button type="button" onclick="showAuthTab('register')" class="text-slate-400 hover:text-slate-700 font-medium text-[11px]">
-              Daftar Mandiri
-            </button>
+            <p class="text-[11px] text-center text-slate-500 font-medium leading-tight">Semua akun karyawan telah dibuat otomatis. Login menggunakan NIK / Nama dan password <code class="font-bold text-teal-700">medika123</code>.</p>
           </div>
-        </form>
-      </div>
-
-      <!-- FORM REGISTER (DAFTAR AKUN MANDIRI) -->
-      <div id="form-register-box" class="hidden p-6 max-h-[75vh] overflow-y-auto">
-        <form onsubmit="handleRegister(event)" class="space-y-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Gudang Tempat Bekerja *</label>
-            <div class="grid grid-cols-2 gap-2">
-              <label id="lbl-reg-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs">
-                <input type="radio" name="reg-warehouse" value="MBI" checked onchange="updateRegWhStyle()" class="sr-only">
-                <span>Gudang MBI</span>
-              </label>
-              <label id="lbl-reg-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
-                <input type="radio" name="reg-warehouse" value="MAI" onchange="updateRegWhStyle()" class="sr-only">
-                <span>Gudang MAI</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="reg-position" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
-              <option value="staff">Staff</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="supervisor">Supervisor</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
-            <input type="text" id="reg-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-            <select id="reg-dept" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-teal-500 focus:outline-none">
-              <option value="staff office">staff office</option>
-              <option value="supervisor">supervisor</option>
-              <option value="coordinator">coordinator</option>
-              <option value="inbound">inbound</option>
-              <option value="packer">packer</option>
-              <option value="packing">packing</option>
-              <option value="admin so">admin so</option>
-              <option value="picking plan">picking plan</option>
-              <option value="dispatch">dispatch</option>
-              <option value="driver">driver</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource / Vendor *</label>
-            <input type="text" id="reg-outsource" required placeholder="Nama Vendor / Internal" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon / WA *</label>
-              <input type="text" id="reg-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
-              <input type="date" id="reg-joindate" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none">
-            </div>
-          </div>
-
-          <button type="submit" class="w-full mt-2 py-3 bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
-            Daftarkan Akun Karyawan
-          </button>
         </form>
       </div>
     </div>
@@ -305,7 +234,11 @@
 
       <div class="flex items-center gap-2">
         <input type="text" id="lookup-search-input" onkeyup="renderAccountLookupList()" placeholder="Cari nama Anda..." class="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-        <label class="cursor-pointer px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-xs">
+        <button onclick="openDirectSyncModal()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs" title="Sinkronkan Data dengan HP Lain / Cloud">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          Sinkron HP
+        </button>
+        <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold shadow-xs">
           Upload Excel
           <input type="file" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
         </label>
@@ -650,6 +583,10 @@
                   Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
+                <button onclick="openDirectSyncModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Kirim / Samakan Seluruh Data ke Semua HP">
+                  <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                  Sinkron ke Semua HP
+                </button>
                 <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Daftar Akun & Password">
                   <i data-lucide="key-round" class="w-3.5 h-3.5 text-sky-600"></i>
                   Download Akun
@@ -2158,6 +2095,24 @@
       { id: 'mbi-001', name: 'ADINDA SITI HAWA', dept: 'tenaga teknis kefarmasian', outsource: 'Internal', phone: '081234560001', email: '', joinDate: '2023-01-10', nik: 'MBI26-001', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-002', name: 'ADLI FILARDY', dept: 'picker', outsource: 'Internal', phone: '081234560002', email: '', joinDate: '2023-01-10', nik: 'MBI26-002', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-003', name: 'AFRIZAL ROHIM', dept: 'picker', outsource: 'Internal', phone: '081234560003', email: '', joinDate: '2023-01-10', nik: 'MBI26-003', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-004', name: 'AFUANI HUYAN', dept: 'admin so', outsource: 'Internal', phone: '081234560004', email: '', joinDate: '2023-01-15', nik: 'MBI26-004', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-005', name: 'ACHMAD HAIKAL PRATAMA PUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560005', email: '', joinDate: '2023-01-15', nik: 'MBI26-005', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-006', name: 'AHMAD MAULANA', dept: 'picker', outsource: 'Internal', phone: '081234560006', email: '', joinDate: '2023-01-15', nik: 'MBI26-006', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-007', name: 'ANGGI RINALDI', dept: 'picker', outsource: 'Internal', phone: '081234560007', email: '', joinDate: '2023-01-15', nik: 'MBI26-007', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-008', name: 'DENDI RAMADHANU', dept: 'picker', outsource: 'Internal', phone: '081234560008', email: '', joinDate: '2023-01-15', nik: 'MBI26-008', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-009', name: 'EMHA RIYANDA TASRIFIN', dept: 'picker', outsource: 'Internal', phone: '081234560009', email: '', joinDate: '2023-01-15', nik: 'MBI26-009', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-010', name: 'FIRLY HARRIS PRATAMA', dept: 'picker', outsource: 'Internal', phone: '081234560010', email: '', joinDate: '2023-01-15', nik: 'MBI26-010', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-011', name: 'HARDIAN NUR RAHMAN', dept: 'picker', outsource: 'Internal', phone: '081234560011', email: '', joinDate: '2023-01-15', nik: 'MBI26-011', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-012', name: 'ILHAM MAULANA', dept: 'picker', outsource: 'Internal', phone: '081234560012', email: '', joinDate: '2023-01-15', nik: 'MBI26-012', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-013', name: 'IMAM SANUSI', dept: 'inbound', outsource: 'Internal', phone: '081234560013', email: '', joinDate: '2023-01-15', nik: 'MBI26-013', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-014', name: 'MUHAMAD NIMAN FAUZI', dept: 'inbound', outsource: 'Internal', phone: '081234560014', email: '', joinDate: '2023-01-15', nik: 'MBI26-014', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-015', name: 'MUHAMMAD AGUNG PRASETYO', dept: 'packer', outsource: 'Internal', phone: '081234560015', email: '', joinDate: '2023-01-15', nik: 'MBI26-015', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-016', name: 'RIFALDI', dept: 'packing', outsource: 'Internal', phone: '081234560016', email: '', joinDate: '2023-01-15', nik: 'MBI26-016', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-017', name: 'YUSUP SUPRIYANTO', dept: 'packing', outsource: 'Internal', phone: '081234560017', email: '', joinDate: '2023-01-15', nik: 'MBI26-017', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-018', name: 'ZAKY SOFYAN HADI M', dept: 'dispatch', outsource: 'Internal', phone: '081234560018', email: '', joinDate: '2023-01-15', nik: 'MBI26-018', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-019', name: 'ZIA PASHA RAHMAN DARMADI', dept: 'driver', outsource: 'Internal', phone: '081234560019', email: '', joinDate: '2023-01-15', nik: 'MBI26-019', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-020', name: 'ANAS NASRULLOH', dept: 'picker', outsource: 'Internal', phone: '081234560020', email: '', joinDate: '2023-02-01', nik: 'MBI26-020', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-021', name: 'BAGUS PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560021', email: '', joinDate: '2023-02-01', nik: 'MBI26-021', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-022', name: 'BUDI SUSANTO', dept: 'picker', outsource: 'Internal', phone: '081234560022', email: '', joinDate: '2023-02-01', nik: 'MBI26-022', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-023', name: 'CHAIRUL HADIYATULLAH GUNAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560023', email: '', joinDate: '2023-02-01', nik: 'MBI26-023', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-024', name: 'DEFRI ADITIA SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560024', email: '', joinDate: '2023-02-01', nik: 'MBI26-024', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
@@ -2165,11 +2120,133 @@
       { id: 'mbi-026', name: 'DIMAS SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560026', email: '', joinDate: '2023-02-01', nik: 'MBI26-026', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-027', name: 'DICKY RAMADHAN', dept: 'picker', outsource: 'Internal', phone: '081234560027', email: '', joinDate: '2023-02-01', nik: 'MBI26-027', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
       { id: 'mbi-028', name: 'DJI SAMSURI', dept: 'picking plan', outsource: 'Internal', phone: '081234560028', email: '', joinDate: '2023-02-01', nik: 'MBI26-028', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
-      { id: 'mbi-029', name: 'EBIT SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560029', email: '', joinDate: '2023-02-01', nik: 'MBI26-029', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
+      { id: 'mbi-029', name: 'EBIT SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560029', email: '', joinDate: '2023-02-01', nik: 'MBI26-029', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-030', name: 'EKO PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560030', email: '', joinDate: '2023-02-01', nik: 'MBI26-030', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-031', name: 'FAJAR HIDAYAT', dept: 'picker', outsource: 'Internal', phone: '081234560031', email: '', joinDate: '2023-02-01', nik: 'MBI26-031', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-032', name: 'FEBRIANTO', dept: 'packer', outsource: 'Internal', phone: '081234560032', email: '', joinDate: '2023-02-01', nik: 'MBI26-032', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-033', name: 'GILANG RAMADHAN', dept: 'picker', outsource: 'Internal', phone: '081234560033', email: '', joinDate: '2023-02-01', nik: 'MBI26-033', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-034', name: 'HADI KURNIAWAN', dept: 'inbound', outsource: 'Internal', phone: '081234560034', email: '', joinDate: '2023-02-01', nik: 'MBI26-034', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-035', name: 'HENDRA SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560035', email: '', joinDate: '2023-02-01', nik: 'MBI26-035', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-036', name: 'HERI SUSANTO', dept: 'packer', outsource: 'Internal', phone: '081234560036', email: '', joinDate: '2023-02-01', nik: 'MBI26-036', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-037', name: 'INDRA GUNAWAN', dept: 'picking plan', outsource: 'Internal', phone: '081234560037', email: '', joinDate: '2023-02-01', nik: 'MBI26-037', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-038', name: 'IRFAN HAKIM', dept: 'picker', outsource: 'Internal', phone: '081234560038', email: '', joinDate: '2023-02-01', nik: 'MBI26-038', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-039', name: 'JOKO PRASETYO', dept: 'packing', outsource: 'Internal', phone: '081234560039', email: '', joinDate: '2023-02-01', nik: 'MBI26-039', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-040', name: 'KURNIAWAN', dept: 'dispatch', outsource: 'Internal', phone: '081234560040', email: '', joinDate: '2023-02-01', nik: 'MBI26-040', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-041', name: 'LUKMAN HAKIM', dept: 'picker', outsource: 'Internal', phone: '081234560041', email: '', joinDate: '2023-02-01', nik: 'MBI26-041', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-042', name: 'M. RIZKY MAULANA', dept: 'picker', outsource: 'Internal', phone: '081234560042', email: '', joinDate: '2023-02-01', nik: 'MBI26-042', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-043', name: 'MAHFUDIN', dept: 'picker', outsource: 'Internal', phone: '081234560043', email: '', joinDate: '2023-02-01', nik: 'MBI26-043', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-044', name: 'MUHAMMAD ALFIAN', dept: 'inbound', outsource: 'Internal', phone: '081234560044', email: '', joinDate: '2023-02-01', nik: 'MBI26-044', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-045', name: 'MUHAMMAD IQBAL', dept: 'picker', outsource: 'Internal', phone: '081234560045', email: '', joinDate: '2023-02-01', nik: 'MBI26-045', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-046', name: 'MUHAMMAD RIDWAN', dept: 'packer', outsource: 'Internal', phone: '081234560046', email: '', joinDate: '2023-02-01', nik: 'MBI26-046', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-047', name: 'NANANG KURNIAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560047', email: '', joinDate: '2023-02-01', nik: 'MBI26-047', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-048', name: 'NOVIANTO', dept: 'packing', outsource: 'Internal', phone: '081234560048', email: '', joinDate: '2023-02-01', nik: 'MBI26-048', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-049', name: 'PANJI PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560049', email: '', joinDate: '2023-02-01', nik: 'MBI26-049', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-050', name: 'RAHMAT HIDAYAT', dept: 'picker', outsource: 'Internal', phone: '081234560050', email: '', joinDate: '2023-02-01', nik: 'MBI26-050', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-051', name: 'RENDI SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560051', email: '', joinDate: '2023-02-01', nik: 'MBI26-051', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-052', name: 'REZA FAHLEVI', dept: 'picker', outsource: 'Internal', phone: '081234560052', email: '', joinDate: '2023-02-01', nik: 'MBI26-052', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-053', name: 'RIAN HIDAYAT', dept: 'picker', outsource: 'Internal', phone: '081234560053', email: '', joinDate: '2023-02-01', nik: 'MBI26-053', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-054', name: 'RICKY FEBRIAN', dept: 'picker', outsource: 'Internal', phone: '081234560054', email: '', joinDate: '2023-02-01', nik: 'MBI26-054', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-055', name: 'RIO PRATAMA', dept: 'picker', outsource: 'Internal', phone: '081234560055', email: '', joinDate: '2023-02-01', nik: 'MBI26-055', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-056', name: 'RISKI ANDRIAN', dept: 'packer', outsource: 'Internal', phone: '081234560056', email: '', joinDate: '2023-02-01', nik: 'MBI26-056', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-057', name: 'RIZALDI', dept: 'picker', outsource: 'Internal', phone: '081234560057', email: '', joinDate: '2023-02-01', nik: 'MBI26-057', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-058', name: 'RUDI HARTONO', dept: 'picker', outsource: 'Internal', phone: '081234560058', email: '', joinDate: '2023-02-01', nik: 'MBI26-058', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-059', name: 'SANDI IRAWAN', dept: 'driver', outsource: 'Internal', phone: '081234560059', email: '', joinDate: '2023-02-01', nik: 'MBI26-059', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-060', name: 'SIGIT PURNOMO', dept: 'picker', outsource: 'Internal', phone: '081234560060', email: '', joinDate: '2023-02-01', nik: 'MBI26-060', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-061', name: 'SUHENDRA', dept: 'inbound', outsource: 'Internal', phone: '081234560061', email: '', joinDate: '2023-02-01', nik: 'MBI26-061', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-062', name: 'SURYA PRASETYA', dept: 'picker', outsource: 'Internal', phone: '081234560062', email: '', joinDate: '2023-02-01', nik: 'MBI26-062', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-063', name: 'SYAHRUL RAMADHAN', dept: 'picker', outsource: 'Internal', phone: '081234560063', email: '', joinDate: '2023-02-01', nik: 'MBI26-063', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-064', name: 'TEGUH SANTOSO', dept: 'picker', outsource: 'Internal', phone: '081234560064', email: '', joinDate: '2023-02-01', nik: 'MBI26-064', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-065', name: 'TRI WAHYUDI', dept: 'packer', outsource: 'Internal', phone: '081234560065', email: '', joinDate: '2023-02-01', nik: 'MBI26-065', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-066', name: 'WAHYU NUR HIDAYAT', dept: 'picker', outsource: 'Internal', phone: '081234560066', email: '', joinDate: '2023-02-01', nik: 'MBI26-066', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-067', name: 'WANDI', dept: 'picking plan', outsource: 'Internal', phone: '081234560067', email: '', joinDate: '2023-02-01', nik: 'MBI26-067', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-068', name: 'WIDI PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560068', email: '', joinDate: '2023-02-01', nik: 'MBI26-068', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-069', name: 'WILLY PRATAMA', dept: 'packing', outsource: 'Internal', phone: '081234560069', email: '', joinDate: '2023-02-01', nik: 'MBI26-069', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-070', name: 'YOGA PRATAMA', dept: 'picker', outsource: 'Internal', phone: '081234560070', email: '', joinDate: '2023-02-01', nik: 'MBI26-070', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-071', name: 'YOGI ISKANDAR', dept: 'picker', outsource: 'Internal', phone: '081234560071', email: '', joinDate: '2023-02-01', nik: 'MBI26-071', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-072', name: 'YUDHA KURNIAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560072', email: '', joinDate: '2023-02-01', nik: 'MBI26-072', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-073', name: 'YULIANTO', dept: 'picker', outsource: 'Internal', phone: '081234560073', email: '', joinDate: '2023-02-01', nik: 'MBI26-073', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-074', name: 'YUSUF MAULANA', dept: 'inbound', outsource: 'Internal', phone: '081234560074', email: '', joinDate: '2023-02-01', nik: 'MBI26-074', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-075', name: 'ZAENAL ABIDIN', dept: 'picker', outsource: 'Internal', phone: '081234560075', email: '', joinDate: '2023-02-01', nik: 'MBI26-075', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-076', name: 'AGUS SETIAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560076', email: '', joinDate: '2023-02-01', nik: 'MBI26-076', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-077', name: 'ALDI SAPUTRA', dept: 'packer', outsource: 'Internal', phone: '081234560077', email: '', joinDate: '2023-02-01', nik: 'MBI26-077', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-078', name: 'ANGGA KURNIAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560078', email: '', joinDate: '2023-02-01', nik: 'MBI26-078', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-079', name: 'ARIF BUDIMAN', dept: 'picking plan', outsource: 'Internal', phone: '081234560079', email: '', joinDate: '2023-02-01', nik: 'MBI26-079', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-080', name: 'ARIS PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560080', email: '', joinDate: '2023-02-01', nik: 'MBI26-080', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-081', name: 'BAYU AJI', dept: 'picker', outsource: 'Internal', phone: '081234560081', email: '', joinDate: '2023-02-01', nik: 'MBI26-081', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-082', name: 'CANDRA WIJAYA', dept: 'packer', outsource: 'Internal', phone: '081234560082', email: '', joinDate: '2023-02-01', nik: 'MBI26-082', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-083', name: 'DANANG SURYA', dept: 'picker', outsource: 'Internal', phone: '081234560083', email: '', joinDate: '2023-02-01', nik: 'MBI26-083', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-084', name: 'DEDI KURNIAWAN', dept: 'inbound', outsource: 'Internal', phone: '081234560084', email: '', joinDate: '2023-02-01', nik: 'MBI26-084', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-085', name: 'DONY PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560085', email: '', joinDate: '2023-02-01', nik: 'MBI26-085', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-086', name: 'EDY SUSANTO', dept: 'picker', outsource: 'Internal', phone: '081234560086', email: '', joinDate: '2023-02-01', nik: 'MBI26-086', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-087', name: 'FAHRI RAMADHAN', dept: 'packing', outsource: 'Internal', phone: '081234560087', email: '', joinDate: '2023-02-01', nik: 'MBI26-087', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-088', name: 'FAISAL ANWAR', dept: 'picker', outsource: 'Internal', phone: '081234560088', email: '', joinDate: '2023-02-01', nik: 'MBI26-088', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-089', name: 'FANDI AHMAD', dept: 'picker', outsource: 'Internal', phone: '081234560089', email: '', joinDate: '2023-02-01', nik: 'MBI26-089', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-090', name: 'FARHAN MAULANA', dept: 'picker', outsource: 'Internal', phone: '081234560090', email: '', joinDate: '2023-02-01', nik: 'MBI26-090', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-091', name: 'GALIH PRASETYO', dept: 'picker', outsource: 'Internal', phone: '081234560091', email: '', joinDate: '2023-02-01', nik: 'MBI26-091', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-092', name: 'GUNTUR SAPUTRA', dept: 'packer', outsource: 'Internal', phone: '081234560092', email: '', joinDate: '2023-02-01', nik: 'MBI26-092', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-093', name: 'HAFIDZ NUR', dept: 'picker', outsource: 'Internal', phone: '081234560093', email: '', joinDate: '2023-02-01', nik: 'MBI26-093', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-094', name: 'HARIS MUNANDAR', dept: 'inbound', outsource: 'Internal', phone: '081234560094', email: '', joinDate: '2023-02-01', nik: 'MBI26-094', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-095', name: 'HENDRI WIJAYA', dept: 'picker', outsource: 'Internal', phone: '081234560095', email: '', joinDate: '2023-02-01', nik: 'MBI26-095', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-096', name: 'ILHAM SYAHPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560096', email: '', joinDate: '2023-02-01', nik: 'MBI26-096', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-097', name: 'INDRA KUSUMA', dept: 'packing', outsource: 'Internal', phone: '081234560097', email: '', joinDate: '2023-02-01', nik: 'MBI26-097', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-098', name: 'IQBAL FAUZI', dept: 'picker', outsource: 'Internal', phone: '081234560098', email: '', joinDate: '2023-02-01', nik: 'MBI26-098', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-099', name: 'IRWAN SETIAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560099', email: '', joinDate: '2023-02-01', nik: 'MBI26-099', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-100', name: 'KEVIN PRATAMA', dept: 'picking plan', outsource: 'Internal', phone: '081234560100', email: '', joinDate: '2023-02-01', nik: 'MBI26-100', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-101', name: 'LUTFI HAKIM', dept: 'picker', outsource: 'Internal', phone: '081234560101', email: '', joinDate: '2023-02-01', nik: 'MBI26-101', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-102', name: 'M. FADHIL', dept: 'picker', outsource: 'Internal', phone: '081234560102', email: '', joinDate: '2023-02-01', nik: 'MBI26-102', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-103', name: 'MAULANA IBRAHIM', dept: 'packer', outsource: 'Internal', phone: '081234560103', email: '', joinDate: '2023-02-01', nik: 'MBI26-103', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-104', name: 'MUHAMMAD FAJAR', dept: 'inbound', outsource: 'Internal', phone: '081234560104', email: '', joinDate: '2023-02-01', nik: 'MBI26-104', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-105', name: 'MUHAMMAD HILMAN', dept: 'picker', outsource: 'Internal', phone: '081234560105', email: '', joinDate: '2023-02-01', nik: 'MBI26-105', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-106', name: 'MUHAMMAD REZA', dept: 'picker', outsource: 'Internal', phone: '081234560106', email: '', joinDate: '2023-02-01', nik: 'MBI26-106', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-107', name: 'NOVAL KURNIAWAN', dept: 'packing', outsource: 'Internal', phone: '081234560107', email: '', joinDate: '2023-02-01', nik: 'MBI26-107', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-108', name: 'RADIT SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081234560108', email: '', joinDate: '2023-02-01', nik: 'MBI26-108', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-109', name: 'RANGGA WIJAYA', dept: 'picker', outsource: 'Internal', phone: '081234560109', email: '', joinDate: '2023-02-01', nik: 'MBI26-109', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-110', name: 'RENDY KURNIAWAN', dept: 'picker', outsource: 'Internal', phone: '081234560110', email: '', joinDate: '2023-02-01', nik: 'MBI26-110', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-111', name: 'RIO SAPUTRA', dept: 'packer', outsource: 'Internal', phone: '081234560111', email: '', joinDate: '2023-02-01', nik: 'MBI26-111', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-112', name: 'RIZKY ADITYA', dept: 'picker', outsource: 'Internal', phone: '081234560112', email: '', joinDate: '2023-02-01', nik: 'MBI26-112', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-113', name: 'SULTAN MAULANA', dept: 'picker', outsource: 'Internal', phone: '081234560113', email: '', joinDate: '2023-02-01', nik: 'MBI26-113', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-114', name: 'TAUFIK HIDAYAT', dept: 'picker', outsource: 'Internal', phone: '081234560114', email: '', joinDate: '2023-02-01', nik: 'MBI26-114', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-115', name: 'WILDAN PRATAMA', dept: 'picker', outsource: 'Internal', phone: '081234560115', email: '', joinDate: '2023-02-01', nik: 'MBI26-115', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' },
+      { id: 'mbi-116', name: 'ZULFIKAR AHMAD', dept: 'picker', outsource: 'Internal', phone: '081234560116', email: '', joinDate: '2023-02-01', nik: 'MBI26-116', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
-      { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', email: 'admin.mai@medika.com', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' }
+      { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', email: 'admin.mai@medika.com', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
+      { id: 'mai-001', name: 'SITI RAHMAWATI', dept: 'staff office', outsource: 'Internal', phone: '081512340001', email: '', joinDate: '2023-01-10', nik: 'MAI26-001', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-002', name: 'AHMAD FAUZI', dept: 'picker', outsource: 'Internal', phone: '081512340002', email: '', joinDate: '2023-01-10', nik: 'MAI26-002', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-003', name: 'NUR HIDAYAH', dept: 'packer', outsource: 'Internal', phone: '081512340003', email: '', joinDate: '2023-01-10', nik: 'MAI26-003', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-004', name: 'AGUS WAHYUDI', dept: 'picker', outsource: 'Internal', phone: '081512340004', email: '', joinDate: '2023-01-15', nik: 'MAI26-004', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-005', name: 'BAYU SETIAWAN', dept: 'inbound', outsource: 'Internal', phone: '081512340005', email: '', joinDate: '2023-01-15', nik: 'MAI26-005', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-006', name: 'CITRA LESTARI', dept: 'staff office', outsource: 'Internal', phone: '081512340006', email: '', joinDate: '2023-01-15', nik: 'MAI26-006', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-007', name: 'DEDI PRATAMA', dept: 'picker', outsource: 'Internal', phone: '081512340007', email: '', joinDate: '2023-01-15', nik: 'MAI26-007', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-008', name: 'EVI SUSANTI', dept: 'packing', outsource: 'Internal', phone: '081512340008', email: '', joinDate: '2023-01-15', nik: 'MAI26-008', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-009', name: 'FAUZAN AZIMA', dept: 'picking plan', outsource: 'Internal', phone: '081512340009', email: '', joinDate: '2023-01-15', nik: 'MAI26-009', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-010', name: 'GITA PUSPITA', dept: 'staff office', outsource: 'Internal', phone: '081512340010', email: '', joinDate: '2023-01-15', nik: 'MAI26-010', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-011', name: 'HADI WIJAYA', dept: 'picker', outsource: 'Internal', phone: '081512340011', email: '', joinDate: '2023-01-15', nik: 'MAI26-011', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-012', name: 'INDAH PERMATA', dept: 'staff office', outsource: 'Internal', phone: '081512340012', email: '', joinDate: '2023-01-15', nik: 'MAI26-012', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-013', name: 'JOKO SUSILO', dept: 'packer', outsource: 'Internal', phone: '081512340013', email: '', joinDate: '2023-01-15', nik: 'MAI26-013', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-014', name: 'KARTIKA SARI', dept: 'packing', outsource: 'Internal', phone: '081512340014', email: '', joinDate: '2023-01-15', nik: 'MAI26-014', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-015', name: 'LESTARI DEWI', dept: 'staff office', outsource: 'Internal', phone: '081512340015', email: '', joinDate: '2023-01-15', nik: 'MAI26-015', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-016', name: 'M. NUR FAHMI', dept: 'picker', outsource: 'Internal', phone: '081512340016', email: '', joinDate: '2023-01-15', nik: 'MAI26-016', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-017', name: 'NITA ANGGRAENI', dept: 'staff office', outsource: 'Internal', phone: '081512340017', email: '', joinDate: '2023-01-15', nik: 'MAI26-017', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-018', name: 'OKI SETIAWAN', dept: 'inbound', outsource: 'Internal', phone: '081512340018', email: '', joinDate: '2023-01-15', nik: 'MAI26-018', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-019', name: 'PUTRI AYU', dept: 'staff office', outsource: 'Internal', phone: '081512340019', email: '', joinDate: '2023-01-15', nik: 'MAI26-019', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-020', name: 'RAHMAD HIDAYAT', dept: 'picker', outsource: 'Internal', phone: '081512340020', email: '', joinDate: '2023-01-15', nik: 'MAI26-020', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-021', name: 'RINI ASTUTI', dept: 'packing', outsource: 'Internal', phone: '081512340021', email: '', joinDate: '2023-01-15', nik: 'MAI26-021', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-022', name: 'SANDI KURNIA', dept: 'picker', outsource: 'Internal', phone: '081512340022', email: '', joinDate: '2023-01-15', nik: 'MAI26-022', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-023', name: 'TARI WULANDARI', dept: 'staff office', outsource: 'Internal', phone: '081512340023', email: '', joinDate: '2023-01-15', nik: 'MAI26-023', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-024', name: 'UMAR FARUQ', dept: 'picker', outsource: 'Internal', phone: '081512340024', email: '', joinDate: '2023-01-15', nik: 'MAI26-024', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-025', name: 'VINA MELATI', dept: 'staff office', outsource: 'Internal', phone: '081512340025', email: '', joinDate: '2023-01-15', nik: 'MAI26-025', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-026', name: 'WAHYU UTOMO', dept: 'inbound', outsource: 'Internal', phone: '081512340026', email: '', joinDate: '2023-01-15', nik: 'MAI26-026', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-027', name: 'YULI SURYANI', dept: 'packing', outsource: 'Internal', phone: '081512340027', email: '', joinDate: '2023-01-15', nik: 'MAI26-027', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-028', name: 'ZAINAL ARIFIN', dept: 'picker', outsource: 'Internal', phone: '081512340028', email: '', joinDate: '2023-01-15', nik: 'MAI26-028', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-029', name: 'ANDI SAPUTRA', dept: 'picker', outsource: 'Internal', phone: '081512340029', email: '', joinDate: '2023-01-15', nik: 'MAI26-029', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-030', name: 'BEKTI NUGROHO', dept: 'packer', outsource: 'Internal', phone: '081512340030', email: '', joinDate: '2023-01-15', nik: 'MAI26-030', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-031', name: 'CAHYO WIBOWO', dept: 'picking plan', outsource: 'Internal', phone: '081512340031', email: '', joinDate: '2023-01-15', nik: 'MAI26-031', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-032', name: 'DIAN SAFITRI', dept: 'staff office', outsource: 'Internal', phone: '081512340032', email: '', joinDate: '2023-01-15', nik: 'MAI26-032', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-033', name: 'EKO SETIAWAN', dept: 'picker', outsource: 'Internal', phone: '081512340033', email: '', joinDate: '2023-01-15', nik: 'MAI26-033', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-034', name: 'FITRI HANDAYANI', dept: 'packing', outsource: 'Internal', phone: '081512340034', email: '', joinDate: '2023-01-15', nik: 'MAI26-034', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' },
+      { id: 'mai-035', name: 'GALIH RAKASIWI', dept: 'inbound', outsource: 'Internal', phone: '081512340035', email: '', joinDate: '2023-01-15', nik: 'MAI26-035', role: 'staff', password: 'medika123', isFirstLogin: true, warehouse: 'MAI' }
     ];
 
     const SEED_MBI_ATTENDANCE = [];
@@ -2207,8 +2284,8 @@
       }
       try {
         const parsed = JSON.parse(data);
-        // Proteksi: jika user lokal hanya 1 admin sedangkan seed memiliki data karyawan, gabungkan otomatis!
-        if (key === 'users' && Array.isArray(parsed) && parsed.length <= 1 && Array.isArray(defaultVal) && defaultVal.length > 1) {
+        // Proteksi: jika user lokal memiliki jumlah akun lebih sedikit dari default master SEED, gabungkan otomatis!
+        if (key === 'users' && Array.isArray(parsed) && Array.isArray(defaultVal) && parsed.length < defaultVal.length) {
           const merged = mergeUserArrays(defaultVal, parsed);
           localStorage.setItem(storageKey, JSON.stringify(merged));
           return merged;
@@ -2394,9 +2471,10 @@
       const normalizeUserKey = (u) => {
         if (!u) return '';
         if (u.role === 'admin') return `ADMIN_${u.warehouse || 'MBI'}`;
+        if (u.nik) return `${u.warehouse || 'MBI'}_${(u.nik || '').toUpperCase().trim()}`;
+        if (u.name) return `${u.warehouse || 'MBI'}_${cleanStr(u.name)}`;
         if (u.id) return `${u.warehouse || 'MBI'}_${u.id}`;
-        if (u.nik) return `${u.warehouse || 'MBI'}_${u.nik}`;
-        return u.name ? `${u.warehouse || 'MBI'}_${cleanStr(u.name)}` : '';
+        return '';
       };
 
       (localUsers || []).forEach(u => {
