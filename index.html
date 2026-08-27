@@ -2771,12 +2771,19 @@
           let att = getWhDB(wh, 'attendance', []);
           let attChanged = false;
           att.forEach(a => {
-            const user = users.find(u => u.id === a.userId || (a.userName && cleanStr(u.name) === cleanStr(a.userName)) || u.nik === a.userNik || nikUpdateMap.get(a.userNik) === u.nik);
+            let user = users.find(u => a.userName && cleanStr(u.name) === cleanStr(a.userName));
+            if (!user && a.userNik) {
+              user = users.find(u => u.nik === a.userNik);
+            }
+            if (!user && a.userId) {
+              user = users.find(u => u.id === a.userId);
+            }
             if (user) {
               if (a.userNik !== user.nik || a.userName !== user.name || a.userId !== user.id) {
                 a.userNik = user.nik;
                 a.userName = user.name;
                 a.userId = user.id;
+                a.dept = user.dept;
                 attChanged = true;
               }
             }
@@ -2787,12 +2794,19 @@
           let ots = getWhDB(wh, 'overtime', []);
           let otsChanged = false;
           ots.forEach(o => {
-            const user = users.find(u => u.id === o.userId || (o.userName && cleanStr(u.name) === cleanStr(o.userName)) || o.userNik === u.nik || nikUpdateMap.get(o.userNik) === u.nik);
+            let user = users.find(u => o.userName && cleanStr(u.name) === cleanStr(o.userName));
+            if (!user && o.userNik) {
+              user = users.find(u => u.nik === o.userNik);
+            }
+            if (!user && o.userId) {
+              user = users.find(u => u.id === o.userId);
+            }
             if (user) {
-              if (o.userNik !== user.nik || o.userName !== user.name || o.userId !== user.id) {
+              if (o.userNik !== user.nik || o.userName !== user.name || o.userId !== user.id || o.dept !== user.dept) {
                 o.userNik = user.nik;
                 o.userName = user.name;
                 o.userId = user.id;
+                o.dept = user.dept;
                 otsChanged = true;
               }
             }
@@ -2803,7 +2817,10 @@
           let lvs = getWhDB(wh, 'leaves', []);
           let lvsChanged = false;
           lvs.forEach(l => {
-            const user = users.find(u => (l.userName && cleanStr(u.name) === cleanStr(l.userName)) || l.userNik === u.nik || nikUpdateMap.get(l.userNik) === u.nik);
+            let user = users.find(u => l.userName && cleanStr(u.name) === cleanStr(l.userName));
+            if (!user && l.userNik) {
+              user = users.find(u => u.nik === l.userNik);
+            }
             if (user) {
               if (l.userNik !== user.nik || l.userName !== user.name) {
                 l.userNik = user.nik;
@@ -3880,22 +3897,31 @@
     function processAttendanceScan(nikCode) {
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const rawCode = (nikCode || '').trim();
       const cleanCode = cleanStr(nikCode);
 
-      // Pencocokan teratur & presisi:
-      // 1. NIK sama persis
-      // 2. User ID sama persis
-      // 3. Clean NIK
-      // 4. Clean Nama
-      let matchedUser = users.find(u => u.nik && u.nik.toUpperCase().trim() === nikCode.toUpperCase().trim());
-      if (!matchedUser) {
-        matchedUser = users.find(u => u.id === nikCode.trim());
+      // Ekstraksi pola NIK jika barcode/QR berisi URL atau teks tambahan
+      let extractedNik = '';
+      const nikMatch = rawCode.match(/(MBI|MAI)\d{2}-\d{3,4}/i) || rawCode.match(/ADM\d+/i) || rawCode.match(/ADM-MAI/i);
+      if (nikMatch) {
+        extractedNik = nikMatch[0].toUpperCase();
       }
-      if (!matchedUser) {
-        matchedUser = users.find(u => cleanStr(u.nik) === cleanCode);
-      }
+
+      // 1. Prioritas Utama: Cari berdasarkan NIK resmi sama persis
+      let matchedUser = users.find(u => u.nik && (
+        u.nik.toUpperCase() === rawCode.toUpperCase() ||
+        (extractedNik && u.nik.toUpperCase() === extractedNik) ||
+        cleanStr(u.nik) === cleanCode
+      ));
+
+      // 2. Prioritas Kedua: Cari berdasarkan Nama Lengkap sama persis
       if (!matchedUser) {
         matchedUser = users.find(u => cleanStr(u.name) === cleanCode);
+      }
+
+      // 3. Prioritas Ketiga: Cari berdasarkan ID internal
+      if (!matchedUser) {
+        matchedUser = users.find(u => u.id === rawCode);
       }
 
       const alertEl = document.getElementById('att-alert');
@@ -3903,26 +3929,27 @@
 
       if (!matchedUser) {
         alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
-        alertEl.innerText = 'Gagal, coba lagi (Barcode ID Card tidak terdaftar)';
+        alertEl.innerText = `Gagal, coba lagi (Barcode ID "${rawCode}" tidak terdaftar di database)`;
         playAttendanceErrorSound();
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
 
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-      // Cari presensi hari ini khusus untuk matchedUser ini saja (prioritaskan userId & nama unik)
+      
+      // Cari presensi hari ini KHUSUS untuk matchedUser ini saja (berdasarkan nama lengkap atau NIK)
       const existing = attendances.find(a => 
         a.date === todayStr && (
-          (a.userId && a.userId === matchedUser.id) || 
           (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
-          a.userNik === matchedUser.nik
+          (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase()) ||
+          (a.userId && a.userId === matchedUser.id)
         )
       );
 
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
           alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center';
-          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} sudah absen masuk)`;
+          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] sudah absen masuk)`;
           playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
@@ -3937,6 +3964,7 @@
           userId: matchedUser.id,
           userNik: matchedUser.nik,
           userName: matchedUser.name,
+          dept: matchedUser.dept,
           warehouse: activeWarehouse,
           date: todayStr,
           checkInTime: now.toISOString(),
@@ -3948,19 +3976,19 @@
         setWhDB(activeWarehouse, 'attendance', attendances);
         saveFullDatabaseToCloud();
         alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
-        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name})`;
+        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name} - ${matchedUser.nik})`;
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
           alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
-          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} belum absen masuk)`;
+          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] belum absen masuk)`;
           playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
         if (existing.checkOutTime) {
           alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center';
-          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} sudah absen keluar)`;
+          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] sudah absen keluar)`;
           playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
@@ -3970,14 +3998,18 @@
         existing.userNik = matchedUser.nik;
         existing.userName = matchedUser.name;
         existing.userId = matchedUser.id;
+        existing.dept = matchedUser.dept;
+
         setWhDB(activeWarehouse, 'attendance', attendances);
         saveFullDatabaseToCloud();
         alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
-        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name})`;
+        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name} - ${matchedUser.nik})`;
         playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
       refreshAllDashboardData();
+      renderRecordsTable();
+      renderMatrixTable();
 
       // Beri jeda 3 detik agar karyawan berikutnya bisa absen dengan tertib dan notifikasi terbaca jelas
       setTimeout(() => {
@@ -6088,12 +6120,12 @@
 
       filtered.forEach((rec, idx) => {
         let emp = null;
-        if (rec.userId) emp = users.find(u => u.id === rec.userId);
-        if (!emp && rec.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(rec.userName));
+        if (rec.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(rec.userName));
         if (!emp && rec.userNik) emp = users.find(u => u.nik && u.nik.toUpperCase() === rec.userNik.toUpperCase());
+        if (!emp && rec.userId) emp = users.find(u => u.id === rec.userId);
 
-        const finalName = rec.userName || (emp ? emp.name : '-');
-        const finalNik = (emp && cleanStr(emp.name) === cleanStr(finalName)) ? emp.nik : (rec.userNik || (emp ? emp.nik : '-'));
+        const finalName = emp ? emp.name : (rec.userName || '-');
+        const finalNik = emp ? emp.nik : (rec.userNik || '-');
         const finalDept = emp ? emp.dept : (rec.dept || '-');
         
         // Hitung Durasi Jam Kerja
@@ -6126,7 +6158,7 @@
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${rec.date}</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${finalNik}</td>
+          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 font-bold">${finalNik}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${finalName}</td>
           <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-emerald-700 font-bold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
@@ -6180,12 +6212,12 @@
 
       const rows = filtered.map((r, i) => {
         let emp = null;
-        if (r.userId) emp = users.find(u => u.id === r.userId);
-        if (!emp && r.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(r.userName));
+        if (r.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(r.userName));
         if (!emp && r.userNik) emp = users.find(u => u.nik && u.nik.toUpperCase() === r.userNik.toUpperCase());
+        if (!emp && r.userId) emp = users.find(u => u.id === r.userId);
 
-        const finalName = r.userName || (emp ? emp.name : '-');
-        const finalNik = (emp && cleanStr(emp.name) === cleanStr(finalName)) ? emp.nik : (r.userNik || (emp ? emp.nik : '-'));
+        const finalName = emp ? emp.name : (r.userName || '-');
+        const finalNik = emp ? emp.nik : (r.userNik || '-');
         const finalDept = emp ? emp.dept : (r.dept || '');
 
         let durationStr = 'Sedang Berjalan';
@@ -6301,8 +6333,8 @@
 
         dateList.forEach(d => {
           const dStr = d.toISOString().split('T')[0];
-          const att = attendances.find(a => (a.userNik === user.nik || (a.userId && a.userId === user.id) || (a.userName && cleanStr(a.userName) === cleanStr(user.name))) && a.date === dStr);
-          const approvedLeave = leaves.find(l => (l.userNik === user.nik || (l.userId && l.userId === user.id) || (l.userName && cleanStr(l.userName) === cleanStr(user.name))) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+          const att = attendances.find(a => ((a.userName && cleanStr(a.userName) === cleanStr(user.name)) || (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || (a.userId && a.userId === user.id)) && a.date === dStr);
+          const approvedLeave = leaves.find(l => ((l.userName && cleanStr(l.userName) === cleanStr(user.name)) || (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || (l.userId && l.userId === user.id)) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
 
           if (att) {
             totalHariKerja += 1;
@@ -6388,8 +6420,8 @@
         const row = [uIdx + 1, user.name, user.nik];
         dateList.forEach(d => {
           const dStr = d.toISOString().split('T')[0];
-          const att = attendances.find(a => (a.userNik === user.nik || (a.userId && a.userId === user.id) || (a.userName && cleanStr(a.userName) === cleanStr(user.name))) && a.date === dStr);
-          const approvedLeave = leaves.find(l => (l.userNik === user.nik || (l.userId && l.userId === user.id) || (l.userName && cleanStr(l.userName) === cleanStr(user.name))) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+          const att = attendances.find(a => ((a.userName && cleanStr(a.userName) === cleanStr(user.name)) || (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || (a.userId && a.userId === user.id)) && a.date === dStr);
+          const approvedLeave = leaves.find(l => ((l.userName && cleanStr(l.userName) === cleanStr(user.name)) || (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || (l.userId && l.userId === user.id)) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
 
           if (att) {
             totalHadir += 1;
