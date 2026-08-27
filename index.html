@@ -2085,9 +2085,10 @@
     function deduplicateUserList(users, warehouse = 'MBI') {
       if (!Array.isArray(users)) return [];
       const seenNames = new Set();
+      const usedNiks = new Set();
       const cleanList = [];
 
-      // Tempatkan Admin di awal
+      // 1. Tempatkan Admin di awal
       const admin = users.find(u => u.role === 'admin') || {
         id: `${warehouse.toLowerCase()}-admin`,
         name: `Admin Gudang ${warehouse}`,
@@ -2099,7 +2100,9 @@
       };
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
+      if (admin.nik) usedNiks.add(admin.nik.toUpperCase().trim());
 
+      // 2. Kumpulkan pengguna tanpa duplikasi nama, dan KUNCI NIK ASLINYA!
       users.forEach(u => {
         if (!u || u.role === 'admin') return;
         const normName = cleanStr(u.name);
@@ -2107,20 +2110,31 @@
 
         // Hilangkan data duplikat nama
         if (seenNames.has(normName)) return;
-
         seenNames.add(normName);
+
+        // Kunci NIK yang sudah dimiliki karyawan
+        if (u.nik) {
+          u.nik = u.nik.toUpperCase().trim();
+          usedNiks.add(u.nik);
+        }
+        u.barcodeValue = u.nik || '';
         cleanList.push(u);
       });
 
-      // Penomoran NIK sekuensial yang bersih dan konsisten
+      // 3. Hanya jika ada karyawan yang BELUM punya NIK sama sekali, berikan NIK unik
       const prefix = warehouse === 'MBI' ? 'MBI26-' : 'MAI26-';
       let seq = 1;
       cleanList.forEach((u) => {
         if (u.role === 'admin') return;
-        const pad = String(seq).padStart(3, '0');
-        u.nik = `${prefix}${pad}`;
+        if (!u.nik) {
+          while (usedNiks.has(`${prefix}${String(seq).padStart(3, '0')}`)) {
+            seq++;
+          }
+          const newNik = `${prefix}${String(seq).padStart(3, '0')}`;
+          u.nik = newNik;
+          usedNiks.add(newNik);
+        }
         u.barcodeValue = u.nik;
-        seq++;
       });
 
       return cleanList;
@@ -2704,34 +2718,20 @@
     function harmonizeAndResequenceAllNIKs() {
       sanitizeEmployeesData();
 
-      const EXACT_NIK_MAP = {
-        'budisusanto': 'MBI26-022',
-        'chairulhadiyatullahgunawan': 'MBI26-023',
-        'defriaditiasaputra': 'MBI26-024',
-        'denikarsono': 'MBI26-025',
-        'dimassaputra': 'MBI26-026',
-        'dickyramadhan': 'MBI26-027',
-        'djisamsuri': 'MBI26-028',
-        'ebitsaputra': 'MBI26-029'
-      };
-
       ['MBI', 'MAI'].forEach(wh => {
         let rawUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         if (!Array.isArray(rawUsers) || rawUsers.length === 0) return;
         let users = deduplicateUserList(rawUsers, wh);
 
         let hasChanges = false;
-        const nikUpdateMap = new Map();
         const usedNiks = new Set();
-        const year = new Date().getFullYear().toString().slice(-2); // "26"
-        const prefix = `${wh.toUpperCase()}${year}-`;
+        const prefix = `${wh.toUpperCase()}${new Date().getFullYear().toString().slice(-2)}-`;
 
         // 1. Admin selalu memegang NIK resmi
         users.forEach(u => {
           if (u.role === 'admin') {
             const adminNik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
             if (u.nik !== adminNik) {
-              if (u.nik) nikUpdateMap.set(u.nik, adminNik);
               u.nik = adminNik;
               hasChanges = true;
             }
@@ -2739,58 +2739,35 @@
           }
         });
 
-        // 2. Kunci nama-nama karyawan yang sudah memiliki NIK resmi pasti
+        // 2. Karyawan yang sudah punya NIK valid, catat dan pertahankan NIK-nya
         users.forEach(u => {
-          if (u.role === 'admin' || !u.name) return;
-          const cleanedName = cleanStr(u.name);
-          if (EXACT_NIK_MAP[cleanedName]) {
-            const correctNik = EXACT_NIK_MAP[cleanedName];
-            if (u.nik !== correctNik) {
-              if (u.nik) nikUpdateMap.set(u.nik, correctNik);
-              u.nik = correctNik;
-              hasChanges = true;
+          if (u.role === 'admin' || !u.nik) return;
+          const cleanNik = u.nik.trim().toUpperCase();
+          if (usedNiks.has(cleanNik)) {
+            // Jika ada duplikasi NIK persis sama dengan orang lain, beri NIK bebas baru
+            let newSeq = 1;
+            while (usedNiks.has(`${prefix}${String(newSeq).padStart(3, '0')}`)) {
+              newSeq++;
             }
-            usedNiks.add(correctNik.toUpperCase());
+            u.nik = `${prefix}${String(newSeq).padStart(3, '0')}`;
+            hasChanges = true;
           }
+          usedNiks.add(u.nik.toUpperCase());
         });
 
-        // 3. Scan semua karyawan lain untuk mencegah duplikasi NIK apa pun
+        // 3. Karyawan tanpa NIK sama sekali, berikan NIK
+        let seq = 1;
         users.forEach(u => {
           if (u.role === 'admin') return;
-          const cleanedName = cleanStr(u.name);
-          if (EXACT_NIK_MAP[cleanedName]) return; // Sudah ditangani
-
-          let currentNik = (u.nik || '').trim().toUpperCase();
-          const isDuplicate = !currentNik || usedNiks.has(currentNik);
-
-          if (isDuplicate) {
-            // Cari nomor NIK bebas terkecil yang belum pernah dipakai di gudang ini
-            let newNik = '';
-            for (let num = 1; num <= 9999; num++) {
-              const candidate = `${prefix}${String(num).padStart(3, '0')}`;
-              if (!usedNiks.has(candidate)) {
-                newNik = candidate;
-                break;
-              }
+          if (!u.nik) {
+            while (usedNiks.has(`${prefix}${String(seq).padStart(3, '0')}`)) {
+              seq++;
             }
-            if (!newNik) newNik = `${prefix}${Date.now().toString().slice(-4)}`;
-
-            if (u.nik) nikUpdateMap.set(u.nik, newNik);
-            u.nik = newNik;
-            usedNiks.add(newNik.toUpperCase());
+            u.nik = `${prefix}${String(seq).padStart(3, '0')}`;
+            usedNiks.add(u.nik.toUpperCase());
             hasChanges = true;
-          } else {
-            usedNiks.add(currentNik);
           }
-        });
-
-        // 4. Urutkan seluruh karyawan secara numerik presisi (MBI26-001, 002, ..., 022, 023, 024, 025, 026, 027, 028, 029, dst)
-        users.sort((a, b) => {
-          if (a.role === 'admin') return -1;
-          if (b.role === 'admin') return 1;
-          const nikA = (a.nik || '').toUpperCase();
-          const nikB = (b.nik || '').toUpperCase();
-          return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+          u.barcodeValue = u.nik;
         });
 
         if (hasChanges) {
@@ -4230,7 +4207,7 @@
 
       const img = document.getElementById('img-qrcode-emp');
       if (img) {
-        img.src = getQrCodeUrl(`${user.nik}|${user.name}`);
+        img.src = getQrCodeUrl(user.nik);
       }
     }
 
@@ -4469,7 +4446,7 @@
         await new Promise((resolve) => {
           qrImg.onload = () => resolve();
           qrImg.onerror = () => resolve();
-          qrImg.src = getQrCodeUrl(`${user.nik}|${user.name}`);
+          qrImg.src = getQrCodeUrl(user.nik);
         });
         ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
       } catch (err) {
