@@ -156,7 +156,7 @@
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
 
   <!-- ========================================================= -->
-  <!-- 1. AUTH SCREEN (LOGIN & REGISTER) -->
+  <!-- 1. AUTH SCREEN (LOGIN UTAMA & MODE AKUN ABSENSI HP) -->
   <!-- ========================================================= -->
   <div id="auth-container" class="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4">
     <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden relative z-10">
@@ -173,8 +173,40 @@
       <!-- Alert Notification -->
       <div id="auth-alert" class="hidden mx-6 mt-4 p-3.5 rounded-2xl text-xs flex flex-col gap-1 font-semibold leading-relaxed"></div>
 
-      <!-- FORM LOGIN -->
-      <div id="form-login-box" class="p-6">
+      <!-- FORM LOGIN & QUICK ACCESS AKUN ABSENSI -->
+      <div id="form-login-box" class="p-6 space-y-5">
+        
+        <!-- BAGIAN 1: AKSES SATU AKUN ABSENSI HP (UNTUK SEMUA KARYAWAN SCAN KARTU) -->
+        <div class="p-4 bg-teal-50/80 border-2 border-teal-500 rounded-2xl space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
+              <i data-lucide="scan-line" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="font-extrabold text-xs text-teal-950">Mode Akun Scanner Absensi</h3>
+              <p class="text-[10px] text-teal-700 font-medium">Satu akun untuk semua HP karyawan melakukan scan kartu</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
+              <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+              Absen Gudang MBI
+            </button>
+            <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
+              <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+              Absen Gudang MAI
+            </button>
+          </div>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Atau Login Admin</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <!-- BAGIAN 2: LOGIN ADMIN / SUPERVISOR -->
         <form onsubmit="handleLogin(event)" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Gudang</label>
@@ -191,20 +223,20 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK atau Nama Karyawan</label>
-            <input type="text" id="login-identifier" required placeholder="Masukkan Nama atau NIK" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK / Username</label>
+            <input type="text" id="login-identifier" required placeholder="Contoh: ADM001 atau ABSEN-MBI" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none font-medium">
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
-              <span class="text-[10px] text-slate-500 font-medium">Default: <code class="font-bold text-teal-700">medika123</code></span>
+              <span class="text-[10px] text-slate-500 font-medium">Admin: <code class="font-bold text-teal-700">password123</code></span>
             </div>
             <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
           </div>
 
-          <button type="submit" class="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-teal-600/30">
-            Masuk ke Portal
+          <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20">
+            Masuk Portal Manajemen
           </button>
         </form>
       </div>
@@ -622,6 +654,26 @@
             <!-- Alert Notification -->
             <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
+            <!-- Mode Tab Selector (Kamera HP vs Barcode Gun External) -->
+            <div class="flex items-center justify-between flex-wrap gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-700">Metode Pemindaian:</span>
+                <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                  <button type="button" id="tab-scan-camera" onclick="switchScanMethod('camera')" class="px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center gap-1.5">
+                    <i data-lucide="camera" class="w-3.5 h-3.5 text-teal-600"></i>
+                    <span>Kamera HP</span>
+                  </button>
+                  <button type="button" id="tab-scan-gun" onclick="switchScanMethod('gun')" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
+                    <i data-lucide="scan-line" class="w-3.5 h-3.5 text-sky-600"></i>
+                    <span>Scanner External (Barcode Gun)</span>
+                  </button>
+                </div>
+              </div>
+              <span class="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 inline text-emerald-600"></i> Proteksi Anti-Ketik Manual Aktif
+              </span>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <!-- Controls & GPS Status Box -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-5 shadow-xs">
@@ -657,43 +709,158 @@
                 </div>
               </div>
 
-              <!-- Scanner Box Kotak -->
-              <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-xs">
-                <!-- Status Scan Banner -->
-                <div id="scanner-instruction" class="w-full mb-3 p-3 rounded-2xl bg-teal-50 border border-teal-300 text-teal-950 text-xs font-bold text-center flex items-center justify-center gap-2">
-                  <i data-lucide="qr-code" class="w-4 h-4 text-teal-700"></i>
-                  <span id="cam-status-msg">Arahkan kamera ke Barcode ID Card Karyawan</span>
-                </div>
+              <!-- Scanner Column (Kamera HP vs Barcode Gun External) -->
+              <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-xs min-h-[380px]">
+                
+                <!-- CONTAINER 1: MODE KAMERA HP -->
+                <div id="mode-camera-container" class="w-full">
+                  <!-- STATE A: STANDBY / KAMERA TERTUTUP -->
+                  <div id="camera-standby-wrapper" class="w-full flex flex-col items-center justify-center text-center p-4 space-y-4">
+                    
+                    <!-- Slot Bukti Scan Terakhir (Muncul Saat Berhasil Scan) -->
+                    <div id="last-scan-success-card" class="hidden w-full max-w-sm p-4 bg-emerald-50 border-2 border-emerald-500 rounded-2xl text-left space-y-2 shadow-xs animate-pulse">
+                      <div class="flex items-center justify-between pb-1.5 border-b border-emerald-200">
+                        <span class="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                          ABSEN BERHASIL TERCATAT
+                        </span>
+                        <span id="last-scan-type-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900 uppercase">MASUK</span>
+                      </div>
+                      <div class="space-y-0.5 text-xs">
+                        <p class="text-slate-500 text-[10px] font-semibold">Nama Karyawan:</p>
+                        <p id="last-scan-name" class="font-extrabold text-sm text-slate-900 leading-tight">-</p>
+                        <p id="last-scan-nik-dept" class="font-mono text-[11px] text-slate-600">-</p>
+                      </div>
+                      <div class="pt-1.5 border-t border-emerald-200 flex items-center justify-between text-xs">
+                        <span class="text-slate-500 text-[11px]">Waktu Tercatat:</span>
+                        <span id="last-scan-time" class="font-mono font-bold text-slate-800">-</span>
+                      </div>
+                    </div>
 
-                <!-- Video / Scanner Container -->
-                <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-800">
-                  <div id="qr-reader" class="w-full h-full"></div>
-                  
-                  <!-- Kotak Target Overlay -->
-                  <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div id="scanner-box-border" class="w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
-                      <span id="scanner-box-tag" class="text-[10px] text-teal-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN ID CARD</span>
+                    <!-- Standby Graphic Icon -->
+                    <div id="standby-icon-box" class="w-16 h-16 rounded-3xl bg-teal-50 border-2 border-teal-200 flex items-center justify-center text-teal-700 shadow-inner">
+                      <i data-lucide="camera-off" class="w-8 h-8"></i>
+                    </div>
+
+                    <div>
+                      <h3 id="standby-title" class="font-extrabold text-base text-slate-900">Kamera Scanner Tertutup</h3>
+                      <p id="standby-subtitle" class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                        Kamera tertutup untuk mencegah barcode ter-scan ganda. Tekan tombol di bawah untuk membuka kamera scanner.
+                      </p>
+                    </div>
+
+                    <div class="pt-2 flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-xs mx-auto">
+                      <button type="button" onclick="startScanner()" class="w-full py-3.5 px-6 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs rounded-2xl transition shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2">
+                        <i data-lucide="camera" class="w-4 h-4"></i>
+                        <span id="btn-open-cam-text">Buka Kamera untuk Absen</span>
+                      </button>
+                      
+                      <label class="cursor-pointer py-3 px-4 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-2xl hover:bg-slate-50 transition shadow-xs flex items-center justify-center gap-1.5 w-full sm:w-auto shrink-0">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        <span>Scan File</span>
+                        <input type="file" id="qr-input-file" accept="image/*" onchange="scanQRFromFile(event)" class="sr-only">
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- STATE B: ACTIVE / KAMERA TERBUKA -->
+                  <div id="camera-video-wrapper" class="hidden w-full flex flex-col items-center justify-center space-y-3">
+                    <!-- Status Scan Banner -->
+                    <div id="scanner-instruction" class="w-full p-3 rounded-2xl bg-teal-50 border border-teal-300 text-teal-950 text-xs font-bold text-center flex items-center justify-center gap-2">
+                      <i data-lucide="qr-code" class="w-4 h-4 text-teal-700 animate-spin"></i>
+                      <span id="cam-status-msg">Arahkan kamera ke Barcode ID Card Karyawan...</span>
+                    </div>
+
+                    <!-- Video Stream Element -->
+                    <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-teal-500">
+                      <div id="qr-reader" class="w-full h-full"></div>
+                      
+                      <!-- Kotak Target Overlay -->
+                      <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+                        <div id="scanner-box-border" class="w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
+                          <span id="scanner-box-tag" class="text-[10px] text-teal-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN BARCODE</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Tombol Tutup Manual -->
+                    <div class="pt-2">
+                      <button type="button" onclick="stopScanner()" class="px-5 py-2.5 bg-slate-100 hover:bg-rose-50 text-rose-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        <span>Tutup Kamera</span>
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <!-- Camera Controls -->
-                <div class="mt-4 flex items-center gap-2 flex-wrap justify-center">
-                  <button onclick="startScanner()" class="px-5 py-2.5 bg-slate-900 text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition shadow-xs">
-                    Nyalakan Kamera
-                  </button>
-                  <button onclick="stopScanner()" class="px-4 py-2.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-50 transition shadow-xs">
-                    Matikan
-                  </button>
-                  <label class="cursor-pointer px-4 py-2.5 bg-white border border-slate-300 text-slate-800 text-xs font-bold rounded-xl hover:bg-slate-50 transition shadow-xs">
-                    Scan Gambar / File
-                    <input type="file" id="qr-input-file" accept="image/*" onchange="scanQRFromFile(event)" class="sr-only">
-                  </label>
+                <!-- CONTAINER 2: MODE SCANNER EXTERNAL (BARCODE GUN) -->
+                <div id="mode-gun-container" class="hidden w-full flex flex-col items-center justify-center text-center p-4 space-y-4">
+                  <!-- Slot Bukti Scan Terakhir Gun -->
+                  <div id="last-gun-success-card" class="hidden w-full max-w-sm p-4 bg-sky-50 border-2 border-sky-500 rounded-2xl text-left space-y-2 shadow-xs animate-pulse">
+                    <div class="flex items-center justify-between pb-1.5 border-b border-sky-200">
+                      <span class="text-xs font-black text-sky-950 flex items-center gap-1.5">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-600"></i>
+                        ABSEN EXTERNAL TERCATAT
+                      </span>
+                      <span id="last-gun-type-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-200 text-sky-900 uppercase">MASUK</span>
+                    </div>
+                    <div class="space-y-0.5 text-xs">
+                      <p class="text-slate-500 text-[10px] font-semibold">Nama Karyawan:</p>
+                      <p id="last-gun-name" class="font-extrabold text-sm text-slate-900 leading-tight">-</p>
+                      <p id="last-gun-nik-dept" class="font-mono text-[11px] text-slate-600">-</p>
+                    </div>
+                    <div class="pt-1.5 border-t border-sky-200 flex items-center justify-between text-xs">
+                      <span class="text-slate-500 text-[11px]">Waktu Tercatat:</span>
+                      <span id="last-gun-time" class="font-mono font-bold text-slate-800">-</span>
+                    </div>
+                  </div>
+
+                  <div class="w-16 h-16 rounded-3xl bg-sky-50 border-2 border-sky-200 flex items-center justify-center text-sky-700 shadow-inner">
+                    <i data-lucide="scan-line" class="w-8 h-8 animate-pulse"></i>
+                  </div>
+
+                  <div>
+                    <h3 class="font-extrabold text-base text-slate-900">Mode Scanner Barcode External</h3>
+                    <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                      Tembakkan Barcode ID Card menggunakan alat Scanner USB / Bluetooth. Sistem otomatis mencatat absensi tanpa membuka kamera.
+                    </p>
+                  </div>
+
+                  <!-- Input Khusus Scanner Gun -->
+                  <div class="w-full max-w-sm space-y-2">
+                    <div class="relative">
+                      <input type="text" id="external-barcode-input" onkeydown="handleExternalBarcodeKeyDown(event)" oninput="handleExternalBarcodeInput(event)" placeholder="Menunggu tembakan scanner..." class="w-full px-4 py-3.5 bg-slate-900 text-teal-300 font-mono font-bold text-center rounded-2xl border-2 border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/20 text-sm tracking-widest placeholder:text-slate-600 shadow-inner" autocomplete="off" spellcheck="false">
+                      <div class="absolute right-3 top-3.5 text-sky-400">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                      </div>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px] text-slate-600 font-medium leading-relaxed">
+                      🔒 <b class="text-slate-800">Proteksi Anti-Ketik Manual:</b> Pengetikan manual satu per satu di HP diblokir sistem. Hanya tembakan instan alat scanner hardware atau scan via Kamera HP yang diizinkan.
+                    </div>
+                  </div>
                 </div>
-                
-                <p id="cam-status-msg" class="text-[11px] text-slate-500 mt-2 text-center">
-                  Pastikan mengizinkan akses kamera & GPS browser saat tombol 'Nyalakan Kamera' ditekan
-                </p>
+
+              </div>
+
+              <!-- Riwayat Scan Absensi Hari Ini (Real-Time Live Feed) -->
+              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold">
+                      <i data-lucide="history" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-extrabold text-sm text-slate-900">Riwayat Scan Absensi Hari Ini</h3>
+                      <p class="text-[10px] text-slate-500">Daftar kehadiran yang baru saja berhasil di-scan di stasiun ini</p>
+                    </div>
+                  </div>
+                  <button onclick="renderScannerTodayRecords()" class="text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-teal-600"></i> Segarkan List
+                  </button>
+                </div>
+                <div id="scanner-today-records-list" class="space-y-2 max-h-80 overflow-y-auto custom-scroll">
+                  <!-- Rendered by JS -->
+                </div>
               </div>
             </div>
           </div>
@@ -2060,11 +2227,13 @@
     }
 
     const SEED_MBI_USERS = [
-      { id: 'mbi-admin', name: 'Admin Gudang MBI', dept: 'supervisor', outsource: 'Internal', phone: '081234567890', email: 'admin.mbi@medika.com', joinDate: '2023-01-01', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' }
+      { id: 'mbi-admin', name: 'Admin Gudang MBI', dept: 'supervisor', outsource: 'Internal', phone: '081234567890', email: 'admin.mbi@medika.com', joinDate: '2023-01-01', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
+      { id: 'mbi-scanner', name: 'Akun Scanner Absen MBI', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mbi@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MBI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
-      { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', email: 'admin.mai@medika.com', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' }
+      { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'supervisor', outsource: 'Internal', phone: '081512349876', email: 'admin.mai@medika.com', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
+      { id: 'mai-scanner', name: 'Akun Scanner Absen MAI', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mai@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MAI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MAI' }
     ];
 
     const SEED_MBI_ATTENDANCE = [];
@@ -2089,22 +2258,22 @@
       const cleanList = [];
 
       // 1. Tempatkan Admin di awal
-      const admin = users.find(u => u.role === 'admin') || {
-        id: `${warehouse.toLowerCase()}-admin`,
-        name: `Admin Gudang ${warehouse}`,
-        dept: 'supervisor',
-        nik: warehouse === 'MBI' ? 'ADM001' : 'ADM-MAI',
-        role: 'admin',
-        password: 'password123',
-        warehouse
-      };
+      const admin = users.find(u => u.role === 'admin') || (warehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
       if (admin.nik) usedNiks.add(admin.nik.toUpperCase().trim());
 
-      // 2. Kumpulkan pengguna tanpa duplikasi nama, dan KUNCI NIK ASLINYA!
+      // 2. Tempatkan Akun Dedicated Scanner Absen
+      const scanner = users.find(u => u.role === 'scanner' || u.nik === `ABSEN-${warehouse}`) || (warehouse === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
+      if (scanner) {
+        cleanList.push(scanner);
+        seenNames.add(cleanStr(scanner.name));
+        if (scanner.nik) usedNiks.add(scanner.nik.toUpperCase().trim());
+      }
+
+      // 3. Kumpulkan seluruh karyawan tanpa duplikasi nama, dan KUNCI NIK ASLINYA!
       users.forEach(u => {
-        if (!u || u.role === 'admin') return;
+        if (!u || u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) return;
         const normName = cleanStr(u.name);
         if (!normName) return;
 
@@ -2121,11 +2290,11 @@
         cleanList.push(u);
       });
 
-      // 3. Hanya jika ada karyawan yang BELUM punya NIK sama sekali, berikan NIK unik
+      // 4. Hanya jika ada karyawan yang BELUM punya NIK sama sekali, berikan NIK unik
       const prefix = warehouse === 'MBI' ? 'MBI26-' : 'MAI26-';
       let seq = 1;
       cleanList.forEach((u) => {
-        if (u.role === 'admin') return;
+        if (u.role === 'admin' || u.role === 'scanner') return;
         if (!u.nik) {
           while (usedNiks.has(`${prefix}${String(seq).padStart(3, '0')}`)) {
             seq++;
@@ -2562,6 +2731,7 @@
     function renderAllLiveScreens() {
       if (renderScreensTimeout) clearTimeout(renderScreensTimeout);
       renderScreensTimeout = setTimeout(() => {
+        renderScannerTodayRecords();
         renderAccountLookupList();
         renderEmployeeTable();
         populateDropdownEmployees();
@@ -3050,33 +3220,41 @@
       }
     };
 
-    function showAuthTab(tab) {
-      const isLogin = tab === 'login';
-      document.getElementById('form-login-box').classList.toggle('hidden', !isLogin);
-      document.getElementById('form-register-box').classList.toggle('hidden', isLogin);
-      const btnTabLogin = document.getElementById('btn-tab-login');
-      const btnTabReg = document.getElementById('btn-tab-register');
-      if (btnTabLogin) btnTabLogin.className = isLogin ? 'py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition' : 'py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
-      if (btnTabReg) btnTabReg.className = !isLogin ? 'py-1.5 text-xs font-bold rounded-lg bg-teal-600 text-white transition' : 'py-1.5 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition';
-      document.getElementById('auth-alert').classList.add('hidden');
-    }
-
     function updateLoginWhStyle() {
-      const val = document.querySelector('input[name="login-warehouse"]:checked').value;
+      const val = document.querySelector('input[name="login-warehouse"]:checked')?.value || 'MBI';
       const isMBI = val === 'MBI';
-      document.getElementById('lbl-login-mbi').className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
-      document.getElementById('lbl-login-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
-    }
-
-    function updateRegWhStyle() {
-      const val = document.querySelector('input[name="reg-warehouse"]:checked').value;
-      const isMBI = val === 'MBI';
-      document.getElementById('lbl-reg-mbi').className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
-      document.getElementById('lbl-reg-mai').className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+      const mbiEl = document.getElementById('lbl-login-mbi');
+      const maiEl = document.getElementById('lbl-login-mai');
+      if (mbiEl) mbiEl.className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+      if (maiEl) maiEl.className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
     }
 
     function cleanStr(str) {
       return (str || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function quickLoginScannerAccount(warehouse = 'MBI') {
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let scannerUser = users.find(u => u.role === 'scanner' || u.nik === `ABSEN-${warehouse}`);
+      if (!scannerUser) {
+        scannerUser = {
+          id: `${warehouse.toLowerCase()}-scanner`,
+          name: `Akun Scanner Absen ${warehouse}`,
+          dept: 'presensi',
+          outsource: 'Internal',
+          phone: '-',
+          email: `absen.${warehouse.toLowerCase()}@medika.com`,
+          joinDate: '2023-01-01',
+          nik: `ABSEN-${warehouse}`,
+          role: 'scanner',
+          password: 'medika123',
+          isFirstLogin: false,
+          warehouse
+        };
+        users.push(scannerUser);
+        setWhDB(warehouse, 'users', users);
+      }
+      loginUserSession(scannerUser);
     }
 
     // =========================================================
@@ -3094,6 +3272,13 @@
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       const allUsers = [...mbiUsers, ...maiUsers];
+
+      // Jika input adalah kata kunci akun scanner absen
+      if (cleanInput === 'absen' || cleanInput === 'scanner' || cleanInput.startsWith('absen')) {
+        const wh = document.querySelector('input[name="login-warehouse"]:checked')?.value || 'MBI';
+        quickLoginScannerAccount(wh);
+        return;
+      }
 
       // 1. Exact match (NIK / Nama / Phone)
       let user = allUsers.find(u => 
@@ -3432,13 +3617,27 @@
         whSwitcher.classList.remove('flex');
       }
 
-      if (isManagement) {
+      if (userRole === 'scanner') {
+        // Akun Khusus Scanner Absensi: Langsung buka View Absensi & Riwayat Realtime
+        if (adminSection) adminSection.classList.add('hidden');
+        const navDash = document.getElementById('nav-dashboard');
+        if (navDash) navDash.classList.add('hidden');
+        const navGithub = document.getElementById('nav-github');
+        if (navGithub) navGithub.classList.add('hidden');
+        const sysSettings = document.getElementById('system-settings-section');
+        if (sysSettings) sysSettings.classList.add('hidden');
+        switchView('attendance');
+        renderScannerTodayRecords();
+        stopScanner();
+      } else if (isManagement) {
         // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu
         if (adminSection) adminSection.classList.remove('hidden');
         const navDash = document.getElementById('nav-dashboard');
         if (navDash) navDash.classList.remove('hidden');
         const navGithub = document.getElementById('nav-github');
         if (navGithub) navGithub.classList.remove('hidden');
+        const sysSettings = document.getElementById('system-settings-section');
+        if (sysSettings) sysSettings.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       } else {
@@ -3452,6 +3651,7 @@
       }
 
       resetVerificationState();
+      renderScannerTodayRecords();
       refreshAllDashboardData();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
@@ -3588,6 +3788,10 @@
       const activeNav = document.getElementById('nav-' + viewName);
       if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5';
 
+      if (viewName === 'attendance') {
+        renderScannerTodayRecords();
+        switchScanMethod('camera');
+      }
       if (viewName === 'employees') renderEmployeeTable();
       if (viewName === 'reports-group') {
         renderRecordsTable();
@@ -3911,9 +4115,11 @@
 
     function processAttendanceScan(nikCode) {
       const todayStr = new Date().toISOString().split('T')[0];
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      const allUsers = [...mbiUsers, ...maiUsers];
+
       const rawCode = (nikCode || '').trim();
-      
       let scannedNik = rawCode;
       let scannedName = '';
 
@@ -3923,50 +4129,48 @@
         scannedName = parts[1] || '';
       }
 
-      // 1. Jika QR Code memuat Nama Karyawan, cari langsung berdasarkan Nama Karyawan (100% Akurat)
-      let matchedUser = null;
-      if (scannedName) {
-        matchedUser = users.find(u => cleanStr(u.name) === cleanStr(scannedName));
-      }
-
-      // 2. Ekstraksi pola NIK jika barcode/QR berisi URL atau teks tambahan
+      // 1. Ekstraksi pola NIK jika barcode/QR berisi URL atau teks tambahan
       let extractedNik = '';
       const nikMatch = scannedNik.match(/(MBI|MAI)\d{2}-\d{3,4}/i) || scannedNik.match(/ADM\d+/i) || scannedNik.match(/ADM-MAI/i);
       if (nikMatch) {
         extractedNik = nikMatch[0].toUpperCase();
       }
 
-      // 3. Prioritas: Cari berdasarkan NIK resmi sama persis
-      if (!matchedUser) {
-        matchedUser = users.find(u => u.nik && (
-          u.nik.toUpperCase() === scannedNik.toUpperCase() ||
-          (extractedNik && u.nik.toUpperCase() === extractedNik) ||
-          cleanStr(u.nik) === cleanStr(scannedNik)
-        ));
+      // 2. Cari berdasarkan NIK resmi sama persis (Prioritas Utama)
+      let matchedUser = allUsers.find(u => u.nik && (
+        u.nik.toUpperCase() === scannedNik.toUpperCase() ||
+        (extractedNik && u.nik.toUpperCase() === extractedNik) ||
+        cleanStr(u.nik) === cleanStr(scannedNik)
+      ));
+
+      // 3. Jika ada nama di barcode/QR, cari berdasarkan Nama
+      if (!matchedUser && scannedName) {
+        matchedUser = allUsers.find(u => cleanStr(u.name) === cleanStr(scannedName));
       }
 
-      // 4. Prioritas: Cari berdasarkan Nama Lengkap sama persis dari teks barcode
+      // 4. Cari berdasarkan Nama Lengkap dari teks barcode mentah
       if (!matchedUser) {
-        matchedUser = users.find(u => cleanStr(u.name) === cleanStr(rawCode));
+        matchedUser = allUsers.find(u => cleanStr(u.name) === cleanStr(rawCode));
       }
 
-      // 5. Prioritas: Cari berdasarkan ID internal
+      // 5. Cari berdasarkan ID internal
       if (!matchedUser) {
-        matchedUser = users.find(u => u.id === rawCode);
+        matchedUser = allUsers.find(u => u.id === rawCode);
       }
 
       const alertEl = document.getElementById('att-alert');
       alertEl.classList.remove('hidden');
 
       if (!matchedUser) {
-        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
-        alertEl.innerText = `Gagal, coba lagi (Barcode ID "${rawCode}" tidak terdaftar di database)`;
+        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
+        alertEl.innerText = `Gagal, coba lagi (Barcode ID "${rawCode}" tidak terdaftar di database karyawan)`;
         playAttendanceErrorSound();
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
 
-      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const targetWh = matchedUser.warehouse || activeWarehouse || 'MBI';
+      const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       
       // Cari presensi hari ini KHUSUS untuk matchedUser ini saja (berdasarkan nama lengkap atau NIK)
       const existing = attendances.find(a => 
@@ -3979,7 +4183,7 @@
 
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center';
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center shadow-xs';
           alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] sudah absen masuk)`;
           playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
@@ -3991,12 +4195,12 @@
         const isLate = minute >= 1 && minute <= 30;
 
         attendances.unshift({
-          id: `att-${activeWarehouse.toLowerCase()}-${Date.now()}`,
+          id: `att-${targetWh.toLowerCase()}-${Date.now()}`,
           userId: matchedUser.id,
           userNik: matchedUser.nik,
           userName: matchedUser.name,
           dept: matchedUser.dept,
-          warehouse: activeWarehouse,
+          warehouse: targetWh,
           date: todayStr,
           checkInTime: now.toISOString(),
           checkOutTime: null,
@@ -4004,21 +4208,21 @@
           notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
         });
 
-        setWhDB(activeWarehouse, 'attendance', attendances);
-        saveFullDatabaseToCloud();
+        setWhDB(targetWh, 'attendance', attendances);
+        saveFullDatabaseToCloud(true);
         alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
         alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name} - ${matchedUser.nik})`;
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center';
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
           alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] belum absen masuk)`;
           playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
         if (existing.checkOutTime) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center';
+          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center shadow-xs';
           alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] sudah absen keluar)`;
           playAttendanceErrorSound();
           setTimeout(() => { isScanProcessing = false; }, 2500);
@@ -4031,29 +4235,205 @@
         existing.userId = matchedUser.id;
         existing.dept = matchedUser.dept;
 
-        setWhDB(activeWarehouse, 'attendance', attendances);
-        saveFullDatabaseToCloud();
+        setWhDB(targetWh, 'attendance', attendances);
+        saveFullDatabaseToCloud(true);
         alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
         alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name} - ${matchedUser.nik})`;
         playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
+      // 1. Tampilkan kartu bukti sukses di Standby Wrapper & Gun Wrapper
+      const card = document.getElementById('last-scan-success-card');
+      const nameEl = document.getElementById('last-scan-name');
+      const nikDeptEl = document.getElementById('last-scan-nik-dept');
+      const typeBadgeEl = document.getElementById('last-scan-type-badge');
+      const timeEl = document.getElementById('last-scan-time');
+      const standbyTitle = document.getElementById('standby-title');
+      const standbySubtitle = document.getElementById('standby-subtitle');
+      const standbyIcon = document.getElementById('standby-icon-box');
+      const btnOpenText = document.getElementById('btn-open-cam-text');
+
+      // Gun Card elements
+      const gunCard = document.getElementById('last-gun-success-card');
+      const gunNameEl = document.getElementById('last-gun-name');
+      const gunNikDeptEl = document.getElementById('last-gun-nik-dept');
+      const gunTypeBadgeEl = document.getElementById('last-gun-type-badge');
+      const gunTimeEl = document.getElementById('last-gun-time');
+
+      const nowFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
+      if (nameEl) nameEl.innerText = matchedUser.name;
+      if (nikDeptEl) nikDeptEl.innerText = `${matchedUser.nik} • ${(matchedUser.dept || 'STAFF').toUpperCase()}`;
+      if (typeBadgeEl) {
+        typeBadgeEl.innerText = selectedAttendanceType === 'check_in' ? 'ABSEN MASUK' : 'ABSEN PULANG';
+        typeBadgeEl.className = selectedAttendanceType === 'check_in' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900 uppercase' : 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900 uppercase';
+      }
+      if (timeEl) timeEl.innerText = nowFormatted;
+      if (card) card.classList.remove('hidden');
+      if (standbyIcon) standbyIcon.classList.add('hidden');
+      if (standbyTitle) standbyTitle.innerText = 'Absensi Berhasil Dicatat!';
+      if (standbySubtitle) standbySubtitle.innerText = 'Kamera otomatis ditutup agar tidak ter-scan dua kali. Tekan tombol di bawah untuk membuka kamera bagi karyawan berikutnya.';
+      if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Karyawan Berikutnya';
+
+      if (gunNameEl) gunNameEl.innerText = matchedUser.name;
+      if (gunNikDeptEl) gunNikDeptEl.innerText = `${matchedUser.nik} • ${(matchedUser.dept || 'STAFF').toUpperCase()}`;
+      if (gunTypeBadgeEl) {
+        gunTypeBadgeEl.innerText = selectedAttendanceType === 'check_in' ? 'ABSEN MASUK' : 'ABSEN PULANG';
+        gunTypeBadgeEl.className = selectedAttendanceType === 'check_in' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-sky-200 text-sky-900 uppercase' : 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900 uppercase';
+      }
+      if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
+      if (gunCard) gunCard.classList.remove('hidden');
+
+      // 2. MATIKAN & TUTUP KAMERA OTOMATIS
+      stopScanner();
+
+      renderScannerTodayRecords();
       refreshAllDashboardData();
       renderRecordsTable();
       renderMatrixTable();
 
-      // Beri jeda 3 detik agar karyawan berikutnya bisa absen dengan tertib dan notifikasi terbaca jelas
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-      }, 3000);
+      }, 1500);
     }
 
     // =========================================================
-    // KAMERA SCANNER
+    // SWITCHER METODE SCAN (KAMERA HP vs BARCODE GUN EXTERNAL)
+    // =========================================================
+    let activeScanMethod = 'camera';
+    let externalBarcodeKeystrokes = [];
+
+    function switchScanMethod(method) {
+      activeScanMethod = method;
+      const isCam = method === 'camera';
+      
+      const tabCam = document.getElementById('tab-scan-camera');
+      const tabGun = document.getElementById('tab-scan-gun');
+      const modeCam = document.getElementById('mode-camera-container');
+      const modeGun = document.getElementById('mode-gun-container');
+
+      if (tabCam) tabCam.className = isCam ? 'px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center gap-1.5' : 'px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+      if (tabGun) tabGun.className = !isCam ? 'px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center gap-1.5' : 'px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+
+      if (modeCam) modeCam.classList.toggle('hidden', !isCam);
+      if (modeGun) modeGun.classList.toggle('hidden', isCam);
+
+      if (!isCam) {
+        stopScanner();
+        setTimeout(() => {
+          const inputEl = document.getElementById('external-barcode-input');
+          if (inputEl) inputEl.focus();
+        }, 100);
+      }
+      lucide.createIcons();
+    }
+
+    function handleExternalBarcodeInput(e) {
+      externalBarcodeKeystrokes.push(Date.now());
+    }
+
+    function handleExternalBarcodeKeyDown(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const inputVal = (e.target.value || '').trim();
+        if (!inputVal) return;
+
+        const timestamps = externalBarcodeKeystrokes;
+        const totalDuration = timestamps.length > 1 ? (timestamps[timestamps.length - 1] - timestamps[0]) : 0;
+        const avgGap = timestamps.length > 1 ? (totalDuration / (timestamps.length - 1)) : 999;
+        
+        // Alat scanner hardware USB/Bluetooth mengirim seluruh string barcode dalam tempo instan (avg gap <= 65ms dan total <= 500ms)
+        const isHardwareGun = (timestamps.length >= 3 && avgGap <= 65 && totalDuration <= 500);
+        const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'supervisor');
+
+        // PROTEKSI: Tolak pengetikan manual lambat di HP karyawan
+        if (!isHardwareGun && !isAdmin) {
+          const alertEl = document.getElementById('att-alert');
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
+          alertEl.innerHTML = `
+            <span>⚠️ <b>Pengetikan Manual Ditolak!</b></span><br>
+            <span class="text-[11px] font-normal text-slate-700">Untuk menghindari manipulasi absensi, pengetikan manual di HP tidak diizinkan. Silakan gunakan <b>Alat Scanner Hardware External</b> resmi atau beralih ke tab <b>"Kamera HP"</b>.</span>
+          `;
+          alertEl.classList.remove('hidden');
+          playAttendanceErrorSound();
+          e.target.value = '';
+          externalBarcodeKeystrokes = [];
+          return;
+        }
+
+        // Jalankan pemrosesan absensi
+        processAttendanceScan(inputVal);
+        e.target.value = '';
+        externalBarcodeKeystrokes = [];
+      }
+    }
+
+    function renderScannerTodayRecords() {
+      const container = document.getElementById('scanner-today-records-list');
+      if (!container) return;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const targetWh = activeWarehouse || 'MBI';
+      const attendances = getWhDB(targetWh, 'attendance', []);
+      const todayAtt = attendances.filter(a => a.date === todayStr);
+
+      if (todayAtt.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">Belum ada karyawan yang melakukan scan absensi hari ini di Gudang ${targetWh}.</div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      todayAtt.slice(0, 20).forEach((a) => {
+        const inTime = a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+        const outTime = a.checkOutTime ? new Date(a.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+        const isLate = a.checkInStatus === 'late';
+
+        const div = document.createElement('div');
+        div.className = 'p-3 bg-slate-50/80 hover:bg-slate-100/80 border border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-2xs transition';
+        div.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-xl bg-teal-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+              ${(a.userName || 'K').charAt(0).toUpperCase()}
+            </div>
+            <div class="min-w-0">
+              <span class="font-extrabold text-xs text-slate-900 block truncate">${a.userName}</span>
+              <span class="text-[10px] font-mono text-slate-500">${a.userNik} &bull; ${(a.dept || 'STAFF').toUpperCase()}</span>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="flex items-center gap-1.5 justify-end">
+              <span class="text-[11px] font-mono font-bold text-slate-800">Masuk: ${inTime}</span>
+              ${isLate ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800">Terlambat</span>' : '<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800">Tepat Waktu</span>'}
+            </div>
+            ${a.checkOutTime ? `<span class="text-[10px] font-mono font-bold text-rose-600 block mt-0.5">Pulang: ${outTime}</span>` : '<span class="text-[10px] text-slate-400 block mt-0.5">Belum Absen Pulang</span>'}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // =========================================================
+    // KAMERA SCANNER (BUKA & TUTUP)
     // =========================================================
     async function startScanner() {
-      stopScanner();
+      // 1. Tampilkan container video, sembunyikan standby
+      const videoWrapper = document.getElementById('camera-video-wrapper');
+      const standbyWrapper = document.getElementById('camera-standby-wrapper');
+      if (videoWrapper) videoWrapper.classList.remove('hidden');
+      if (standbyWrapper) standbyWrapper.classList.add('hidden');
+
+      if (html5QrScanner) {
+        try {
+          await html5QrScanner.stop();
+          html5QrScanner.clear();
+        } catch (e) {}
+        html5QrScanner = null;
+      }
+
+      lastScannedCode = '';
+      isScanProcessing = false;
+
       const statusMsg = document.getElementById('cam-status-msg');
       if (statusMsg) statusMsg.innerText = 'Meminta izin kamera browser...';
 
@@ -4068,7 +4448,8 @@
             },
             () => {}
           );
-          if (statusMsg) statusMsg.innerText = 'Kamera Aktif. Silakan arahkan ke Barcode.';
+          if (statusMsg) statusMsg.innerText = 'Kamera Aktif. Silakan arahkan ke Barcode ID Card Karyawan.';
+          lucide.createIcons();
           return;
         }
       } catch (err) {
@@ -4087,8 +4468,14 @@
           html5QrScanner = null;
         });
       }
-      const statusMsg = document.getElementById('cam-status-msg');
-      if (statusMsg) statusMsg.innerText = 'Kamera dimatikan.';
+
+      // 2. Sembunyikan video container dan tampilkan standby wrapper
+      const videoWrapper = document.getElementById('camera-video-wrapper');
+      const standbyWrapper = document.getElementById('camera-standby-wrapper');
+      if (videoWrapper) videoWrapper.classList.add('hidden');
+      if (standbyWrapper) standbyWrapper.classList.remove('hidden');
+
+      lucide.createIcons();
     }
 
     function scanQRFromFile(e) {
