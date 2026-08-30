@@ -3216,7 +3216,18 @@
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
-        loginUserSession(JSON.parse(savedUser));
+        try {
+          const parsed = JSON.parse(savedUser);
+          const role = (parsed?.role || '').toLowerCase();
+          const isAllowed = role === 'admin' || role === 'scanner' || role === 'supervisor' || parsed?.nik?.startsWith('ADM') || parsed?.nik?.startsWith('ABSEN');
+          if (isAllowed) {
+            loginUserSession(parsed);
+          } else {
+            localStorage.removeItem('wfm_active_session');
+          }
+        } catch (e) {
+          localStorage.removeItem('wfm_active_session');
+        }
       }
     };
 
@@ -3287,7 +3298,7 @@
         (u.phone && cleanStr(u.phone) === cleanInput)
       );
 
-      // 2. Partial word match (contoh: "Afuani" atau "Huyan")
+      // 2. Partial word match
       if (!user && cleanInput.length >= 3) {
         user = allUsers.find(u => 
           cleanStr(u.name).includes(cleanInput) || 
@@ -3308,10 +3319,24 @@
       }
 
       if (!user) {
-        alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
+        alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+        alertEl.innerHTML = `<span>Akun Admin/Scanner <b>"${rawInputId}"</b> tidak ditemukan!</span><br><span class="text-[11px] font-normal text-slate-600">Pastikan NIK atau username yang dimasukkan benar.</span>`;
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      // HANYA AKUN ADMIN DAN SCANNER ABSEN YANG DIIZINKAN LOGIN KE APLIKASI
+      const userRole = (user.role || '').toLowerCase();
+      const isAllowedRole = userRole === 'admin' || userRole === 'scanner' || userRole === 'supervisor' || user.nik?.startsWith('ADM') || user.nik?.startsWith('ABSEN');
+
+      if (!isAllowedRole) {
+        alertEl.className = 'mx-6 mt-4 p-4 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center leading-relaxed';
         alertEl.innerHTML = `
-          <span>Akun <b>"${rawInputId}"</b> tidak ditemukan di database!</span>
-          <p class="text-[11px] text-slate-600 font-normal mt-1">Pastikan nama atau NIK sudah terdaftar. Klik <a href="javascript:void(0)" onclick="openAccountLookupModal()" class="font-bold text-sky-700 underline">Lihat Daftar Akun</a> untuk mengecek NIK resmi Anda.</p>
+          <div class="flex flex-col items-center gap-1">
+            <span class="text-rose-900 font-black text-sm">⛔ AKSES LOGIN HANYA UNTUK ADMIN & AKUN ABSEN</span>
+            <span class="text-[11px] font-medium text-slate-700 mt-1">Data <b>${user.name} (${user.nik})</b> adalah Master Data Karyawan untuk absensi barcode, bukan akun login aplikasi.</span>
+            <span class="text-[11px] font-normal text-slate-600">Karyawan melakukan absen via scan kartu di <b>Akun Scanner Absen</b> (klik tombol cepat di atas).</span>
+          </div>
         `;
         alertEl.classList.remove('hidden');
         return;
@@ -3325,8 +3350,7 @@
         updateLoginWhStyle();
       }
 
-      // Validasi Password Ketat:
-      // Jika akun sudah pernah ubah password (isFirstLogin === false), maka wajib pakai password barunya!
+      // Validasi Password
       const storedPass = (user.password || '').trim();
       const isCustomized = (user.isFirstLogin === false) && storedPass && storedPass !== 'medika123';
       let isPasswordCorrect = false;
@@ -3340,10 +3364,10 @@
       }
 
       if (!isPasswordCorrect) {
-        alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold';
+        alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
         alertEl.innerHTML = isCustomized ? 
-          `<span>Kata sandi untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Akun ini sudah memiliki kata sandi baru. Silakan login menggunakan password baru Anda.</span>` :
-          `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default: <code class="font-bold text-teal-700">medika123</code></span>`;
+          `<span>Kata sandi untuk <b>${user.name}</b> salah!</span>` :
+          `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password Admin default: <code class="font-bold text-teal-700">password123</code></span>`;
         alertEl.classList.remove('hidden');
         return;
       }
