@@ -3320,22 +3320,22 @@
 
       if (!user) {
         alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-        alertEl.innerHTML = `<span>Akun Admin/Scanner <b>"${rawInputId}"</b> tidak ditemukan!</span><br><span class="text-[11px] font-normal text-slate-600">Pastikan NIK atau username yang dimasukkan benar.</span>`;
+        alertEl.innerHTML = `<span>Akun Manajemen / Scanner <b>"${rawInputId}"</b> tidak ditemukan!</span><br><span class="text-[11px] font-normal text-slate-600">Pastikan NIK atau username yang dimasukkan benar.</span>`;
         alertEl.classList.remove('hidden');
         return;
       }
 
-      // HANYA AKUN ADMIN DAN SCANNER ABSEN YANG DIIZINKAN LOGIN KE APLIKASI
+      // HANYA AKUN ADMIN, SUPERVISOR, COORDINATOR, DAN SCANNER ABSEN YANG DIIZINKAN LOGIN KE APLIKASI
       const userRole = (user.role || '').toLowerCase();
-      const isAllowedRole = userRole === 'admin' || userRole === 'scanner' || userRole === 'supervisor' || user.nik?.startsWith('ADM') || user.nik?.startsWith('ABSEN');
+      const isAllowedRole = ['admin', 'supervisor', 'coordinator', 'scanner'].includes(userRole) || user.nik?.startsWith('ADM') || user.nik?.startsWith('ABSEN');
 
       if (!isAllowedRole) {
         alertEl.className = 'mx-6 mt-4 p-4 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center leading-relaxed';
         alertEl.innerHTML = `
           <div class="flex flex-col items-center gap-1">
-            <span class="text-rose-900 font-black text-sm">⛔ AKSES LOGIN HANYA UNTUK ADMIN & AKUN ABSEN</span>
-            <span class="text-[11px] font-medium text-slate-700 mt-1">Data <b>${user.name} (${user.nik})</b> adalah Master Data Karyawan untuk absensi barcode, bukan akun login aplikasi.</span>
-            <span class="text-[11px] font-normal text-slate-600">Karyawan melakukan absen via scan kartu di <b>Akun Scanner Absen</b> (klik tombol cepat di atas).</span>
+            <span class="text-rose-900 font-black text-sm">⛔ AKSES LOGIN HANYA UNTUK MANAJEMEN & AKUN ABSEN</span>
+            <span class="text-[11px] font-medium text-slate-700 mt-1">Data <b>${user.name} (${user.nik})</b> berstatus sebagai Master Data Karyawan (${(user.role || 'Staff').toUpperCase()}).</span>
+            <span class="text-[11px] font-normal text-slate-600">Akses login aplikasi dikhususkan untuk <b>Admin</b>, <b>Supervisor</b>, <b>Coordinator</b>, dan <b>Akun Scanner Absen</b>. Karyawan melakukan absensi via scan kartu barcode di Akun Scanner Absen.</span>
           </div>
         `;
         alertEl.classList.remove('hidden');
@@ -3360,14 +3360,14 @@
       } else {
         isPasswordCorrect = (inputPass === storedPass) || 
                             (inputPass === 'medika123') || 
-                            (inputPass === 'password123' && (user.role === 'admin' || user.role === 'supervisor'));
+                            (inputPass === 'password123');
       }
 
       if (!isPasswordCorrect) {
         alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
         alertEl.innerHTML = isCustomized ? 
           `<span>Kata sandi untuk <b>${user.name}</b> salah!</span>` :
-          `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password Admin default: <code class="font-bold text-teal-700">password123</code></span>`;
+          `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Password default: <code class="font-bold text-teal-700">password123</code> atau <code class="font-bold text-teal-700">medika123</code></span>`;
         alertEl.classList.remove('hidden');
         return;
       }
