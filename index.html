@@ -832,24 +832,42 @@
                 </div>
 
               </div>
+            </div>
 
-              <!-- Riwayat Scan Absensi Hari Ini (Real-Time Live Feed) -->
-              <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-                <div class="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-100">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold shadow-2xs">
-                      <i data-lucide="history" class="w-4 h-4"></i>
-                    </div>
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <h3 class="font-extrabold text-sm text-slate-900">Riwayat Scan Absensi Hari Ini</h3>
-                        <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-800">0 Hadir</span>
-                      </div>
-                      <p class="text-[11px] text-slate-500">Daftar kehadiran yang baru saja berhasil di-scan secara real-time</p>
-                    </div>
+            <!-- Riwayat Scan Absensi Hari Ini (Collapsible Click-to-View) -->
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all duration-200">
+              <!-- Header Bar yang Bisa Diklik untuk Buka / Tutup -->
+              <button type="button" onclick="toggleTodayScanHistory()" class="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 transition select-none bg-white">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold shadow-2xs shrink-0">
+                    <i data-lucide="history" class="w-5 h-5"></i>
                   </div>
-                  <button onclick="renderScannerTodayRecords()" class="text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
-                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-teal-600"></i> Segarkan List
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <h3 class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi Hari Ini</h3>
+                      <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-100 text-teal-800">0 Hadir</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">Klik untuk melihat daftar karyawan yang sudah absen hari ini</p>
+                  </div>
+                </div>
+                
+                <div class="flex items-center gap-2 shrink-0">
+                  <span id="history-toggle-label" class="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 hidden sm:inline-flex items-center gap-1.5">
+                    <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                    <span>Lihat Daftar Absen</span>
+                  </span>
+                  <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
+                    <i id="history-chevron-icon" data-lucide="chevron-down" class="w-4 h-4 transition-transform duration-200"></i>
+                  </div>
+                </div>
+              </button>
+
+              <!-- Panel Daftar Karyawan yang Muncul Saat Diklik -->
+              <div id="today-scan-history-panel" class="hidden border-t border-slate-200 p-4 sm:p-6 bg-slate-50/50 space-y-4">
+                <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200">
+                  <span class="text-xs font-bold text-slate-600">Daftar Presensi Karyawan Hari Ini (<span id="history-wh-name" class="font-black text-teal-800">Gudang MBI</span>)</span>
+                  <button type="button" onclick="renderScannerTodayRecords()" class="text-xs font-bold text-slate-700 hover:text-slate-950 bg-white hover:bg-slate-100 border border-slate-300 px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-teal-600"></i> Segarkan Data
                   </button>
                 </div>
                 <div id="scanner-today-records-list" class="w-full">
@@ -4521,6 +4539,26 @@
       }
     }
 
+    function toggleTodayScanHistory() {
+      const panel = document.getElementById('today-scan-history-panel');
+      const icon = document.getElementById('history-chevron-icon');
+      const label = document.getElementById('history-toggle-label');
+      if (!panel) return;
+
+      const isHidden = panel.classList.contains('hidden');
+      if (isHidden) {
+        panel.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180');
+        if (label) label.innerHTML = '<i data-lucide="chevron-up" class="w-3.5 h-3.5"></i><span>Tutup Daftar</span>';
+        renderScannerTodayRecords();
+      } else {
+        panel.classList.add('hidden');
+        if (icon) icon.classList.remove('rotate-180');
+        if (label) label.innerHTML = '<i data-lucide="list" class="w-3.5 h-3.5"></i><span>Lihat Daftar Absen</span>';
+      }
+      lucide.createIcons();
+    }
+
     function renderScannerTodayRecords() {
       const container = document.getElementById('scanner-today-records-list');
       if (!container) return;
@@ -4534,54 +4572,73 @@
       if (countBadge) {
         countBadge.innerText = `${todayAtt.length} Hadir`;
       }
+      const whLabel = document.getElementById('history-wh-name');
+      if (whLabel) {
+        whLabel.innerText = `Gudang ${targetWh}`;
+      }
 
       if (todayAtt.length === 0) {
-        container.className = 'w-full';
-        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">Belum ada karyawan yang melakukan scan absensi hari ini di Gudang ${targetWh}.</div>`;
+        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada karyawan yang melakukan scan absensi hari ini di Gudang ${targetWh}.</div>`;
         return;
       }
 
-      container.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 max-h-[560px] overflow-y-auto custom-scroll p-0.5';
-      container.innerHTML = '';
-      todayAtt.forEach((a) => {
-        const inTime = a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
-        const outTime = a.checkOutTime ? new Date(a.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '-';
+      let html = `
+        <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-2xs">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100/90 text-slate-700 font-black uppercase text-[11px] border-b border-slate-200">
+              <tr>
+                <th class="p-3.5 w-12 text-center">No</th>
+                <th class="p-3.5 min-w-[200px]">Nama Karyawan</th>
+                <th class="p-3.5 min-w-[110px]">NIK</th>
+                <th class="p-3.5 min-w-[110px]">Departemen</th>
+                <th class="p-3.5 min-w-[120px]">Jam Masuk</th>
+                <th class="p-3.5 min-w-[120px]">Status Masuk</th>
+                <th class="p-3.5 min-w-[140px]">Jam Pulang</th>
+                <th class="p-3.5 min-w-[120px]">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+      `;
+
+      todayAtt.forEach((a, idx) => {
+        const inTime = a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : '-';
+        const outTime = a.checkOutTime ? new Date(a.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : '-';
         const isLate = a.checkInStatus === 'late';
 
-        const div = document.createElement('div');
-        div.className = 'p-3.5 bg-slate-50/90 hover:bg-slate-100/90 border border-slate-200 rounded-2xl flex flex-col justify-between gap-2.5 shadow-2xs hover:shadow-xs transition';
-        div.innerHTML = `
-          <div class="flex items-start justify-between gap-2.5">
-            <div class="flex items-center gap-2.5 min-w-0">
-              <div class="w-9 h-9 rounded-xl bg-teal-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
-                ${(a.userName || 'K').charAt(0).toUpperCase()}
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-3.5 text-center font-bold text-slate-400 font-mono">${idx + 1}</td>
+            <td class="p-3.5 font-extrabold text-slate-900 text-sm">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-teal-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                  ${(a.userName || 'K').charAt(0).toUpperCase()}
+                </div>
+                <span>${a.userName}</span>
               </div>
-              <div class="min-w-0">
-                <span class="font-extrabold text-xs text-slate-900 block leading-tight break-words">${a.userName}</span>
-                <span class="text-[10px] font-mono font-semibold text-slate-500">${a.userNik} • ${(a.dept || 'STAFF').toUpperCase()}</span>
-              </div>
-            </div>
-            <span class="px-2 py-0.5 rounded-md text-[9px] font-extrabold shrink-0 ${isLate ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
-              ${isLate ? 'Terlambat' : 'Tepat Waktu'}
-            </span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/80 text-[11px]">
-            <div class="bg-white/80 p-2 rounded-xl border border-slate-200/60 flex flex-col">
-              <span class="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Masuk</span>
-              <span class="font-mono font-bold text-slate-800 text-xs mt-0.5">${inTime}</span>
-            </div>
-            <div class="bg-white/80 p-2 rounded-xl border border-slate-200/60 flex flex-col">
-              <span class="text-[9px] font-bold uppercase text-slate-400 tracking-wider">Pulang</span>
-              ${a.checkOutTime 
-                ? `<span class="font-mono font-bold text-rose-600 text-xs mt-0.5">${outTime}</span>` 
-                : `<span class="text-[10px] font-semibold text-slate-400 mt-0.5 italic">Belum Pulang</span>`
-              }
-            </div>
-          </div>
+            </td>
+            <td class="p-3.5 font-mono font-bold text-slate-700">${a.userNik}</td>
+            <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px]">${a.dept || 'STAFF'}</td>
+            <td class="p-3.5 font-mono font-bold text-slate-800">${inTime}</td>
+            <td class="p-3.5">
+              <span class="px-2.5 py-1 rounded-lg text-[10px] font-black ${isLate ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+                ${isLate ? 'Terlambat' : 'Tepat Waktu'}
+              </span>
+            </td>
+            <td class="p-3.5 font-mono font-bold ${a.checkOutTime ? 'text-rose-600' : 'text-slate-400 italic'}">
+              ${outTime !== '-' ? outTime : 'Belum Absen Pulang'}
+            </td>
+            <td class="p-3.5 text-slate-500 text-[11px]">${a.notes || '-'}</td>
+          </tr>
         `;
-        container.appendChild(div);
       });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      container.innerHTML = html;
       lucide.createIcons();
     }
 
