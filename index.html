@@ -1056,7 +1056,8 @@
                         <th class="p-3.5 border-r border-slate-200">Jam Masuk</th>
                         <th class="p-3.5 border-r border-slate-200">Jam Pulang</th>
                         <th class="p-3.5 border-r border-slate-200">Durasi Kerja</th>
-                        <th class="p-3.5">Keterangan Status</th>
+                        <th class="p-3.5 border-r border-slate-200">Keterangan Status</th>
+                        <th class="p-3.5 text-right min-w-[80px]">Aksi</th>
                       </tr>
                     </thead>
                     <tbody id="records-table-body" class="divide-y divide-slate-100">
@@ -2401,43 +2402,28 @@
     }
 
     function getWhDB(warehouse, key, defaultVal) {
-      if (key === 'attendance') {
-        const cleanedAtt = sanitizeAttendanceDatabase(warehouse);
-        if (cleanedAtt.length > 0) return cleanedAtt;
-      }
-
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       const data = localStorage.getItem(storageKey);
-      if (!data) {
-        // Coba pulihkan dari backup jika ada
-        const backupData = localStorage.getItem(`wfm_${warehouse.toLowerCase()}_${key}_backup`);
-        if (backupData) {
-          try {
-            const parsed = JSON.parse(backupData);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              const cleaned = key === 'users' ? deduplicateUserList(parsed, warehouse) : parsed;
+      if (data !== null) {
+        try {
+          const parsed = JSON.parse(data);
+          if (key === 'users' && Array.isArray(parsed)) {
+            const cleaned = deduplicateUserList(parsed, warehouse);
+            if (cleaned.length !== parsed.length) {
               localStorage.setItem(storageKey, JSON.stringify(cleaned));
-              return cleaned;
             }
-          } catch(e) {}
-        }
-        const cleanedDefault = key === 'users' && Array.isArray(defaultVal) ? deduplicateUserList(defaultVal, warehouse) : defaultVal;
-        localStorage.setItem(storageKey, JSON.stringify(cleanedDefault));
-        return cleanedDefault;
-      }
-      try {
-        const parsed = JSON.parse(data);
-        if (key === 'users' && Array.isArray(parsed)) {
-          const cleaned = deduplicateUserList(parsed, warehouse);
-          if (cleaned.length !== parsed.length) {
-            localStorage.setItem(storageKey, JSON.stringify(cleaned));
+            return cleaned;
           }
-          return cleaned;
+          return parsed;
+        } catch(e) {
+          return defaultVal !== undefined ? defaultVal : [];
         }
-        return parsed;
-      } catch(e) {
-        return defaultVal;
       }
+
+      // Jika data memang belum pernah ada di storage
+      const cleanedDefault = key === 'users' && Array.isArray(defaultVal) ? deduplicateUserList(defaultVal, warehouse) : (defaultVal !== undefined ? defaultVal : []);
+      localStorage.setItem(storageKey, JSON.stringify(cleanedDefault));
+      return cleanedDefault;
     }
 
     const CLOUD_ENDPOINTS = [
@@ -2686,87 +2672,51 @@
       return Array.from(recordMap.values());
     }
 
-    function applyIncomingDatabase(db, triggerSave = false) {
+    function applyIncomingDatabase(db) {
       if (!db) return;
       let hasChanges = false;
 
       if (db.mbi_users && Array.isArray(db.mbi_users)) {
-        const local = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        const merged = mergeUserArrays(local, db.mbi_users, 'MBI');
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mbi_users', JSON.stringify(merged));
-          hasChanges = true;
-        }
+        const clean = deduplicateUserList(db.mbi_users, 'MBI');
+        localStorage.setItem('wfm_mbi_users', JSON.stringify(clean));
+        hasChanges = true;
       }
       if (db.mai_users && Array.isArray(db.mai_users)) {
-        const local = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        const merged = mergeUserArrays(local, db.mai_users, 'MAI');
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mai_users', JSON.stringify(merged));
-          hasChanges = true;
-        }
+        const clean = deduplicateUserList(db.mai_users, 'MAI');
+        localStorage.setItem('wfm_mai_users', JSON.stringify(clean));
+        hasChanges = true;
       }
-      if (db.mbi_attendance && Array.isArray(db.mbi_attendance)) {
-        const local = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE);
-        const merged = mergeRecordArrays(local, db.mbi_attendance);
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mbi_attendance', JSON.stringify(merged));
-          hasChanges = true;
-        }
+      if (db.mbi_attendance !== undefined && Array.isArray(db.mbi_attendance)) {
+        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
+        hasChanges = true;
       }
-      if (db.mai_attendance && Array.isArray(db.mai_attendance)) {
-        const local = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE);
-        const merged = mergeRecordArrays(local, db.mai_attendance);
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mai_attendance', JSON.stringify(merged));
-          hasChanges = true;
-        }
+      if (db.mai_attendance !== undefined && Array.isArray(db.mai_attendance)) {
+        localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
+        hasChanges = true;
       }
-      if (db.mbi_leaves && Array.isArray(db.mbi_leaves)) {
-        const local = getWhDB('MBI', 'leaves', SEED_MBI_LEAVES);
-        const merged = mergeRecordArrays(local, db.mbi_leaves);
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mbi_leaves', JSON.stringify(merged));
-          hasChanges = true;
-        }
+      if (db.mbi_leaves !== undefined && Array.isArray(db.mbi_leaves)) {
+        localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
+        hasChanges = true;
       }
-      if (db.mai_leaves && Array.isArray(db.mai_leaves)) {
-        const local = getWhDB('MAI', 'leaves', []);
-        const merged = mergeRecordArrays(local, db.mai_leaves);
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mai_leaves', JSON.stringify(merged));
-          hasChanges = true;
-        }
+      if (db.mai_leaves !== undefined && Array.isArray(db.mai_leaves)) {
+        localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
+        hasChanges = true;
       }
-      if (db.mbi_overtime && Array.isArray(db.mbi_overtime)) {
-        const local = getWhDB('MBI', 'overtime', SEED_MBI_OVERTIMES);
-        const merged = mergeRecordArrays(local, db.mbi_overtime);
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mbi_overtime', JSON.stringify(merged));
-          hasChanges = true;
-        }
+      if (db.mbi_overtime !== undefined && Array.isArray(db.mbi_overtime)) {
+        localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
+        hasChanges = true;
       }
-      if (db.mai_overtime && Array.isArray(db.mai_overtime)) {
-        const local = getWhDB('MAI', 'overtime', []);
-        const merged = mergeRecordArrays(local, db.mai_overtime);
-        if (merged.length !== local.length || JSON.stringify(merged) !== JSON.stringify(local)) {
-          localStorage.setItem('wfm_mai_overtime', JSON.stringify(merged));
-          hasChanges = true;
-        }
+      if (db.mai_overtime !== undefined && Array.isArray(db.mai_overtime)) {
+        localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
+        hasChanges = true;
       }
       if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
-        const local = localStorage.getItem('wfm_mbi_coords');
-        if (local !== JSON.stringify(db.mbi_coords)) {
-          localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
-          hasChanges = true;
-        }
+        localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
+        hasChanges = true;
       }
       if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
-        const local = localStorage.getItem('wfm_mai_coords');
-        if (local !== JSON.stringify(db.mai_coords)) {
-          localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
-          hasChanges = true;
-        }
+        localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
+        hasChanges = true;
       }
 
       if (hasChanges) {
@@ -2841,9 +2791,9 @@
           updatedAt: new Date().toISOString()
         };
 
-        // PROTEKSI: JANGAN PERNAH MENIMPA CLOUD DENGAN DATABASE KOSONG / HANYA 1 ADMIN!
-        if (payload.mbi_users.length <= 1 && payload.mai_users.length <= 1 && !forceAlert) {
-          console.warn('Skip auto-saving minimal database to cloud to prevent accidental overwrite.');
+        // Hanya cegah jika payload benar-benar kosong total
+        if ((!payload.mbi_users || payload.mbi_users.length === 0) && (!payload.mai_users || payload.mai_users.length === 0)) {
+          console.warn('Skip saving completely empty database to cloud.');
           return;
         }
 
@@ -3173,7 +3123,7 @@
           const res = await fetch(endpoint + '?t=' + Date.now());
           if (res.ok) {
             const db = await res.json();
-            if (db && (db.mbi_users || db.mai_users || db.mbi_overtime || db.mbi_attendance)) {
+            if (db && typeof db === 'object' && !Array.isArray(db)) {
               applyIncomingDatabase(db);
               loaded = true;
 
@@ -5786,6 +5736,142 @@
       }
     }
 
+    async function deleteSingleEmployee(nik) {
+      if (!nik) return;
+      const targetWh = activeWarehouse || 'MBI';
+      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const user = users.find(u => u.nik === nik);
+      if (!user) return;
+      if (user.role === 'admin' || user.role === 'scanner' || (user.nik && user.nik.startsWith('ADM')) || (user.nik && user.nik.startsWith('ABSEN-'))) {
+        alert('Akun Admin Utama dan Akun Dedicated Scanner tidak boleh dihapus.');
+        return;
+      }
+      if (!confirm(`Hapus permanen karyawan "${user.name}" (${user.nik})?\n\nData karyawan ini akan terhapus permanen dari memori laptop, HP, dan Google Firebase Cloud.`)) {
+        return;
+      }
+
+      const updatedUsers = users.filter(u => u.nik !== nik);
+      setWhDB(targetWh, 'users', updatedUsers);
+      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsers));
+      await saveFullDatabaseToCloud(false);
+
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      refreshAllDashboardData();
+      renderRecordsTable();
+      renderMatrixTable();
+      alert(`✅ Karyawan ${user.name} (${user.nik}) telah berhasil dihapus secara permanen.`);
+    }
+
+    function toggleSelectAllEmployees(isChecked) {
+      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]');
+      checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+      });
+      updateSelectedEmployeesCount();
+    }
+
+    function updateSelectedEmployeesCount() {
+      const selected = document.querySelectorAll('input[name="emp-row-check"]:checked');
+      const badge = document.getElementById('count-selected-emp-badge');
+      const btn = document.getElementById('btn-delete-selected-emp');
+      if (badge) badge.innerText = selected.length;
+      if (btn) {
+        btn.classList.toggle('opacity-50', selected.length === 0);
+        btn.classList.toggle('pointer-events-none', selected.length === 0);
+      }
+    }
+
+    async function deleteSelectedEmployees() {
+      const selectedCbs = document.querySelectorAll('input[name="emp-row-check"]:checked');
+      if (selectedCbs.length === 0) {
+        alert('Pilih minimal 1 karyawan untuk dihapus.');
+        return;
+      }
+
+      const selectedNiks = new Set(Array.from(selectedCbs).map(cb => cb.value));
+      if (!confirm(`Apakah Anda yakin ingin MENGHAPUS ${selectedNiks.size} KARYAWAN TERPILIH secara permanen dari database dan Firebase Cloud?`)) {
+        return;
+      }
+
+      const targetWh = activeWarehouse || 'MBI';
+      let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      users = users.filter(u => {
+        if (u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ADM')) || (u.nik && u.nik.startsWith('ABSEN-'))) return true;
+        return !selectedNiks.has(u.nik);
+      });
+
+      setWhDB(targetWh, 'users', users);
+      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(users));
+      await saveFullDatabaseToCloud(false);
+
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      refreshAllDashboardData();
+      renderRecordsTable();
+      renderMatrixTable();
+      alert(`✅ Berhasil menghapus ${selectedNiks.size} karyawan secara permanen.`);
+    }
+
+    async function deleteAllEmployees() {
+      const targetWh = activeWarehouse || 'MBI';
+      if (!confirm(`⚠️ PERINGATAN HAPUS TOTAL:\nApakah Anda yakin ingin MENGOSONGKAN SELURUH DATA KARYAWAN di Gudang ${targetWh}?\n\n(Hanya Akun Admin dan Akun Dedicated Scanner yang akan dipertahankan). Data di Google Firebase Cloud akan langsung diperbarui bersih.`)) {
+        return;
+      }
+
+      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const preserved = users.filter(u => u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ADM')) || (u.nik && u.nik.startsWith('ABSEN-')));
+      
+      setWhDB(targetWh, 'users', preserved);
+      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(preserved));
+      await saveFullDatabaseToCloud(false);
+
+      renderEmployeeTable();
+      populateDropdownEmployees();
+      renderOvertimeEmployeeGrid();
+      refreshAllDashboardData();
+      renderRecordsTable();
+      renderMatrixTable();
+      alert(`✅ Seluruh data karyawan di Gudang ${targetWh} telah berhasil dikosongkan secara permanen.`);
+    }
+
+    async function deleteAllAttendanceRecords() {
+      const targetWh = activeWarehouse || 'MBI';
+      if (!confirm(`⚠️ PERINGATAN RESET ABSENSI:\nApakah Anda yakin ingin MERESET & MENGHAPUS SEMUA RIWAYAT ABSENSI di Gudang ${targetWh}?\n\nSemua data jam masuk dan jam pulang akan dikosongkan secara permanen baik di laptop, HP staf, maupun di Google Firebase Cloud.`)) {
+        return;
+      }
+
+      // Kosongkan attendance di database lokal
+      setWhDB(targetWh, 'attendance', []);
+      
+      // Kirim langsung payload bersih ke Firebase
+      await saveFullDatabaseToCloud(false);
+
+      renderRecordsTable();
+      renderMatrixTable();
+      renderScannerTodayRecords();
+      refreshAllDashboardData();
+      alert(`✅ Seluruh data riwayat absensi di Gudang ${targetWh} telah berhasil direset dan dihapus secara permanen.`);
+    }
+
+    async function deleteSingleAttendanceRecord(id) {
+      if (!id) return;
+      if (!confirm('Hapus record absensi ini secara permanen dari database dan Cloud?')) return;
+
+      const targetWh = activeWarehouse || 'MBI';
+      let attendances = getWhDB(targetWh, 'attendance', []);
+      attendances = attendances.filter(a => a.id !== id);
+      setWhDB(targetWh, 'attendance', attendances);
+      await saveFullDatabaseToCloud(false);
+
+      renderRecordsTable();
+      renderMatrixTable();
+      renderScannerTodayRecords();
+      refreshAllDashboardData();
+    }
+
     function openChangePasswordSettingModal() {
       switchView('settings');
     }
@@ -6742,7 +6828,12 @@
           <td class="p-3.5 border-r border-slate-100 font-mono text-emerald-700 font-bold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : '<span class="text-amber-600 font-sans font-bold">Belum Pulang</span>'}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800">${durationStr}</td>
-          <td class="p-3.5 flex items-center gap-1.5 flex-wrap">${lateBadge} ${outBadge}</td>
+          <td class="p-3.5 border-r border-slate-100 flex items-center gap-1.5 flex-wrap">${lateBadge} ${outBadge}</td>
+          <td class="p-3.5 text-right">
+            <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+              Hapus
+            </button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
