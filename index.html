@@ -2148,6 +2148,65 @@
         <!-- Rendered by JS -->
       </div>
     </div>
+  <!-- ========================================================= -->
+  <!-- FLOATING PROFESSIONAL ATTENDANCE NOTIFICATION (AUTO 5S) -->
+  <!-- ========================================================= -->
+  <div id="attendance-success-toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-[94vw] max-w-md transition-all duration-300 transform scale-95 opacity-0 pointer-events-auto">
+    <div id="toast-card-container" class="bg-white/98 backdrop-blur-md rounded-3xl border-2 border-emerald-500 shadow-2xl shadow-emerald-950/25 overflow-hidden">
+      <!-- Header with Status Badge & Close Button -->
+      <div id="toast-header-bg" class="p-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div id="toast-header-icon-box" class="w-8 h-8 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0 shadow-xs">
+            <i id="toast-header-icon" data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <h4 id="toast-title" class="font-black text-sm tracking-tight leading-tight">Absen Masuk Berhasil!</h4>
+            <p id="toast-subtitle" class="text-[10px] text-emerald-100 font-medium">Data absensi telah otomatis tersimpan ke Cloud</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span id="toast-wh-badge" class="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-white/20 text-white border border-white/30">MBI</span>
+          <button type="button" onclick="hideProfessionalAttendanceToast()" class="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Body: Employee Details -->
+      <div class="p-4 space-y-3">
+        <div class="flex items-center gap-3.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80">
+          <div id="toast-avatar" class="w-12 h-12 rounded-2xl bg-slate-900 text-white font-black text-base flex items-center justify-center shrink-0 shadow-xs">
+            K
+          </div>
+          <div class="min-w-0 flex-1">
+            <h3 id="toast-emp-name" class="font-extrabold text-sm text-slate-900 leading-snug truncate">Nama Karyawan</h3>
+            <p id="toast-emp-nik-dept" class="text-xs text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+              <span class="font-bold text-teal-700">MBI26-001</span> • <span>INBOUND</span>
+            </p>
+          </div>
+          <span id="toast-type-pill" class="px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0">
+            MASUK
+          </span>
+        </div>
+
+        <!-- Time & Status Badges -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="p-2.5 rounded-xl bg-slate-100/70 border border-slate-200 flex items-center justify-between">
+            <span class="text-slate-500 text-[11px] font-medium">Waktu Absen:</span>
+            <span id="toast-time" class="font-mono font-bold text-slate-800">08:15:30 WIB</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-slate-100/70 border border-slate-200 flex items-center justify-between">
+            <span class="text-slate-500 text-[11px] font-medium">Status Jam:</span>
+            <span id="toast-status-badge" class="font-bold text-emerald-700">Tepat Waktu</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5-Second Animated Progress Bar -->
+      <div class="bg-slate-100 h-1.5 w-full overflow-hidden">
+        <div id="toast-progress-bar" class="h-full bg-emerald-500 transition-all duration-[5000ms] ease-linear w-full"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ========================================================= -->
@@ -3870,8 +3929,12 @@
       } catch (e) {}
 
       setTimeout(() => {
-        speakNotification('Sukses, terima kasih');
-      }, 300);
+        const cleanName = (userName || '').split(' ')[0] || '';
+        const speechMsg = type === 'check_in' 
+          ? `Absen masuk sukses, ${cleanName || 'terima kasih'}` 
+          : `Absen pulang sukses, ${cleanName || 'terima kasih'}`;
+        speakNotification(speechMsg);
+      }, 250);
     }
 
     function playAttendanceErrorSound(reason = '') {
@@ -3898,7 +3961,7 @@
       } catch (e) {}
 
       setTimeout(() => {
-        speakNotification('Gagal, coba lagi');
+        speakNotification('Gagal, ' + (reason || 'coba lagi'));
       }, 250);
     }
 
@@ -3929,6 +3992,128 @@
       }, 200);
     }
 
+    // =========================================================
+    // PROFESSIONAL FLOATING TOAST NOTIFICATION (AUTO 5 DETIK)
+    // =========================================================
+    let attendanceToastTimeout = null;
+
+    function showProfessionalAttendanceToast(data) {
+      const toast = document.getElementById('attendance-success-toast');
+      if (!toast) return;
+
+      const {
+        isError = false,
+        isWarning = false,
+        title = 'Absensi Berhasil!',
+        subtitle = 'Data absensi telah otomatis tersimpan ke Cloud',
+        name = '-',
+        nik = '-',
+        dept = 'STAFF',
+        type = 'check_in',
+        warehouse = activeWarehouse || 'MBI',
+        time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB',
+        statusText = 'Tepat Waktu',
+        isLate = false
+      } = data;
+
+      const cardContainer = document.getElementById('toast-card-container');
+      const headerBg = document.getElementById('toast-header-bg');
+      const headerIconBox = document.getElementById('toast-header-icon-box');
+      const titleEl = document.getElementById('toast-title');
+      const subtitleEl = document.getElementById('toast-subtitle');
+      const whBadgeEl = document.getElementById('toast-wh-badge');
+      const avatarEl = document.getElementById('toast-avatar');
+      const empNameEl = document.getElementById('toast-emp-name');
+      const empNikDeptEl = document.getElementById('toast-emp-nik-dept');
+      const typePillEl = document.getElementById('toast-type-pill');
+      const timeEl = document.getElementById('toast-time');
+      const statusBadgeEl = document.getElementById('toast-status-badge');
+      const progressBar = document.getElementById('toast-progress-bar');
+
+      titleEl.innerText = title;
+      subtitleEl.innerText = subtitle;
+      whBadgeEl.innerText = (warehouse || 'MBI').replace('Gudang ', '');
+      empNameEl.innerText = name;
+      empNikDeptEl.innerHTML = nik !== '-' ? `<span class="font-bold text-teal-700">${nik}</span> • <span>${(dept || 'STAFF').toUpperCase()}</span>` : `<span>${(dept || 'STAFF').toUpperCase()}</span>`;
+      avatarEl.innerText = (name || 'K').charAt(0).toUpperCase();
+      timeEl.innerText = time;
+
+      if (isError) {
+        cardContainer.className = 'bg-white/98 backdrop-blur-md rounded-3xl border-2 border-rose-500 shadow-2xl shadow-rose-950/25 overflow-hidden';
+        headerBg.className = 'p-4 bg-gradient-to-r from-rose-600 to-rose-700 text-white flex items-center justify-between';
+        headerIconBox.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-white"></i>';
+        typePillEl.innerText = 'GAGAL';
+        typePillEl.className = 'px-2.5 py-1 rounded-xl text-xs font-black bg-rose-100 text-rose-900 border border-rose-300 shrink-0';
+        statusBadgeEl.innerText = statusText;
+        statusBadgeEl.className = 'font-bold text-rose-700';
+        if (progressBar) progressBar.className = 'h-full bg-rose-500 w-full';
+      } else if (isWarning) {
+        cardContainer.className = 'bg-white/98 backdrop-blur-md rounded-3xl border-2 border-amber-500 shadow-2xl shadow-amber-950/25 overflow-hidden';
+        headerBg.className = 'p-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex items-center justify-between';
+        headerIconBox.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5 text-white"></i>';
+        typePillEl.innerText = 'PERHATIAN';
+        typePillEl.className = 'px-2.5 py-1 rounded-xl text-xs font-black bg-amber-100 text-amber-900 border border-amber-300 shrink-0';
+        statusBadgeEl.innerText = statusText;
+        statusBadgeEl.className = 'font-bold text-amber-700';
+        if (progressBar) progressBar.className = 'h-full bg-amber-500 w-full';
+      } else {
+        cardContainer.className = 'bg-white/98 backdrop-blur-md rounded-3xl border-2 border-emerald-500 shadow-2xl shadow-emerald-950/25 overflow-hidden';
+        headerBg.className = type === 'check_in' 
+          ? 'p-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between'
+          : 'p-4 bg-gradient-to-r from-sky-600 to-blue-700 text-white flex items-center justify-between';
+        headerIconBox.innerHTML = '<i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>';
+        typePillEl.innerText = type === 'check_in' ? 'MASUK' : 'PULANG';
+        typePillEl.className = type === 'check_in' 
+          ? 'px-2.5 py-1 rounded-xl text-xs font-black bg-emerald-100 text-emerald-900 border border-emerald-300 shrink-0'
+          : 'px-2.5 py-1 rounded-xl text-xs font-black bg-sky-100 text-sky-900 border border-sky-300 shrink-0';
+        
+        if (isLate) {
+          statusBadgeEl.innerText = 'Terlambat';
+          statusBadgeEl.className = 'font-bold text-amber-700';
+        } else {
+          statusBadgeEl.innerText = statusText;
+          statusBadgeEl.className = 'font-bold text-emerald-700';
+        }
+        if (progressBar) progressBar.className = type === 'check_in' ? 'h-full bg-emerald-500 w-full' : 'h-full bg-sky-500 w-full';
+      }
+
+      // Reset timer animation progress bar (5 Detik)
+      if (progressBar) {
+        progressBar.style.transition = 'none';
+        progressBar.style.width = '100%';
+        setTimeout(() => {
+          progressBar.style.transition = 'width 5s linear';
+          progressBar.style.width = '0%';
+        }, 40);
+      }
+
+      // Tampilkan toast
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', 'scale-95');
+        toast.classList.add('opacity-100', 'scale-100');
+      }, 10);
+
+      lucide.createIcons();
+
+      // Jeda 5 detik lalu otomatis hilang
+      if (attendanceToastTimeout) clearTimeout(attendanceToastTimeout);
+      attendanceToastTimeout = setTimeout(() => {
+        hideProfessionalAttendanceToast();
+      }, 5000);
+    }
+
+    function hideProfessionalAttendanceToast() {
+      const toast = document.getElementById('attendance-success-toast');
+      if (!toast) return;
+      toast.classList.remove('opacity-100', 'scale-100');
+      toast.classList.add('opacity-0', 'scale-95');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 300);
+      if (attendanceToastTimeout) clearTimeout(attendanceToastTimeout);
+    }
+
     // Variabel Pengatur Sensitivitas & Anti Double-Scan
     let isScanProcessing = false;
     let lastScannedCode = '';
@@ -3940,7 +4125,7 @@
 
       const now = Date.now();
 
-      // PROTEKSI 1: Jika sistem sedang memproses hasil scan (audio/feedback sedang berjalan) -> Abaikan scan lanjutan
+      // PROTEKSI 1: Jika sistem sedang memproses hasil scan -> Abaikan scan lanjutan
       if (isScanProcessing) {
         return;
       }
@@ -3950,13 +4135,13 @@
         return;
       }
 
-      // PROTEKSI 3: Jeda Minimal Antar Scan Berbeda (2 Detik) agar teratur
-      if (now - lastScannedTime < 2000) {
+      // PROTEKSI 3: Jeda Minimal Antar Scan Berbeda (1.5 Detik) agar teratur
+      if (now - lastScannedTime < 1500) {
         return;
       }
 
       const alertEl = document.getElementById('att-alert');
-      alertEl.classList.remove('hidden');
+      if (alertEl) alertEl.classList.add('hidden');
 
       const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || currentUser.nik === 'ADM001');
 
@@ -3971,9 +4156,13 @@
 
         const gpsCheck = await verifyGPSLocation();
         if (!gpsCheck.valid) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
-          alertEl.innerText = gpsCheck.error || 'Gagal, coba lagi (Anda berada di luar radius 30m gudang). Wajib aktifkan GPS HP!';
-          playAttendanceErrorSound();
+          showProfessionalAttendanceToast({
+            isError: true,
+            title: 'Di Luar Radius Gudang',
+            subtitle: gpsCheck.error || 'Anda berada di luar batas 30 meter dari titik lokasi gudang.',
+            statusText: 'GPS Tidak Valid'
+          });
+          playAttendanceErrorSound('Di luar lokasi');
           if (statusMsg) statusMsg.innerText = 'Verifikasi GPS gagal (di luar radius 30m).';
           setTimeout(() => { isScanProcessing = false; }, 3000);
           return;
@@ -4035,13 +4224,17 @@
         matchedUser = allUsers.find(u => u.id === rawCode);
       }
 
-      const alertEl = document.getElementById('att-alert');
-      alertEl.classList.remove('hidden');
-
       if (!matchedUser) {
-        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
-        alertEl.innerText = `Gagal, coba lagi (Barcode ID "${rawCode}" tidak terdaftar di database karyawan)`;
-        playAttendanceErrorSound();
+        showProfessionalAttendanceToast({
+          isError: true,
+          title: 'Kartu Tidak Terdaftar',
+          subtitle: `Barcode ID "${rawCode}" tidak ditemukan di database karyawan.`,
+          name: 'ID: ' + rawCode,
+          nik: '-',
+          dept: '-',
+          statusText: 'Tidak Ditemukan'
+        });
+        playAttendanceErrorSound('Kartu tidak terdaftar');
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
@@ -4058,16 +4251,27 @@
         )
       );
 
+      const now = new Date();
+      const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center shadow-xs';
-          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] sudah absen masuk)`;
-          playAttendanceErrorSound();
+          showProfessionalAttendanceToast({
+            isWarning: true,
+            title: 'Sudah Absen Masuk',
+            subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen masuk hari ini.`,
+            name: matchedUser.name,
+            nik: matchedUser.nik,
+            dept: matchedUser.dept || 'Staff',
+            warehouse: targetWh,
+            time: existing.checkInTime ? new Date(existing.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : nowFormatted,
+            statusText: 'Sudah Hadir'
+          });
+          playAttendanceErrorSound('Sudah absen masuk');
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
 
-        const now = new Date();
         const minute = now.getMinutes();
         const isLate = minute >= 1 && minute <= 30;
 
@@ -4085,41 +4289,89 @@
           notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
         });
 
+        // 1. Simpan langsung ke database lokal & background cloud (tanpa pop up alert blocking)
         setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(true);
-        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
-        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name} - ${matchedUser.nik})`;
+        saveFullDatabaseToCloud(false);
+
+        // 2. Munculkan notifikasi mengambang profesional 5 detik
+        showProfessionalAttendanceToast({
+          type: 'check_in',
+          title: 'Absen Masuk Berhasil!',
+          subtitle: `Presensi ${matchedUser.name} sukses tercatat`,
+          name: matchedUser.name,
+          nik: matchedUser.nik,
+          dept: matchedUser.dept || 'Staff',
+          warehouse: targetWh,
+          time: nowFormatted,
+          statusText: isLate ? 'Terlambat' : 'Tepat Waktu',
+          isLate: isLate
+        });
+
+        // 3. Mainkan audio chime & sebutkan nama karyawan
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
-          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] belum absen masuk)`;
-          playAttendanceErrorSound();
+          showProfessionalAttendanceToast({
+            isError: true,
+            title: 'Belum Absen Masuk',
+            subtitle: `${matchedUser.name} (${matchedUser.nik}) belum tercatat absen masuk hari ini.`,
+            name: matchedUser.name,
+            nik: matchedUser.nik,
+            dept: matchedUser.dept || 'Staff',
+            warehouse: targetWh,
+            time: nowFormatted,
+            statusText: 'Belum Masuk'
+          });
+          playAttendanceErrorSound('Belum absen masuk');
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
         if (existing.checkOutTime) {
-          alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 text-center shadow-xs';
-          alertEl.innerText = `Gagal, coba lagi (${matchedUser.name} [${matchedUser.nik}] sudah absen keluar)`;
-          playAttendanceErrorSound();
+          showProfessionalAttendanceToast({
+            isWarning: true,
+            title: 'Sudah Absen Pulang',
+            subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen pulang sebelumnya.`,
+            name: matchedUser.name,
+            nik: matchedUser.nik,
+            dept: matchedUser.dept || 'Staff',
+            warehouse: targetWh,
+            time: new Date(existing.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB',
+            statusText: 'Sudah Pulang'
+          });
+          playAttendanceErrorSound('Sudah absen pulang');
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
 
-        existing.checkOutTime = new Date().toISOString();
+        existing.checkOutTime = now.toISOString();
         existing.userNik = matchedUser.nik;
         existing.userName = matchedUser.name;
         existing.userId = matchedUser.id;
         existing.dept = matchedUser.dept;
 
+        // 1. Simpan langsung ke database lokal & background cloud (tanpa pop up alert blocking)
         setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(true);
-        alertEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 text-center shadow-xs';
-        alertEl.innerText = `Sukses, terima kasih! (${matchedUser.name} - ${matchedUser.nik})`;
+        saveFullDatabaseToCloud(false);
+
+        // 2. Munculkan notifikasi mengambang profesional 5 detik
+        showProfessionalAttendanceToast({
+          type: 'check_out',
+          title: 'Absen Pulang Berhasil!',
+          subtitle: `Presensi pulang ${matchedUser.name} sukses tercatat`,
+          name: matchedUser.name,
+          nik: matchedUser.nik,
+          dept: matchedUser.dept || 'Staff',
+          warehouse: targetWh,
+          time: nowFormatted,
+          statusText: 'Shift Selesai',
+          isLate: false
+        });
+
+        // 3. Mainkan audio chime & sebutkan nama karyawan
         playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
-      // 1. Tampilkan kartu bukti sukses di Standby Wrapper & Gun Wrapper
+      // Tampilkan kartu bukti sukses di Standby Wrapper & Gun Wrapper
       const card = document.getElementById('last-scan-success-card');
       const nameEl = document.getElementById('last-scan-name');
       const nikDeptEl = document.getElementById('last-scan-nik-dept');
@@ -4136,8 +4388,6 @@
       const gunNikDeptEl = document.getElementById('last-gun-nik-dept');
       const gunTypeBadgeEl = document.getElementById('last-gun-type-badge');
       const gunTimeEl = document.getElementById('last-gun-time');
-
-      const nowFormatted = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
 
       if (nameEl) nameEl.innerText = matchedUser.name;
       if (nikDeptEl) nikDeptEl.innerText = `${matchedUser.nik} • ${(matchedUser.dept || 'STAFF').toUpperCase()}`;
@@ -4161,9 +4411,10 @@
       if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
       if (gunCard) gunCard.classList.remove('hidden');
 
-      // 2. MATIKAN & TUTUP KAMERA OTOMATIS
+      // Tutup kamera scanner otomatis setelah terbaca
       stopScanner();
 
+      // Render update data seketika
       renderScannerTodayRecords();
       refreshAllDashboardData();
       renderRecordsTable();
@@ -4172,7 +4423,7 @@
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-      }, 1500);
+      }, 1200);
     }
 
     // =========================================================
@@ -4226,14 +4477,13 @@
 
         // PROTEKSI: Tolak pengetikan manual lambat di HP karyawan
         if (!isHardwareGun && !isAdmin) {
-          const alertEl = document.getElementById('att-alert');
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200 text-center shadow-xs';
-          alertEl.innerHTML = `
-            <span>⚠️ <b>Pengetikan Manual Ditolak!</b></span><br>
-            <span class="text-[11px] font-normal text-slate-700">Untuk menghindari manipulasi absensi, pengetikan manual di HP tidak diizinkan. Silakan gunakan <b>Alat Scanner Hardware External</b> resmi atau beralih ke tab <b>"Kamera HP"</b>.</span>
-          `;
-          alertEl.classList.remove('hidden');
-          playAttendanceErrorSound();
+          showProfessionalAttendanceToast({
+            isWarning: true,
+            title: 'Pengetikan Manual Ditolak',
+            subtitle: 'Wajib gunakan Alat Scanner Hardware External atau beralih ke tab Kamera HP.',
+            statusText: 'Proteksi Aktif'
+          });
+          playAttendanceErrorSound('Pengetikan manual ditolak');
           e.target.value = '';
           externalBarcodeKeystrokes = [];
           return;
@@ -4368,7 +4618,13 @@
           processScannedText(decodedText);
         })
         .catch(err => {
-          alert('Barcode tidak terdeteksi pada gambar: ' + err);
+          showProfessionalAttendanceToast({
+            isError: true,
+            title: 'Gambar Tidak Terbaca',
+            subtitle: 'Barcode tidak terdeteksi pada file gambar yang diupload. Coba foto lebih terang & jelas.',
+            statusText: 'Gagal Membaca File'
+          });
+          playAttendanceErrorSound('File tidak terbaca');
         });
       e.target.value = '';
     }
