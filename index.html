@@ -2489,56 +2489,56 @@
     const FIREBASE_ENDPOINT = 'https://wfm-medika-default-rtdb.firebaseio.com/wfm_database.json';
     const CLOUD_ENDPOINTS = [FIREBASE_ENDPOINT];
 
-    function applyIncomingDatabase(db) {
-      if (!db || typeof db !== 'object') return;
-      let hasChanges = false;
+    function normalizeFirebaseArray(val) {
+      if (!val) return [];
+      if (Array.isArray(val)) return val.filter(Boolean);
+      if (typeof val === 'object') return Object.values(val).filter(Boolean);
+      return [];
+    }
 
-      if (db.mbi_users !== undefined && Array.isArray(db.mbi_users)) {
-        const clean = deduplicateUserList(db.mbi_users, 'MBI');
-        localStorage.setItem('wfm_mbi_users', JSON.stringify(clean));
-        hasChanges = true;
-      }
-      if (db.mai_users !== undefined && Array.isArray(db.mai_users)) {
-        const clean = deduplicateUserList(db.mai_users, 'MAI');
-        localStorage.setItem('wfm_mai_users', JSON.stringify(clean));
-        hasChanges = true;
-      }
-      if (db.mbi_attendance !== undefined && Array.isArray(db.mbi_attendance)) {
-        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(db.mbi_attendance));
-        hasChanges = true;
-      }
-      if (db.mai_attendance !== undefined && Array.isArray(db.mai_attendance)) {
-        localStorage.setItem('wfm_mai_attendance', JSON.stringify(db.mai_attendance));
-        hasChanges = true;
-      }
-      if (db.mbi_leaves !== undefined && Array.isArray(db.mbi_leaves)) {
-        localStorage.setItem('wfm_mbi_leaves', JSON.stringify(db.mbi_leaves));
-        hasChanges = true;
-      }
-      if (db.mai_leaves !== undefined && Array.isArray(db.mai_leaves)) {
-        localStorage.setItem('wfm_mai_leaves', JSON.stringify(db.mai_leaves));
-        hasChanges = true;
-      }
-      if (db.mbi_overtime !== undefined && Array.isArray(db.mbi_overtime)) {
-        localStorage.setItem('wfm_mbi_overtime', JSON.stringify(db.mbi_overtime));
-        hasChanges = true;
-      }
-      if (db.mai_overtime !== undefined && Array.isArray(db.mai_overtime)) {
-        localStorage.setItem('wfm_mai_overtime', JSON.stringify(db.mai_overtime));
-        hasChanges = true;
-      }
+    function applyIncomingDatabase(db) {
+      if (!db || typeof db !== 'object' || Array.isArray(db)) return;
+
+      // 1. Karyawan MBI & MAI (Data yang dihapus Admin langsung terhapus di memori tanpa perlu clear cache)
+      const rawMbiUsers = normalizeFirebaseArray(db.mbi_users);
+      const cleanMbiUsers = rawMbiUsers.length > 0 ? deduplicateUserList(rawMbiUsers, 'MBI') : SEED_MBI_USERS;
+      localStorage.setItem('wfm_mbi_users', JSON.stringify(cleanMbiUsers));
+
+      const rawMaiUsers = normalizeFirebaseArray(db.mai_users);
+      const cleanMaiUsers = rawMaiUsers.length > 0 ? deduplicateUserList(rawMaiUsers, 'MAI') : SEED_MAI_USERS;
+      localStorage.setItem('wfm_mai_users', JSON.stringify(cleanMaiUsers));
+
+      // 2. Riwayat Absensi (Jika Admin reset/hapus semua absen, data di HP/Laptop otomatis langsung kosong [])
+      const mbiAtt = normalizeFirebaseArray(db.mbi_attendance);
+      localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mbiAtt));
+
+      const maiAtt = normalizeFirebaseArray(db.mai_attendance);
+      localStorage.setItem('wfm_mai_attendance', JSON.stringify(maiAtt));
+
+      // 3. Data Lemburan
+      const mbiOt = normalizeFirebaseArray(db.mbi_overtime);
+      localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mbiOt));
+
+      const maiOt = normalizeFirebaseArray(db.mai_overtime);
+      localStorage.setItem('wfm_mai_overtime', JSON.stringify(maiOt));
+
+      // 4. Data Izin & Cuti
+      const mbiLeaves = normalizeFirebaseArray(db.mbi_leaves);
+      localStorage.setItem('wfm_mbi_leaves', JSON.stringify(mbiLeaves));
+
+      const maiLeaves = normalizeFirebaseArray(db.mai_leaves);
+      localStorage.setItem('wfm_mai_leaves', JSON.stringify(maiLeaves));
+
+      // 5. Titik Koordinat Gudang
       if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
         localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
-        hasChanges = true;
       }
       if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
         localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
-        hasChanges = true;
       }
 
-      if (hasChanges) {
-        renderAllLiveScreens();
-      }
+      // Langsung render ulang seluruh layar tampilan seketika!
+      renderAllLiveScreens();
     }
 
     let renderScreensTimeout = null;
@@ -2624,6 +2624,11 @@
           });
           if (res.ok) {
             success = true;
+            try {
+              if (typeof BroadcastChannel !== 'undefined') {
+                new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
+              }
+            } catch (e) {}
           }
         } catch (e) {
           console.warn('Firebase upload error:', e);
@@ -3109,11 +3114,11 @@
 
       renderLocationQRCode();
 
-      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (24/7 Realtime)
+      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 2 Detik)
       fetchFullDatabaseFromCloud();
       setInterval(() => {
         fetchFullDatabaseFromCloud();
-      }, 4000);
+      }, 2000);
 
       window.addEventListener('focus', () => {
         fetchFullDatabaseFromCloud();
@@ -3123,6 +3128,18 @@
           fetchFullDatabaseFromCloud();
         }
       });
+      window.addEventListener('storage', (e) => {
+        if (e.key && e.key.startsWith('wfm_')) {
+          renderAllLiveScreens();
+        }
+      });
+
+      if (typeof BroadcastChannel !== 'undefined') {
+        const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
+        syncBc.onmessage = () => {
+          fetchFullDatabaseFromCloud();
+        };
+      }
 
       initSidebarState();
 
@@ -5946,104 +5963,6 @@
         closeChangePasswordSettingModal();
         alert('Kata sandi akun Anda berhasil diubah!\nUntuk login berikutnya, wajib gunakan kata sandi baru ini.');
       }
-    }
-
-    function toggleSelectAllEmployees(checked) {
-      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]');
-      checkboxes.forEach(cb => cb.checked = checked);
-      updateSelectedEmployeesCount();
-    }
-
-    function updateSelectedEmployeesCount() {
-      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]:checked');
-      const count = checkboxes.length;
-      const countBadge = document.getElementById('count-selected-emp-badge');
-      if (countBadge) countBadge.innerText = count;
-
-      const deleteBtn = document.getElementById('btn-delete-selected-emp');
-      if (deleteBtn) {
-        if (count > 0) {
-          deleteBtn.classList.remove('opacity-50', 'pointer-events-none');
-        } else {
-          deleteBtn.classList.add('opacity-50');
-        }
-      }
-    }
-
-    function deleteSelectedEmployees() {
-      const checkboxes = document.querySelectorAll('input[name="emp-row-check"]:checked');
-      if (checkboxes.length === 0) {
-        alert('Silakan centang (ceklis) minimal 1 karyawan yang ingin dihapus.');
-        return;
-      }
-
-      const selectedNiks = Array.from(checkboxes).map(cb => cb.value);
-      if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedNiks.length} data karyawan yang diceklis dari Gudang ${activeWarehouse}?`)) {
-        return;
-      }
-
-      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      users = users.filter(u => !selectedNiks.includes(u.nik));
-
-      setWhDB(activeWarehouse, 'users', users);
-      renderEmployeeTable();
-      populateDropdownEmployees();
-      renderOvertimeEmployeeGrid();
-      refreshAllDashboardData();
-      renderAccountLookupList();
-
-      alert(`Berhasil menghapus ${selectedNiks.length} karyawan dari Gudang ${activeWarehouse}!`);
-    }
-
-    function deleteAllEmployees() {
-      if (!confirm(`PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA KARYAWAN di Gudang ${activeWarehouse}?\n\n(Tindakan ini akan mengosongkan seluruh data karyawan agar Anda bisa upload Excel baru yang bersih).`)) {
-        return;
-      }
-
-      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      
-      // Sisakan akun admin aktif agar tidak terkunci
-      const adminUser = users.find(u => u.role === 'admin' || u.role === 'supervisor') || (activeWarehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
-      users = adminUser ? [adminUser] : [];
-
-      setWhDB(activeWarehouse, 'users', users);
-      renderEmployeeTable();
-      populateDropdownEmployees();
-      renderOvertimeEmployeeGrid();
-      refreshAllDashboardData();
-      renderAccountLookupList();
-
-      alert(`Semua data karyawan di Gudang ${activeWarehouse} berhasil dikosongkan!\nSekarang Anda dapat meng-upload file Excel yang baru.`);
-    }
-
-    function deleteAllAttendanceRecords() {
-      if (!confirm(`PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA DATA RIWAYAT ABSENSI di Gudang ${activeWarehouse}?\n\n(Tindakan ini akan mengosongkan seluruh riwayat absensi masuk & keluar agar Anda bisa melakukan pengujian scan dari awal).`)) {
-        return;
-      }
-
-      setWhDB(activeWarehouse, 'attendance', []);
-      saveFullDatabaseToCloud(true);
-      renderRecordsTable();
-      renderMatrixTable();
-      refreshAllDashboardData();
-
-      alert(`✅ Semua riwayat data absensi di Gudang ${activeWarehouse} berhasil dihapus/dikosongkan!\nSekarang tabel Record Absen & Matriks telah bersih untuk pengujian.`);
-    }
-
-    function deleteSingleEmployee(nik) {
-      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const target = users.find(u => u.nik === nik);
-      if (!target) return;
-
-      if (!confirm(`Hapus data karyawan ${target.name} (${target.nik})?`)) return;
-
-      users = users.filter(u => u.nik !== nik);
-      setWhDB(activeWarehouse, 'users', users);
-      renderEmployeeTable();
-      populateDropdownEmployees();
-      renderOvertimeEmployeeGrid();
-      refreshAllDashboardData();
-      renderAccountLookupList();
     }
 
     function openAddEmployeeModal() {
