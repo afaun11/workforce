@@ -466,9 +466,9 @@
           <!-- 3. Sistem & Pengaturan (Dikelompokkan Paling Bawah) -->
           <div id="system-settings-section" class="space-y-1 pt-2 border-t border-slate-800">
             <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-            <button onclick="switchView('github')" id="nav-github" title="Database & Cadangan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
-              <i data-lucide="database" class="w-4 h-4 flex-shrink-0"></i>
-              <span class="sidebar-text">Database & Cadangan</span>
+            <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <i data-lucide="cloud" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Database Cloud 24/7</span>
             </button>
             <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
               <i data-lucide="user-cog" class="w-4 h-4 flex-shrink-0"></i>
@@ -1643,71 +1643,118 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 8: DATABASE GITHUB & SYNC CADANGAN -->
+          <!-- VIEW 8: DATABASE CLOUD FIREBASE 24/7 & CADANGAN -->
           <!-- ========================================================= -->
           <div id="view-github" class="view-panel hidden space-y-6">
-            <div>
-              <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                Database Terpusat & Sinkronisasi
-              </h2>
-              <p class="text-xs text-slate-500 mt-0.5">Sinkronkan data antar laptop & HP melalui GitHub atau Backup JSON</p>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <i data-lucide="cloud" class="w-6 h-6 text-teal-600"></i>
+                  Database Cloud Firebase (Online 24 Jam Nonstop)
+                </h2>
+                <p class="text-xs text-slate-500 mt-0.5">Sistem database terpusat di Google Cloud Server. Sistem absensi di HP tetap berjalan normal meskipun laptop Admin mati.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Firebase Backend: Aktif
+                </span>
+              </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- Form GitHub Cloud Repo -->
-              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
-                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-800 text-xs">
-                  <p class="font-bold">Status GitHub: <span id="github-mode-status" class="text-teal-700">Local Storage (Aktif)</span></p>
-                  <p class="mt-0.5 text-slate-500">Data MBI & MAI tersimpan di repositori GitHub.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              <!-- CARD 1: PUSAT KONTROL FIREBASE REALTIME DATABASE (UTAMA) -->
+              <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
+                <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-xs">
+                      <i data-lucide="database" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-extrabold text-sm text-slate-900">Google Firebase Realtime Database</h3>
+                      <p class="text-[11px] text-slate-500 font-mono">https://wfm-medika-default-rtdb.firebaseio.com/</p>
+                    </div>
+                  </div>
+                  <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-teal-100 text-teal-900 uppercase tracking-wider">Cloud 24/7</span>
                 </div>
 
-                <form onsubmit="saveGitHubConfig(event)" class="space-y-3">
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Personal Access Token (PAT)</label>
-                    <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxx" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                <!-- Info Box Fitur Otomatis -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                  <div class="flex items-center gap-2 text-slate-900 font-bold">
+                    <i data-lucide="check-circle-2" class="w-4 h-4 text-teal-600"></i>
+                    <span>Otomatis Tersinkronisasi ke Seluruh HP & Laptop</span>
                   </div>
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">GitHub Username / Owner</label>
-                    <input type="text" id="gh-owner" placeholder="username_anda" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                  </div>
-                  <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Repo Database</label>
-                    <input type="text" id="gh-repo" placeholder="wfm-medika-db" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                  </div>
-
-                  <div class="pt-2 flex flex-col gap-2">
-                    <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs">
-                      Simpan Konfigurasi GitHub
-                    </button>
-                    <button type="button" onclick="syncAllToGitHub()" class="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs">
-                      Sinkronkan Semua Data ke GitHub
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              <!-- Backup / Transfer JSON Antar Perangkat -->
-              <div class="bg-white p-6 rounded-3xl border border-slate-200 space-y-4 flex flex-col justify-between shadow-xs">
-                <div>
-                  <h3 class="font-extrabold text-sm text-slate-900 mb-1">
-                    Transfer Database Antar Perangkat
-                  </h3>
-                  <p class="text-xs text-slate-500">Ekspor seluruh data dari laptop dan impor langsung di HP agar semua data karyawan & presensi identik seketika.</p>
+                  <p class="text-[11px] text-slate-600 leading-relaxed pl-6">
+                    Setiap ada karyawan yang melakukan scan absensi di HP, atau Admin menambah karyawan baru, data akan <b>otomatis masuk seketika ke Firebase</b> tanpa perlu tombol manual lagi.
+                  </p>
                 </div>
 
-                <div class="space-y-3 my-auto">
-                  <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs">
-                    Ekspor Cadangan Database (.json)
+                <!-- Action Buttons Khusus & Rapih -->
+                <div class="space-y-3 pt-1">
+                  <button type="button" onclick="initializeAndUploadToFirebase()" class="w-full py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-sm">
+                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                    <span>🚀 Inisialisasi & Unggah Database Master ke Firebase Cloud</span>
                   </button>
 
-                  <label class="cursor-pointer w-full py-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-extrabold rounded-xl transition shadow-xs text-center block">
-                    Impor Cadangan Database (.json)
-                    <input type="file" id="db-json-input" accept=".json" onchange="importFullDatabaseJSON(event)" class="sr-only">
-                  </label>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                      <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-teal-400"></i>
+                      <span>Tarik Data Terbaru dari Cloud</span>
+                    </button>
+                    <button type="button" onclick="purgeAndReloadFromFirebase()" class="py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i>
+                      <span>🧹 Bersihkan Cache HP & Laptop</span>
+                    </button>
+                  </div>
                 </div>
 
-                <p class="text-[11px] text-slate-400 text-center">Berguna jika ingin memindahkan data langsung tanpa konfigurasi token GitHub.</p>
+                <div class="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2">
+                  <i data-lucide="info" class="w-4 h-4 text-amber-700 flex-shrink-0"></i>
+                  <span>Gunakan tombol <b>"Bersihkan Cache"</b> jika masih ada nama karyawan lama/dummy yang nyangkut di browser HP Anda.</span>
+                </div>
               </div>
+
+              <!-- CARD 2: CADANGAN MANUAL FILE JSON & GITHUB (OPSIONAL) -->
+              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100 mb-3">
+                    <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center flex-shrink-0">
+                      <i data-lucide="file-json" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-extrabold text-sm text-slate-900">Cadangan Manual (File JSON)</h3>
+                      <p class="text-[11px] text-slate-500">Simpan cadangan database ke file komputer Anda</p>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-2.5 pt-1">
+                    <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
+                      <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                      <span>Ekspor Cadangan Database (.json)</span>
+                    </button>
+
+                    <label class="cursor-pointer w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition text-center flex items-center justify-center gap-2">
+                      <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span>Impor File Database (.json)</span>
+                      <input type="file" id="db-json-input" accept=".json" onchange="importFullDatabaseJSON(event)" class="sr-only">
+                    </label>
+                  </div>
+                </div>
+
+                <!-- GitHub Config Toggle -->
+                <div class="pt-3 border-t border-slate-100">
+                  <div class="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
+                    <span class="flex items-center gap-1.5"><i data-lucide="github" class="w-4 h-4"></i> Repositori GitHub</span>
+                    <span id="github-mode-status" class="text-[10px] text-teal-700 font-semibold">Tersedia</span>
+                  </div>
+                  <button type="button" onclick="syncAllToGitHub()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                    <i data-lucide="git-commit" class="w-3.5 h-3.5"></i>
+                    <span>Sinkronkan ke Repo GitHub</span>
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
 
@@ -2840,6 +2887,70 @@
       cloudSaveTimeout = setTimeout(executeSave, 300);
     }
 
+    async function initializeAndUploadToFirebase() {
+      harmonizeAndResequenceAllNIKs();
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      
+      const payload = {
+        mbi_users: mbiUsers,
+        mbi_attendance: getWhDB('MBI', 'attendance', []),
+        mbi_leaves: getWhDB('MBI', 'leaves', []),
+        mbi_overtime: getWhDB('MBI', 'overtime', []),
+        mbi_coords: getWarehouseCoords('MBI'),
+        mai_users: maiUsers,
+        mai_attendance: getWhDB('MAI', 'attendance', []),
+        mai_leaves: getWhDB('MAI', 'leaves', []),
+        mai_overtime: getWhDB('MAI', 'overtime', []),
+        mai_coords: getWarehouseCoords('MAI'),
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        const endpoint = CLOUD_ENDPOINTS[0]; // Firebase endpoint
+        const res = await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          alert(`🚀 SUKSES MENGUNGGAH KE FIREBASE CLOUD!\n\n` +
+                `✓ Total Data Karyawan MBI: ${mbiUsers.length} orang\n` +
+                `✓ Total Data Karyawan MAI: ${maiUsers.length} orang\n` +
+                `✓ Server Status: Online 24/7 di Google Firebase\n\n` +
+                `Sekarang seluruh sistem dan absensi di HP dapat dijalankan 24 jam nonstop walaupun laptop Admin dimatikan.`);
+          renderAllLiveScreens();
+        } else {
+          alert('Gagal mengunggah ke Firebase: ' + res.statusText);
+        }
+      } catch (err) {
+        alert('Gagal menghubungi Firebase: ' + err.message + '\nPastikan laptop terhubung ke internet.');
+      }
+    }
+
+    async function purgeAndReloadFromFirebase() {
+      if (!confirm('Apakah Anda ingin membersihkan seluruh cache lokal (localStorage) di HP/Laptop ini dan memuat ulang data murni dari Firebase Cloud?')) {
+        return;
+      }
+
+      // Bersihkan seluruh data karyawan & transaksi lama di memori perangkat ini
+      localStorage.removeItem('wfm_mbi_users');
+      localStorage.removeItem('wfm_mai_users');
+      localStorage.removeItem('wfm_mbi_users_backup');
+      localStorage.removeItem('wfm_mai_users_backup');
+      localStorage.removeItem('wfm_mbi_attendance');
+      localStorage.removeItem('wfm_mai_attendance');
+      localStorage.removeItem('wfm_mbi_overtime');
+      localStorage.removeItem('wfm_mai_overtime');
+      localStorage.removeItem('wfm_mbi_leaves');
+      localStorage.removeItem('wfm_mai_leaves');
+
+      // Tarik data fresh dari Firebase
+      await fetchFullDatabaseFromCloud(true);
+      renderAllLiveScreens();
+    }
+
     function sanitizeEmployeesData() {
       ['MBI', 'MAI'].forEach(wh => {
         const storageKey = `wfm_${wh.toLowerCase()}_users`;
@@ -2850,7 +2961,7 @@
           if (!Array.isArray(users)) return;
           let hasChanges = false;
 
-          // Buang mock seed users jika ada
+          // Buang mock seed users & ghost test names jika ada
           const MOCK_SEED_IDS = new Set([
             'mbi-1', 'mbi-2', 'mbi-3', 'mbi-4', 'mbi-5', 'mbi-6', 'mbi-7', 'mbi-8', 'mbi-9',
             'mbi-001', 'mbi-002', 'mbi-003', 'mbi-004', 'mbi-005', 'mbi-006', 'mbi-007', 'mbi-008', 'mbi-009',
@@ -2858,9 +2969,19 @@
             'mbi-020', 'mbi-021', 'mbi-022', 'mbi-023', 'mbi-024', 'mbi-025', 'mbi-026', 'mbi-027', 'mbi-028', 'mbi-029',
             'mai-1', 'mai-2', 'mai-3', 'mai-001', 'mai-002'
           ]);
+          const GHOST_NAMES = new Set([
+            'djisamsuri', 'dji samsuri', 'rendisaputra', 'rendi saputra', 'dummy', 'karyawandummy', 'akuntest', 'testuser'
+          ]);
+
           const cleanUsers = users.filter(u => {
             if (!u) return false;
-            if (u.role !== 'admin' && MOCK_SEED_IDS.has(u.id)) {
+            if (u.role === 'admin' || u.role === 'scanner') return true;
+            if (MOCK_SEED_IDS.has(u.id)) {
+              hasChanges = true;
+              return false;
+            }
+            const cleanName = cleanStr(u.name || '');
+            if (GHOST_NAMES.has(cleanName) || cleanName.includes('djisamsuri') || cleanName.includes('rendisaputra')) {
               hasChanges = true;
               return false;
             }
@@ -3156,6 +3277,7 @@
       }
 
       // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
+      sanitizeEmployeesData();
       getWhDB('MBI', 'users', SEED_MBI_USERS);
       getWhDB('MAI', 'users', SEED_MAI_USERS);
       getWhDB('MBI', 'attendance', []);
