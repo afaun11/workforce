@@ -572,9 +572,9 @@
                   Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Daftar Akun & Password">
-                  <i data-lucide="key-round" class="w-3.5 h-3.5 text-sky-600"></i>
-                  Download Akun
+                <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Data Karyawan Excel">
+                  <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i>
+                  Download Excel
                 </button>
                 <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
                   <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
@@ -2722,32 +2722,7 @@
           if (!Array.isArray(users)) return;
           let hasChanges = false;
 
-          // Buang mock seed users & ghost test names jika ada
-          const MOCK_SEED_IDS = new Set([
-            'mbi-1', 'mbi-2', 'mbi-3', 'mbi-4', 'mbi-5', 'mbi-6', 'mbi-7', 'mbi-8', 'mbi-9',
-            'mbi-001', 'mbi-002', 'mbi-003', 'mbi-004', 'mbi-005', 'mbi-006', 'mbi-007', 'mbi-008', 'mbi-009',
-            'mbi-010', 'mbi-011', 'mbi-012', 'mbi-013', 'mbi-014', 'mbi-015', 'mbi-016', 'mbi-017', 'mbi-018', 'mbi-019',
-            'mbi-020', 'mbi-021', 'mbi-022', 'mbi-023', 'mbi-024', 'mbi-025', 'mbi-026', 'mbi-027', 'mbi-028', 'mbi-029',
-            'mai-1', 'mai-2', 'mai-3', 'mai-001', 'mai-002'
-          ]);
-          const GHOST_NAMES = new Set([
-            'djisamsuri', 'dji samsuri', 'rendisaputra', 'rendi saputra', 'dummy', 'karyawandummy', 'akuntest', 'testuser'
-          ]);
-
-          const cleanUsers = users.filter(u => {
-            if (!u) return false;
-            if (u.role === 'admin' || u.role === 'scanner') return true;
-            if (MOCK_SEED_IDS.has(u.id)) {
-              hasChanges = true;
-              return false;
-            }
-            const cleanName = cleanStr(u.name || '');
-            if (GHOST_NAMES.has(cleanName) || cleanName.includes('djisamsuri') || cleanName.includes('rendisaputra')) {
-              hasChanges = true;
-              return false;
-            }
-            return true;
-          });
+          const cleanUsers = users.filter(u => u && u.name && u.name.trim() !== '');
 
           cleanUsers.forEach(u => {
             if (u.phone && (u.phone === u.name || !/\d{4,}/.test(u.phone)) && u.phone !== '-') {
@@ -6039,35 +6014,30 @@
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
-      renderAccountLookupList();
       
-      newlyCreatedUser = newEmp;
-      showAccountCreatedModal(newEmp);
+      alert(`✅ Data karyawan ${name} (${autoNik}) berhasil ditambahkan ke Gudang ${activeWarehouse}!\nKartu ID Card & Barcode siap digunakan.`);
     }
 
     function downloadAccountsExcel() {
-      migrateAllUsersNIK();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const exportData = regularUsers.map((u, idx) => ({
         "No": idx + 1,
-        "NIK Karyawan (ID Login)": u.nik,
+        "NIK Karyawan": u.nik,
         "Nama Karyawan": u.name,
         "Departemen": u.dept,
         "Outsource": u.outsource || '-',
         "Posisi / Role": (u.role || 'staff').toUpperCase(),
         "No Telepon": u.phone || '-',
         "Email": u.email || '-',
-        "Kata Sandi / Password Terbaru": u.password || 'medika123',
-        "Status Password": u.isFirstLogin === false ? "Sudah Diubah Mandiri / Kustom" : "Default (medika123)",
         "Join Date": u.joinDate || '-',
         "Gudang": u.warehouse || activeWarehouse
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `Daftar_Akun_${activeWarehouse}`);
-      XLSX.writeFile(wb, `Daftar_Akun_dan_Password_Karyawan_${activeWarehouse}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, `Data_Karyawan_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Data_Karyawan_${activeWarehouse}.xlsx`);
     }
 
     function downloadEmployeeTemplate() {
@@ -6213,13 +6183,11 @@
           const targetWh = activeWarehouse || 'MBI';
           const replaceMode = confirm(`📊 Ditemukan ${rows.length} data karyawan pada file Excel.\n\nKlik [OK] untuk MENGGANTI TOTAL & BERSIH seluruh data karyawan lama di Gudang ${targetWh} dengan data Excel ini (Sangat Direkomendasikan agar TIDAK DOBEL).\n\nKlik [Cancel] untuk menggabungkan.`);
 
-          // Ambil data users aktif & pisahkan admin
+          // Ambil data users aktif & pisahkan akun pengelola sistem (Admin & Scanner)
           let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-          const adminAccounts = existingUsers.filter(u => u.role === 'admin' || (u.role === 'supervisor' && u.nik === 'ADM001'));
+          const managementAccounts = existingUsers.filter(u => isManagementSystemAccount(u));
           
-          let users = adminAccounts.length > 0 ? [...adminAccounts] : [
-            { id: `${targetWh.toLowerCase()}-admin`, name: `Admin Gudang ${targetWh}`, dept: 'supervisor', outsource: 'Internal', phone: '081234567891', email: `admin.${targetWh.toLowerCase()}@medika.com`, joinDate: '2023-01-10', nik: targetWh === 'MBI' ? 'ADM001' : 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: targetWh }
-          ];
+          let users = managementAccounts.length > 0 ? [...managementAccounts] : (targetWh === 'MBI' ? [...SEED_MBI_USERS] : [...SEED_MAI_USERS]);
 
           if (!replaceMode) {
             users = [...existingUsers];
@@ -6273,9 +6241,7 @@
               email,
               joinDate,
               nik: finalNik,
-              role,
-              password: 'medika123',
-              isFirstLogin: true,
+              role: role === 'admin' || role === 'scanner' ? 'staff' : role,
               warehouse: targetWh
             });
             seenNames.add(cleanName);
@@ -6291,7 +6257,7 @@
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
           
-          alert(`✅ BERHASIL UPLOAD EXCEL!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Akun Login: 100% Otomatis Dibuat (Password: medika123)\n• Total Karyawan Gudang ${targetWh}: ${finalCleanUsers.length} orang\n• Duplikasi: 0 (Semua data telah dibersihkan dan terurut rapi)`);
+          alert(`✅ BERHASIL IMPORT DATA KARYAWAN!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Total Karyawan Gudang ${targetWh}: ${finalCleanUsers.filter(u => !isManagementSystemAccount(u)).length} orang\n• Barcode ID Card: 100% Siap Digunakan untuk Presensi\n• Sistem Pengelolaan: Terpusat pada Akun Admin & Akun Scan`);
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
