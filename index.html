@@ -2424,12 +2424,6 @@
       return cleanedDefault;
     }
 
-    const CLOUD_ENDPOINTS = [
-      'https://wfm-medika-default-rtdb.firebaseio.com/wfm_database.json',
-      'https://wfm-medika-default-rtdb.firebaseio.com/database.json',
-      'https://kvdb.io/8qWfM2k9MedikaGroupDB/wfm_medika_database'
-    ];
-
     // =========================================================
     // PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE
     // =========================================================
@@ -2849,26 +2843,6 @@
       harmonizeAndResequenceAllNIKs();
     }
 
-    function generateUniqueNIK(warehouse, name = '', existingUsersArray = null) {
-      const year = new Date().getFullYear().toString().slice(-2); // "26"
-      const prefix = `${warehouse.toUpperCase()}${year}-`;
-      const users = existingUsersArray || getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      
-      let maxNum = 0;
-      users.forEach(u => {
-        if (u.role === 'admin') return;
-        const nik = (u.nik || '').toUpperCase().trim();
-        if (nik.startsWith(prefix)) {
-          const numPart = parseInt(nik.replace(prefix, ''), 10);
-          if (!isNaN(numPart) && numPart > maxNum) {
-            maxNum = numPart;
-          }
-        }
-      });
-
-      const nextNum = maxNum + 1;
-      return `${prefix}${String(nextNum).padStart(3, '0')}`;
-    }
 
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
       updateCloudSyncStatusBadge('syncing');
@@ -3098,7 +3072,7 @@
         try {
           const parsed = JSON.parse(savedUser);
           const role = (parsed?.role || '').toLowerCase();
-          const isAllowed = role === 'admin' || role === 'scanner' || role === 'supervisor' || parsed?.nik?.startsWith('ADM') || parsed?.nik?.startsWith('ABSEN');
+          const isAllowed = ['admin', 'supervisor', 'coordinator', 'scanner'].includes(role) || parsed?.nik?.startsWith('ADM') || parsed?.nik?.startsWith('ABSEN');
           if (isAllowed) {
             loginUserSession(parsed);
           } else {
