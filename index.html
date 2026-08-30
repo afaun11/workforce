@@ -392,7 +392,7 @@
             <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
             <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
           </div>
-          <button onclick="switchView('settings')" class="p-2 rounded-xl text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition" title="Pengaturan Profil & Akun">
+          <button id="nav-btn-settings" onclick="switchView('settings')" class="p-2 rounded-xl text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition" title="Pengaturan Profil & Akun">
             <i data-lucide="user-cog" class="w-4 h-4"></i>
           </button>
           <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="Logout">
@@ -572,10 +572,6 @@
                   Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="saveFullDatabaseToCloud(true)" class="h-9 px-4 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Kirim & Simpan Seluruh Data ke Firebase Cloud">
-                  <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
-                  Kirim ke Firebase
-                </button>
                 <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Daftar Akun & Password">
                   <i data-lucide="key-round" class="w-3.5 h-3.5 text-sky-600"></i>
                   Download Akun
@@ -3173,6 +3169,14 @@
       return (str || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
+    function isManagementSystemAccount(user) {
+      if (!user) return false;
+      const role = (user.role || '').toLowerCase();
+      const nik = (user.nik || '').toUpperCase();
+      const name = (user.name || '').toLowerCase();
+      return role === 'admin' || role === 'scanner' || nik.startsWith('ADM') || nik.startsWith('ABSEN') || name.includes('admin utama') || name.includes('scanner absen');
+    }
+
     function quickLoginScannerAccount(warehouse = 'MBI') {
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       let scannerUser = users.find(u => u.role === 'scanner' || u.nik === `ABSEN-${warehouse}`);
@@ -3561,6 +3565,8 @@
       const leavesNav = document.getElementById('nav-leaves');
       const overtimeNav = document.getElementById('nav-overtime');
       const whSwitcher = document.getElementById('wh-switcher-box');
+      const navBtnSettings = document.getElementById('nav-btn-settings');
+      const sysSettings = document.getElementById('system-settings-section');
 
       if (isSuperAdmin) {
         whSwitcher.classList.remove('hidden');
@@ -3571,26 +3577,27 @@
       }
 
       if (userRole === 'scanner') {
-        // Akun Khusus Scanner Absensi: Langsung buka View Absensi & Riwayat Realtime
+        // Akun Khusus Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
+        // Sembunyikan menu Pengaturan atas (navbar) dan bawah (sidebar) agar tidak diubah karyawan lain
         if (adminSection) adminSection.classList.add('hidden');
         const navDash = document.getElementById('nav-dashboard');
         if (navDash) navDash.classList.add('hidden');
         const navGithub = document.getElementById('nav-github');
         if (navGithub) navGithub.classList.add('hidden');
-        const sysSettings = document.getElementById('system-settings-section');
         if (sysSettings) sysSettings.classList.add('hidden');
+        if (navBtnSettings) navBtnSettings.classList.add('hidden');
         switchView('attendance');
         renderScannerTodayRecords();
         stopScanner();
       } else if (isManagement) {
-        // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu
+        // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu & pengaturan
         if (adminSection) adminSection.classList.remove('hidden');
         const navDash = document.getElementById('nav-dashboard');
         if (navDash) navDash.classList.remove('hidden');
         const navGithub = document.getElementById('nav-github');
         if (navGithub) navGithub.classList.remove('hidden');
-        const sysSettings = document.getElementById('system-settings-section');
         if (sysSettings) sysSettings.classList.remove('hidden');
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
         updateWhSwitcherButtons();
         switchView('dashboard');
       } else {
@@ -3600,6 +3607,8 @@
         if (navDash) navDash.classList.add('hidden');
         const navGithub = document.getElementById('nav-github');
         if (navGithub) navGithub.classList.add('hidden');
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
         switchView('attendance');
       }
 
@@ -3712,7 +3721,11 @@
     function switchView(viewName) {
       const userRole = (currentUser?.role || 'staff').toLowerCase();
       const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
-      if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
+      
+      if (userRole === 'scanner') {
+        // Akun Scanner Absensi hanya boleh membuka menu attendance
+        viewName = 'attendance';
+      } else if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
         viewName = 'attendance';
       }
 
@@ -3721,18 +3734,31 @@
         el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5';
       });
 
-      // Pastikan admin-menu-section, nav-dashboard, dan nav-github selalu tersembunyi bagi staff biasa
+      // Pastikan section menu dan tombol settings tersembunyi sesuai role
       const adminSection = document.getElementById('admin-menu-section');
       const navDash = document.getElementById('nav-dashboard');
       const navGithub = document.getElementById('nav-github');
-      if (!isManagement) {
+      const sysSettings = document.getElementById('system-settings-section');
+      const navBtnSettings = document.getElementById('nav-btn-settings');
+
+      if (userRole === 'scanner') {
         if (adminSection) adminSection.classList.add('hidden');
         if (navDash) navDash.classList.add('hidden');
         if (navGithub) navGithub.classList.add('hidden');
+        if (sysSettings) sysSettings.classList.add('hidden');
+        if (navBtnSettings) navBtnSettings.classList.add('hidden');
+      } else if (!isManagement) {
+        if (adminSection) adminSection.classList.add('hidden');
+        if (navDash) navDash.classList.add('hidden');
+        if (navGithub) navGithub.classList.add('hidden');
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
       } else {
         if (adminSection) adminSection.classList.remove('hidden');
         if (navDash) navDash.classList.remove('hidden');
         if (navGithub) navGithub.classList.remove('hidden');
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
       }
 
       const activeView = document.getElementById('view-' + viewName);
@@ -3777,6 +3803,7 @@
     function refreshAllDashboardData() {
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
@@ -3784,17 +3811,23 @@
       const todayAtt = attendances.filter(a => a.date === todayStr);
       const todayLeaves = leaves.filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr);
 
-      document.getElementById('stat-total-emp').innerText = `${users.length} Orang`;
-      document.getElementById('stat-today-att').innerText = `${todayAtt.length} Hadir`;
-      document.getElementById('stat-today-leave').innerText = `${todayLeaves.length} Orang`;
-      document.getElementById('stat-pending-ot').innerText = `${overtimes.filter(o => o.status === 'pending').length} Pending`;
+      const statTotal = document.getElementById('stat-total-emp');
+      if (statTotal) statTotal.innerText = `${regularUsers.length} Orang`;
+      const statToday = document.getElementById('stat-today-att');
+      if (statToday) statToday.innerText = `${todayAtt.length} Hadir`;
+      const statLeave = document.getElementById('stat-today-leave');
+      if (statLeave) statLeave.innerText = `${todayLeaves.length} Orang`;
+      const statOt = document.getElementById('stat-pending-ot');
+      if (statOt) statOt.innerText = `${overtimes.filter(o => o.status === 'pending').length} Pending`;
 
-      const myToday = todayAtt.find(a => a.userNik === currentUser.nik);
+      const myToday = todayAtt.find(a => a.userNik === currentUser?.nik);
       const statusEl = document.getElementById('dash-my-status');
-      if (myToday) {
-        statusEl.innerText = myToday.checkOutTime ? 'Selesai Shift' : `Hadir (${new Date(myToday.checkInTime).toLocaleTimeString('id-ID')})`;
-      } else {
-        statusEl.innerText = 'Belum Absen Masuk';
+      if (statusEl) {
+        if (myToday) {
+          statusEl.innerText = myToday.checkOutTime ? 'Selesai Shift' : `Hadir (${new Date(myToday.checkInTime).toLocaleTimeString('id-ID')})`;
+        } else {
+          statusEl.innerText = 'Belum Absen Masuk';
+        }
       }
     }
 
@@ -4669,11 +4702,12 @@
 
     function populateDropdownEmployees() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       
       const idSelect = document.getElementById('idcard-select-emp');
       if (idSelect) {
         idSelect.innerHTML = '';
-        users.forEach(u => {
+        regularUsers.forEach(u => {
           const opt = document.createElement('option');
           opt.value = u.nik;
           opt.innerText = `${u.name} (${u.nik})`;
@@ -4687,12 +4721,13 @@
 
     function filterLeaveEmployeeDropdown(query = '') {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const leaveSelect = document.getElementById('leave-employee');
       if (!leaveSelect) return;
 
       const currentVal = leaveSelect.value;
       const q = query.toLowerCase().trim();
-      const filtered = users.filter(u => !q || (u.name && u.name.toLowerCase().includes(q)) || (u.nik && u.nik.toLowerCase().includes(q)) || (u.dept && u.dept.toLowerCase().includes(q)));
+      const filtered = regularUsers.filter(u => !q || (u.name && u.name.toLowerCase().includes(q)) || (u.nik && u.nik.toLowerCase().includes(q)) || (u.dept && u.dept.toLowerCase().includes(q)));
 
       leaveSelect.innerHTML = '';
       if (filtered.length === 0) {
@@ -5396,7 +5431,7 @@
     }
 
     function openAllIDCardsA4Modal() {
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
       if (!users || users.length === 0) {
         alert('Tidak ada data karyawan di Gudang ' + activeWarehouse);
         return;
@@ -5489,7 +5524,7 @@
     }
 
     async function downloadAllIndividualCardsZIP() {
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
       if (!users || users.length === 0) return;
 
       if (typeof JSZip === 'undefined') {
@@ -5540,7 +5575,7 @@
     }
 
     async function downloadAllIndividualCardsSequentially() {
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
       if (!users || users.length === 0) return;
 
       let count = 0;
@@ -5563,7 +5598,7 @@
     }
 
     function printAllIDCardsA4() {
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
       if (!users || users.length === 0) return;
 
       const printArea = document.getElementById('printable-area');
@@ -5590,8 +5625,9 @@
     // =========================================================
     function renderEmployeeTable() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
-      const filtered = users.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query)));
+      const filtered = regularUsers.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query)));
 
       const tbody = document.getElementById('emp-table-body');
       tbody.innerHTML = '';
@@ -5796,7 +5832,7 @@
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const user = users.find(u => u.nik === nik);
       if (!user) return;
-      if (user.role === 'admin' || user.role === 'scanner' || (user.nik && user.nik.startsWith('ADM')) || (user.nik && user.nik.startsWith('ABSEN-'))) {
+      if (isManagementSystemAccount(user)) {
         alert('Akun Admin Utama dan Akun Dedicated Scanner tidak boleh dihapus.');
         return;
       }
@@ -5852,7 +5888,7 @@
       const targetWh = activeWarehouse || 'MBI';
       let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       users = users.filter(u => {
-        if (u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ADM')) || (u.nik && u.nik.startsWith('ABSEN-'))) return true;
+        if (isManagementSystemAccount(u)) return true;
         return !selectedNiks.has(u.nik);
       });
 
@@ -5871,12 +5907,12 @@
 
     async function deleteAllEmployees() {
       const targetWh = activeWarehouse || 'MBI';
-      if (!confirm(`⚠️ PERINGATAN HAPUS TOTAL:\nApakah Anda yakin ingin MENGOSONGKAN SELURUH DATA KARYAWAN di Gudang ${targetWh}?\n\n(Hanya Akun Admin dan Akun Dedicated Scanner yang akan dipertahankan). Data di Google Firebase Cloud akan langsung diperbarui bersih.`)) {
+      if (!confirm(`⚠️ PERINGATAN HAPUS TOTAL:\nApakah Anda yakin ingin MENGOSONGKAN SELURUH DATA KARYAWAN di Gudang ${targetWh}?\n\n(Akun Admin dan Akun Dedicated Scanner akan tetap dipertahankan untuk mengelola sistem). Data di Google Firebase Cloud akan langsung diperbarui bersih.`)) {
         return;
       }
 
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const preserved = users.filter(u => u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ADM')) || (u.nik && u.nik.startsWith('ABSEN-')));
+      const preserved = users.filter(u => isManagementSystemAccount(u));
       
       setWhDB(targetWh, 'users', preserved);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(preserved));
@@ -6012,7 +6048,8 @@
     function downloadAccountsExcel() {
       migrateAllUsersNIK();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const exportData = users.map((u, idx) => ({
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const exportData = regularUsers.map((u, idx) => ({
         "No": idx + 1,
         "NIK Karyawan (ID Login)": u.nik,
         "Nama Karyawan": u.name,
@@ -6047,7 +6084,8 @@
 
     function exportEmployeesExcel() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const exportData = users.map(u => ({
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const exportData = regularUsers.map(u => ({
         "Nama Karyawan": u.name,
         "Departemen": u.dept,
         "Outsource": u.outsource || '-',
@@ -6948,7 +6986,8 @@
       thead.innerHTML = headerHTML;
 
       tbody.innerHTML = '';
-      users.forEach((user, uIdx) => {
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
         let rowHTML = `
           <tr class="hover:bg-slate-50 transition border-b border-slate-200">
@@ -6987,6 +7026,7 @@
       const endStr = document.getElementById('matrix-end-date').value;
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
@@ -7036,7 +7076,7 @@
 
       const matrixData = [row1, row2];
 
-      users.forEach((user, uIdx) => {
+      regularUsers.forEach((user, uIdx) => {
         let totalHadir = 0;
         let totalSakit = 0;
         let totalIzin = 0;
@@ -7212,11 +7252,12 @@
 
     function renderOvertimeEmployeeGrid() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const container = document.getElementById('ot-employee-checkbox-grid');
       if (!container) return;
 
       const searchQ = (document.getElementById('ot-emp-search')?.value || '').toLowerCase().trim();
-      const filtered = users.filter(u => !searchQ || (u.name && u.name.toLowerCase().includes(searchQ)) || (u.nik && u.nik.toLowerCase().includes(searchQ)) || (u.dept && u.dept.toLowerCase().includes(searchQ)));
+      const filtered = regularUsers.filter(u => !searchQ || (u.name && u.name.toLowerCase().includes(searchQ)) || (u.nik && u.nik.toLowerCase().includes(searchQ)) || (u.dept && u.dept.toLowerCase().includes(searchQ)));
 
       container.innerHTML = '';
       if (filtered.length === 0) {
