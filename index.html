@@ -515,7 +515,7 @@
               </div>
 
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Izin / Sakit / Cuti</p>
+                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sakit / Cuti</p>
                 <h3 id="stat-today-leave" class="text-2xl font-black text-rose-800 mt-1">0 Orang</h3>
                 <p class="text-[11px] text-rose-700 font-semibold mt-0.5">Disetujui</p>
               </div>
@@ -878,14 +878,14 @@
           </div>
 
           <!-- ========================================================= -->
-          <!-- VIEW 4: FORM IZIN / SAKIT / CUTI (LEAVES) -->
+          <!-- VIEW 4: FORM SAKIT / CUTI (LEAVES) -->
           <!-- ========================================================= -->
           <div id="view-leaves" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 tracking-tight">
                 Form Pengajuan (<span id="leave-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
               </h2>
-              <p class="text-xs text-slate-500 mt-0.5">Pengajuan Izin, Sakit, atau Cuti. Data yang disetujui otomatis tercatat pada Rekap Absen & Matriks</p>
+              <p class="text-xs text-slate-500 mt-0.5">Pengajuan Sakit atau Cuti. Data yang disetujui otomatis tercatat pada Rekap Absen & Matriks</p>
             </div>
 
             <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
@@ -908,7 +908,6 @@
                     <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jenis Ketidakhadiran *</label>
                     <select id="leave-type" required class="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       <option value="sakit">Sakit</option>
-                      <option value="izin">Izin</option>
                       <option value="cuti">Cuti</option>
                     </select>
                   </div>
@@ -935,10 +934,10 @@
                 </form>
               </div>
 
-              <!-- List Pengajuan Izin/Sakit/Cuti -->
+              <!-- List Pengajuan Sakit/Cuti -->
               <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
                 <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                  <h3 class="font-extrabold text-sm text-slate-900">Daftar Riwayat Izin / Sakit / Cuti</h3>
+                  <h3 class="font-extrabold text-sm text-slate-900">Daftar Riwayat Sakit / Cuti</h3>
                   <input type="text" id="leave-table-search" oninput="renderLeavesTable()" placeholder="Cari nama / NIK pengajuan..." class="h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none min-w-[220px]">
                 </div>
                 <div class="overflow-x-auto">
@@ -1112,10 +1111,17 @@
                       </button>
                     </div>
 
-                    <button onclick="exportMatrixToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                      <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
-                      Download Matriks Excel
-                    </button>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <button onclick="copyMatrixTable()" id="btn-copy-matrix" title="Salin seluruh tabel matriks ke clipboard (bisa langsung di-paste ke Excel / Spreadsheet)" class="h-9 px-4 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                        <i data-lucide="copy" id="icon-copy-matrix" class="w-3.5 h-3.5 text-sky-600"></i>
+                        <span id="btn-copy-matrix-text">Copy Matriks</span>
+                      </button>
+
+                      <button onclick="exportMatrixToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        Download Matriks Excel
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1134,7 +1140,6 @@
                   <span class="font-bold">Keterangan:</span>
                   <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">1</span> Hadir</span>
                   <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">S</span> Sakit</span>
-                  <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">I</span> Izin</span>
                   <span class="inline-flex items-center gap-1 font-bold text-slate-900"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center font-black">AL</span> Cuti</span>
                   <span class="inline-flex items-center gap-1 text-slate-400"><span class="w-5 h-5 bg-slate-100 rounded flex items-center justify-center">-</span> Libur</span>
                 </div>
@@ -1244,7 +1249,7 @@
               </div>
             </div>
 
-            <!-- TAB 4: REKAP PENGAJUAN (IZIN / SAKIT / CUTI) -->
+            <!-- TAB 4: REKAP PENGAJUAN (SAKIT / CUTI) -->
             <div id="tab-content-report-leaves" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
                 
@@ -1253,7 +1258,7 @@
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
                       <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-500"></i>
-                      <span class="text-xs font-bold text-slate-800">Filter Pengajuan Izin / Sakit / Cuti</span>
+                      <span class="text-xs font-bold text-slate-800">Filter Pengajuan Sakit / Cuti</span>
                     </div>
                     <button onclick="toggleFilterCard('filter-body-leaves', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
@@ -1280,7 +1285,6 @@
                         <select id="report-leave-type-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                           <option value="">Semua Jenis</option>
                           <option value="sakit">Sakit</option>
-                          <option value="izin">Izin</option>
                           <option value="cuti">Cuti</option>
                         </select>
                       </div>
@@ -7440,7 +7444,8 @@
             if (approvedLeave.type === 'sakit') {
               rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-amber-800 bg-amber-50">S</td>`;
             } else if (approvedLeave.type === 'izin') {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-sky-800 bg-sky-50">I</td>`;
+              // Sesuai arahan: Dikosongkan saja jika ada yang input izin
+              rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
             } else {
               rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-purple-800 bg-purple-50">AL</td>`;
             }
@@ -7452,6 +7457,132 @@
         rowHTML += `<td class="p-2 font-black text-slate-900 bg-amber-50/60">${totalHariKerja}</td></tr>`;
         tbody.innerHTML += rowHTML;
       });
+    }
+
+    // =========================================================
+    // FITUR COPY TABEL MATRIKS KE CLIPBOARD
+    // =========================================================
+    function copyMatrixTable() {
+      const startStr = document.getElementById('matrix-start-date')?.value;
+      const endStr = document.getElementById('matrix-end-date')?.value;
+      if (!startStr || !endStr) {
+        alert('Silakan tentukan rentang tanggal matriks terlebih dahulu.');
+        return;
+      }
+
+      // Pastikan tabel sudah ter-render terbaru
+      renderMatrixTable();
+
+      const dateList = getDatesInRange(startStr, endStr);
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+
+      // 1. Format TSV (Tab-Separated Values) - Sangat rapi untuk langsung di-paste ke Excel atau Google Sheets
+      const headerRow = ['No', 'Nama Karyawan', 'NIK'];
+      dateList.forEach(d => {
+        const dayNum = d.getDate();
+        const dayName = DAY_NAMES[d.getDay()];
+        headerRow.push(`${dayNum} (${dayName})`);
+      });
+      headerRow.push('Total Hadir');
+
+      const tsvRows = [headerRow.join('\t')];
+
+      regularUsers.forEach((user, uIdx) => {
+        let totalHariKerja = 0;
+        const row = [uIdx + 1, user.name, user.nik];
+
+        dateList.forEach(d => {
+          const dStr = d.toISOString().split('T')[0];
+          const att = attendances.find(a => ((a.userName && cleanStr(a.userName) === cleanStr(user.name)) || (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || (a.userId && a.userId === user.id)) && a.date === dStr);
+          const approvedLeave = leaves.find(l => ((l.userName && cleanStr(l.userName) === cleanStr(user.name)) || (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || (l.userId && l.userId === user.id)) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+
+          if (att) {
+            totalHariKerja += 1;
+            row.push('1');
+          } else if (approvedLeave) {
+            if (approvedLeave.type === 'sakit') {
+              row.push('S');
+            } else if (approvedLeave.type === 'izin') {
+              row.push(''); // Dikosongkan jika izin sesuai instruksi
+            } else {
+              row.push('AL');
+            }
+          } else {
+            row.push('-');
+          }
+        });
+
+        row.push(totalHariKerja);
+        tsvRows.push(row.join('\t'));
+      });
+
+      const tsvString = tsvRows.join('\n');
+
+      // 2. Format HTML Table untuk rich paste (Excel / Spreadsheet / Word)
+      const tableEl = document.getElementById('table-matrix-display');
+      const htmlString = tableEl ? tableEl.outerHTML : '';
+
+      const notifySuccess = () => {
+        const btnText = document.getElementById('btn-copy-matrix-text');
+        const btnIcon = document.getElementById('icon-copy-matrix');
+        const btn = document.getElementById('btn-copy-matrix');
+        if (btnText && btn) {
+          const origText = btnText.innerText;
+          btnText.innerText = 'Tersalin!';
+          btn.className = 'h-9 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5';
+          if (btnIcon) btnIcon.setAttribute('data-lucide', 'check');
+          lucide.createIcons();
+
+          setTimeout(() => {
+            btnText.innerText = origText;
+            btn.className = 'h-9 px-4 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5';
+            if (btnIcon) btnIcon.setAttribute('data-lucide', 'copy');
+            lucide.createIcons();
+          }, 2000);
+        }
+        alert('✅ Seluruh data matriks presensi berhasil disalin ke clipboard!\n\nAnda dapat langsung menempelkannya (Ctrl + V / Paste) ke Excel, Google Sheets, atau aplikasi chat.');
+      };
+
+      const fallbackCopy = (text) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(notifySuccess).catch(() => execFallback(text));
+        } else {
+          execFallback(text);
+        }
+      };
+
+      const execFallback = (text) => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          notifySuccess();
+        } catch (err) {
+          alert('Gagal menyalin matriks ke clipboard otomatis. Silakan gunakan tombol Download Excel.');
+        }
+        document.body.removeChild(ta);
+      };
+
+      if (navigator.clipboard && window.ClipboardItem) {
+        const clipboardObj = {
+          'text/plain': new Blob([tsvString], { type: 'text/plain' })
+        };
+        if (htmlString) {
+          clipboardObj['text/html'] = new Blob([htmlString], { type: 'text/html' });
+        }
+        navigator.clipboard.write([new ClipboardItem(clipboardObj)]).then(notifySuccess).catch(() => {
+          fallbackCopy(tsvString);
+        });
+      } else {
+        fallbackCopy(tsvString);
+      }
     }
 
     function exportMatrixToExcel() {
@@ -7495,8 +7626,8 @@
         currentCol += g.dates.length;
       });
 
-      row1.push("Total Hadir (H)", "Total Sakit (S)", "Total Izin (I)", "Total Cuti (AL)", "Total Hari Hadir");
-      for (let s = 0; s < 5; s++) {
+      row1.push("Total Hadir (H)", "Total Sakit (S)", "Total Cuti (AL)", "Total Hari Hadir");
+      for (let s = 0; s < 4; s++) {
         merges.push({ s: { r: 0, c: currentCol + s }, e: { r: 1, c: currentCol + s } });
       }
 
@@ -7505,14 +7636,13 @@
       dateList.forEach(d => {
         row2.push(`${d.getDate()} (${DAY_NAMES[d.getDay()]})`);
       });
-      row2.push("", "", "", "", "");
+      row2.push("", "", "", "");
 
       const matrixData = [row1, row2];
 
       regularUsers.forEach((user, uIdx) => {
         let totalHadir = 0;
         let totalSakit = 0;
-        let totalIzin = 0;
         let totalCuti = 0;
 
         const row = [uIdx + 1, user.name, user.nik];
@@ -7529,8 +7659,7 @@
               totalSakit += 1;
               row.push("S");
             } else if (approvedLeave.type === 'izin') {
-              totalIzin += 1;
-              row.push("I");
+              row.push(""); // Dikosongkan jika izin sesuai arahan
             } else {
               totalCuti += 1;
               row.push("AL");
@@ -7540,7 +7669,7 @@
           }
         });
 
-        row.push(totalHadir, totalSakit, totalIzin, totalCuti, totalHadir);
+        row.push(totalHadir, totalSakit, totalCuti, totalHadir);
         matrixData.push(row);
       });
 
