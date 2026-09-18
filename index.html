@@ -986,7 +986,7 @@
                   Rekap Matriks
                 </button>
                 <button onclick="switchReportTab('workhours')" id="btn-tab-workhours" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
-                  Rekap Jam & Lembur
+                  Rekap Jam Kerja
                 </button>
                 <button onclick="switchReportTab('leaves')" id="btn-tab-report-leaves" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition">
                   Rekap Pengajuan
@@ -1141,7 +1141,7 @@
               </div>
             </div>
 
-            <!-- TAB 3: REKAP JAM KERJA & AKUMULASI LEMBUR KARYAWAN -->
+            <!-- TAB 3: MONITORING REKAP JAM KERJA KARYAWAN -->
             <div id="tab-content-workhours" class="hidden space-y-4">
               <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
                 
@@ -1150,7 +1150,7 @@
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
                       <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
-                      <span class="text-xs font-bold text-slate-800">Filter Periode Rekap Jam Kerja & Lembur</span>
+                      <span class="text-xs font-bold text-slate-800">Filter Periode Monitoring Jam Kerja</span>
                     </div>
                     <button onclick="toggleFilterCard('filter-body-workhours', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
@@ -1162,7 +1162,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
-                        <input type="text" id="workhours-search-input" oninput="renderWorkHoursAndOvertimeReport()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <input type="text" id="workhours-search-input" oninput="renderWorkHoursReport()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
@@ -1175,59 +1175,57 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                      <button onclick="renderWorkHoursAndOvertimeReport()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <button onclick="renderWorkHoursReport()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
                         <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
-                        Kalkulasi Rekap Jam & Lembur
+                        Hitung Jam Kerja
                       </button>
 
-                      <button onclick="exportWorkHoursAndOvertimeToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
+                      <button onclick="exportWorkHoursToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
                         <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
-                        Download Rekap Excel
+                        Download Rekap Jam Kerja (Excel)
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <!-- KPI Cards Ringkasan -->
+                <!-- KPI Cards Ringkasan Monitoring Jam Kerja -->
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
                   <div class="p-3.5 rounded-2xl bg-teal-50 border border-teal-200">
                     <span class="text-[10px] font-black uppercase text-teal-700 tracking-wider">Standar Kerja</span>
                     <h4 class="text-base sm:text-lg font-black text-teal-950 mt-0.5">40 Jam / Minggu</h4>
-                    <p class="text-[10px] text-teal-700">Target jam kerja per orang</p>
+                    <p class="text-[10px] text-teal-700">Standar jam reguler per staf</p>
                   </div>
                   <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                     <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Total Karyawan Hadir</span>
                     <h4 id="kpi-wh-active-emp" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0 Orang</h4>
-                    <p class="text-[10px] text-slate-500">Mempunyai record jam masuk</p>
+                    <p class="text-[10px] text-slate-500">Mempunyai catatan jam masuk</p>
                   </div>
-                  <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200">
-                    <span class="text-[10px] font-black uppercase text-amber-700 tracking-wider">Total Frekuensi Lembur</span>
-                    <h4 id="kpi-wh-ot-freq" class="text-base sm:text-lg font-black text-amber-950 mt-0.5">0 Kali</h4>
-                    <p class="text-[10px] text-amber-700">Akumulasi sesi lembur staf</p>
+                  <div class="p-3.5 rounded-2xl bg-sky-50 border border-sky-200">
+                    <span class="text-[10px] font-black uppercase text-sky-700 tracking-wider">Rata-rata Jam Kerja</span>
+                    <h4 id="kpi-wh-avg-hours" class="text-base sm:text-lg font-black text-sky-950 mt-0.5">0.0 Jam</h4>
+                    <p class="text-[10px] text-sky-700">Rata-rata durasi per staf</p>
                   </div>
                   <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                    <span class="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Total Upah Lembur</span>
-                    <h4 id="kpi-wh-ot-wage" class="text-base sm:text-lg font-black text-emerald-950 mt-0.5">Rp 0</h4>
-                    <p class="text-[10px] text-emerald-700">Total nominal terakumulasi</p>
+                    <span class="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Capai Target (&ge; 40 Jam)</span>
+                    <h4 id="kpi-wh-achieved-emp" class="text-base sm:text-lg font-black text-emerald-950 mt-0.5">0 Orang</h4>
+                    <p class="text-[10px] text-emerald-700">Karyawan capai/lebih 40 jam</p>
                   </div>
                 </div>
 
-                <!-- Tabel Rekap Jam & Lembur -->
+                <!-- Tabel Rekap Jam Kerja Karyawan -->
                 <div class="overflow-x-auto custom-scroll border border-slate-200 rounded-2xl shadow-2xs">
                   <table class="w-full text-left text-xs border-collapse">
                     <thead class="bg-slate-100 text-slate-800 font-black uppercase text-[11px] border-b border-slate-200">
                       <tr>
                         <th class="p-3.5 w-12 text-center border-r border-slate-200">No</th>
-                        <th class="p-3.5 min-w-[200px] border-r border-slate-200">Nama Karyawan</th>
-                        <th class="p-3.5 min-w-[100px] border-r border-slate-200">NIK</th>
-                        <th class="p-3.5 min-w-[110px] border-r border-slate-200">Departemen</th>
-                        <th class="p-3.5 min-w-[90px] text-center border-r border-slate-200">Hari Hadir</th>
-                        <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200 bg-teal-50/50">Total Jam Kerja</th>
-                        <th class="p-3.5 min-w-[100px] text-center border-r border-slate-200">Target (40 Jam)</th>
-                        <th class="p-3.5 min-w-[140px] text-center border-r border-slate-200">Status Jam Kerja</th>
-                        <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200 bg-amber-50/50">Frekuensi Lembur</th>
-                        <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200 bg-amber-50/50">Total Jam Lembur</th>
-                        <th class="p-3.5 min-w-[130px] text-right border-slate-200 bg-emerald-50/50">Total Upah Lembur</th>
+                        <th class="p-3.5 min-w-[220px] border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 min-w-[110px] border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 min-w-[120px] border-r border-slate-200">Departemen</th>
+                        <th class="p-3.5 min-w-[100px] text-center border-r border-slate-200">Hari Hadir</th>
+                        <th class="p-3.5 min-w-[130px] text-center border-r border-slate-200 bg-teal-50/50">Total Jam Kerja</th>
+                        <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200">Target (40 Jam)</th>
+                        <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200">Selisih Jam</th>
+                        <th class="p-3.5 min-w-[150px] text-center border-slate-200">Status Capaian Jam</th>
                       </tr>
                     </thead>
                     <tbody id="workhours-table-body" class="divide-y divide-slate-100 bg-white">
@@ -1239,9 +1237,9 @@
                 <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between flex-wrap gap-2">
                   <div class="flex items-center gap-2">
                     <i data-lucide="info" class="w-4 h-4 text-teal-600"></i>
-                    <span><b>Rumus:</b> Total Jam Kerja dihitung dari selisih jam masuk ke pulang setiap harinya (potongan 1 jam istirahat jika &ge; 5 jam kerja). Target standar adalah 40 jam per minggu.</span>
+                    <span><b>Rumus:</b> Total Jam Kerja dihitung dari selisih jam masuk ke jam pulang setiap harinya (potongan 1 jam istirahat otomatis jika durasi kerja harian &ge; 5 jam). Target standar adalah 40 jam per minggu.</span>
                   </div>
-                  <span class="font-bold text-slate-700">Contoh Akumulasi Lembur: Senin 1x + Selasa 1x = 2x Sesi Lembur</span>
+                  <span class="font-bold text-slate-700">Khusus Monitoring Jam Kerja Karyawan</span>
                 </div>
               </div>
             </div>
@@ -2687,7 +2685,7 @@
         renderReportLeavesTable();
         renderRecordsTable();
         renderMatrixTable();
-        renderWorkHoursAndOvertimeReport();
+        renderWorkHoursReport();
         updateRegisteredCoordsDisplay();
         refreshAllDashboardData();
         lucide.createIcons();
@@ -3886,7 +3884,7 @@
       if (viewName === 'reports-group') {
         renderRecordsTable();
         renderMatrixTable();
-        renderWorkHoursAndOvertimeReport();
+        renderWorkHoursReport();
       }
       if (viewName === 'leaves') renderLeavesTable();
       if (viewName === 'overtime') {
@@ -6679,7 +6677,7 @@
 
       if (isRecord) renderRecordsTable();
       else if (isMatrix) renderMatrixTable();
-      else if (isWorkHours) renderWorkHoursAndOvertimeReport();
+      else if (isWorkHours) renderWorkHoursReport();
       else if (isLeaves) renderReportLeavesTable();
       else if (isOvertime) renderReportOvertimeTable();
       lucide.createIcons();
@@ -6699,7 +6697,7 @@
       }
     }
 
-    function calculateWorkHoursAndOvertimeData() {
+    function calculateWorkHoursData() {
       initWorkHoursDateRange();
       const startStr = document.getElementById('workhours-start-date')?.value || '';
       const endStr = document.getElementById('workhours-end-date')?.value || '';
@@ -6708,7 +6706,6 @@
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', []);
-      const overtimes = getWhDB(activeWarehouse, 'overtime', []);
 
       // Standar Depnaker: 40 jam kerja per 7 hari (minggu)
       let targetHours = 40.0;
@@ -6722,8 +6719,8 @@
 
       const reportData = [];
       let totalActiveEmployees = 0;
-      let totalOtFrequencyAll = 0;
-      let totalOtWageAll = 0;
+      let totalWorkHoursAll = 0;
+      let achievedTargetCount = 0;
 
       regularUsers.forEach(emp => {
         if (searchQ) {
@@ -6733,7 +6730,7 @@
           if (!matchName && !matchNik && !matchDept) return;
         }
 
-        // 1. Ambil Presensi dalam Rentang Tanggal
+        // Ambil Presensi dalam Rentang Tanggal
         const empAtts = attendances.filter(a => {
           if (!a || !a.date) return false;
           const inRange = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
@@ -6786,25 +6783,12 @@
 
         totalEffectiveHours = Math.round(totalEffectiveHours * 10) / 10;
         const diffFromTarget = Math.round((totalEffectiveHours - targetHours) * 10) / 10;
+        const isTargetAchieved = totalEffectiveHours >= targetHours;
 
-        // 2. Ambil Rekap Lembur (Akumulasi sesi/hari lembur, jam, dan upah nominal)
-        const empOts = overtimes.filter(o => {
-          if (!o || !o.date) return false;
-          const inRange = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
-          if (!inRange) return false;
-          const isApproved = o.status !== 'rejected';
-          if (!isApproved) return false;
-          return (o.userNik && o.userNik.toUpperCase() === emp.nik.toUpperCase()) ||
-                 (o.userName && cleanStr(o.userName) === cleanStr(emp.name)) ||
-                 (o.userId && o.userId === emp.id);
-        });
-
-        const otFrequency = empOts.length; // Berapa kali/hari lembur (Senin 1 + Selasa 1 = 2)
-        const otTotalHours = empOts.reduce((sum, o) => sum + (Number(o.effectiveHours) || Number(o.totalHours) || 0), 0);
-        const otTotalWage = empOts.reduce((sum, o) => sum + (Number(o.nominal) || 0), 0);
-
-        totalOtFrequencyAll += otFrequency;
-        totalOtWageAll += otTotalWage;
+        if (daysPresent > 0) {
+          totalWorkHoursAll += totalEffectiveHours;
+          if (isTargetAchieved) achievedTargetCount++;
+        }
 
         reportData.push({
           nik: emp.nik,
@@ -6814,12 +6798,13 @@
           totalEffectiveHours,
           targetHours,
           diffFromTarget,
-          isTargetAchieved: totalEffectiveHours >= targetHours,
-          otFrequency,
-          otTotalHours: Math.round(otTotalHours * 10) / 10,
-          otTotalWage
+          isTargetAchieved
         });
       });
+
+      const avgHours = totalActiveEmployees > 0 
+        ? Math.round((totalWorkHoursAll / totalActiveEmployees) * 10) / 10 
+        : 0;
 
       return {
         startStr,
@@ -6827,34 +6812,33 @@
         targetHours,
         reportData,
         totalActiveEmployees,
-        totalOtFrequencyAll,
-        totalOtWageAll
+        avgHours,
+        achievedTargetCount
       };
     }
 
-    function renderWorkHoursAndOvertimeReport() {
+    function renderWorkHoursReport() {
       const {
         reportData,
-        targetHours,
         totalActiveEmployees,
-        totalOtFrequencyAll,
-        totalOtWageAll
-      } = calculateWorkHoursAndOvertimeData();
+        avgHours,
+        achievedTargetCount
+      } = calculateWorkHoursData();
 
-      // Update KPI Cards
+      // Update KPI Cards Ringkasan Monitoring Jam Kerja
       const kpiEmp = document.getElementById('kpi-wh-active-emp');
-      const kpiFreq = document.getElementById('kpi-wh-ot-freq');
-      const kpiWage = document.getElementById('kpi-wh-ot-wage');
+      const kpiAvg = document.getElementById('kpi-wh-avg-hours');
+      const kpiAchieved = document.getElementById('kpi-wh-achieved-emp');
       if (kpiEmp) kpiEmp.innerText = `${totalActiveEmployees} Orang`;
-      if (kpiFreq) kpiFreq.innerText = `${totalOtFrequencyAll} Kali`;
-      if (kpiWage) kpiWage.innerText = `Rp ${totalOtWageAll.toLocaleString('id-ID')}`;
+      if (kpiAvg) kpiAvg.innerText = `${avgHours} Jam`;
+      if (kpiAchieved) kpiAchieved.innerText = `${achievedTargetCount} Orang`;
 
       const tbody = document.getElementById('workhours-table-body');
       if (!tbody) return;
       tbody.innerHTML = '';
 
       if (reportData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-slate-400 font-medium">Tidak ada data karyawan yang cocok dengan filter pencarian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400 font-medium">Tidak ada data karyawan yang cocok dengan filter pencarian.</td></tr>`;
         return;
       }
 
@@ -6881,36 +6865,30 @@
           <td class="p-3.5 text-center font-bold text-slate-800 border-r border-slate-100 font-mono">${row.daysPresent} Hari</td>
           <td class="p-3.5 text-center font-mono font-black text-teal-800 border-r border-slate-100 bg-teal-50/40 text-sm">${row.totalEffectiveHours} Jam</td>
           <td class="p-3.5 text-center font-mono text-slate-500 border-r border-slate-100 font-bold">${row.targetHours} Jam</td>
-          <td class="p-3.5 text-center border-r border-slate-100">${statusBadge}</td>
-          <td class="p-3.5 text-center font-mono font-bold text-amber-900 border-r border-slate-100 bg-amber-50/40">
-            ${row.otFrequency > 0 ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-black">${row.otFrequency}x Sesi</span>` : '<span class="text-slate-400">-</span>'}
+          <td class="p-3.5 text-center font-mono font-bold ${row.diffFromTarget >= 0 ? 'text-emerald-700' : 'text-amber-700'} border-r border-slate-100">
+            ${row.diffFromTarget >= 0 ? `+${row.diffFromTarget}` : row.diffFromTarget} Jam
           </td>
-          <td class="p-3.5 text-center font-mono font-bold text-slate-800 border-r border-slate-100 bg-amber-50/40">
-            ${row.otTotalHours > 0 ? `${row.otTotalHours} Jam` : '<span class="text-slate-400">-</span>'}
-          </td>
-          <td class="p-3.5 text-right font-mono font-black text-emerald-700 bg-emerald-50/40">
-            ${row.otTotalWage > 0 ? `Rp ${row.otTotalWage.toLocaleString('id-ID')}` : '<span class="text-slate-400 font-normal">Rp 0</span>'}
-          </td>
+          <td class="p-3.5 text-center">${statusBadge}</td>
         `;
         tbody.appendChild(tr);
       });
       lucide.createIcons();
     }
 
-    function exportWorkHoursAndOvertimeToExcel() {
+    function exportWorkHoursToExcel() {
       const {
         startStr,
         endStr,
         reportData
-      } = calculateWorkHoursAndOvertimeData();
+      } = calculateWorkHoursData();
 
       if (reportData.length === 0) {
-        alert('Tidak ada data rekap jam kerja & lembur untuk diexport.');
+        alert('Tidak ada data rekap jam kerja untuk diexport.');
         return;
       }
 
       const rows = [
-        [`REKAP JAM KERJA & AKUMULASI LEMBUR KARYAWAN - GUDANG ${activeWarehouse}`],
+        [`REKAP MONITORING JAM KERJA KARYAWAN - GUDANG ${activeWarehouse}`],
         [`Periode: ${startStr || 'Awal'} s/d ${endStr || 'Akhir'} • Standar Kerja: 40 Jam / Minggu`],
         [],
         [
@@ -6922,10 +6900,7 @@
           'Total Jam Kerja (Jam)',
           'Target Mingguan (Jam)',
           'Selisih Jam Kerja (Jam)',
-          'Status Capaian Jam',
-          'Frekuensi Lembur (Kali)',
-          'Total Jam Lembur (Jam)',
-          'Total Upah Lembur (Rp)'
+          'Status Capaian Jam'
         ]
       ];
 
@@ -6939,10 +6914,7 @@
           r.totalEffectiveHours,
           r.targetHours,
           r.diffFromTarget,
-          r.isTargetAchieved ? 'Tercapai (>= 40 Jam)' : 'Kurang (< 40 Jam)',
-          r.otFrequency,
-          r.otTotalHours,
-          r.otTotalWage
+          r.isTargetAchieved ? 'Tercapai (>= 40 Jam)' : 'Kurang (< 40 Jam)'
         ]);
       });
 
@@ -6956,15 +6928,20 @@
         { wch: 20 },
         { wch: 20 },
         { wch: 20 },
-        { wch: 22 },
-        { wch: 20 },
-        { wch: 20 },
-        { wch: 22 }
+        { wch: 24 }
       ];
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `Rekap_Jam_Lembur_${activeWarehouse}`);
-      XLSX.writeFile(wb, `Rekap_Jam_Kerja_Lembur_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, `Rekap_Jam_${activeWarehouse}`);
+      XLSX.writeFile(wb, `Rekap_Jam_Kerja_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+    }
+
+    // Alias compatibility
+    function renderWorkHoursAndOvertimeReport() {
+      renderWorkHoursReport();
+    }
+    function exportWorkHoursAndOvertimeToExcel() {
+      exportWorkHoursToExcel();
     }
 
     function renderReportLeavesTable() {
