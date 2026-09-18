@@ -3290,6 +3290,17 @@
       return role === 'admin' || role === 'scanner' || nik.startsWith('ADM') || nik.startsWith('ABSEN') || name.includes('admin utama') || name.includes('scanner absen');
     }
 
+    // Role supervisor dan coordinator tidak dimasukkan ke dalam rekap matriks presensi
+    function isMatrixEligibleUser(user) {
+      if (!user) return false;
+      if (isManagementSystemAccount(user)) return false;
+      const role = (user.role || '').toLowerCase().trim();
+      if (role === 'supervisor' || role === 'coordinator' || role === 'cordinator' || role.includes('supervisor') || role.includes('coordinator') || role.includes('cordinator')) {
+        return false;
+      }
+      return true;
+    }
+
     function quickLoginScannerAccount(warehouse = 'MBI') {
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       let scannerUser = users.find(u => u.role === 'scanner' || u.nik === `ABSEN-${warehouse}`);
@@ -7423,7 +7434,7 @@
       thead.innerHTML = headerHTML;
 
       tbody.innerHTML = '';
-      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const regularUsers = users.filter(u => isMatrixEligibleUser(u));
       regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
         let rowHTML = `
@@ -7475,7 +7486,7 @@
 
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const regularUsers = users.filter(u => isMatrixEligibleUser(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
@@ -7590,7 +7601,7 @@
       const endStr = document.getElementById('matrix-end-date').value;
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const regularUsers = users.filter(u => isMatrixEligibleUser(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
