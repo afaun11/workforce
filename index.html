@@ -2956,11 +2956,6 @@
         }
 
         updateCloudSyncStatusBadge(success ? 'synced' : 'local');
-
-        // Otomatis sinkronkan juga ke Google Spreadsheet jika Webhook aktif
-        if (typeof triggerGoogleSheetAutoSync === 'function') {
-          triggerGoogleSheetAutoSync();
-        }
         if (forceAlert) {
           if (success) {
             alert(`✅ Sukses Tersimpan ke Firebase Cloud 24/7!\n\n• Karyawan MBI: ${payload.mbi_users.length} orang\n• Data Lemburan: ${payload.mbi_overtime.length} data\n• Riwayat Absensi: ${payload.mbi_attendance.length} record\n\nSemua perubahan data langsung tersimpan permanen di Cloud.`);
@@ -4663,9 +4658,8 @@
           notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
         });
 
-        // 1. Simpan langsung ke database lokal & background cloud (tanpa pop up alert blocking)
+        // 1. Simpan langsung ke database lokal & background cloud
         setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(false);
         if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         // 2. Munculkan notifikasi mengambang profesional 5 detik
@@ -4724,9 +4718,8 @@
         existing.userId = matchedUser.id;
         existing.dept = matchedUser.dept;
 
-        // 1. Simpan langsung ke database lokal & background cloud (tanpa pop up alert blocking)
+        // 1. Simpan langsung ke database lokal & background cloud
         setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(false);
         if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         // 2. Munculkan notifikasi mengambang profesional 5 detik
@@ -8386,11 +8379,14 @@
     const OFFICIAL_GSHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec";
 
     function getGoogleSheetWebhookUrl() {
-      let url = (localStorage.getItem('wfm_gsheet_webhook_url') || '').trim();
+      const inputEl = document.getElementById('gsheet-webhook-url');
+      const inputVal = (inputEl?.value || '').trim();
+      let url = (localStorage.getItem('wfm_gsheet_webhook_url') || inputVal || OFFICIAL_GSHEET_WEBHOOK_URL || '').trim();
       // Auto-migrasi jika URL masih kosong atau masih menggunakan script URL lama
       if (!url || url.includes('AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw') || url.includes('mhealth.tech')) {
         url = OFFICIAL_GSHEET_WEBHOOK_URL;
         localStorage.setItem('wfm_gsheet_webhook_url', OFFICIAL_GSHEET_WEBHOOK_URL);
+        if (inputEl) inputEl.value = OFFICIAL_GSHEET_WEBHOOK_URL;
       }
       return url;
     }
@@ -8459,38 +8455,40 @@ function doPost(e) {
 
     var sheetsData = data.sheets || {};
     var updatedList = [];
+    var existingSheets = ss.getSheets();
 
-    // Pencocokan nama sheet fleksibel & cerdas
+    // Pencocokan nama sheet fleksibel & cerdas (menggunakan cache existingSheets)
     function findTargetSheet(name) {
       var targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      var sheets = ss.getSheets();
 
       // 1. Cek exact match
-      for (var i = 0; i < sheets.length; i++) {
-        var s = sheets[i];
+      for (var i = 0; i < existingSheets.length; i++) {
+        var s = existingSheets[i];
         if (s.getName().trim().toLowerCase() === name.trim().toLowerCase()) return s;
       }
 
       // 2. Cek cleaned match
-      for (var i = 0; i < sheets.length; i++) {
-        var s = sheets[i];
+      for (var i = 0; i < existingSheets.length; i++) {
+        var s = existingSheets[i];
         var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
         if (sClean === targetClean) return s;
       }
 
       // 3. Cek keyword aliases
-      for (var i = 0; i < sheets.length; i++) {
-        var s = sheets[i];
+      for (var i = 0; i < existingSheets.length; i++) {
+        var s = existingSheets[i];
         var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (targetClean.indexOf('matriks') !== -1 && sClean.indexOf('matriks') !== -1) return s;
         if (targetClean.indexOf('record') !== -1 && sClean.indexOf('record') !== -1) return s;
+        if (targetClean.indexOf('matriks') !== -1 && sClean.indexOf('matriks') !== -1) return s;
         if (targetClean.indexOf('jam') !== -1 && sClean.indexOf('jam') !== -1) return s;
         if (targetClean.indexOf('pengajuan') !== -1 && sClean.indexOf('pengajuan') !== -1) return s;
         if (targetClean.indexOf('lembur') !== -1 && sClean.indexOf('lembur') !== -1) return s;
       }
 
       // Jika belum ada, buat sheet baru dengan nama tersebut
-      return ss.insertSheet(name);
+      var newSheet = ss.insertSheet(name);
+      existingSheets.push(newSheet);
+      return newSheet;
     }
 
     for (var sheetName in sheetsData) {
@@ -8507,7 +8505,7 @@ function doPost(e) {
       }
 
       if (numRows > 0 && numCols > 0) {
-        // PERBAIKAN PENTING: Otomatis perluas kolom dan baris jika data melebihi batas default sheet (26 kolom)
+        // Otomatis perluas kolom dan baris jika data melebihi batas sheet
         var currentCols = targetSheet.getMaxColumns();
         if (numCols > currentCols) {
           targetSheet.insertColumnsAfter(currentCols, numCols - currentCols);
@@ -8530,7 +8528,7 @@ function doPost(e) {
         // Tulis seluruh data tabel sekaligus (Batch Write super cepat)
         targetSheet.getRange(1, 1, numRows, numCols).setValues(normalized);
 
-        // Header Styling Cepat & Elegan (Instan tanpa lag)
+        // Header Styling Cepat & Elegan
         try {
           targetSheet.getRange(1, 1, 1, numCols)
             .setFontWeight("bold")
@@ -8541,9 +8539,11 @@ function doPost(e) {
       }
 
       updatedList.push(targetSheet.getName());
-    }
 
-    SpreadsheetApp.flush();
+      // PENTING: Flush seketika setelah setiap sheet selesai ditulis!
+      // Khusus RECORD ABSEN langsung tampil dalam 0.5 detik di Google Sheet!
+      SpreadsheetApp.flush();
+    }
 
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
@@ -8675,66 +8675,66 @@ function testManualSync() {
     let isGSheetSyncing = false;
     let hasPendingGSheetSync = false;
 
-    async function triggerGoogleSheetAutoSync(immediate = false) {
+    function triggerGoogleSheetAutoSync(immediate = false) {
       const webhookUrl = getGoogleSheetWebhookUrl();
       if (!webhookUrl) {
         updateGSheetSyncBadge('unlinked');
         return;
       }
 
+      if (immediate) {
+        if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
+        return executeActualGSheetSync();
+      }
+
+      if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
+      gsheetAutoSyncTimeout = setTimeout(executeActualGSheetSync, 300);
+    }
+
+    async function executeActualGSheetSync() {
+      const webhookUrl = getGoogleSheetWebhookUrl();
+      if (!webhookUrl) return;
+
       if (isGSheetSyncing) {
         hasPendingGSheetSync = true;
         return;
       }
 
-      const doSync = async () => {
+      isGSheetSyncing = true;
+      updateGSheetSyncBadge('syncing');
+
+      // Safety timer agar isGSheetSyncing tidak pernah macet
+      const safetyTimer = setTimeout(() => {
         if (isGSheetSyncing) {
-          hasPendingGSheetSync = true;
-          return;
-        }
-        isGSheetSyncing = true;
-        updateGSheetSyncBadge('syncing');
-
-        try {
-          const payload = compileBackupPayload('ALL');
-          const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
-
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 8000);
-          try {
-            await fetch(targetUrl, {
-              method: 'POST',
-              mode: 'no-cors',
-              cache: 'no-cache',
-              keepalive: true,
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify(payload),
-              signal: controller.signal
-            });
-          } finally {
-            clearTimeout(timeoutId);
-          }
-
-          updateGSheetSyncBadge('synced');
-        } catch (err) {
-          console.warn('Auto-sync Google Sheet notice:', err);
-          updateGSheetSyncBadge('synced');
-        } finally {
           isGSheetSyncing = false;
-          if (hasPendingGSheetSync) {
-            hasPendingGSheetSync = false;
-            triggerGoogleSheetAutoSync(true);
-          }
+          updateGSheetSyncBadge('synced');
         }
-      };
+      }, 15000);
 
-      if (immediate) {
-        if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
-        return await doSync();
+      try {
+        const payload = compileBackupPayload('ALL');
+        const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+
+        await fetch(targetUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          cache: 'no-cache',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+
+        updateGSheetSyncBadge('synced');
+      } catch (err) {
+        console.warn('Auto-sync Google Sheet notice:', err);
+        updateGSheetSyncBadge('synced');
+      } finally {
+        clearTimeout(safetyTimer);
+        isGSheetSyncing = false;
+        if (hasPendingGSheetSync) {
+          hasPendingGSheetSync = false;
+          setTimeout(() => triggerGoogleSheetAutoSync(true), 300);
+        }
       }
-
-      if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
-      gsheetAutoSyncTimeout = setTimeout(doSync, 300);
     }
 
     function openGoogleSheetBackupModal(source = 'general') {
@@ -9204,7 +9204,6 @@ function testManualSync() {
           method: 'POST',
           mode: 'no-cors',
           cache: 'no-cache',
-          keepalive: true,
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
         });
