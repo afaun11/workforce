@@ -2290,12 +2290,16 @@
             URL Web App Google Apps Script *
           </label>
           <div class="flex items-center gap-2">
-            <input type="url" id="gsheet-webhook-url" value="https://script.google.com/a/macros/mhealth.tech/s/AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw/exec" placeholder="https://script.google.com/.../exec" class="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <input type="url" id="gsheet-webhook-url" value="https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec" placeholder="https://script.google.com/.../exec" class="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <button type="button" onclick="testGoogleSheetWebhookConnection()" id="btn-test-gsheet" class="h-10 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs flex items-center gap-1.5" title="Uji apakah URL Apps Script aktif dan dapat diakses publik">
+              <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+              <span>Tes Koneksi</span>
+            </button>
             <button type="button" onclick="saveGoogleSheetWebhookUrl()" class="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs">
               Simpan & Aktifkan
             </button>
           </div>
-          <p class="text-[11px] text-slate-500 mt-1">Cukup simpan URL ini satu kali. Selanjutnya setiap kali ada scan absen, data otomatis masuk ke Google Sheet.</p>
+          <p class="text-[11px] text-slate-500 mt-1">Simpan URL satu kali. Sistem otomatis menyinkronkan data secara realtime setiap ada aktivitas absensi, lembur, dan izin.</p>
         </div>
 
         <!-- Accordion Panduan Pasang Script -->
@@ -2303,33 +2307,38 @@
           <button type="button" onclick="toggleGSheetGuide()" class="w-full px-4 py-2.5 flex items-center justify-between text-left text-xs font-bold text-amber-950 hover:bg-amber-100/60 transition">
             <span class="flex items-center gap-2">
               <i data-lucide="help-circle" class="w-4 h-4 text-amber-600"></i>
-              <span>Panduan Pasang Script ke Google Sheet (Hanya 1 Menit)</span>
+              <span>Panduan Pasang / Update Script ke Google Sheet (Wajib Diikuti)</span>
             </span>
             <i id="gsheet-guide-chevron" data-lucide="chevron-down" class="w-4 h-4 text-amber-700 transition-transform"></i>
           </button>
           
           <div id="gsheet-guide-body" class="hidden p-4 pt-2 border-t border-amber-200/80 space-y-3 text-xs text-amber-900">
-            <ol class="list-decimal list-inside space-y-1.5 font-medium leading-relaxed">
-              <li>Buka file <a href="https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing" target="_blank" class="font-bold underline text-emerald-800">Google Spreadsheet</a> Anda.</li>
+            <ol class="list-decimal list-inside space-y-2 font-medium leading-relaxed">
+              <li>Buka file <a href="https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing" target="_blank" class="font-bold underline text-emerald-800">Google Spreadsheet Target Baru</a> Anda.</li>
               <li>Di menu atas Google Sheet, klik <b>Ekstensi (Extensions)</b> &rarr; <b>Apps Script</b>.</li>
-              <li>Hapus kode bawaan di editor, lalu klik tombol <b>"Salin Kode Apps Script"</b> di bawah dan <b>Paste (Ctrl + V)</b> ke Apps Script.</li>
-              <li>Klik tombol <b>Simpan (Save)</b> ikon disket.</li>
-              <li>Klik tombol biru <b>Terapkan (Deploy)</b> di pojok kanan atas &rarr; pilih <b>Deployment Baru (New Deployment)</b>.</li>
-              <li>Pilih jenis <b>Aplikasi Web (Web App)</b>:
-                <ul class="list-disc list-inside pl-4 mt-0.5 text-[11px] text-amber-800">
-                  <li>Jalankan sebagai: <b>Saya (email Anda)</b></li>
-                  <li>Akses: <b>Siapa saja (Anyone)</b></li>
+              <li>Hapus semua kode lama di editor, lalu klik tombol <b>"Salin Kode Apps Script"</b> di bawah dan <b>Paste (Ctrl + V)</b> ke Apps Script, lalu klik ikon <b>Simpan (Save)</b> 💾.</li>
+              <li class="bg-amber-100/70 p-2.5 rounded-xl border border-amber-300">
+                <b class="text-amber-950">PENTING: Otorisasi Izin Akses (1 Kali)</b><br>
+                Di atas editor Apps Script, pilih fungsi <b>testManualSync</b> dari dropdown lalu klik <b>Jalankan (Run)</b>.<br>
+                Akan muncul popup <i>"Otorisasi Diperlukan"</i> &rarr; Klik <b>Tinjau Izin</b> &rarr; Pilih akun Anda &rarr; Klik <b>Lanjutan (Advanced)</b> &rarr; Klik <b>Buka WFM Medika (tidak aman)</b> &rarr; Klik <b>Izinkan (Allow)</b>.
+              </li>
+              <li>Klik tombol biru <b>Terapkan (Deploy)</b> di pojok kanan atas:
+                <ul class="list-disc list-inside pl-4 mt-1 text-[11px] text-amber-900 space-y-1">
+                  <li>Jika baru pertama kali: Pilih <b>Deployment Baru (New Deployment)</b> &rarr; jenis <b>Aplikasi Web (Web App)</b>.</li>
+                  <li>Jika sudah pernah pasang: Pilih <b>Kelola Penerapan (Manage Deployments)</b> &rarr; Klik ikon pensil <b>Edit</b> &rarr; Versi: pilih <b>"Versi Baru" (New Version)</b>.</li>
+                  <li>Jalankan sebagai: <b>Saya (email Anda)</b>.</li>
+                  <li><b class="text-rose-700 underline">Yang memiliki akses (Who has access): WAJIB pilih "Siapa saja" (Anyone)</b>, jangan pilih "Hanya dalam mhealth.tech" agar webhook tidak dicegat login Google.</li>
                 </ul>
               </li>
-              <li>Klik <b>Terapkan</b>, izinkan akses akun Google, lalu <b>Salin URL Aplikasi Web</b> (berakhiran <code class="bg-amber-100 px-1 rounded font-mono">/exec</code>) dan tempelkan ke kolom URL di atas.</li>
+              <li>Klik <b>Terapkan (Deploy)</b>, salin URL Web App yang berakhiran <code class="bg-amber-100 px-1 rounded font-mono">/exec</code>, tempelkan ke kolom di atas, lalu klik <b>Tes Koneksi</b> & <b>Simpan & Aktifkan</b>.</li>
             </ol>
 
             <div class="pt-2 flex items-center justify-between gap-2 flex-wrap">
               <button type="button" onclick="copyGoogleAppsScriptCode()" class="h-9 px-4 bg-amber-900 hover:bg-amber-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs">
                 <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-                <span id="btn-copy-gas-text">Salin Kode Apps Script (1-Klik)</span>
+                <span id="btn-copy-gas-text">Salin Kode Apps Script (Terbaru)</span>
               </button>
-              <span class="text-[11px] text-amber-700 italic">*Script otomatis mengenali seluruh tab sheet</span>
+              <span class="text-[11px] text-amber-700 italic">*Sudah otomatis menangani 38 kolom dan sheet kosong</span>
             </div>
           </div>
         </div>
@@ -3318,6 +3327,9 @@
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       localStorage.setItem(storageKey, JSON.stringify(val));
       saveFullDatabaseToCloud();
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync();
+      }
     }
 
     function generateUniqueNIK(warehouse, name = '', existingUsersArray = null) {
@@ -4671,7 +4683,7 @@
         // 1. Simpan langsung ke database lokal & background cloud (tanpa pop up alert blocking)
         setWhDB(targetWh, 'attendance', attendances);
         saveFullDatabaseToCloud(false);
-        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync();
+        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         // 2. Munculkan notifikasi mengambang profesional 5 detik
         showProfessionalAttendanceToast({
@@ -4732,7 +4744,7 @@
         // 1. Simpan langsung ke database lokal & background cloud (tanpa pop up alert blocking)
         setWhDB(targetWh, 'attendance', attendances);
         saveFullDatabaseToCloud(false);
-        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync();
+        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         // 2. Munculkan notifikasi mengambang profesional 5 detik
         showProfessionalAttendanceToast({
@@ -7486,6 +7498,20 @@
       });
     }
 
+    function deleteSingleAttendanceRecord(id) {
+      if (!id) return;
+      if (!confirm('Apakah Anda yakin ingin menghapus catatan presensi ini? Perubahan akan otomatis diperbarui ke Google Sheet.')) return;
+      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const filtered = attendances.filter(a => a.id !== id);
+      setWhDB(activeWarehouse, 'attendance', filtered);
+      saveFullDatabaseToCloud();
+      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      renderRecordsTable();
+      refreshAllDashboardData();
+      renderMatrixTable();
+      alert('Catatan presensi berhasil dihapus dan disinkronkan ke Google Sheet.');
+    }
+
     function exportRecordsToExcel() {
       const startStr = document.getElementById('record-start-date').value;
       const endStr = document.getElementById('record-end-date').value;
@@ -7924,6 +7950,7 @@
       leaves.unshift(newLeave);
       setWhDB(activeWarehouse, 'leaves', leaves);
       saveFullDatabaseToCloud();
+      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
       document.getElementById('leave-reason').value = '';
       const alertEl = document.getElementById('leave-alert');
@@ -7987,6 +8014,7 @@
         item.status = newStatus;
         setWhDB(activeWarehouse, 'leaves', leaves);
         saveFullDatabaseToCloud();
+        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
         renderLeavesTable();
         refreshAllDashboardData();
         renderMatrixTable();
@@ -8146,6 +8174,7 @@
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
       saveFullDatabaseToCloud();
+      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
       document.getElementById('ot-reason-select').value = 'Menyelesaikan Orderan';
       toggleOvertimeManualReason('Menyelesaikan Orderan');
       selectAllOvertimeEmployees(false);
@@ -8232,6 +8261,7 @@
         item.status = newStatus;
         setWhDB(activeWarehouse, 'overtime', overtimes);
         saveFullDatabaseToCloud();
+        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
         renderOvertimeTable();
         refreshAllDashboardData();
         alert(`Pengajuan lembur berhasil di-${newStatus === 'approved' ? 'SETUJUI' : 'TOLAK'} dan status terkunci permanen!`);
@@ -8365,49 +8395,107 @@
 
     // =========================================================
     // INTEGRASI SINKRONISASI OTOMATIS GOOGLE SPREADSHEET (REAL-TIME)
-    // Target URL: https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing
+    // Target URL: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
     // 5 Sheet: RECORD ABSEN, ABSEN MATRIKS, REKAP JAM KERJA, REKAP PENGAJUAN, REKAP LEMBUR
     // =========================================================
 
-    const GOOGLE_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing";
-    const OFFICIAL_GSHEET_WEBHOOK_URL = "https://script.google.com/a/macros/mhealth.tech/s/AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw/exec";
+    const GOOGLE_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing";
+    const OFFICIAL_GSHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec";
 
     function getGoogleSheetWebhookUrl() {
-      return (localStorage.getItem('wfm_gsheet_webhook_url') || OFFICIAL_GSHEET_WEBHOOK_URL || '').trim();
+      let url = (localStorage.getItem('wfm_gsheet_webhook_url') || '').trim();
+      // Auto-migrasi jika URL masih kosong atau masih menggunakan script URL lama
+      if (!url || url.includes('AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw') || url.includes('mhealth.tech')) {
+        url = OFFICIAL_GSHEET_WEBHOOK_URL;
+        localStorage.setItem('wfm_gsheet_webhook_url', OFFICIAL_GSHEET_WEBHOOK_URL);
+      }
+      return url;
+    }
+
+    function cleanGoogleScriptUrl(url) {
+      if (!url) return '';
+      let clean = url.trim();
+      const match = clean.match(/https:\/\/script\.google\.com(?:\/a\/macros\/[^\/]+|\/macros)\/s\/([^\/]+)\/exec/);
+      if (match && match[1]) {
+        return `https://script.google.com/macros/s/${match[1]}/exec`;
+      }
+      return clean;
     }
 
     const GOOGLE_APPS_SCRIPT_CODE = `/**
  * =========================================================================
  * GOOGLE APPS SCRIPT WEBHOOK - WFM MEDIKA REALTIME ATTENDANCE & REPORT BACKUP
- * Spreadsheet Target: https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing
+ * Spreadsheet Target: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
  * 5 Tab Sheet: RECORD ABSEN, ABSEN MATRIKS, REKAP JAM KERJA, REKAP PENGAJUAN, REKAP LEMBUR
  * =========================================================================
  */
 
+var TARGET_SPREADSHEET_ID = "1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o";
+
+function getTargetSpreadsheet() {
+  var ss = null;
+  try {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss;
+  } catch(e) {}
+  try {
+    ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+    if (ss) return ss;
+  } catch(e) {}
+  return SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/" + TARGET_SPREADSHEET_ID + "/edit");
+}
+
 function doPost(e) {
   try {
-    var contents = e.postData.contents;
+    var contents = "";
+    if (e && e.postData && e.postData.contents) {
+      contents = e.postData.contents;
+    } else if (e && e.parameter && e.parameter.data) {
+      contents = e.parameter.data;
+    } else if (e && e.parameters) {
+      for (var k in e.parameters) {
+        if (k && k.indexOf('{') !== -1) {
+          contents = k;
+          break;
+        }
+      }
+    }
+
+    if (!contents) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Data payload kosong. Pastikan request mengirimkan data JSON."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     var data = JSON.parse(contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    
+    var ss = getTargetSpreadsheet();
+    if (!ss) {
+      throw new Error("Gagal membuka Spreadsheet target ID: " + TARGET_SPREADSHEET_ID);
+    }
+
     var sheetsData = data.sheets || {};
     var updatedList = [];
 
-    // Pencocokan nama sheet fleksibel & cerdas (menangani casing & spasi)
+    // Pencocokan nama sheet fleksibel & cerdas
     function findTargetSheet(name) {
       var targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
       var sheets = ss.getSheets();
 
-      // 1. Cek exact / contains match
+      // 1. Cek exact match
+      for (var i = 0; i < sheets.length; i++) {
+        var s = sheets[i];
+        if (s.getName().trim().toLowerCase() === name.trim().toLowerCase()) return s;
+      }
+
+      // 2. Cek cleaned match
       for (var i = 0; i < sheets.length; i++) {
         var s = sheets[i];
         var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (sClean === targetClean || sClean.indexOf(targetClean) !== -1 || targetClean.indexOf(sClean) !== -1) {
-          return s;
-        }
+        if (sClean === targetClean) return s;
       }
 
-      // 2. Cek keyword aliases
+      // 3. Cek keyword aliases
       for (var i = 0; i < sheets.length; i++) {
         var s = sheets[i];
         var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -8436,6 +8524,16 @@ function doPost(e) {
       }
 
       if (numRows > 0 && numCols > 0) {
+        // PERBAIKAN PENTING: Otomatis perluas kolom dan baris jika data melebihi batas default sheet (26 kolom)
+        var currentCols = targetSheet.getMaxColumns();
+        if (numCols > currentCols) {
+          targetSheet.insertColumnsAfter(currentCols, numCols - currentCols);
+        }
+        var currentRows = targetSheet.getMaxRows();
+        if (numRows > currentRows) {
+          targetSheet.insertRowsAfter(currentRows, numRows - currentRows);
+        }
+
         var normalized = [];
         for (var r = 0; r < rows.length; r++) {
           var row = rows[r] || [];
@@ -8467,6 +8565,8 @@ function doPost(e) {
       updatedList.push(targetSheet.getName());
     }
 
+    SpreadsheetApp.flush();
+
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: "Data berhasil disinkronkan ke sheet: " + updatedList.join(", "),
@@ -8475,6 +8575,7 @@ function doPost(e) {
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
+    console.error("Error in doPost: " + err.toString());
     return ContentService.createTextOutput(JSON.stringify({
       status: "error",
       message: err.toString()
@@ -8483,14 +8584,91 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({
-    status: "online",
-    name: "WFM Medika Realtime Auto-Sync Webhook",
-    spreadsheetTitle: SpreadsheetApp.getActiveSpreadsheet().getName(),
-    time: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
+  try {
+    var ss = getTargetSpreadsheet();
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "online",
+      name: "WFM Medika Realtime Auto-Sync Webhook",
+      spreadsheetTitle: ss ? ss.getName() : "Unknown",
+      time: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * FUNGSI UJI COBA OTORISASI & KONEKSI
+ * Klik fungsi ini di editor Apps Script lalu tekan tombol "Jalankan / Run"
+ * Ini akan memunculkan popup "Izinkan Akses (Authorization)" ke Google Spreadsheet Anda.
+ */
+function testManualSync() {
+  var ss = getTargetSpreadsheet();
+  Logger.log("Terhubung ke Spreadsheet: " + ss.getName());
+  var sheet = ss.getSheetByName("RECORD ABSEN") || ss.getSheets()[0];
+  sheet.getRange("A1").setValue("TEST KONEKSI WFM MEDIKA BERHASIL");
+  SpreadsheetApp.flush();
+  Logger.log("✅ Berhasil menulis test ke sheet: " + sheet.getName());
 }
 `;
+
+    async function testGoogleSheetWebhookConnection() {
+      const inputEl = document.getElementById('gsheet-webhook-url');
+      const rawUrl = (inputEl?.value || getGoogleSheetWebhookUrl() || '').trim();
+      if (!rawUrl) {
+        alert('Silakan masukkan URL Web App Google Apps Script Anda terlebih dahulu.');
+        return;
+      }
+
+      const cleanUrl = cleanGoogleScriptUrl(rawUrl);
+      const statusEl = document.getElementById('gsheet-backup-status');
+      if (statusEl) {
+        statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon Webhook Google Apps Script...</span>`;
+        statusEl.classList.remove('hidden');
+        lucide.createIcons();
+      }
+
+      try {
+        const getResp = await fetch(cleanUrl, { method: 'GET', redirect: 'follow' });
+        if (getResp.ok) {
+          const json = await getResp.json();
+          if (json && json.status === 'online') {
+            if (statusEl) {
+              statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 flex items-center gap-2';
+              statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>✅ <b>Koneksi Webhook Berhasil!</b> Terhubung ke Google Spreadsheet: <u>${json.spreadsheetTitle || 'Target'}</u>.</span>`;
+              statusEl.classList.remove('hidden');
+              lucide.createIcons();
+            }
+            alert(`✅ KONEKSI GOOGLE APPS SCRIPT BERHASIL!\n\nStatus: Online\nSpreadsheet: ${json.spreadsheetTitle || 'Terhubung'}\n\nWebhook siap menerima sinkronisasi otomatis presensi.`);
+            return;
+          }
+        }
+      } catch (eGet) {
+        console.warn('GET diagnostic notice:', eGet);
+      }
+
+      if (statusEl) {
+        statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-950 border border-amber-300 flex items-start gap-2.5';
+        statusEl.innerHTML = `
+          <i data-lucide="alert-circle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+          <div class="space-y-1 text-[11px] leading-relaxed">
+            <b class="text-xs text-amber-900 block font-black">Langkah Wajib Agar Data Muncul di Google Sheet:</b>
+            <p>Jika data belum masuk ke Google Sheet, ada 2 hal penting yang perlu diperiksa di Apps Script:</p>
+            <ol class="list-decimal list-inside pl-1 space-y-0.5 text-amber-900 font-semibold">
+              <li><b>Otorisasi Izin:</b> Di Apps Script, pilih fungsi <b>testManualSync</b> lalu klik <b>Jalankan (Run)</b> &rarr; Izinkan Akses (Allow).</li>
+              <li><b>Akses Publik:</b> Buka <b>Terapkan &rarr; Kelola Penerapan &rarr; Edit</b> &rarr; Versi: <b>Versi Baru</b> &rarr; Siapa yang memiliki akses: <b>Siapa saja (Anyone)</b> &rarr; Terapkan.</li>
+            </ol>
+          </div>
+        `;
+        statusEl.classList.remove('hidden');
+        lucide.createIcons();
+      }
+      alert('ℹ️ TIPS PENTING:\n\nPastikan di Google Apps Script:\n1. Pilih fungsi testManualSync lalu klik "Jalankan" untuk mengizinkan akses (Otorisasi).\n2. Saat Deploy (Terapkan), opsi "Yang memiliki akses" WAJIB dipilih "Siapa saja" (Anyone), bukan hanya dalam mhealth.tech.');
+    }
 
     function updateGSheetSyncBadge(status = 'standby') {
       const dot = document.getElementById('nav-gsheet-dot');
@@ -8517,6 +8695,7 @@ function doGet(e) {
 
     let gsheetAutoSyncTimeout = null;
     let isGSheetSyncing = false;
+    let hasPendingGSheetSync = false;
 
     async function triggerGoogleSheetAutoSync(immediate = false) {
       const webhookUrl = getGoogleSheetWebhookUrl();
@@ -8525,20 +8704,37 @@ function doGet(e) {
         return;
       }
 
+      if (isGSheetSyncing) {
+        hasPendingGSheetSync = true;
+        return;
+      }
+
       const doSync = async () => {
-        if (isGSheetSyncing) return;
+        if (isGSheetSyncing) {
+          hasPendingGSheetSync = true;
+          return;
+        }
         isGSheetSyncing = true;
         updateGSheetSyncBadge('syncing');
 
         try {
           const payload = compileBackupPayload('ALL');
+          const cleanUrl = cleanGoogleScriptUrl(webhookUrl);
+          const urlsToPing = [cleanUrl];
+          if (webhookUrl && webhookUrl !== cleanUrl) {
+            urlsToPing.push(webhookUrl);
+          }
 
-          await fetch(webhookUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-          });
+          for (const u of urlsToPing) {
+            try {
+              await fetch(u, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+              });
+            } catch(e) {}
+          }
 
           updateGSheetSyncBadge('synced');
         } catch (err) {
@@ -8546,15 +8742,20 @@ function doGet(e) {
           updateGSheetSyncBadge('synced');
         } finally {
           isGSheetSyncing = false;
+          if (hasPendingGSheetSync) {
+            hasPendingGSheetSync = false;
+            setTimeout(() => triggerGoogleSheetAutoSync(true), 300);
+          }
         }
       };
 
       if (immediate) {
+        if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
         return await doSync();
       }
 
       if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
-      gsheetAutoSyncTimeout = setTimeout(doSync, 1200);
+      gsheetAutoSyncTimeout = setTimeout(doSync, 400);
     }
 
     function openGoogleSheetBackupModal(source = 'general') {
@@ -8729,12 +8930,12 @@ function doGet(e) {
     }
 
     function generateRekapMatriksSheetData(warehouse, startStr, endStr) {
-      if (!startStr) {
+      if (!startStr || !endStr) {
         const today = new Date();
         const past30 = new Date();
         past30.setDate(past30.getDate() - 29);
-        startStr = past30.toISOString().split('T')[0];
-        endStr = today.toISOString().split('T')[0];
+        startStr = startStr || past30.toISOString().split('T')[0];
+        endStr = endStr || today.toISOString().split('T')[0];
       }
 
       const dateList = getDatesInRange(startStr, endStr);
@@ -8793,12 +8994,12 @@ function doGet(e) {
     }
 
     function generateRekapJamKerjaSheetData(warehouse, startStr, endStr) {
-      if (!startStr) {
+      if (!startStr || !endStr) {
         const today = new Date();
         const past7 = new Date();
         past7.setDate(past7.getDate() - 6);
-        startStr = past7.toISOString().split('T')[0];
-        endStr = today.toISOString().split('T')[0];
+        startStr = startStr || past7.toISOString().split('T')[0];
+        endStr = endStr || today.toISOString().split('T')[0];
       }
 
       const whList = warehouse === 'ALL' ? ['MBI', 'MAI'] : [warehouse];
@@ -9018,13 +9219,22 @@ function doGet(e) {
 
       try {
         const payload = compileBackupPayload(targetWhMode);
+        const cleanUrl = cleanGoogleScriptUrl(webhookUrl);
+        const urlsToPing = [cleanUrl];
+        if (webhookUrl && webhookUrl !== cleanUrl) {
+          urlsToPing.push(webhookUrl);
+        }
 
-        await fetch(webhookUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
+        for (const u of urlsToPing) {
+          try {
+            await fetch(u, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload)
+            });
+          } catch(e) {}
+        }
 
         updateGSheetSyncBadge('synced');
         if (statusEl) {
