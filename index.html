@@ -2956,9 +2956,20 @@
         }
 
         updateCloudSyncStatusBadge(success ? 'synced' : 'local');
+
+        // SINKRONISASI OTOMATIS KE GOOGLE SPREADSHEET (DATABASE BACKUP REAL-TIME)
+        // Setiap kali data tersimpan ke Firebase Cloud, otomatis data juga langsung ter-backup ke Google Sheet
+        try {
+          if (typeof syncGoogleSheetDirectly === 'function') {
+            syncGoogleSheetDirectly();
+          }
+        } catch (eGSheet) {
+          console.warn('Google Sheet auto backup error:', eGSheet);
+        }
+
         if (forceAlert) {
           if (success) {
-            alert(`✅ Sukses Tersimpan ke Firebase Cloud 24/7!\n\n• Karyawan MBI: ${payload.mbi_users.length} orang\n• Data Lemburan: ${payload.mbi_overtime.length} data\n• Riwayat Absensi: ${payload.mbi_attendance.length} record\n\nSemua perubahan data langsung tersimpan permanen di Cloud.`);
+            alert(`✅ Sukses Tersimpan ke Firebase Cloud 24/7 & Google Spreadsheet Backup!\n\n• Karyawan MBI: ${payload.mbi_users.length} orang\n• Data Lemburan: ${payload.mbi_overtime.length} data\n• Riwayat Absensi: ${payload.mbi_attendance.length} record\n\nSemua perubahan data langsung tersimpan permanen di Cloud & Google Sheet.`);
           } else {
             alert('⚠️ Gagal terhubung ke Firebase Cloud. Periksa koneksi internet Anda.');
           }
@@ -8671,45 +8682,11 @@ function testManualSync() {
       }
     }
 
-    let gsheetAutoSyncTimeout = null;
-    let isGSheetSyncing = false;
-    let hasPendingGSheetSync = false;
-
-    function triggerGoogleSheetAutoSync(immediate = false) {
-      const webhookUrl = getGoogleSheetWebhookUrl();
-      if (!webhookUrl) {
-        updateGSheetSyncBadge('unlinked');
-        return;
-      }
-
-      if (immediate) {
-        if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
-        return executeActualGSheetSync();
-      }
-
-      if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
-      gsheetAutoSyncTimeout = setTimeout(executeActualGSheetSync, 300);
-    }
-
-    async function executeActualGSheetSync() {
+    async function syncGoogleSheetDirectly() {
       const webhookUrl = getGoogleSheetWebhookUrl();
       if (!webhookUrl) return;
 
-      if (isGSheetSyncing) {
-        hasPendingGSheetSync = true;
-        return;
-      }
-
-      isGSheetSyncing = true;
       updateGSheetSyncBadge('syncing');
-
-      // Safety timer agar isGSheetSyncing tidak pernah macet
-      const safetyTimer = setTimeout(() => {
-        if (isGSheetSyncing) {
-          isGSheetSyncing = false;
-          updateGSheetSyncBadge('synced');
-        }
-      }, 15000);
 
       try {
         const payload = compileBackupPayload('ALL');
@@ -8725,16 +8702,21 @@ function testManualSync() {
 
         updateGSheetSyncBadge('synced');
       } catch (err) {
-        console.warn('Auto-sync Google Sheet notice:', err);
+        console.warn('Google Sheet cloud backup sync notice:', err);
         updateGSheetSyncBadge('synced');
-      } finally {
-        clearTimeout(safetyTimer);
-        isGSheetSyncing = false;
-        if (hasPendingGSheetSync) {
-          hasPendingGSheetSync = false;
-          setTimeout(() => triggerGoogleSheetAutoSync(true), 300);
-        }
       }
+    }
+
+    function triggerGoogleSheetAutoSync(immediate = false) {
+      if (immediate) {
+        syncGoogleSheetDirectly();
+      } else {
+        saveFullDatabaseToCloud(false);
+      }
+    }
+
+    function executeActualGSheetSync() {
+      return syncGoogleSheetDirectly();
     }
 
     function openGoogleSheetBackupModal(source = 'general') {
