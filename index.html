@@ -2290,7 +2290,7 @@
             URL Web App Google Apps Script *
           </label>
           <div class="flex items-center gap-2">
-            <input type="url" id="gsheet-webhook-url" placeholder="https://script.google.com/macros/s/.../exec" class="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <input type="url" id="gsheet-webhook-url" value="https://script.google.com/a/macros/mhealth.tech/s/AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw/exec" placeholder="https://script.google.com/.../exec" class="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none">
             <button type="button" onclick="saveGoogleSheetWebhookUrl()" class="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs">
               Simpan & Aktifkan
             </button>
@@ -8370,6 +8370,11 @@
     // =========================================================
 
     const GOOGLE_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing";
+    const OFFICIAL_GSHEET_WEBHOOK_URL = "https://script.google.com/a/macros/mhealth.tech/s/AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw/exec";
+
+    function getGoogleSheetWebhookUrl() {
+      return (localStorage.getItem('wfm_gsheet_webhook_url') || OFFICIAL_GSHEET_WEBHOOK_URL || '').trim();
+    }
 
     const GOOGLE_APPS_SCRIPT_CODE = `/**
  * =========================================================================
@@ -8490,7 +8495,7 @@ function doGet(e) {
     function updateGSheetSyncBadge(status = 'standby') {
       const dot = document.getElementById('nav-gsheet-dot');
       const label = document.getElementById('nav-gsheet-label');
-      const webhookUrl = localStorage.getItem('wfm_gsheet_webhook_url') || '';
+      const webhookUrl = getGoogleSheetWebhookUrl();
 
       if (!webhookUrl) {
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
@@ -8514,7 +8519,7 @@ function doGet(e) {
     let isGSheetSyncing = false;
 
     async function triggerGoogleSheetAutoSync(immediate = false) {
-      const webhookUrl = (localStorage.getItem('wfm_gsheet_webhook_url') || document.getElementById('gsheet-webhook-url')?.value || '').trim();
+      const webhookUrl = getGoogleSheetWebhookUrl();
       if (!webhookUrl) {
         updateGSheetSyncBadge('unlinked');
         return;
@@ -8556,7 +8561,7 @@ function doGet(e) {
       const modal = document.getElementById('google-sheet-backup-modal');
       if (!modal) return;
 
-      const savedUrl = localStorage.getItem('wfm_gsheet_webhook_url') || '';
+      const savedUrl = getGoogleSheetWebhookUrl();
       const inputEl = document.getElementById('gsheet-webhook-url');
       if (inputEl) inputEl.value = savedUrl;
 
@@ -8603,8 +8608,9 @@ function doGet(e) {
         alert('Silakan masukkan URL Web App Google Apps Script.');
         return;
       }
-      if (!url.startsWith('https://script.google.com/macros/s/')) {
-        alert('Format URL tidak sesuai.\\nURL Google Apps Script harus berformat:\\nhttps://script.google.com/macros/s/.../exec');
+      const isGoogleScriptUrl = url.startsWith('https://script.google.com/') && url.includes('/s/') && (url.includes('/exec') || url.endsWith('/exec'));
+      if (!isGoogleScriptUrl) {
+        alert('Format URL tidak sesuai.\\nURL Google Apps Script harus berformat:\\nhttps://script.google.com/macros/s/.../exec atau\\nhttps://script.google.com/a/macros/<domain>/s/.../exec');
         return;
       }
       localStorage.setItem('wfm_gsheet_webhook_url', url);
@@ -8987,7 +8993,7 @@ function doGet(e) {
     }
 
     async function executeGoogleSheetBackup() {
-      const webhookUrl = (document.getElementById('gsheet-webhook-url')?.value || localStorage.getItem('wfm_gsheet_webhook_url') || '').trim();
+      const webhookUrl = (document.getElementById('gsheet-webhook-url')?.value || getGoogleSheetWebhookUrl() || '').trim();
       const targetWhMode = document.getElementById('gsheet-target-wh')?.value || 'ALL';
       
       if (!webhookUrl) {
