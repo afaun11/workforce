@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WFM Medika - Sistem Manajemen Kehadiran & Operasional</title>
   
+  <!-- Web App Favicon & App Icons -->
+  <link rel="icon" type="image/png" href="logo-web.png">
+  <link rel="shortcut icon" type="image/png" href="logo-web.png">
+  <link rel="apple-touch-icon" href="logo-web.png">
+  <meta property="og:image" content="logo-web.png">
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -161,8 +167,9 @@
       
       <!-- Top Banner Header -->
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
-        <div class="w-12 h-12 rounded-2xl bg-teal-500 text-slate-950 font-black text-2xl flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-2">
-          M
+        <div class="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-3 overflow-hidden">
+          <img src="logo-wfm.png" alt="Logo WFM Medika" class="w-full h-full object-contain" onerror="if(this.dataset.triedWeb!=='1'){this.dataset.triedWeb='1'; this.src='logo-web.png';} else {this.style.display='none'; document.getElementById('login-logo-fallback')?.classList.remove('hidden');}">
+          <span id="login-logo-fallback" class="hidden font-black text-teal-600 text-2xl">M</span>
         </div>
         <h1 class="text-xl font-extrabold tracking-tight">WFM MEDIKA GROUP</h1>
         <p class="text-xs text-slate-400 mt-0.5">Sistem Presensi & Operasional Gudang</p>
@@ -359,7 +366,10 @@
     <!-- Top Navbar (Fixed di Posisi Atas) -->
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-slate-900 flex items-center justify-center text-white font-black text-lg shadow-xs">M</div>
+        <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
+          <img src="logo-wfm.png" alt="Logo Medika WFM" class="w-full h-full object-contain" onerror="if(this.dataset.triedWeb!=='1'){this.dataset.triedWeb='1'; this.src='logo-web.png';} else {this.style.display='none'; document.getElementById('nav-logo-fallback')?.classList.remove('hidden');}">
+          <span id="nav-logo-fallback" class="hidden font-black text-teal-800 text-base">M</span>
+        </div>
         <div>
           <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
             <span>MEDIKA WFM</span>
