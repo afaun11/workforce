@@ -377,8 +377,8 @@
           <span id="nav-cloud-label">Cloud: Live</span>
         </button>
 
-        <!-- Live Google Sheet Auto-Sync Indicator & Trigger -->
-        <button onclick="openGoogleSheetBackupModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
+        <!-- Live Google Sheet Auto-Sync Indicator & Trigger (Hidden as requested) -->
+        <button onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
           <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span id="nav-gsheet-label">Google Sheet: Auto ⚡</span>
         </button>
@@ -2213,43 +2213,29 @@
         </div>
       </div>
 
-      <!-- Daftar 5 Sheet yang Disinkronkan Sesuai Gambar User -->
+      <!-- Daftar 3 Sheet yang Disinkronkan Sesuai Kebutuhan User -->
       <div class="space-y-2">
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">5 Tab Sheet yang Diperbarui:</label>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">3 Tab Sheet yang Diperbarui:</label>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
             <div class="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 font-black text-[10px] flex items-center justify-center shrink-0">1</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">RECORD ABSEN</div>
-              <div class="text-[10px] text-slate-500">Log kehadiran, in/out, durasi, status</div>
+              <div class="text-[10px] text-slate-500">Log kehadiran in/out, durasi & status</div>
             </div>
           </div>
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-800 font-black text-[10px] flex items-center justify-center shrink-0">2</div>
-            <div>
-              <div class="font-bold text-slate-900 font-mono">ABSEN MATRIKS</div>
-              <div class="text-[10px] text-slate-500">Presensi harian per tanggal (1, S, AL, -)</div>
-            </div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-sky-100 text-sky-800 font-black text-[10px] flex items-center justify-center shrink-0">3</div>
-            <div>
-              <div class="font-bold text-slate-900 font-mono">REKAP JAM KERJA</div>
-              <div class="text-[10px] text-slate-500">Monitoring standar 40 jam & selisih jam</div>
-            </div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-black text-[10px] flex items-center justify-center shrink-0">4</div>
+            <div class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-black text-[10px] flex items-center justify-center shrink-0">2</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">REKAP PENGAJUAN</div>
-              <div class="text-[10px] text-slate-500">Pengajuan izin sakit & cuti karyawan</div>
+              <div class="text-[10px] text-slate-500">Izin, sakit, dan cuti karyawan</div>
             </div>
           </div>
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 sm:col-span-2 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-rose-100 text-rose-800 font-black text-[10px] flex items-center justify-center shrink-0">5</div>
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
+            <div class="w-6 h-6 rounded-lg bg-rose-100 text-rose-800 font-black text-[10px] flex items-center justify-center shrink-0">3</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">REKAP LEMBUR</div>
-              <div class="text-[10px] text-slate-500">Log sesi lembur, jam kerja efektif, dan nominal upah lembur</div>
+              <div class="text-[10px] text-slate-500">Log lembur & estimasi upah</div>
             </div>
           </div>
         </div>
@@ -2331,9 +2317,9 @@
 
       <!-- Modal Footer / Action Buttons -->
       <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 flex-wrap">
-        <button type="button" onclick="downloadMultiSheetExcelBackup()" class="h-10 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs inline-flex items-center gap-2" title="Unduh 1 file Excel (.xlsx) langsung berisi 5 sheet lengkap untuk import langsung">
+        <button type="button" onclick="downloadMultiSheetExcelBackup()" class="h-10 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs inline-flex items-center gap-2" title="Unduh 1 file Excel (.xlsx) langsung berisi 3 sheet utama untuk import langsung">
           <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
-          <span>Download Excel 5-Sheet</span>
+          <span>Download Excel 3-Sheet</span>
         </button>
 
         <div class="flex items-center gap-2">
@@ -2816,6 +2802,7 @@
       return [];
     }
 
+    let lastAppliedCloudUpdatedAt = null;
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
 
@@ -2859,6 +2846,14 @@
 
       // Langsung render ulang seluruh layar tampilan seketika!
       renderAllLiveScreens();
+
+      // 6. Otomatis backup ke Google Sheet (Database Mirror) jika ada pembaruan data dari Cloud
+      if (db.updatedAt && db.updatedAt !== lastAppliedCloudUpdatedAt) {
+        lastAppliedCloudUpdatedAt = db.updatedAt;
+        if (typeof syncGoogleSheetDirectly === 'function') {
+          syncGoogleSheetDirectly();
+        }
+      }
     }
 
     let renderScreensTimeout = null;
@@ -8381,9 +8376,9 @@
     }
 
     // =========================================================
-    // INTEGRASI SINKRONISASI OTOMATIS GOOGLE SPREADSHEET (REAL-TIME)
+    // INTEGRASI SINKRONISASI OTOMATIS GOOGLE SPREADSHEET (REAL-TIME BACKUP)
     // Target URL: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
-    // 5 Sheet: RECORD ABSEN, ABSEN MATRIKS, REKAP JAM KERJA, REKAP PENGAJUAN, REKAP LEMBUR
+    // 3 Sheet Utama: RECORD ABSEN, REKAP PENGAJUAN, REKAP LEMBUR
     // =========================================================
 
     const GOOGLE_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing";
@@ -8394,7 +8389,7 @@
       const inputVal = (inputEl?.value || '').trim();
       let url = (localStorage.getItem('wfm_gsheet_webhook_url') || inputVal || OFFICIAL_GSHEET_WEBHOOK_URL || '').trim();
       // Auto-migrasi jika URL masih kosong atau masih menggunakan script URL lama
-      if (!url || url.includes('AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw') || url.includes('mhealth.tech')) {
+      if (!url || !url.startsWith('https://script.google.com/') || url.includes('AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw') || url.includes('mhealth.tech')) {
         url = OFFICIAL_GSHEET_WEBHOOK_URL;
         localStorage.setItem('wfm_gsheet_webhook_url', OFFICIAL_GSHEET_WEBHOOK_URL);
         if (inputEl) inputEl.value = OFFICIAL_GSHEET_WEBHOOK_URL;
@@ -8416,7 +8411,7 @@
  * =========================================================================
  * GOOGLE APPS SCRIPT WEBHOOK - WFM MEDIKA REALTIME ATTENDANCE & REPORT BACKUP
  * Spreadsheet Target: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
- * 5 Tab Sheet: RECORD ABSEN, ABSEN MATRIKS, REKAP JAM KERJA, REKAP PENGAJUAN, REKAP LEMBUR
+ * 3 Tab Sheet: RECORD ABSEN, REKAP PENGAJUAN, REKAP LEMBUR
  * =========================================================================
  */
 
@@ -8436,6 +8431,11 @@ function getTargetSpreadsheet() {
 }
 
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(15000);
+  } catch (eLock) {}
+
   try {
     var contents = "";
     if (e && e.postData && e.postData.contents) {
@@ -8485,13 +8485,11 @@ function doPost(e) {
         if (sClean === targetClean) return s;
       }
 
-      // 3. Cek keyword aliases
+      // 3. Cek keyword aliases khusus 3 Sheet Backup
       for (var i = 0; i < existingSheets.length; i++) {
         var s = existingSheets[i];
         var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
         if (targetClean.indexOf('record') !== -1 && sClean.indexOf('record') !== -1) return s;
-        if (targetClean.indexOf('matriks') !== -1 && sClean.indexOf('matriks') !== -1) return s;
-        if (targetClean.indexOf('jam') !== -1 && sClean.indexOf('jam') !== -1) return s;
         if (targetClean.indexOf('pengajuan') !== -1 && sClean.indexOf('pengajuan') !== -1) return s;
         if (targetClean.indexOf('lembur') !== -1 && sClean.indexOf('lembur') !== -1) return s;
       }
@@ -8558,7 +8556,7 @@ function doPost(e) {
 
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      message: "Data berhasil disinkronkan ke sheet: " + updatedList.join(", "),
+      message: "Data berhasil disinkronkan ke 3 sheet: " + updatedList.join(", "),
       updatedSheets: updatedList,
       timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
@@ -8569,6 +8567,8 @@ function doPost(e) {
       status: "error",
       message: err.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
   }
 }
 
@@ -8682,29 +8682,47 @@ function testManualSync() {
       }
     }
 
+    let gsheetSyncTimeout = null;
+    let isGSheetSyncing = false;
+    let pendingGSheetSync = false;
+
     async function syncGoogleSheetDirectly() {
-      const webhookUrl = getGoogleSheetWebhookUrl();
-      if (!webhookUrl) return;
+      if (gsheetSyncTimeout) clearTimeout(gsheetSyncTimeout);
+      gsheetSyncTimeout = setTimeout(async () => {
+        if (isGSheetSyncing) {
+          pendingGSheetSync = true;
+          return;
+        }
+        isGSheetSyncing = true;
+        updateGSheetSyncBadge('syncing');
 
-      updateGSheetSyncBadge('syncing');
+        try {
+          const webhookUrl = getGoogleSheetWebhookUrl();
+          if (!webhookUrl) return;
 
-      try {
-        const payload = compileBackupPayload('ALL');
-        const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+          const payload = compileBackupPayload('ALL');
+          const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
 
-        await fetch(targetUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          cache: 'no-cache',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
+          await fetch(targetUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+          });
 
-        updateGSheetSyncBadge('synced');
-      } catch (err) {
-        console.warn('Google Sheet cloud backup sync notice:', err);
-        updateGSheetSyncBadge('synced');
-      }
+          updateGSheetSyncBadge('synced');
+        } catch (err) {
+          console.warn('Google Sheet cloud backup sync notice:', err);
+          updateGSheetSyncBadge('synced');
+        } finally {
+          isGSheetSyncing = false;
+          if (pendingGSheetSync) {
+            pendingGSheetSync = false;
+            syncGoogleSheetDirectly();
+          }
+        }
+      }, 350);
     }
 
     function triggerGoogleSheetAutoSync(immediate = false) {
@@ -9135,19 +9153,12 @@ function testManualSync() {
       let wh = targetWhMode || 'ALL';
       if (wh === 'CURRENT') wh = activeWarehouse;
 
-      const matrixStart = document.getElementById('matrix-start-date')?.value || '';
-      const matrixEnd = document.getElementById('matrix-end-date')?.value || '';
-      const whStart = document.getElementById('workhours-start-date')?.value || '';
-      const whEnd = document.getElementById('workhours-end-date')?.value || '';
-
-      // Nama sheet dibuat persis sama dengan tab pada Google Sheet pengguna
+      // Nama sheet dibuat persis sama dengan tab pada Google Sheet pengguna (3 Sheet Utama Backup)
       return {
         targetWarehouse: wh,
         timestamp: new Date().toISOString(),
         sheets: {
           "RECORD ABSEN": generateRecordAbsenSheetData(wh),
-          "ABSEN MATRIKS": generateRekapMatriksSheetData(wh, matrixStart, matrixEnd),
-          "REKAP JAM KERJA": generateRekapJamKerjaSheetData(wh, whStart, whEnd),
           "REKAP PENGAJUAN": generateRekapPengajuanSheetData(wh),
           "REKAP LEMBUR": generateRekapLemburSheetData(wh)
         }
@@ -9159,7 +9170,7 @@ function testManualSync() {
       const targetWhMode = document.getElementById('gsheet-target-wh')?.value || 'ALL';
       
       if (!webhookUrl) {
-        alert('Silakan masukkan URL Web App Google Apps Script Anda terlebih dahulu.\\n\\nJika belum memiliki URL Web App, klik "Panduan Pasang Script" di bawah untuk melihat petunjuk 1 menit.');
+        alert('Silakan masukkan URL Web App Google Apps Script Anda terlebih dahulu.\n\nJika belum memiliki URL Web App, klik "Panduan Pasang Script" di bawah untuk melihat petunjuk 1 menit.');
         toggleGSheetGuide();
         document.getElementById('gsheet-webhook-url')?.focus();
         return;
@@ -9172,7 +9183,7 @@ function testManualSync() {
       const btn = document.getElementById('btn-run-gsheet-backup');
       if (statusEl) {
         statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Sedang menyinkronkan data ke 5 sheet di Google Spreadsheet...</span>`;
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Sedang menyinkronkan data ke 3 sheet di Google Spreadsheet...</span>`;
         statusEl.classList.remove('hidden');
         lucide.createIcons();
       }
@@ -9193,12 +9204,12 @@ function testManualSync() {
         updateGSheetSyncBadge('synced');
         if (statusEl) {
           statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 flex items-center gap-2';
-          statusEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span><b>Sinkronisasi Sukses!</b> Data telah masuk ke 5 sheet Google Spreadsheet.</span>`;
+          statusEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span><b>Sinkronisasi Sukses!</b> Data telah masuk ke 3 sheet Google Spreadsheet.</span>`;
           statusEl.classList.remove('hidden');
           lucide.createIcons();
         }
 
-        alert('✅ SINKRONISASI KE GOOGLE SPREADSHEET BERHASIL!\\n\\nSeluruh data presensi & laporan telah diperbarui ke tab:\\n• RECORD ABSEN\\n• ABSEN MATRIKS\\n• REKAP JAM KERJA\\n• REKAP PENGAJUAN\\n• REKAP LEMBUR\\n\\n⚡ Sistem sekarang otomatis menyinkronkan setiap ada karyawan yang scan absen masuk/pulang.');
+        alert('✅ SINKRONISASI KE GOOGLE SPREADSHEET BERHASIL!\n\nSeluruh data presensi & laporan telah diperbarui ke tab:\n• RECORD ABSEN\n• REKAP PENGAJUAN\n• REKAP LEMBUR\n\n⚡ Sistem sekarang otomatis menyinkronkan setiap ada karyawan yang scan absen masuk/pulang.');
       } catch (err) {
         console.warn('Backup fetch notice (data transmitted):', err);
         updateGSheetSyncBadge('synced');
@@ -9208,7 +9219,7 @@ function testManualSync() {
           statusEl.classList.remove('hidden');
           lucide.createIcons();
         }
-        alert('✅ Data absensi telah dikirim ke Google Spreadsheet!\\n\\nSilakan periksa tab sheet Anda di Google Spreadsheet.');
+        alert('✅ Data absensi telah dikirim ke Google Spreadsheet!\n\nSilakan periksa tab sheet Anda di Google Spreadsheet.');
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -9222,7 +9233,7 @@ function testManualSync() {
       const payload = compileBackupPayload(targetWhMode);
       const wb = XLSX.utils.book_new();
 
-      // Tambahkan seluruh 5 sheet dengan nama yang persis sama seperti Google Sheet
+      // Tambahkan seluruh 3 sheet dengan nama yang persis sama seperti Google Sheet
       for (const sheetName in payload.sheets) {
         const rows = payload.sheets[sheetName];
         const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -9231,7 +9242,7 @@ function testManualSync() {
 
       const dateTag = new Date().toISOString().split('T')[0];
       XLSX.writeFile(wb, `BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx`);
-      alert(`✅ Berkas Excel 5-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 5 sheet persis:\n1. RECORD ABSEN\n2. ABSEN MATRIKS\n3. REKAP JAM KERJA\n4. REKAP PENGAJUAN\n5. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
+      alert(`✅ Berkas Excel 3-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 3 sheet persis:\n1. RECORD ABSEN\n2. REKAP PENGAJUAN\n3. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
     }
 
     // Inisialisasi otomatis status Google Sheet saat halaman dimuat
