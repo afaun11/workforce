@@ -1708,9 +1708,12 @@
                 <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
                   <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih Radius:</label>
                   <select id="select-gps-radius" onchange="changeWarehouseGPSRadius(this.value)" class="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-teal-800 focus:outline-none cursor-pointer">
+                    <option value="10">10 Meter</option>
                     <option value="15">15 Meter</option>
                     <option value="20">20 Meter</option>
+                    <option value="25">25 Meter</option>
                     <option value="30">30 Meter</option>
+                    <option value="50">50 Meter</option>
                   </select>
                 </div>
                 <button type="button" onclick="checkLiveGPSDistance()" class="h-9 px-3.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-teal-200 shadow-2xs">
@@ -2161,9 +2164,12 @@
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Radius Validasi GPS *</label>
           <select id="gps-input-radius" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <option value="10">10 Meter (Ultra Ketat)</option>
             <option value="15">15 Meter (Sangat Ketat)</option>
-            <option value="20">20 Meter (Sedang)</option>
+            <option value="20">20 Meter (Ketat)</option>
+            <option value="25">25 Meter (Sedang)</option>
             <option value="30">30 Meter (Standar Luas)</option>
+            <option value="50">50 Meter (Area Sangat Luas)</option>
           </select>
         </div>
 
@@ -2483,7 +2489,7 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-            const r = [15, 20, 30].includes(Number(parsed.radius)) ? Number(parsed.radius) : 30;
+            const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : 30;
             return { lat: parsed.lat, lng: parsed.lng, radius: r, name: `Gudang ${wh}` };
           }
         }
@@ -2496,7 +2502,7 @@
           if (mbiSaved) {
             const parsed = JSON.parse(mbiSaved);
             if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-              const r = [15, 20, 30].includes(Number(parsed.radius)) ? Number(parsed.radius) : 30;
+              const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : 30;
               return { lat: parsed.lat, lng: parsed.lng, radius: r, name: 'Gudang MAI (Mengikuti MBI)' };
             }
           }
@@ -2509,7 +2515,7 @@
     function setWarehouseCoords(wh, lat, lng, radius = null) {
       const current = getWarehouseCoords(wh);
       const rad = radius ? Number(radius) : (current.radius || 30);
-      const validRadius = [15, 20, 30].includes(rad) ? rad : 30;
+      const validRadius = Number(rad) > 0 ? Number(rad) : 30;
       const coords = { 
         lat: parseFloat(lat), 
         lng: parseFloat(lng), 
@@ -2525,10 +2531,10 @@
 
     function changeWarehouseGPSRadius(radius) {
       const r = Number(radius);
-      if (![15, 20, 30].includes(r)) return;
+      if (isNaN(r) || r <= 0) return;
       const c = getWarehouseCoords(activeWarehouse);
       setWarehouseCoords(activeWarehouse, c.lat, c.lng, r);
-      alert(`✅ Jarak radius validasi GPS Gudang ${activeWarehouse} diubah menjadi ${r} Meter.`);
+      alert(`✅ Jarak radius validasi GPS Gudang ${activeWarehouse} diubah menjadi ${r} Meter (Fix & Ketat).`);
     }
 
     function updateRegisteredCoordsDisplay() {
@@ -2561,18 +2567,19 @@
           const userLng = pos.coords.longitude;
           const accuracy = Math.round(pos.coords.accuracy || 0);
           const dist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-          const effectiveDist = Math.max(0, dist - Math.min(accuracy, 20));
-          const isValid = effectiveDist <= activeRadius || dist <= activeRadius;
+          const isValid = dist <= activeRadius;
 
           let msg = `📍 STATUS PENGECEKAN GPS ANDA:\n\n`;
           msg += `• Titik Lokasi Anda: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}\n`;
           msg += `• Titik Gudang ${activeWarehouse}: ${targetCoords.lat.toFixed(6)}, ${targetCoords.lng.toFixed(6)}\n`;
-          msg += `• Radius Toleransi Aktif: ${activeRadius} METER\n`;
+          msg += `• Radius Toleransi Aktif: ${activeRadius} METER (FIX / KETAT)\n`;
           msg += `• Akurasi Sinyal HP: ±${accuracy} meter\n`;
           msg += `• Jarak Fisik ke Gudang: ${dist} meter\n`;
-          msg += `• Status Validasi: ${isValid ? `✅ DALAM RADIUS (BISA SCAN ABSEN)` : `❌ DI LUAR RADIUS ${activeRadius}M`}\n\n`;
+          msg += `• Status Validasi: ${isValid ? `✅ DALAM RADIUS (BISA SCAN ABSEN)` : `❌ DI LUAR RADIUS (LEBIH ${dist - activeRadius} METER)`}\n\n`;
           if (!isValid) {
-            msg += `💡 CATATAN:\nJika Anda sudah berada di lokasi gudang yang benar, silakan klik tombol "Daftarkan GPS" agar koordinat gudang langsung terkalibrasi ke posisi Anda, atau ubah radius validasi jika ada kendala sinyal di lapangan.`;
+            msg += `⛔ AKSES DITOLAK:\nJarak Anda (${dist}m) melebihi batas radius ${activeRadius} meter dari titik gudang.\nAnda harus berada dalam jarak maksimal ${activeRadius} meter untuk dapat melakukan absensi.`;
+          } else {
+            msg += `✓ Posisi valid berada di dalam batas radius ${activeRadius} meter dari titik gudang. Anda dapat melakukan scan presensi.`;
           }
           alert(msg);
         },
@@ -4196,17 +4203,16 @@
             }
 
             const rawDist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-            // Toleransi akurasi GPS smartphone di dalam area gudang (kompensasi atap & distorsi sinyal satelit)
-            const gpsTolerance = Math.min(accuracy, 20);
-            const effectiveDist = Math.max(0, rawDist - gpsTolerance);
 
-            if (effectiveDist <= maxRadius || rawDist <= maxRadius) {
+            // Validasi Fix & Ketat: Jarak fisik wajib <= batas radius yang ditentukan (15m, 20m, 30m)
+            if (rawDist <= maxRadius) {
               resolve({ valid: true, distance: rawDist, lat: userLat, lng: userLng });
             } else {
+              const excess = rawDist - maxRadius;
               resolve({ 
                 valid: false, 
                 distance: rawDist, 
-                error: `Gagal: Anda berada di luar radius lokasi gudang (Jarak: ${rawDist}m, batas radius ${maxRadius}m). Wajib berada di area gudang!` 
+                error: `Gagal Absen: Anda berada di luar radius resmi gudang! Jarak Anda: ${rawDist}m (Batas radius fix: ${maxRadius}m, melebihi ${excess}m). Anda wajib berada di area gudang.` 
               });
             }
           },
