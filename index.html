@@ -2213,23 +2213,6 @@
         </div>
       </div>
 
-      <!-- Informasi Tautan Google Sheet -->
-      <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
-        <div class="flex items-center justify-between gap-2 flex-wrap">
-          <span class="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
-            <i data-lucide="link" class="w-3.5 h-3.5 text-slate-400"></i> Google Spreadsheet Target
-          </span>
-          <a href="https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline">
-            <span>Buka Google Sheet</span>
-            <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          </a>
-        </div>
-        <div class="bg-white p-2.5 rounded-xl border border-slate-200 font-mono text-[11px] text-slate-700 break-all select-all flex items-center justify-between gap-2">
-          <span>https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing</span>
-          <button type="button" onclick="copyToClipboardText('https://docs.google.com/spreadsheets/d/142nnpgbytldqYZI1BFcDTOlNwhPSlGKYKzs_ypRKTuU/edit?usp=sharing', 'Link Google Sheet berhasil disalin!')" title="Salin Link" class="p-1 text-slate-400 hover:text-slate-700 shrink-0"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
-        </div>
-      </div>
-
       <!-- Daftar 5 Sheet yang Disinkronkan Sesuai Gambar User -->
       <div class="space-y-2">
         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">5 Tab Sheet yang Diperbarui:</label>
@@ -8544,22 +8527,17 @@ function doPost(e) {
           normalized.push(nRow);
         }
 
-        var dataRange = targetSheet.getRange(1, 1, numRows, numCols);
-        dataRange.setValues(normalized);
+        // Tulis seluruh data tabel sekaligus (Batch Write super cepat)
+        targetSheet.getRange(1, 1, numRows, numCols).setValues(normalized);
 
-        // Header Styling (Elegan, Font Tebal, Background Navy)
-        var headerRange = targetSheet.getRange(1, 1, 1, numCols);
-        headerRange.setFontWeight("bold");
-        headerRange.setBackground("#0f172a");
-        headerRange.setFontColor("#ffffff");
-        targetSheet.setFrozenRows(1);
-
-        // Auto-fit kolom agar nama & data terbaca rapi
+        // Header Styling Cepat & Elegan (Instan tanpa lag)
         try {
-          for (var col = 1; col <= Math.min(numCols, 35); col++) {
-            targetSheet.autoResizeColumn(col);
-          }
-        } catch(resizeErr) {}
+          targetSheet.getRange(1, 1, 1, numCols)
+            .setFontWeight("bold")
+            .setBackground("#0f172a")
+            .setFontColor("#ffffff");
+          targetSheet.setFrozenRows(1);
+        } catch(eStyle) {}
       }
 
       updatedList.push(targetSheet.getName());
@@ -8719,21 +8697,22 @@ function testManualSync() {
 
         try {
           const payload = compileBackupPayload('ALL');
-          const cleanUrl = cleanGoogleScriptUrl(webhookUrl);
-          const urlsToPing = [cleanUrl];
-          if (webhookUrl && webhookUrl !== cleanUrl) {
-            urlsToPing.push(webhookUrl);
-          }
+          const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
 
-          for (const u of urlsToPing) {
-            try {
-              await fetch(u, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify(payload)
-              });
-            } catch(e) {}
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
+          try {
+            await fetch(targetUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              keepalive: true,
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload),
+              signal: controller.signal
+            });
+          } finally {
+            clearTimeout(timeoutId);
           }
 
           updateGSheetSyncBadge('synced');
@@ -8744,7 +8723,7 @@ function testManualSync() {
           isGSheetSyncing = false;
           if (hasPendingGSheetSync) {
             hasPendingGSheetSync = false;
-            setTimeout(() => triggerGoogleSheetAutoSync(true), 300);
+            triggerGoogleSheetAutoSync(true);
           }
         }
       };
@@ -8755,7 +8734,7 @@ function testManualSync() {
       }
 
       if (gsheetAutoSyncTimeout) clearTimeout(gsheetAutoSyncTimeout);
-      gsheetAutoSyncTimeout = setTimeout(doSync, 400);
+      gsheetAutoSyncTimeout = setTimeout(doSync, 300);
     }
 
     function openGoogleSheetBackupModal(source = 'general') {
@@ -9219,22 +9198,16 @@ function testManualSync() {
 
       try {
         const payload = compileBackupPayload(targetWhMode);
-        const cleanUrl = cleanGoogleScriptUrl(webhookUrl);
-        const urlsToPing = [cleanUrl];
-        if (webhookUrl && webhookUrl !== cleanUrl) {
-          urlsToPing.push(webhookUrl);
-        }
+        const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
 
-        for (const u of urlsToPing) {
-          try {
-            await fetch(u, {
-              method: 'POST',
-              mode: 'no-cors',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify(payload)
-            });
-          } catch(e) {}
-        }
+        await fetch(targetUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          cache: 'no-cache',
+          keepalive: true,
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
 
         updateGSheetSyncBadge('synced');
         if (statusEl) {
@@ -9277,8 +9250,14 @@ function testManualSync() {
 
       const dateTag = new Date().toISOString().split('T')[0];
       XLSX.writeFile(wb, `BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx`);
-      alert(`✅ Berkas Excel 5-Sheet berhasil didownload!\\n\\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\\nDi dalamnya sudah berisi 5 sheet persis:\\n1. RECORD ABSEN\\n2. ABSEN MATRIKS\\n3. REKAP JAM KERJA\\n4. REKAP PENGAJUAN\\n5. REKAP LEMBUR\\n\\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
+      alert(`✅ Berkas Excel 5-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 5 sheet persis:\n1. RECORD ABSEN\n2. ABSEN MATRIKS\n3. REKAP JAM KERJA\n4. REKAP PENGAJUAN\n5. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
     }
+
+    // Inisialisasi otomatis status Google Sheet saat halaman dimuat
+    try {
+      getGoogleSheetWebhookUrl();
+      updateGSheetSyncBadge();
+    } catch(e) {}
   </script>
 </body>
 </html>
