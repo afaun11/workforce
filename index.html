@@ -3369,6 +3369,8 @@
                 u.hasAccount = true;
                 hasChanges = true;
               }
+            }
+
             // Standarisasi Nama Akun Scanner Presensi agar Seragam & Profesional di Gudang MBI & MAI
             if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
               if (u.name !== 'Scanner Presensi Gudang') {
