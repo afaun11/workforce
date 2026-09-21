@@ -469,14 +469,14 @@
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- Live Cloud Sync Button -->
-        <button onclick="openDirectSyncModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime HP & Laptop">
+        <!-- Live Cloud Sync Button (Khusus Admin) -->
+        <button id="nav-btn-cloud-sync" onclick="openDirectSyncModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime HP & Laptop">
           <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
           <span id="nav-cloud-label">Cloud: Live</span>
         </button>
 
         <!-- Live Google Sheet Auto-Sync Indicator & Trigger (Hidden as requested) -->
-        <button onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
+        <button id="nav-btn-gsheet-status" onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
           <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span id="nav-gsheet-label">Google Sheet: Auto ⚡</span>
         </button>
@@ -565,7 +565,7 @@
           <!-- 3. Sistem & Pengaturan (Dikelompokkan Paling Bawah) -->
           <div id="system-settings-section" class="space-y-1 pt-2 border-t border-slate-800">
             <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-            <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+            <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition items-center gap-2.5">
               <i data-lucide="cloud" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Database Cloud 24/7</span>
             </button>
@@ -1078,8 +1078,8 @@
               </div>
 
               <div class="flex items-center gap-2.5 flex-wrap">
-                <!-- Tombol Backup Google Sheet -->
-                <button onclick="openGoogleSheetBackupModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-xs inline-flex items-center gap-2">
+                <!-- Tombol Backup Google Sheet (Khusus Admin) -->
+                <button id="btn-reports-gsheet-backup" onclick="openGoogleSheetBackupModal()" class="hidden h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-xs items-center gap-2">
                   <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                   <span>Backup ke Google Sheet</span>
                 </button>
@@ -1231,7 +1231,7 @@
                         Download Matriks Excel
                       </button>
 
-                      <button onclick="openGoogleSheetBackupModal('matrix')" title="Backup data rekap ke Google Spreadsheet" class="h-9 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <button id="btn-matrix-gsheet-backup" onclick="openGoogleSheetBackupModal('matrix')" title="Backup data rekap ke Google Spreadsheet (Khusus Admin)" class="hidden h-9 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5">
                         <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i>
                         <span>Backup Google Sheet</span>
                       </button>
@@ -3594,6 +3594,175 @@
       return role === 'admin' || role === 'scanner' || nik.startsWith('ADM') || nik.startsWith('ABSEN') || name.includes('admin utama') || name.includes('scanner absen');
     }
 
+    function isUserAdmin(user = currentUser) {
+      if (!user) return false;
+      const role = (user.role || '').toLowerCase().trim();
+      const nik = (user.nik || '').toUpperCase().trim();
+      const id = (user.id || '').toLowerCase().trim();
+      const name = (user.name || '').toLowerCase().trim();
+      return (
+        role === 'admin' ||
+        role === 'superadmin' ||
+        nik === 'ADM001' ||
+        nik === 'ADM-MAI' ||
+        nik.startsWith('ADM') ||
+        id === 'mbi-admin' ||
+        id === 'mai-admin' ||
+        id.includes('admin') ||
+        (name.includes('admin') && !name.includes('scanner'))
+      );
+    }
+
+    function isUserScanner(user = currentUser) {
+      if (!user) return false;
+      const role = (user.role || '').toLowerCase().trim();
+      const nik = (user.nik || '').toUpperCase().trim();
+      const id = (user.id || '').toLowerCase().trim();
+      const name = (user.name || '').toLowerCase().trim();
+      return (
+        role === 'scanner' ||
+        nik === 'ABSEN-MAI' ||
+        nik === 'ABSEN-MBI' ||
+        nik.startsWith('ABSEN') ||
+        id === 'mai-scanner' ||
+        id === 'mbi-scanner' ||
+        id.includes('scanner') ||
+        name.includes('scanner') ||
+        (name.includes('absen') && !isUserAdmin(user))
+      );
+    }
+
+    function applyRolePermissions() {
+      if (!currentUser) return;
+      const isAdmin = isUserAdmin(currentUser);
+      const isScanner = isUserScanner(currentUser);
+      const userRole = (currentUser.role || 'staff').toLowerCase().trim();
+      const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
+
+      // 1. Tombol Backup Google Sheet (HANYA ADA DI AKUN ADMIN)
+      const gsheetReportsBtn = document.getElementById('btn-reports-gsheet-backup');
+      const gsheetMatrixBtn = document.getElementById('btn-matrix-gsheet-backup');
+      const gsheetNavBtn = document.getElementById('nav-btn-gsheet-status');
+      if (gsheetReportsBtn) {
+        if (isAdmin) {
+          gsheetReportsBtn.classList.remove('hidden');
+          gsheetReportsBtn.classList.add('inline-flex');
+        } else {
+          gsheetReportsBtn.classList.add('hidden');
+          gsheetReportsBtn.classList.remove('inline-flex');
+        }
+      }
+      if (gsheetMatrixBtn) {
+        if (isAdmin) {
+          gsheetMatrixBtn.classList.remove('hidden');
+          gsheetMatrixBtn.classList.add('inline-flex');
+        } else {
+          gsheetMatrixBtn.classList.add('hidden');
+          gsheetMatrixBtn.classList.remove('inline-flex');
+        }
+      }
+      if (gsheetNavBtn) {
+        if (!isAdmin) {
+          gsheetNavBtn.classList.add('hidden');
+        }
+      }
+
+      // 2. Database Cloud 24/7 (HANYA ADA DI AKUN ADMIN)
+      const navGithub = document.getElementById('nav-github');
+      const navCloudBtn = document.getElementById('nav-btn-cloud-sync');
+      if (navGithub) {
+        if (isAdmin) {
+          navGithub.classList.remove('hidden');
+          navGithub.classList.add('flex');
+        } else {
+          navGithub.classList.add('hidden');
+          navGithub.classList.remove('flex');
+        }
+      }
+      if (navCloudBtn) {
+        if (isAdmin) {
+          navCloudBtn.classList.remove('hidden');
+          navCloudBtn.classList.add('flex');
+        } else {
+          navCloudBtn.classList.add('hidden');
+          navCloudBtn.classList.remove('flex');
+        }
+      }
+
+      // 3. Pengaturan Akun (Atas & Bawah) & Akses Menu Sesuai Role
+      const navBtnSettings = document.getElementById('nav-btn-settings');
+      const navSettings = document.getElementById('nav-settings');
+      const sysSettings = document.getElementById('system-settings-section');
+      const adminSection = document.getElementById('admin-menu-section');
+      const navDash = document.getElementById('nav-dashboard');
+
+      if (isScanner) {
+        // Akun Absen MAI / Scanner: JANGAN ADA FITUR PENGATURAN AKUN DI ATAS MAUPUN DI BAWAH
+        if (navBtnSettings) navBtnSettings.classList.add('hidden');
+        if (navSettings) {
+          navSettings.classList.add('hidden');
+          navSettings.classList.remove('flex');
+        }
+        if (sysSettings) sysSettings.classList.add('hidden');
+        if (adminSection) adminSection.classList.add('hidden');
+        if (navDash) {
+          navDash.classList.add('hidden');
+          navDash.classList.remove('flex');
+        }
+      } else if (isAdmin) {
+        // Admin: Semua fitur aktif
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
+        if (navSettings) {
+          navSettings.classList.remove('hidden');
+          navSettings.classList.add('flex');
+        }
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (adminSection) adminSection.classList.remove('hidden');
+        if (navDash) {
+          navDash.classList.remove('hidden');
+          navDash.classList.add('flex');
+        }
+      } else if (isManagement) {
+        // Supervisor / Coordinator: Pengaturan aktif, tapi Database Cloud 24/7 & Backup Google Sheet disembunyikan
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
+        if (navSettings) {
+          navSettings.classList.remove('hidden');
+          navSettings.classList.add('flex');
+        }
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (adminSection) adminSection.classList.remove('hidden');
+        if (navDash) {
+          navDash.classList.remove('hidden');
+          navDash.classList.add('flex');
+        }
+      } else {
+        // Staff Biasa
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
+        if (navSettings) {
+          navSettings.classList.remove('hidden');
+          navSettings.classList.add('flex');
+        }
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (adminSection) adminSection.classList.add('hidden');
+        if (navDash) {
+          navDash.classList.add('hidden');
+          navDash.classList.remove('flex');
+        }
+      }
+
+      // 4. Switcher Warehouse (Khusus Admin Utama / Super Admin MBI ADM001)
+      const whSwitcher = document.getElementById('wh-switcher-box');
+      if (whSwitcher) {
+        if (isAdmin && (currentUser.nik === 'ADM001' || currentUser.role === 'superadmin' || currentUser.id === 'mbi-admin')) {
+          whSwitcher.classList.remove('hidden');
+          whSwitcher.classList.add('flex');
+        } else {
+          whSwitcher.classList.add('hidden');
+          whSwitcher.classList.remove('flex');
+        }
+      }
+    }
+
     // Role supervisor dan coordinator tidak dimasukkan ke dalam rekap matriks presensi
     function isMatrixEligibleUser(user) {
       if (!user) return false;
@@ -3839,6 +4008,10 @@
     }
 
     function openDirectSyncModal() {
+      if (!isUserAdmin()) {
+        alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses oleh Akun Admin Gudang.');
+        return;
+      }
       document.getElementById('direct-sync-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -3988,55 +4161,22 @@
 
       const userRole = (user.role || 'staff').toLowerCase();
       const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
-      const isSuperAdmin = userRole === 'admin';
-      const adminSection = document.getElementById('admin-menu-section');
-      const leavesNav = document.getElementById('nav-leaves');
-      const overtimeNav = document.getElementById('nav-overtime');
-      const whSwitcher = document.getElementById('wh-switcher-box');
-      const navBtnSettings = document.getElementById('nav-btn-settings');
-      const sysSettings = document.getElementById('system-settings-section');
 
-      if (isSuperAdmin) {
-        whSwitcher.classList.remove('hidden');
-        whSwitcher.classList.add('flex');
-      } else {
-        whSwitcher.classList.add('hidden');
-        whSwitcher.classList.remove('flex');
-      }
+      // Terapkan visibility & hak akses tombol / menu sesuai role
+      applyRolePermissions();
 
-      if (userRole === 'scanner') {
-        // Akun Khusus Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
-        // Sembunyikan menu Pengaturan atas (navbar) dan bawah (sidebar) agar tidak diubah karyawan lain
-        if (adminSection) adminSection.classList.add('hidden');
-        const navDash = document.getElementById('nav-dashboard');
-        if (navDash) navDash.classList.add('hidden');
-        const navGithub = document.getElementById('nav-github');
-        if (navGithub) navGithub.classList.add('hidden');
-        if (sysSettings) sysSettings.classList.add('hidden');
-        if (navBtnSettings) navBtnSettings.classList.add('hidden');
+      if (isUserScanner(currentUser)) {
+        // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
+        // Fitur Pengaturan Akun di atas dan di bawah otomatis disembunyikan
         switchView('attendance');
         renderScannerTodayRecords();
         stopScanner();
       } else if (isManagement) {
-        // Akun Management (Coordinator, Supervisor, Admin): Tampilkan seluruh menu & pengaturan
-        if (adminSection) adminSection.classList.remove('hidden');
-        const navDash = document.getElementById('nav-dashboard');
-        if (navDash) navDash.classList.remove('hidden');
-        const navGithub = document.getElementById('nav-github');
-        if (navGithub) navGithub.classList.remove('hidden');
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
+        // Akun Management (Coordinator, Supervisor, Admin)
         updateWhSwitcherButtons();
         switchView('dashboard');
       } else {
-        // Akun Karyawan Biasa: HANYA ADA MENU ABSEN & PENGATURAN
-        if (adminSection) adminSection.classList.add('hidden');
-        const navDash = document.getElementById('nav-dashboard');
-        if (navDash) navDash.classList.add('hidden');
-        const navGithub = document.getElementById('nav-github');
-        if (navGithub) navGithub.classList.add('hidden');
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
+        // Akun Karyawan Biasa
         switchView('attendance');
       }
 
@@ -4064,7 +4204,7 @@
     }
 
     function switchActiveWarehouse(wh) {
-      if (currentUser && currentUser.role !== 'admin') {
+      if (currentUser && !isUserAdmin(currentUser)) {
         alert('Akses terkunci pada Gudang ' + currentUser.warehouse);
         return;
       }
@@ -4147,12 +4287,18 @@
     }
 
     function switchView(viewName) {
+      const isScanner = isUserScanner(currentUser);
+      const isAdmin = isUserAdmin(currentUser);
       const userRole = (currentUser?.role || 'staff').toLowerCase();
       const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
       
-      if (userRole === 'scanner') {
-        // Akun Scanner Absensi hanya boleh membuka menu attendance
+      if (isScanner) {
+        // Akun Scanner Absensi (MAI & MBI) HANYA boleh membuka menu attendance
         viewName = 'attendance';
+      } else if (!isAdmin && (viewName === 'github' || viewName === 'cloud')) {
+        // Database Cloud 24/7 hanya boleh diakses oleh Admin
+        alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses oleh Akun Admin Gudang.');
+        viewName = isManagement ? 'dashboard' : 'attendance';
       } else if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
         viewName = 'attendance';
       }
@@ -4162,32 +4308,8 @@
         el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5';
       });
 
-      // Pastikan section menu dan tombol settings tersembunyi sesuai role
-      const adminSection = document.getElementById('admin-menu-section');
-      const navDash = document.getElementById('nav-dashboard');
-      const navGithub = document.getElementById('nav-github');
-      const sysSettings = document.getElementById('system-settings-section');
-      const navBtnSettings = document.getElementById('nav-btn-settings');
-
-      if (userRole === 'scanner') {
-        if (adminSection) adminSection.classList.add('hidden');
-        if (navDash) navDash.classList.add('hidden');
-        if (navGithub) navGithub.classList.add('hidden');
-        if (sysSettings) sysSettings.classList.add('hidden');
-        if (navBtnSettings) navBtnSettings.classList.add('hidden');
-      } else if (!isManagement) {
-        if (adminSection) adminSection.classList.add('hidden');
-        if (navDash) navDash.classList.add('hidden');
-        if (navGithub) navGithub.classList.add('hidden');
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
-      } else {
-        if (adminSection) adminSection.classList.remove('hidden');
-        if (navDash) navDash.classList.remove('hidden');
-        if (navGithub) navGithub.classList.remove('hidden');
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
-      }
+      // Pastikan seluruh section menu dan tombol tersembunyi sesuai role
+      applyRolePermissions();
 
       const activeView = document.getElementById('view-' + viewName);
       if (activeView) activeView.classList.remove('hidden');
@@ -6998,6 +7120,7 @@
       else if (isWorkHours) renderWorkHoursReport();
       else if (isLeaves) renderReportLeavesTable();
       else if (isOvertime) renderReportOvertimeTable();
+      applyRolePermissions();
       lucide.createIcons();
     }
 
@@ -8842,6 +8965,10 @@ function testManualSync() {
     }
 
     function openGoogleSheetBackupModal(source = 'general') {
+      if (!isUserAdmin()) {
+        alert('Akses Ditolak: Fitur Backup ke Google Spreadsheet hanya dapat diakses oleh Akun Admin Gudang.');
+        return;
+      }
       const modal = document.getElementById('google-sheet-backup-modal');
       if (!modal) return;
 
