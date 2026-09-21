@@ -654,7 +654,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <button onclick="switchView('employees')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-slate-400 hover:shadow-xs transition">
                 <h4 class="font-extrabold text-sm text-slate-900">Kelola Data Karyawan</h4>
-                <p class="text-xs text-slate-500 mt-1">Tambah data, download akun & password, dan upload Excel.</p>
+                <p class="text-xs text-slate-500 mt-1">Tambah data, cetak ID Card barcode presensi, dan upload Excel.</p>
               </button>
 
               <button onclick="switchView('overtime')" class="bg-white p-6 rounded-2xl border border-slate-200 text-left hover:border-slate-400 hover:shadow-xs transition">
@@ -678,7 +678,7 @@
                 <h2 class="text-xl font-black text-slate-900 tracking-tight">
                   Data Karyawan Gudang <span id="emp-wh-title" class="text-teal-700 font-black">MBI</span>
                 </h2>
-                <p class="text-xs text-slate-500 mt-0.5">Kelola daftar karyawan, download akun & password, serta upload Excel</p>
+                <p class="text-xs text-slate-500 mt-0.5">Kelola data master karyawan presensi, cetak ID Card barcode, serta upload Excel</p>
               </div>
 
               <!-- Action Buttons Bersih, Rapi & Elegan -->
@@ -2172,12 +2172,16 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
-              <option value="staff">Staff</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="supervisor">Supervisor</option>
+            <select id="m-emp-position" onchange="updateAddEmployeeRoleNotice(this.value)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="staff">Staff (Data Karyawan - Tanpa Akun)</option>
+              <option value="coordinator">Coordinator (Memiliki Akun Login)</option>
+              <option value="supervisor">Supervisor (Memiliki Akun Login & Approval)</option>
             </select>
           </div>
+        </div>
+
+        <div id="add-emp-role-note" class="p-2.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200">
+          ℹ️ <b>Karyawan Biasa:</b> Ditambahkan sebagai data master presensi ID Card (tidak memiliki akun login).
         </div>
 
         <div>
@@ -2219,7 +2223,7 @@
 
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeAddEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
-          <button type="submit" class="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-md">Simpan & Buat Akun</button>
+          <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md">Simpan Data Karyawan</button>
         </div>
       </form>
     </div>
@@ -2249,18 +2253,22 @@
 
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK (ID Login) *</label>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
             <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="edit-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold">
-              <option value="staff">Staff</option>
-              <option value="coordinator">Coordinator</option>
-              <option value="supervisor">Supervisor</option>
-              <option value="admin">Admin</option>
+            <select id="edit-emp-position" onchange="updateEditEmployeeRoleNotice(this.value)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="staff">Staff (Data Karyawan - Tanpa Akun)</option>
+              <option value="coordinator">Coordinator (Memiliki Akun Login)</option>
+              <option value="supervisor">Supervisor (Memiliki Akun Login & Approval)</option>
+              <option value="admin">Admin (Administrator)</option>
             </select>
           </div>
+        </div>
+
+        <div id="edit-emp-role-note" class="p-2.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200">
+          ℹ️ <b>Karyawan Biasa:</b> Terdaftar sebagai data master presensi ID Card (tidak memiliki akun login).
         </div>
 
         <div>
@@ -3256,6 +3264,25 @@
               u.joinDate = formatExcelDate(u.joinDate);
               hasChanges = true;
             }
+
+            // Kebijakan Akun: Hanya Admin, Scanner, Supervisor, & Coordinator yang memiliki akun login
+            const userRole = (u.role || 'staff').toLowerCase().trim();
+            const isManagement = ['admin', 'supervisor', 'coordinator', 'scanner'].includes(userRole) || (u.nik && (u.nik.startsWith('ADM') || u.nik.startsWith('ABSEN')));
+            if (!isManagement) {
+              if (u.password) {
+                u.password = '';
+                hasChanges = true;
+              }
+              if (u.hasAccount !== false) {
+                u.hasAccount = false;
+                hasChanges = true;
+              }
+            } else {
+              if (u.hasAccount !== true) {
+                u.hasAccount = true;
+                hasChanges = true;
+              }
+            }
           });
 
           if (hasChanges) {
@@ -4012,9 +4039,9 @@
         alertEl.className = 'mx-6 mt-4 p-4 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center leading-relaxed';
         alertEl.innerHTML = `
           <div class="flex flex-col items-center gap-1">
-            <span class="text-rose-900 font-black text-sm">⛔ AKSES LOGIN HANYA UNTUK MANAJEMEN & AKUN ABSEN</span>
-            <span class="text-[11px] font-medium text-slate-700 mt-1">Data <b>${user.name} (${user.nik})</b> berstatus sebagai Master Data Karyawan (${(user.role || 'Staff').toUpperCase()}).</span>
-            <span class="text-[11px] font-normal text-slate-600">Akses login aplikasi dikhususkan untuk <b>Admin</b>, <b>Supervisor</b>, <b>Coordinator</b>, dan <b>Akun Scanner Absen</b>. Karyawan melakukan absensi via scan kartu barcode di Akun Scanner Absen.</span>
+            <span class="text-rose-900 font-black text-sm">⛔ KARYAWAN BIASA TIDAK MEMILIKI AKUN LOGIN</span>
+            <span class="text-[11px] font-medium text-slate-700 mt-1">Data <b>${user.name} (${user.nik})</b> terdaftar sebagai Data Karyawan Biasa.</span>
+            <span class="text-[11px] font-normal text-slate-600">Sistem hanya menyediakan akun login untuk <b>Admin</b>, <b>Scanner Absen</b>, serta karyawan dengan posisi jabatan <b>Supervisor</b> atau <b>Coordinator</b>. Karyawan melakukan absensi via scan barcode ID Card di pos scanner.</span>
           </div>
         `;
         alertEl.classList.remove('hidden');
@@ -6404,6 +6431,15 @@
       filtered.forEach((emp, idx) => {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+        const roleStr = (emp.role || 'staff').toLowerCase().trim();
+        const hasLogin = roleStr === 'supervisor' || roleStr === 'coordinator' || roleStr === 'admin';
+        const roleBadgeClass = (roleStr === 'supervisor' || roleStr === 'admin') 
+          ? 'bg-slate-900 text-white' 
+          : (roleStr === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200');
+        const accountBadge = hasLogin
+          ? '<span class="text-[9px] font-bold text-emerald-700 flex items-center gap-1 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>Akun Login Aktif</span>'
+          : '<span class="text-[9px] font-medium text-slate-400 block mt-1">Data Presensi</span>';
+
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 text-center">
             <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
@@ -6415,7 +6451,10 @@
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
           <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
-          <td class="p-3.5 border-r border-slate-100"><span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${emp.role === 'supervisor' || emp.role === 'admin' ? 'bg-slate-900 text-white' : (emp.role === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200')}">${(emp.role || 'staff').toUpperCase()}</span></td>
+          <td class="p-3.5 border-r border-slate-100">
+            <span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${roleBadgeClass}">${(emp.role || 'staff').toUpperCase()}</span>
+            ${accountBadge}
+          </td>
           <td class="p-3.5 text-right">
             <div class="flex items-center justify-end gap-1.5">
               <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
@@ -6452,6 +6491,7 @@
       document.getElementById('edit-emp-joindate').value = user.joinDate || '';
       document.getElementById('edit-emp-pass').value = '';
 
+      updateEditEmployeeRoleNotice(user.role || 'staff');
       document.getElementById('edit-emp-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -6498,6 +6538,7 @@
         const oldNik = users[idx].nik;
         const oldName = users[idx].name;
 
+        const isManagementRole = (role === 'supervisor' || role === 'coordinator' || role === 'admin');
         users[idx].name = name;
         users[idx].nik = nik;
         users[idx].role = role;
@@ -6506,9 +6547,19 @@
         users[idx].phone = phone;
         users[idx].email = email;
         users[idx].joinDate = joinDate;
-        if (customPass) {
-          users[idx].password = customPass;
-          users[idx].isFirstLogin = false;
+        
+        if (isManagementRole) {
+          users[idx].hasAccount = true;
+          if (customPass) {
+            users[idx].password = customPass;
+            users[idx].isFirstLogin = false;
+          } else if (!users[idx].password) {
+            users[idx].password = 'medika123';
+            users[idx].isFirstLogin = true;
+          }
+        } else {
+          users[idx].hasAccount = false;
+          users[idx].password = '';
         }
 
         setWhDB(activeWarehouse, 'users', users);
@@ -6792,10 +6843,24 @@
       const role = document.getElementById('m-emp-position').value;
       
       const autoNik = customNik ? customNik.toUpperCase() : generateUniqueNIK(activeWarehouse, name);
-      const defaultPass = 'medika123';
+      const isManagementRole = (role === 'supervisor' || role === 'coordinator');
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const newEmp = { id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, name, dept, outsource, phone, email, joinDate, nik: autoNik, role, password: defaultPass, isFirstLogin: true, warehouse: activeWarehouse };
+      const newEmp = { 
+        id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, 
+        name, 
+        dept, 
+        outsource, 
+        phone, 
+        email, 
+        joinDate, 
+        nik: autoNik, 
+        role, 
+        password: isManagementRole ? 'medika123' : '', 
+        isFirstLogin: isManagementRole, 
+        hasAccount: isManagementRole,
+        warehouse: activeWarehouse 
+      };
       
       users.push(newEmp);
       setWhDB(activeWarehouse, 'users', users);
@@ -6807,7 +6872,44 @@
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
       
-      alert(`✅ Data karyawan ${name} (${autoNik}) berhasil ditambahkan ke Gudang ${activeWarehouse}!\nKartu ID Card & Barcode siap digunakan.`);
+      if (isManagementRole) {
+        alert(`✅ Karyawan ${name} (${autoNik}) berhasil ditambahkan dengan jabatan ${role.toUpperCase()}!\nAkun login sistem telah dibuat otomatis (Password: medika123).`);
+      } else {
+        alert(`✅ Data karyawan ${name} (${autoNik}) berhasil ditambahkan sebagai Data Karyawan Biasa (tanpa akun login).\nKartu ID Card & Barcode siap digunakan untuk absensi.`);
+      }
+    }
+
+    function updateAddEmployeeRoleNotice(role) {
+      const noteEl = document.getElementById('add-emp-role-note');
+      if (!noteEl) return;
+      if (role === 'supervisor') {
+        noteEl.className = 'p-2.5 rounded-xl bg-amber-50 text-amber-900 text-[11px] leading-relaxed border border-amber-200';
+        noteEl.innerHTML = '👑 <b>Supervisor:</b> Karyawan akan dibuatkan akun login mandiri (Password: <code>medika123</code>) dan berwenang menyetujui (approve/reject) pengajuan izin & lembur.';
+      } else if (role === 'coordinator') {
+        noteEl.className = 'p-2.5 rounded-xl bg-sky-50 text-sky-900 text-[11px] leading-relaxed border border-sky-200';
+        noteEl.innerHTML = '⚡ <b>Coordinator:</b> Karyawan akan dibuatkan akun login mandiri (Password: <code>medika123</code>) untuk mengakses dashboard, input lembur, dan data karyawan.';
+      } else {
+        noteEl.className = 'p-2.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200';
+        noteEl.innerHTML = 'ℹ️ <b>Karyawan Biasa:</b> Ditambahkan sebagai data master presensi ID Card (tidak memiliki akun login).';
+      }
+    }
+
+    function updateEditEmployeeRoleNotice(role) {
+      const noteEl = document.getElementById('edit-emp-role-note');
+      if (!noteEl) return;
+      if (role === 'supervisor') {
+        noteEl.className = 'p-2.5 rounded-xl bg-amber-50 text-amber-900 text-[11px] leading-relaxed border border-amber-200';
+        noteEl.innerHTML = '👑 <b>Supervisor:</b> Karyawan memiliki akun login mandiri dan hak akses approval izin & lembur.';
+      } else if (role === 'coordinator') {
+        noteEl.className = 'p-2.5 rounded-xl bg-sky-50 text-sky-900 text-[11px] leading-relaxed border border-sky-200';
+        noteEl.innerHTML = '⚡ <b>Coordinator:</b> Karyawan memiliki akun login mandiri untuk mengelola operasional.';
+      } else if (role === 'admin') {
+        noteEl.className = 'p-2.5 rounded-xl bg-rose-50 text-rose-900 text-[11px] leading-relaxed border border-rose-200';
+        noteEl.innerHTML = '🛡️ <b>Admin:</b> Akun Administrator pengelola penuh master data & backup cloud.';
+      } else {
+        noteEl.className = 'p-2.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200';
+        noteEl.innerHTML = 'ℹ️ <b>Karyawan Biasa:</b> Terdaftar sebagai data master presensi ID Card (tidak memiliki akun login).';
+      }
     }
 
     function downloadAccountsExcel() {
@@ -6820,6 +6922,7 @@
         "Departemen": u.dept,
         "Outsource": u.outsource || '-',
         "Posisi / Role": (u.role || 'staff').toUpperCase(),
+        "Status Akun": (u.role === 'supervisor' || u.role === 'coordinator') ? 'Memiliki Akun Login' : 'Data Presensi (Tanpa Akun)',
         "No Telepon": u.phone || '-',
         "Email": u.email || '-',
         "Join Date": u.joinDate || '-',
@@ -7022,7 +7125,9 @@
               finalNik = generateUniqueNIK(targetWh, name, users);
             }
 
-            const role = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
+            const rawRole = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
+            const isSpvOrCoord = rawRole === 'supervisor' || rawRole === 'coordinator';
+            const normalizedRole = isSpvOrCoord ? rawRole : 'staff';
 
             users.push({
               id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
@@ -7033,7 +7138,10 @@
               email,
               joinDate,
               nik: finalNik,
-              role: role === 'admin' || role === 'scanner' ? 'staff' : role,
+              role: normalizedRole,
+              hasAccount: isSpvOrCoord,
+              password: isSpvOrCoord ? 'medika123' : '',
+              isFirstLogin: isSpvOrCoord,
               warehouse: targetWh
             });
             seenNames.add(cleanName);
