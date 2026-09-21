@@ -1312,7 +1312,7 @@
                   <div class="p-3.5 rounded-2xl bg-teal-50 border border-teal-200">
                     <span class="text-[10px] font-black uppercase text-teal-700 tracking-wider">Standar Kerja</span>
                     <h4 class="text-base sm:text-lg font-black text-teal-950 mt-0.5">40 Jam / Minggu</h4>
-                    <p class="text-[10px] text-teal-700">Standar jam reguler per staf</p>
+                    <p class="text-[10px] text-teal-700">7 Jam Kerja Efektif / Hari</p>
                   </div>
                   <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
                     <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Total Karyawan Hadir</span>
@@ -1356,7 +1356,7 @@
                 <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between flex-wrap gap-2">
                   <div class="flex items-center gap-2">
                     <i data-lucide="info" class="w-4 h-4 text-teal-600"></i>
-                    <span><b>Rumus:</b> Total Jam Kerja dihitung dari selisih jam masuk ke jam pulang setiap harinya (potongan 1 jam istirahat otomatis jika durasi kerja harian &ge; 5 jam). Target standar adalah 40 jam per minggu.</span>
+                    <span><b>Rumus:</b> Sehari shift 8 jam kerja terhitung <b>7 jam kerja efektif</b> (otomatis dipotong 1 jam istirahat untuk durasi &ge; 5 jam). Perhitungan presisi disesuaikan dalam format Jam &amp; Menit. Target standar 40 jam per minggu.</span>
                   </div>
                   <span class="font-bold text-slate-700">Khusus Monitoring Jam Kerja Karyawan</span>
                 </div>
@@ -7161,6 +7161,7 @@
       const reportData = [];
       let totalActiveEmployees = 0;
       let totalWorkHoursAll = 0;
+      let totalMinutesAllEmployees = 0;
       let achievedTargetCount = 0;
 
       regularUsers.forEach(emp => {
@@ -7200,34 +7201,54 @@
         const daysPresent = uniqueDates.length;
         if (daysPresent > 0) totalActiveEmployees++;
 
-        let totalEffectiveHours = 0;
+        let totalEffectiveMinutes = 0;
         uniqueDates.forEach(d => {
           const item = dateMap[d];
           if (item.checkInTime && item.checkOutTime) {
-            const diffMs = new Date(item.checkOutTime) - new Date(item.checkInTime);
-            let rawHours = Math.max(0, diffMs / (1000 * 60 * 60));
-            // Potongan 1 jam istirahat jika kerja >= 5 jam (standar kerja 8 jam efektif)
-            if (rawHours >= 5) rawHours -= 1;
-            totalEffectiveHours += rawHours;
+            const diffMs = new Date(item.checkOutTime).getTime() - new Date(item.checkInTime).getTime();
+            let grossMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+            // Sehari shift 8 jam kerja (480 menit) terhitung 7 jam kerja efektif (420 menit) karena dipotong 1 jam (60 menit) istirahat.
+            // Potongan 1 jam istirahat otomatis berlaku jika durasi kehadiran kotor >= 5 jam (300 menit).
+            if (grossMinutes >= 300) {
+              grossMinutes = Math.max(0, grossMinutes - 60);
+            }
+            totalEffectiveMinutes += grossMinutes;
           } else if (item.checkInTime) {
             const todayStr = new Date().toISOString().split('T')[0];
             if (d === todayStr) {
-              const diffMs = Date.now() - new Date(item.checkInTime);
-              let rawHours = Math.max(0, diffMs / (1000 * 60 * 60));
-              if (rawHours >= 5) rawHours -= 1;
-              totalEffectiveHours += rawHours;
+              const diffMs = Date.now() - new Date(item.checkInTime).getTime();
+              let grossMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+              if (grossMinutes >= 300) {
+                grossMinutes = Math.max(0, grossMinutes - 60);
+              }
+              totalEffectiveMinutes += grossMinutes;
             } else {
-              totalEffectiveHours += 8; // Default 8 jam kerja standar jika lupa scan pulang
+              // Jika lupa scan pulang pada hari sebelumnya: terhitung 7 jam kerja efektif (8 jam shift - 1 jam istirahat)
+              totalEffectiveMinutes += (7 * 60);
             }
           }
         });
 
-        totalEffectiveHours = Math.round(totalEffectiveHours * 10) / 10;
-        const diffFromTarget = Math.round((totalEffectiveHours - targetHours) * 10) / 10;
-        const isTargetAchieved = totalEffectiveHours >= targetHours;
+        // Hitung Jam & Menit Presisi
+        const effectiveHours = Math.floor(totalEffectiveMinutes / 60);
+        const effectiveMins = totalEffectiveMinutes % 60;
+        const formattedWorkHours = `${effectiveHours} Jam ${effectiveMins} Mnt`;
+        const totalEffectiveHours = Math.round((totalEffectiveMinutes / 60) * 10) / 10;
+
+        // Perhitungan Target & Selisih Presisi (Jam & Menit)
+        const targetMinutes = Math.round(targetHours * 60);
+        const diffMinutes = totalEffectiveMinutes - targetMinutes;
+        const diffSign = diffMinutes >= 0 ? '+' : '-';
+        const absDiff = Math.abs(diffMinutes);
+        const diffHrs = Math.floor(absDiff / 60);
+        const diffMins = absDiff % 60;
+        const formattedDiff = `${diffSign}${diffHrs} Jam ${diffMins} Mnt`;
+        const diffFromTarget = Math.round((diffMinutes / 60) * 10) / 10;
+        const isTargetAchieved = totalEffectiveMinutes >= targetMinutes;
 
         if (daysPresent > 0) {
           totalWorkHoursAll += totalEffectiveHours;
+          totalMinutesAllEmployees += totalEffectiveMinutes;
           if (isTargetAchieved) achievedTargetCount++;
         }
 
@@ -7236,13 +7257,22 @@
           name: emp.name,
           dept: (emp.dept || 'STAFF').toUpperCase(),
           daysPresent,
+          totalEffectiveMinutes,
           totalEffectiveHours,
+          formattedWorkHours,
           targetHours,
+          targetMinutes,
+          diffMinutes,
           diffFromTarget,
+          formattedDiff,
           isTargetAchieved
         });
       });
 
+      const avgMinutes = totalActiveEmployees > 0 
+        ? Math.round(totalMinutesAllEmployees / totalActiveEmployees) 
+        : 0;
+      const formattedAvg = `${Math.floor(avgMinutes / 60)} Jam ${avgMinutes % 60} Mnt`;
       const avgHours = totalActiveEmployees > 0 
         ? Math.round((totalWorkHoursAll / totalActiveEmployees) * 10) / 10 
         : 0;
@@ -7254,6 +7284,8 @@
         reportData,
         totalActiveEmployees,
         avgHours,
+        avgMinutes,
+        formattedAvg,
         achievedTargetCount
       };
     }
@@ -7263,6 +7295,7 @@
         reportData,
         totalActiveEmployees,
         avgHours,
+        formattedAvg,
         achievedTargetCount
       } = calculateWorkHoursData();
 
@@ -7271,7 +7304,7 @@
       const kpiAvg = document.getElementById('kpi-wh-avg-hours');
       const kpiAchieved = document.getElementById('kpi-wh-achieved-emp');
       if (kpiEmp) kpiEmp.innerText = `${totalActiveEmployees} Orang`;
-      if (kpiAvg) kpiAvg.innerText = `${avgHours} Jam`;
+      if (kpiAvg) kpiAvg.innerHTML = `<span class="text-sm sm:text-base font-black text-sky-950">${formattedAvg}</span> <span class="text-[10px] font-bold text-sky-700 font-mono">(${avgHours} Jam)</span>`;
       if (kpiAchieved) kpiAchieved.innerText = `${achievedTargetCount} Orang`;
 
       const tbody = document.getElementById('workhours-table-body');
@@ -7288,8 +7321,8 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
         const statusBadge = row.isTargetAchieved
-          ? `<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">Tercapai (+${row.diffFromTarget} Jam)</span>`
-          : `<span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">Kurang (${row.diffFromTarget} Jam)</span>`;
+          ? `<span class="px-2 py-1 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">Tercapai (${row.formattedDiff})</span>`
+          : `<span class="px-2 py-1 rounded-lg text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">Kurang (${row.formattedDiff})</span>`;
 
         tr.innerHTML = `
           <td class="p-3.5 text-center font-mono text-slate-400 font-bold border-r border-slate-100">${idx + 1}</td>
@@ -7304,10 +7337,14 @@
           <td class="p-3.5 font-mono font-bold text-slate-700 border-r border-slate-100">${row.nik}</td>
           <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px] border-r border-slate-100">${row.dept}</td>
           <td class="p-3.5 text-center font-bold text-slate-800 border-r border-slate-100 font-mono">${row.daysPresent} Hari</td>
-          <td class="p-3.5 text-center font-mono font-black text-teal-800 border-r border-slate-100 bg-teal-50/40 text-sm">${row.totalEffectiveHours} Jam</td>
+          <td class="p-3.5 text-center font-mono font-black text-teal-800 border-r border-slate-100 bg-teal-50/40">
+            <div class="text-xs font-black text-teal-950 font-mono">${row.formattedWorkHours}</div>
+            <div class="text-[10px] text-teal-700 font-bold font-mono">(${row.totalEffectiveHours} Jam)</div>
+          </td>
           <td class="p-3.5 text-center font-mono text-slate-500 border-r border-slate-100 font-bold">${row.targetHours} Jam</td>
-          <td class="p-3.5 text-center font-mono font-bold ${row.diffFromTarget >= 0 ? 'text-emerald-700' : 'text-amber-700'} border-r border-slate-100">
-            ${row.diffFromTarget >= 0 ? `+${row.diffFromTarget}` : row.diffFromTarget} Jam
+          <td class="p-3.5 text-center font-mono font-bold ${row.diffMinutes >= 0 ? 'text-emerald-700' : 'text-amber-700'} border-r border-slate-100">
+            <div class="text-xs font-bold font-mono">${row.formattedDiff}</div>
+            <div class="text-[10px] font-semibold font-mono ${row.diffMinutes >= 0 ? 'text-emerald-600' : 'text-amber-600'}">(${row.diffFromTarget >= 0 ? '+' : ''}${row.diffFromTarget} Jam)</div>
           </td>
           <td class="p-3.5 text-center">${statusBadge}</td>
         `;
@@ -7330,7 +7367,7 @@
 
       const rows = [
         [`REKAP MONITORING JAM KERJA KARYAWAN - GUDANG ${activeWarehouse}`],
-        [`Periode: ${startStr || 'Awal'} s/d ${endStr || 'Akhir'} • Standar Kerja: 40 Jam / Minggu`],
+        [`Periode: ${startStr || 'Awal'} s/d ${endStr || 'Akhir'} • Standar Kerja: 40 Jam / Minggu (Sehari 8 Jam Shift Terhitung 7 Jam Efektif, Potongan 1 Jam Istirahat)`],
         [],
         [
           'No',
@@ -7338,9 +7375,10 @@
           'Nama Karyawan',
           'Departemen',
           'Hari Hadir (Hari)',
-          'Total Jam Kerja (Jam)',
+          'Total Jam Kerja (Jam & Menit)',
+          'Total Jam Desimal (Jam)',
           'Target Mingguan (Jam)',
-          'Selisih Jam Kerja (Jam)',
+          'Selisih Jam Kerja',
           'Status Capaian Jam'
         ]
       ];
@@ -7352,10 +7390,11 @@
           r.name,
           r.dept,
           r.daysPresent,
+          r.formattedWorkHours,
           r.totalEffectiveHours,
           r.targetHours,
-          r.diffFromTarget,
-          r.isTargetAchieved ? 'Tercapai (>= 40 Jam)' : 'Kurang (< 40 Jam)'
+          r.formattedDiff,
+          r.isTargetAchieved ? 'Tercapai (>= Target)' : 'Kurang (< Target)'
         ]);
       });
 
@@ -7366,15 +7405,16 @@
         { wch: 26 },
         { wch: 15 },
         { wch: 14 },
+        { wch: 22 },
+        { wch: 18 },
         { wch: 20 },
         { wch: 20 },
-        { wch: 20 },
-        { wch: 24 }
+        { wch: 22 }
       ];
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, `Rekap_Jam_${activeWarehouse}`);
-      XLSX.writeFile(wb, `Rekap_Jam_Kerja_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+      XLSX.writeFile(wb, `Rekap_Jam_Kerja_${activeWarehouse}_${startStr || 'Awal'}_sd_${endStr || 'Akhir'}.xlsx`);
     }
 
     // Alias compatibility
