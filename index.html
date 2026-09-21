@@ -2183,31 +2183,33 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="m-emp-position" onchange="updateAddEmployeeRoleNotice(this.value)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
-              <option value="staff">Staff (Data Karyawan - Tanpa Akun)</option>
-              <option value="coordinator">Coordinator (Memiliki Akun Login)</option>
-              <option value="supervisor">Supervisor (Memiliki Akun Login & Approval)</option>
+            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="staff">Staff</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="supervisor">Supervisor</option>
             </select>
           </div>
-        </div>
-
-        <div id="add-emp-role-note" class="p-2.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200">
-          ℹ️ <b>Karyawan Biasa:</b> Ditambahkan sebagai data master presensi ID Card (tidak memiliki akun login).
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
           <select id="m-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="tenaga teknis kefarmasian">tenaga teknis kefarmasian</option>
+            <option value="picker">picker</option>
+            <option value="packer">packer</option>
+            <option value="packing">packing</option>
+            <option value="inbound">inbound</option>
+            <option value="checker 1">checker 1</option>
+            <option value="checker 2">checker 2</option>
+            <option value="cyclecount">cyclecount</option>
+            <option value="return">return</option>
+            <option value="driver">driver</option>
+            <option value="picking plan">picking plan</option>
+            <option value="adm. sales order">adm. sales order</option>
+            <option value="dispatch">dispatch</option>
             <option value="staff office">staff office</option>
             <option value="supervisor">supervisor</option>
             <option value="coordinator">coordinator</option>
-            <option value="inbound">inbound</option>
-            <option value="packer">packer</option>
-            <option value="packing">packing</option>
-            <option value="admin so">admin so</option>
-            <option value="picking plan">picking plan</option>
-            <option value="dispatch">dispatch</option>
-            <option value="driver">driver</option>
           </select>
         </div>
 
@@ -2269,32 +2271,34 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="edit-emp-position" onchange="updateEditEmployeeRoleNotice(this.value)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
-              <option value="staff">Staff (Data Karyawan - Tanpa Akun)</option>
-              <option value="coordinator">Coordinator (Memiliki Akun Login)</option>
-              <option value="supervisor">Supervisor (Memiliki Akun Login & Approval)</option>
-              <option value="admin">Admin (Administrator)</option>
+            <select id="edit-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="staff">Staff</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="supervisor">Supervisor</option>
+              <option value="admin">Admin</option>
             </select>
           </div>
-        </div>
-
-        <div id="edit-emp-role-note" class="p-2.5 rounded-xl bg-slate-100 text-slate-700 text-[11px] leading-relaxed border border-slate-200">
-          ℹ️ <b>Karyawan Biasa:</b> Terdaftar sebagai data master presensi ID Card (tidak memiliki akun login).
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
           <select id="edit-emp-dept" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <option value="tenaga teknis kefarmasian">tenaga teknis kefarmasian</option>
+            <option value="picker">picker</option>
+            <option value="packer">packer</option>
+            <option value="packing">packing</option>
+            <option value="inbound">inbound</option>
+            <option value="checker 1">checker 1</option>
+            <option value="checker 2">checker 2</option>
+            <option value="cyclecount">cyclecount</option>
+            <option value="return">return</option>
+            <option value="driver">driver</option>
+            <option value="picking plan">picking plan</option>
+            <option value="adm. sales order">adm. sales order</option>
+            <option value="dispatch">dispatch</option>
             <option value="staff office">staff office</option>
             <option value="supervisor">supervisor</option>
             <option value="coordinator">coordinator</option>
-            <option value="inbound">inbound</option>
-            <option value="packer">packer</option>
-            <option value="packing">packing</option>
-            <option value="admin so">admin so</option>
-            <option value="picking plan">picking plan</option>
-            <option value="dispatch">dispatch</option>
-            <option value="driver">driver</option>
           </select>
         </div>
 
@@ -6453,13 +6457,9 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         const roleStr = (emp.role || 'staff').toLowerCase().trim();
-        const hasLogin = roleStr === 'supervisor' || roleStr === 'coordinator' || roleStr === 'admin';
         const roleBadgeClass = (roleStr === 'supervisor' || roleStr === 'admin') 
           ? 'bg-slate-900 text-white' 
           : (roleStr === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200');
-        const accountBadge = hasLogin
-          ? '<span class="text-[9px] font-bold text-emerald-700 flex items-center gap-1 mt-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>Akun Login Aktif</span>'
-          : '<span class="text-[9px] font-medium text-slate-400 block mt-1">Data Presensi</span>';
 
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 text-center">
@@ -6474,7 +6474,6 @@
           <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
           <td class="p-3.5 border-r border-slate-100">
             <span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${roleBadgeClass}">${(emp.role || 'staff').toUpperCase()}</span>
-            ${accountBadge}
           </td>
           <td class="p-3.5 text-right">
             <div class="flex items-center justify-end gap-1.5">
@@ -6495,6 +6494,70 @@
       lucide.createIcons();
     }
 
+    function syncDepartmentDropdownOptions(selectId, targetDept = '') {
+      const selectEl = document.getElementById(selectId);
+      if (!selectEl) return;
+
+      const baseDepts = [
+        "tenaga teknis kefarmasian",
+        "picker",
+        "packer",
+        "packing",
+        "inbound",
+        "checker 1",
+        "checker 2",
+        "cyclecount",
+        "return",
+        "driver",
+        "picking plan",
+        "adm. sales order",
+        "dispatch",
+        "staff office",
+        "supervisor",
+        "coordinator"
+      ];
+
+      try {
+        const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        users.forEach(u => {
+          if (u.dept && !isManagementSystemAccount(u)) {
+            const d = u.dept.trim().toLowerCase();
+            if (d && !baseDepts.some(b => b.toLowerCase() === d || b.replace(/\./g, '').replace(/\s+/g, ' ') === d.replace(/\./g, '').replace(/\s+/g, ' '))) {
+              baseDepts.push(d);
+            }
+          }
+        });
+      } catch (e) {}
+
+      if (targetDept) {
+        const t = targetDept.trim().toLowerCase();
+        if (t && !baseDepts.some(b => b.toLowerCase() === t || b.replace(/\./g, '').replace(/\s+/g, ' ') === t.replace(/\./g, '').replace(/\s+/g, ' '))) {
+          baseDepts.push(t);
+        }
+      }
+
+      selectEl.innerHTML = '';
+      baseDepts.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d;
+        opt.text = d.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        selectEl.appendChild(opt);
+      });
+
+      if (targetDept) {
+        const cleanTarget = targetDept.trim().toLowerCase();
+        const normTarget = cleanTarget.replace(/\./g, '').replace(/\s+/g, ' ');
+        for (let i = 0; i < selectEl.options.length; i++) {
+          const optVal = selectEl.options[i].value.trim().toLowerCase();
+          const normOpt = optVal.replace(/\./g, '').replace(/\s+/g, ' ');
+          if (optVal === cleanTarget || normOpt === normTarget) {
+            selectEl.selectedIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
     function openEditEmployeeModal(nik) {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const user = users.find(u => u.nik === nik);
@@ -6505,14 +6568,15 @@
       document.getElementById('edit-emp-name').value = user.name || '';
       document.getElementById('edit-emp-nik').value = user.nik || '';
       document.getElementById('edit-emp-position').value = user.role || 'staff';
-      document.getElementById('edit-emp-dept').value = user.dept || 'inbound';
+      
+      syncDepartmentDropdownOptions('edit-emp-dept', user.dept || '');
+
       document.getElementById('edit-emp-outsource').value = user.outsource || '';
       document.getElementById('edit-emp-phone').value = user.phone || '';
       if (document.getElementById('edit-emp-email')) document.getElementById('edit-emp-email').value = user.email || '';
       document.getElementById('edit-emp-joindate').value = user.joinDate || '';
       document.getElementById('edit-emp-pass').value = '';
 
-      updateEditEmployeeRoleNotice(user.role || 'staff');
       document.getElementById('edit-emp-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -6845,7 +6909,9 @@
       document.getElementById('m-emp-joindate').value = new Date().toISOString().split('T')[0];
       document.getElementById('m-emp-nik').value = '';
       if (document.getElementById('m-emp-email')) document.getElementById('m-emp-email').value = '';
+      syncDepartmentDropdownOptions('m-emp-dept', 'picker');
       document.getElementById('add-emp-modal').classList.remove('hidden');
+      lucide.createIcons();
     }
 
     function closeAddEmployeeModal() {
@@ -6896,7 +6962,7 @@
       if (isManagementRole) {
         alert(`✅ Karyawan ${name} (${autoNik}) berhasil ditambahkan dengan jabatan ${role.toUpperCase()}!\nAkun login sistem telah dibuat otomatis (Password: medika123).`);
       } else {
-        alert(`✅ Data karyawan ${name} (${autoNik}) berhasil ditambahkan sebagai Data Karyawan Biasa (tanpa akun login).\nKartu ID Card & Barcode siap digunakan untuk absensi.`);
+        alert(`✅ Data karyawan ${name} (${autoNik}) berhasil ditambahkan!\nKartu ID Card & Barcode siap digunakan untuk absensi.`);
       }
     }
 
