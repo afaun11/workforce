@@ -24,6 +24,33 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <script>
+    function handleLogoError(imgEl, fallbackId) {
+      const candidates = [
+        'logo-wfm.png.jpeg',
+        'logo-wfm.png',
+        'logo-wfm.jpeg',
+        'logo-wfm.jpg',
+        'logo-web.png',
+        './logo-wfm.png.jpeg',
+        './logo-wfm.png',
+        './logo-web.png'
+      ];
+      let idx = parseInt(imgEl.dataset.tryIdx || '0', 10);
+      while (idx < candidates.length && candidates[idx] === imgEl.getAttribute('src')) {
+        idx++;
+      }
+      if (idx < candidates.length) {
+        imgEl.dataset.tryIdx = String(idx + 1);
+        imgEl.src = candidates[idx];
+      } else {
+        imgEl.style.display = 'none';
+        if (fallbackId) {
+          const fallback = document.getElementById(fallbackId);
+          if (fallback) fallback.classList.remove('hidden');
+        }
+      }
+    }
+
     tailwind.config = {
       theme: {
         extend: {
@@ -168,7 +195,7 @@
       <!-- Top Banner Header -->
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
         <div class="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-3 overflow-hidden">
-          <img src="logo-wfm.png" alt="Logo WFM Medika" class="w-full h-full object-contain" onerror="if(this.dataset.triedWeb!=='1'){this.dataset.triedWeb='1'; this.src='logo-web.png';} else {this.style.display='none'; document.getElementById('login-logo-fallback')?.classList.remove('hidden');}">
+          <img src="logo-wfm.png.jpeg" alt="Logo WFM Medika" class="w-full h-full object-contain" onerror="handleLogoError(this, 'login-logo-fallback')">
           <span id="login-logo-fallback" class="hidden font-black text-teal-600 text-2xl">M</span>
         </div>
         <h1 class="text-xl font-extrabold tracking-tight">WFM MEDIKA GROUP</h1>
@@ -367,7 +394,7 @@
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0">
-          <img src="logo-wfm.png" alt="Logo Medika WFM" class="w-full h-full object-contain" onerror="if(this.dataset.triedWeb!=='1'){this.dataset.triedWeb='1'; this.src='logo-web.png';} else {this.style.display='none'; document.getElementById('nav-logo-fallback')?.classList.remove('hidden');}">
+          <img src="logo-wfm.png.jpeg" alt="Logo Medika WFM" class="w-full h-full object-contain" onerror="handleLogoError(this, 'nav-logo-fallback')">
           <span id="nav-logo-fallback" class="hidden font-black text-teal-800 text-base">M</span>
         </div>
         <div>
