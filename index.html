@@ -12,6 +12,11 @@
   <link rel="apple-touch-icon" href="logo-web.png">
   <meta property="og:image" content="logo-web.png">
   
+  <!-- Google Fonts: Plus Jakarta Sans & Inter (Modern High-Legibility UI Typography) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -55,6 +60,10 @@
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['var(--app-font)', 'Plus Jakarta Sans', 'Inter', 'sans-serif'],
+            serif: ['Times New Roman', 'Times', 'Liberation Serif', 'serif']
+          },
           colors: {
             medika: { 50: '#f0fdfa', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a' },
             mbi: { DEFAULT: '#0284c7', light: '#e0f2fe', dark: '#0369a1' },
@@ -66,6 +75,16 @@
   </script>
 
   <style>
+    /* Global Dynamic Typography */
+    :root {
+      --app-font: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body, button, input, select, textarea, table, th, td, h1, h2, h3, h4, h5, h6, p, span, div, a, label {
+      font-family: var(--app-font);
+    }
+    .font-mono, code, pre, input[type="time"], #live-clock {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    }
     @media print {
       @page {
         size: A4 portrait;
@@ -685,7 +704,7 @@
                   <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i>
                   Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
-                <button onclick="deleteAllEmployees()" class="h-9 px-3.5 bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Kosongkan Seluruh Data Karyawan untuk Upload Excel Bersih">
+                <button id="btn-reset-all-emp" onclick="deleteAllEmployees()" class="hidden h-9 px-3.5 bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5" title="Kosongkan Seluruh Data Karyawan untuk Upload Excel Bersih (Khusus Admin)">
                   <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-rose-500"></i>
                   Reset Semua
                 </button>
@@ -2052,6 +2071,73 @@
                   </button>
                 </div>
               </form>
+            </div>
+
+            <!-- Kartu Pengaturan Tipografi & Font Tampilan Web -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <i data-lucide="type" class="w-4 h-4 text-teal-600"></i>
+                    Tipografi &amp; Font Tampilan Web (Secara Keseluruhan)
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Pilih jenis font yang paling nyaman untuk seluruh teks, tabel data, tombol, dan kartu operasional.</p>
+                </div>
+                <span class="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg border border-slate-200">
+                  Tersimpan Otomatis
+                </span>
+              </div>
+
+              <!-- Pilihan Card Font Interaktif -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <!-- Opsi 1: Plus Jakarta Sans (Rekomendasi Utama) -->
+                <div onclick="applyWebFont('plus-jakarta')" data-font-key="plus-jakarta" class="font-choice-card cursor-pointer p-4 rounded-2xl border-2 border-teal-600 bg-teal-50/50 ring-2 ring-teal-500/20 transition hover:shadow-md flex flex-col justify-between">
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black text-slate-900" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
+                      <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-600 text-white">Saran Terbaik ⭐</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug" style="font-family: 'Plus Jakarta Sans', sans-serif;">
+                      Font modern Indonesia standar startup &amp; enterprise. Sangat jernih, tegas, dan proporsional di layar HP &amp; laptop.
+                    </p>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-teal-200/60 text-[11px] font-mono text-teal-800 font-bold">
+                    Aa Bb Gg 123 • Rp 45.000
+                  </div>
+                </div>
+
+                <!-- Opsi 2: Inter -->
+                <div onclick="applyWebFont('inter')" data-font-key="inter" class="font-choice-card cursor-pointer p-4 rounded-2xl border border-slate-200 bg-white transition hover:shadow-md hover:border-slate-300 flex flex-col justify-between">
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black text-slate-900" style="font-family: 'Inter', sans-serif;">Inter</span>
+                      <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-700 border">Standar SaaS</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug" style="font-family: 'Inter', sans-serif;">
+                      Standar internasional aplikasi cloud dunia. Presisi tinggi dengan angka tabular yang sangat rapi untuk data tabel.
+                    </p>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] font-mono text-slate-700 font-bold">
+                    Aa Bb Gg 123 • Rp 45.000
+                  </div>
+                </div>
+
+                <!-- Opsi 3: Times New Roman -->
+                <div onclick="applyWebFont('times')" data-font-key="times" class="font-choice-card cursor-pointer p-4 rounded-2xl border border-slate-200 bg-white transition hover:shadow-md hover:border-slate-300 flex flex-col justify-between">
+                  <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-black text-slate-900" style="font-family: 'Times New Roman', Times, serif;">Times New Roman</span>
+                      <span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-slate-100 text-slate-700 border">Klasik / Formal</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug" style="font-family: 'Times New Roman', Times, serif;">
+                      Font serif klasik formal seperti dokumen surat dinas cetak &amp; berkas Microsoft Word.
+                    </p>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-700 font-bold" style="font-family: 'Times New Roman', Times, serif;">
+                    Aa Bb Gg 123 • Rp 45.000
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -3555,6 +3641,7 @@
       }
 
       initSidebarState();
+      initAppFont();
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
@@ -3572,6 +3659,48 @@
         }
       }
     };
+
+    // =========================================================
+    // TIPOGRAFI & FONT MANAGER (PLUS JAKARTA SANS / INTER / TIMES NEW ROMAN)
+    // =========================================================
+    const FONT_PRESETS = {
+      'plus-jakarta': "'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      'inter': "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      'times': "'Times New Roman', Times, 'Liberation Serif', Georgia, serif"
+    };
+
+    function applyWebFont(fontKey, save = true) {
+      if (!FONT_PRESETS[fontKey]) fontKey = 'plus-jakarta';
+      const fontVal = FONT_PRESETS[fontKey];
+      document.documentElement.style.setProperty('--app-font', fontVal);
+      document.body.style.setProperty('--app-font', fontVal);
+      document.body.style.fontFamily = fontVal;
+      if (save) {
+        localStorage.setItem('wfm_app_font', fontKey);
+      }
+      
+      // Update visual highlight pada kartu pilihan font di halaman pengaturan
+      document.querySelectorAll('.font-choice-card').forEach(card => {
+        const key = card.getAttribute('data-font-key');
+        if (key === fontKey) {
+          card.classList.add('border-teal-600', 'bg-teal-50/50', 'ring-2', 'ring-teal-500/20');
+          card.classList.remove('border-slate-200', 'bg-white');
+        } else {
+          card.classList.remove('border-teal-600', 'bg-teal-50/50', 'ring-2', 'ring-teal-500/20');
+          card.classList.add('border-slate-200', 'bg-white');
+        }
+      });
+    }
+
+    function initAppFont() {
+      try {
+        const savedFont = localStorage.getItem('wfm_app_font') || 'plus-jakarta';
+        applyWebFont(savedFont, false);
+      } catch (e) {}
+    }
+
+    // Jalankan inisialisasi font seketika
+    initAppFont();
 
     function updateLoginWhStyle() {
       const val = document.querySelector('input[name="login-warehouse"]:checked')?.value || 'MBI';
@@ -3759,6 +3888,18 @@
         } else {
           whSwitcher.classList.add('hidden');
           whSwitcher.classList.remove('flex');
+        }
+      }
+
+      // 5. Tombol Reset Semua Data Karyawan (HANYA ADA DI AKUN ADMIN)
+      const btnResetAllEmp = document.getElementById('btn-reset-all-emp');
+      if (btnResetAllEmp) {
+        if (isAdmin) {
+          btnResetAllEmp.classList.remove('hidden');
+          btnResetAllEmp.classList.add('inline-flex');
+        } else {
+          btnResetAllEmp.classList.add('hidden');
+          btnResetAllEmp.classList.remove('inline-flex');
         }
       }
     }
@@ -6516,6 +6657,10 @@
     }
 
     async function deleteAllEmployees() {
+      if (!isUserAdmin()) {
+        alert('Akses Ditolak: Fitur Reset Semua Data Karyawan hanya dapat dilakukan oleh Akun Admin Gudang.');
+        return;
+      }
       const targetWh = activeWarehouse || 'MBI';
       if (!confirm(`⚠️ PERINGATAN HAPUS TOTAL:\nApakah Anda yakin ingin MENGOSONGKAN SELURUH DATA KARYAWAN di Gudang ${targetWh}?\n\n(Akun Admin dan Akun Dedicated Scanner akan tetap dipertahankan untuk mengelola sistem). Data di Google Firebase Cloud akan langsung diperbarui bersih.`)) {
         return;
@@ -6538,6 +6683,10 @@
     }
 
     async function deleteAllAttendanceRecords() {
+      if (!isUserAdmin()) {
+        alert('Akses Ditolak: Fitur Reset Riwayat Absensi hanya dapat dilakukan oleh Akun Admin Gudang.');
+        return;
+      }
       const targetWh = activeWarehouse || 'MBI';
       if (!confirm(`⚠️ PERINGATAN RESET ABSENSI:\nApakah Anda yakin ingin MERESET & MENGHAPUS SEMUA RIWAYAT ABSENSI di Gudang ${targetWh}?\n\nSemua data jam masuk dan jam pulang akan dikosongkan secara permanen baik di laptop, HP staf, maupun di Google Firebase Cloud.`)) {
         return;
@@ -6950,6 +7099,12 @@
 
       const alertEl = document.getElementById('settings-alert');
       if (alertEl) alertEl.classList.add('hidden');
+
+      // Highlight kartu font pilihan yang sedang aktif
+      try {
+        const currentFont = localStorage.getItem('wfm_app_font') || 'plus-jakarta';
+        applyWebFont(currentFont, false);
+      } catch (e) {}
 
       lucide.createIcons();
     }
