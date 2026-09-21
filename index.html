@@ -3000,48 +3000,82 @@
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
 
-      // 1. Karyawan MBI & MAI (Data yang dihapus Admin langsung terhapus di memori tanpa perlu clear cache)
+      // Dirty Checking: Cek apakah ada data yang benar-benar berbeda dibanding memori lokal
+      const currMbiUsers = localStorage.getItem('wfm_mbi_users') || '';
+      const currMaiUsers = localStorage.getItem('wfm_mai_users') || '';
+      const currMbiAtt = localStorage.getItem('wfm_mbi_attendance') || '';
+      const currMaiAtt = localStorage.getItem('wfm_mai_attendance') || '';
+      const currMbiOt = localStorage.getItem('wfm_mbi_overtime') || '';
+      const currMaiOt = localStorage.getItem('wfm_mai_overtime') || '';
+      const currMbiLeaves = localStorage.getItem('wfm_mbi_leaves') || '';
+      const currMaiLeaves = localStorage.getItem('wfm_mai_leaves') || '';
+
       const rawMbiUsers = normalizeFirebaseArray(db.mbi_users);
       const cleanMbiUsers = rawMbiUsers.length > 0 ? deduplicateUserList(rawMbiUsers, 'MBI') : SEED_MBI_USERS;
-      localStorage.setItem('wfm_mbi_users', JSON.stringify(cleanMbiUsers));
+      const newMbiUsers = JSON.stringify(cleanMbiUsers);
 
       const rawMaiUsers = normalizeFirebaseArray(db.mai_users);
       const cleanMaiUsers = rawMaiUsers.length > 0 ? deduplicateUserList(rawMaiUsers, 'MAI') : SEED_MAI_USERS;
-      localStorage.setItem('wfm_mai_users', JSON.stringify(cleanMaiUsers));
+      const newMaiUsers = JSON.stringify(cleanMaiUsers);
 
-      // 2. Riwayat Absensi (Jika Admin reset/hapus semua absen, data di HP/Laptop otomatis langsung kosong [])
-      const mbiAtt = normalizeFirebaseArray(db.mbi_attendance);
-      localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mbiAtt));
+      const newMbiAtt = JSON.stringify(normalizeFirebaseArray(db.mbi_attendance));
+      const newMaiAtt = JSON.stringify(normalizeFirebaseArray(db.mai_attendance));
+      const newMbiOt = JSON.stringify(normalizeFirebaseArray(db.mbi_overtime));
+      const newMaiOt = JSON.stringify(normalizeFirebaseArray(db.mai_overtime));
+      const newMbiLeaves = JSON.stringify(normalizeFirebaseArray(db.mbi_leaves));
+      const newMaiLeaves = JSON.stringify(normalizeFirebaseArray(db.mai_leaves));
 
-      const maiAtt = normalizeFirebaseArray(db.mai_attendance);
-      localStorage.setItem('wfm_mai_attendance', JSON.stringify(maiAtt));
+      const hasUsersChanged = (currMbiUsers !== newMbiUsers || currMaiUsers !== newMaiUsers);
+      const hasAttChanged = (currMbiAtt !== newMbiAtt || currMaiAtt !== newMaiAtt);
+      const hasOtChanged = (currMbiOt !== newMbiOt || currMaiOt !== newMaiOt);
+      const hasLeavesChanged = (currMbiLeaves !== newMbiLeaves || currMaiLeaves !== newMaiLeaves);
 
-      // 3. Data Lemburan
-      const mbiOt = normalizeFirebaseArray(db.mbi_overtime);
-      localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mbiOt));
-
-      const maiOt = normalizeFirebaseArray(db.mai_overtime);
-      localStorage.setItem('wfm_mai_overtime', JSON.stringify(maiOt));
-
-      // 4. Data Izin & Cuti
-      const mbiLeaves = normalizeFirebaseArray(db.mbi_leaves);
-      localStorage.setItem('wfm_mbi_leaves', JSON.stringify(mbiLeaves));
-
-      const maiLeaves = normalizeFirebaseArray(db.mai_leaves);
-      localStorage.setItem('wfm_mai_leaves', JSON.stringify(maiLeaves));
-
-      // 5. Titik Koordinat Gudang
+      let hasCoordsChanged = false;
       if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
-        localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
+        const currC = localStorage.getItem('wfm_mbi_coords') || '';
+        const newC = JSON.stringify(db.mbi_coords);
+        if (currC !== newC) {
+          localStorage.setItem('wfm_mbi_coords', newC);
+          hasCoordsChanged = true;
+        }
       }
       if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
-        localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
+        const currC = localStorage.getItem('wfm_mai_coords') || '';
+        const newC = JSON.stringify(db.mai_coords);
+        if (currC !== newC) {
+          localStorage.setItem('wfm_mai_coords', newC);
+          hasCoordsChanged = true;
+        }
       }
 
-      // Langsung render ulang seluruh layar tampilan seketika!
+      // JIKA DATA DARI CLOUD PERSIS SAMA DENGAN LOKAL, STOP!
+      // Jangan pernah update localStorage dan jangan pernah me-refresh layar DOM agar aktivitas pengguna/scroll di HP tidak terganggu!
+      if (!hasUsersChanged && !hasAttChanged && !hasOtChanged && !hasLeavesChanged && !hasCoordsChanged) {
+        return;
+      }
+
+      // Perbarui hanya item yang benar-benar berubah
+      if (hasUsersChanged) {
+        localStorage.setItem('wfm_mbi_users', newMbiUsers);
+        localStorage.setItem('wfm_mai_users', newMaiUsers);
+      }
+      if (hasAttChanged) {
+        localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
+        localStorage.setItem('wfm_mai_attendance', newMaiAtt);
+      }
+      if (hasOtChanged) {
+        localStorage.setItem('wfm_mbi_overtime', newMbiOt);
+        localStorage.setItem('wfm_mai_overtime', newMaiOt);
+      }
+      if (hasLeavesChanged) {
+        localStorage.setItem('wfm_mbi_leaves', newMbiLeaves);
+        localStorage.setItem('wfm_mai_leaves', newMaiLeaves);
+      }
+
+      // Render ulang layar dengan proteksi scroll position
       renderAllLiveScreens();
 
-      // 6. Otomatis backup ke Google Sheet (Database Mirror) jika ada pembaruan data dari Cloud
+      // Otomatis backup ke Google Sheet jika ada pembaruan data dari Cloud
       if (db.updatedAt && db.updatedAt !== lastAppliedCloudUpdatedAt) {
         lastAppliedCloudUpdatedAt = db.updatedAt;
         if (typeof syncGoogleSheetDirectly === 'function') {
@@ -3638,11 +3672,11 @@
 
       renderLocationQRCode();
 
-      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 2 Detik)
+      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 4 Detik)
       fetchFullDatabaseFromCloud();
       setInterval(() => {
         fetchFullDatabaseFromCloud();
-      }, 2000);
+      }, 4000);
 
       window.addEventListener('focus', () => {
         fetchFullDatabaseFromCloud();
@@ -5333,6 +5367,18 @@
         whLabel.innerText = `Gudang ${targetWh}`;
       }
 
+      // 1. Dirty check data presensi hari ini agar tidak me-rebuild DOM jika data tidak berubah sama sekali
+      const attHash = `${targetWh}_${todayAtt.length}_` + todayAtt.map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
+      if (container.dataset.lastAttHash === attHash && container.children.length > 0) {
+        return; // Data sama persis, pertahankan elemen DOM dan posisi scroll pengguna 100%!
+      }
+      container.dataset.lastAttHash = attHash;
+
+      // 2. Rekam posisi scroll horizontal & vertikal sebelum re-render
+      const scrollEl = container.querySelector('.overflow-x-auto');
+      const prevScrollLeft = scrollEl ? scrollEl.scrollLeft : 0;
+      const prevScrollTop = scrollEl ? scrollEl.scrollTop : 0;
+
       if (todayAtt.length === 0) {
         container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada karyawan yang melakukan scan absensi hari ini di Gudang ${targetWh}.</div>`;
         return;
@@ -5396,6 +5442,13 @@
 
       container.innerHTML = html;
       lucide.createIcons();
+
+      // 3. Kembalikan posisi scroll horizontal & vertikal agar saat digeser di HP tidak meloncat kembali ke awal
+      const newScrollEl = container.querySelector('.overflow-x-auto');
+      if (newScrollEl) {
+        newScrollEl.scrollLeft = prevScrollLeft;
+        newScrollEl.scrollTop = prevScrollTop;
+      }
     }
 
     // =========================================================
