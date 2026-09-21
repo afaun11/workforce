@@ -613,13 +613,24 @@
           <div id="view-dashboard" class="view-panel hidden space-y-6">
             <div class="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
               <div>
-                <span id="dash-date" class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700">Senin, 25 Agustus 2026</span>
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="px-3.5 py-1 rounded-full bg-slate-800 text-teal-300 text-xs font-bold border border-slate-700 inline-flex items-center gap-1.5 shadow-2xs">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-teal-400"></i>
+                    <span id="dash-date-text">Senin, 21 September 2026</span>
+                  </span>
+                  <span class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-mono font-bold border border-slate-700 inline-flex items-center gap-1.5 shadow-2xs">
+                    <i data-lucide="clock" class="w-3.5 h-3.5 text-teal-400"></i>
+                    <span id="dash-time-text">00:00:00 WIB</span>
+                  </span>
+                </div>
                 <h2 class="text-2xl font-black mt-2 tracking-tight">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
                 <p class="text-xs text-slate-400 mt-1">Data Karyawan, Presensi Barcode & GPS, Record Absen Harian & Rekap Matriks</p>
               </div>
-              <div class="p-4 rounded-2xl bg-slate-800/80 border border-slate-700 backdrop-blur">
-                <p class="text-[10px] uppercase font-bold text-slate-400">Status Saya Hari Ini:</p>
-                <p id="dash-my-status" class="text-xs font-extrabold text-white mt-0.5">Belum Absen Masuk</p>
+              <div class="flex items-center gap-3">
+                <div class="px-4 py-2.5 rounded-2xl bg-slate-800/80 border border-slate-700 backdrop-blur flex items-center gap-2 text-xs shadow-2xs">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span class="font-bold text-slate-200">Sistem Operasional Aktif</span>
+                </div>
               </div>
             </div>
 
@@ -3633,10 +3644,12 @@
       document.getElementById('leave-start-date').value = todayStr;
       document.getElementById('leave-end-date').value = todayStr;
 
+      updateRealtimeDashboardDate();
       setInterval(() => {
         const d = new Date();
         const el = document.getElementById('live-clock');
         if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
+        updateRealtimeDashboardDate();
       }, 1000);
 
       renderLocationQRCode();
@@ -4526,7 +4539,25 @@
       lucide.createIcons();
     }
 
+    function updateRealtimeDashboardDate() {
+      const now = new Date();
+      const dateEl = document.getElementById('dash-date-text');
+      const timeEl = document.getElementById('dash-time-text');
+      if (dateEl) {
+        dateEl.innerText = now.toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+      if (timeEl) {
+        timeEl.innerText = now.toLocaleTimeString('id-ID') + ' WIB';
+      }
+    }
+
     function refreshAllDashboardData() {
+      updateRealtimeDashboardDate();
       const todayStr = new Date().toISOString().split('T')[0];
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
@@ -4545,16 +4576,6 @@
       if (statLeave) statLeave.innerText = `${todayLeaves.length} Orang`;
       const statOt = document.getElementById('stat-pending-ot');
       if (statOt) statOt.innerText = `${overtimes.filter(o => o.status === 'pending').length} Pending`;
-
-      const myToday = todayAtt.find(a => a.userNik === currentUser?.nik);
-      const statusEl = document.getElementById('dash-my-status');
-      if (statusEl) {
-        if (myToday) {
-          statusEl.innerText = myToday.checkOutTime ? 'Selesai Shift' : `Hadir (${new Date(myToday.checkInTime).toLocaleTimeString('id-ID')})`;
-        } else {
-          statusEl.innerText = 'Belum Absen Masuk';
-        }
-      }
     }
 
     // =========================================================
