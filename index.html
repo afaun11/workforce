@@ -265,19 +265,19 @@
               <i data-lucide="scan-line" class="w-4 h-4"></i>
             </div>
             <div>
-              <h3 class="font-extrabold text-xs text-teal-950">Mode Akun Scanner Absensi</h3>
-              <p class="text-[10px] text-teal-700 font-medium">Satu akun untuk semua HP karyawan melakukan scan kartu</p>
+              <h3 class="font-extrabold text-xs text-teal-950">Mode Akun Scanner Presensi</h3>
+              <p class="text-[10px] text-teal-700 font-medium">Satu akun resmi untuk pos pemindaian kartu ID karyawan</p>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-2 pt-1">
             <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
               <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-              Absen Gudang MBI
+              Scanner Gudang MBI
             </button>
             <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
               <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-              Absen Gudang MAI
+              Scanner Gudang MAI
             </button>
           </div>
         </div>
@@ -2715,12 +2715,12 @@
       };
       localStorage.setItem(`wfm_${(wh || 'MBI').toLowerCase()}_coords`, JSON.stringify(coords));
       localStorage.setItem('wfm_gps_radius', String(validRadius));
-      saveFullDatabaseToCloud(false);
+      saveFullDatabaseToCloud(false, true);
       updateRegisteredCoordsDisplay();
       return coords;
     }
 
-    function changeWarehouseGPSRadius(radius) {
+    async function changeWarehouseGPSRadius(radius) {
       const r = parseInt(radius, 10);
       if (isNaN(r) || r <= 0) return;
       localStorage.setItem('wfm_gps_radius', String(r));
@@ -2735,7 +2735,11 @@
       setWarehouseCoords(otherWh, otherC.lat, otherC.lng, r);
 
       updateRegisteredCoordsDisplay();
-      alert(`✅ Jarak radius validasi GPS Gudang diubah menjadi ${r} Meter (Fix & Ketat).\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Pesan di halaman depan Absensi Barcode telah disesuaikan.\n• Staf di luar radius ${r}m ditolak secara otomatis.`);
+
+      // Kirim LANGSUNG ke Cloud tanpa jeda debounce agar Firebase ter-update instan ke seluruh HP
+      await saveFullDatabaseToCloud(false, true);
+
+      alert(`✅ Jarak radius validasi GPS Gudang diubah menjadi ${r} Meter (Fix & Ketat).\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Pesan di seluruh HP akun scanner otomatis berubah seketika.\n• Staf di luar radius ${r}m ditolak secara otomatis.`);
     }
 
     function updateRegisteredCoordsDisplay() {
@@ -2762,6 +2766,8 @@
       if (attRadiusLabel) attRadiusLabel.innerText = `Radius GPS: ${curRadius} Meter`;
       if (attDescLabel) attDescLabel.innerText = `Sistem otomatis memverifikasi koordinat GPS HP saat kartu di-scan. Staf di luar radius ${curRadius} meter tidak dapat melakukan absensi.`;
       if (attSubRadius) attSubRadius.innerText = `${curRadius}m`;
+      const boxTag = document.getElementById('scanner-box-tag');
+      if (boxTag) boxTag.innerText = `SCAN ID CARD • ${curRadius}M`;
       if (camStatusMsg && (!camStatusMsg.innerText || camStatusMsg.innerText.includes('Arahkan kamera') || camStatusMsg.innerText.includes('Radius GPS'))) {
         camStatusMsg.innerText = `Arahkan kamera ke Barcode ID Card (Radius GPS: ${curRadius}m)`;
       }
@@ -2862,12 +2868,12 @@
 
     const SEED_MBI_USERS = [
       { id: 'mbi-admin', name: 'Admin Gudang MBI', dept: 'Administrator', outsource: 'Internal', phone: '081234567890', email: 'admin.mbi@medika.com', joinDate: '2023-01-01', nik: 'ADM001', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MBI' },
-      { id: 'mbi-scanner', name: 'Akun Scanner Absen MBI', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mbi@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MBI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MBI' }
+      { id: 'mbi-scanner', name: 'Scanner Presensi Gudang', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mbi@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MBI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MBI' }
     ];
 
     const SEED_MAI_USERS = [
       { id: 'mai-admin', name: 'Admin Gudang MAI', dept: 'Administrator', outsource: 'Internal', phone: '081512349876', email: 'admin.mai@medika.com', joinDate: '2023-01-01', nik: 'ADM-MAI', role: 'admin', password: 'password123', isFirstLogin: false, warehouse: 'MAI' },
-      { id: 'mai-scanner', name: 'Akun Scanner Absen MAI', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mai@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MAI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MAI' }
+      { id: 'mai-scanner', name: 'Scanner Presensi Gudang', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mai@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MAI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MAI' }
     ];
 
     const SEED_MBI_ATTENDANCE = [];
@@ -3041,10 +3047,20 @@
 
       const rawMbiUsers = normalizeFirebaseArray(db.mbi_users);
       const cleanMbiUsers = rawMbiUsers.length > 0 ? deduplicateUserList(rawMbiUsers, 'MBI') : SEED_MBI_USERS;
+      cleanMbiUsers.forEach(u => {
+        if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+          u.name = 'Scanner Presensi Gudang';
+        }
+      });
       const newMbiUsers = JSON.stringify(cleanMbiUsers);
 
       const rawMaiUsers = normalizeFirebaseArray(db.mai_users);
       const cleanMaiUsers = rawMaiUsers.length > 0 ? deduplicateUserList(rawMaiUsers, 'MAI') : SEED_MAI_USERS;
+      cleanMaiUsers.forEach(u => {
+        if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+          u.name = 'Scanner Presensi Gudang';
+        }
+      });
       const newMaiUsers = JSON.stringify(cleanMaiUsers);
 
       const newMbiAtt = JSON.stringify(normalizeFirebaseArray(db.mbi_attendance));
@@ -3061,48 +3077,32 @@
 
       let hasCoordsChanged = false;
       if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
-        const currC = localStorage.getItem('wfm_mbi_coords') || '';
-        let shouldApply = true;
-        if (currC) {
-          try {
-            const parsedLocal = JSON.parse(currC);
-            if (parsedLocal.updatedAt && db.mbi_coords.updatedAt) {
-              if (new Date(parsedLocal.updatedAt).getTime() > new Date(db.mbi_coords.updatedAt).getTime()) {
-                shouldApply = false;
-              }
-            }
-          } catch(e) {}
-        }
-        if (shouldApply) {
-          const newC = JSON.stringify(db.mbi_coords);
-          if (currC !== newC) {
-            localStorage.setItem('wfm_mbi_coords', newC);
-            if (db.mbi_coords.radius) localStorage.setItem('wfm_gps_radius', String(db.mbi_coords.radius));
-            hasCoordsChanged = true;
-          }
+        const localMbi = getWarehouseCoords('MBI');
+        const cloudMbiRad = Number(db.mbi_coords.radius) || 30;
+        const isDiff = (localMbi.radius !== cloudMbiRad) || 
+                       (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
+                       (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
+        if (isDiff) {
+          localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
+          localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
+          hasCoordsChanged = true;
         }
       }
       if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
-        const currC = localStorage.getItem('wfm_mai_coords') || '';
-        let shouldApply = true;
-        if (currC) {
-          try {
-            const parsedLocal = JSON.parse(currC);
-            if (parsedLocal.updatedAt && db.mai_coords.updatedAt) {
-              if (new Date(parsedLocal.updatedAt).getTime() > new Date(db.mai_coords.updatedAt).getTime()) {
-                shouldApply = false;
-              }
-            }
-          } catch(e) {}
+        const localMai = getWarehouseCoords('MAI');
+        const cloudMaiRad = Number(db.mai_coords.radius) || 30;
+        const isDiff = (localMai.radius !== cloudMaiRad) || 
+                       (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
+                       (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
+        if (isDiff) {
+          localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
+          localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
+          hasCoordsChanged = true;
         }
-        if (shouldApply) {
-          const newC = JSON.stringify(db.mai_coords);
-          if (currC !== newC) {
-            localStorage.setItem('wfm_mai_coords', newC);
-            if (db.mai_coords.radius) localStorage.setItem('wfm_gps_radius', String(db.mai_coords.radius));
-            hasCoordsChanged = true;
-          }
-        }
+      }
+
+      if (hasCoordsChanged) {
+        updateRegisteredCoordsDisplay();
       }
 
       // JIKA DATA DARI CLOUD PERSIS SAMA DENGAN LOKAL, STOP!
@@ -3193,7 +3193,7 @@
     }
 
     let cloudSaveTimeout = null;
-    async function saveFullDatabaseToCloud(forceAlert = false) {
+    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false) {
       const executeSave = async () => {
         const payload = {
           mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
@@ -3256,12 +3256,13 @@
         }
       };
 
-      if (forceAlert) {
+      if (forceAlert || immediate) {
+        if (cloudSaveTimeout) clearTimeout(cloudSaveTimeout);
         return await executeSave();
       }
 
       if (cloudSaveTimeout) clearTimeout(cloudSaveTimeout);
-      cloudSaveTimeout = setTimeout(executeSave, 300);
+      cloudSaveTimeout = setTimeout(executeSave, 250);
     }
 
     async function initializeAndUploadToFirebase() {
@@ -3366,6 +3367,12 @@
             } else {
               if (u.hasAccount !== true) {
                 u.hasAccount = true;
+                hasChanges = true;
+              }
+            // Standarisasi Nama Akun Scanner Presensi agar Seragam & Profesional di Gudang MBI & MAI
+            if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+              if (u.name !== 'Scanner Presensi Gudang') {
+                u.name = 'Scanner Presensi Gudang';
                 hasChanges = true;
               }
             }
@@ -3555,6 +3562,40 @@
       }
     }
 
+    let firebaseEventSource = null;
+    function initFirebaseLiveStream() {
+      if (typeof EventSource === 'undefined') return;
+      try {
+        if (firebaseEventSource) {
+          firebaseEventSource.close();
+        }
+        // Firebase Realtime Database SSE Stream untuk update instan tanpa jeda
+        firebaseEventSource = new EventSource(FIREBASE_ENDPOINT);
+        firebaseEventSource.addEventListener('put', (e) => {
+          try {
+            const parsed = JSON.parse(e.data);
+            if (parsed && parsed.data) {
+              if (parsed.path === '/') {
+                applyIncomingDatabase(parsed.data);
+              } else {
+                fetchFullDatabaseFromCloud();
+              }
+            }
+          } catch (err) {}
+        });
+        firebaseEventSource.addEventListener('patch', (e) => {
+          try {
+            fetchFullDatabaseFromCloud();
+          } catch (err) {}
+        });
+        firebaseEventSource.onerror = () => {
+          // Browser otomatis menangani reconnect SSE
+        };
+      } catch (err) {
+        console.warn('Firebase LiveStream error:', err);
+      }
+    }
+
     async function purgeAndReloadFromFirebase() {
       if (!confirm('Bersihkan seluruh cache lokal di perangkat ini dan muat ulang data resmi dari Google Firebase Cloud?')) {
         return;
@@ -3730,11 +3771,12 @@
       renderLocationQRCode();
       updateRegisteredCoordsDisplay();
 
-      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 4 Detik)
+      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 2.5 Detik + SSE LiveStream)
       fetchFullDatabaseFromCloud();
+      initFirebaseLiveStream();
       setInterval(() => {
         fetchFullDatabaseFromCloud();
-      }, 4000);
+      }, 2500);
 
       window.addEventListener('focus', () => {
         fetchFullDatabaseFromCloud();
@@ -4062,7 +4104,7 @@
       if (!scannerUser) {
         scannerUser = {
           id: `${warehouse.toLowerCase()}-scanner`,
-          name: `Akun Scanner Absen ${warehouse}`,
+          name: 'Scanner Presensi Gudang',
           dept: 'presensi',
           outsource: 'Internal',
           phone: '-',
@@ -4075,6 +4117,9 @@
           warehouse
         };
         users.push(scannerUser);
+        setWhDB(warehouse, 'users', users);
+      } else if (scannerUser.name !== 'Scanner Presensi Gudang') {
+        scannerUser.name = 'Scanner Presensi Gudang';
         setWhDB(warehouse, 'users', users);
       }
       loginUserSession(scannerUser);
@@ -4431,8 +4476,14 @@
       document.getElementById('auth-container').classList.add('hidden');
       document.getElementById('app-container').classList.remove('hidden');
 
-      document.getElementById('nav-user-name').innerText = currentUser.name || 'User';
-      document.getElementById('nav-user-dept').innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
+      if (isUserScanner(currentUser)) {
+        currentUser.name = 'Scanner Presensi Gudang';
+        document.getElementById('nav-user-name').innerText = 'Scanner Presensi Gudang';
+        document.getElementById('nav-user-dept').innerText = 'POS SCANNER PRESENSI';
+      } else {
+        document.getElementById('nav-user-name').innerText = currentUser.name || 'User';
+        document.getElementById('nav-user-dept').innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
+      }
       
       const whBadge = document.getElementById('user-warehouse-badge');
       whBadge.innerText = `GUDANG ${currentUser.warehouse}`;
@@ -4604,6 +4655,9 @@
         renderScannerTodayRecords();
         switchScanMethod('camera');
         updateRegisteredCoordsDisplay();
+        if (typeof fetchFullDatabaseFromCloud === 'function') {
+          fetchFullDatabaseFromCloud();
+        }
       }
       if (viewName === 'employees') renderEmployeeTable();
       if (viewName === 'reports-group') {
@@ -5506,6 +5560,9 @@
     // KAMERA SCANNER (BUKA & TUTUP)
     // =========================================================
     async function startScanner() {
+      if (typeof fetchFullDatabaseFromCloud === 'function') {
+        fetchFullDatabaseFromCloud();
+      }
       // 1. Tampilkan container video, sembunyikan standby
       const videoWrapper = document.getElementById('camera-video-wrapper');
       const standbyWrapper = document.getElementById('camera-standby-wrapper');
