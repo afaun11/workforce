@@ -874,17 +874,11 @@
                       </p>
                     </div>
 
-                    <div class="pt-2 flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-xs mx-auto">
-                      <button type="button" onclick="startScanner()" class="w-full py-3.5 px-6 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs rounded-2xl transition shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2">
+                    <div class="pt-2 w-full max-w-xs mx-auto">
+                      <button type="button" onclick="startScanner()" class="w-full py-3.5 px-6 bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-black text-xs rounded-2xl transition shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2">
                         <i data-lucide="camera" class="w-4 h-4"></i>
                         <span id="btn-open-cam-text">Buka Kamera untuk Absen</span>
                       </button>
-                      
-                      <label class="cursor-pointer py-3 px-4 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-2xl hover:bg-slate-50 transition shadow-xs flex items-center justify-center gap-1.5 w-full sm:w-auto shrink-0">
-                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                        <span>Scan File</span>
-                        <input type="file" id="qr-input-file" accept="image/*" onchange="scanQRFromFile(event)" class="sr-only">
-                      </label>
                     </div>
                   </div>
 
@@ -5805,7 +5799,7 @@
       } catch (err) {
         console.error('Html5Qrcode error:', err);
         if (statusMsg) {
-          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum diizinkan.</span> Di laptop/HP, klik ikon gembok URL dan pilih "Allow Camera" atau gunakan 'Scan dari Gambar'.`;
+          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum diizinkan.</span> Di laptop/HP, klik ikon gembok URL dan pilih "Allow Camera" (Izinkan Kamera).`;
         }
         alert('Izin akses kamera diperlukan.\n\nKlik ikon Gembok / Izin di sebelah alamat URL browser Anda dan pilih "Allow Camera" (Izinkan Kamera).');
       }
@@ -5826,30 +5820,6 @@
       if (standbyWrapper) standbyWrapper.classList.remove('hidden');
 
       lucide.createIcons();
-    }
-
-    function scanQRFromFile(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("qr-reader");
-      }
-
-      html5QrScanner.scanFile(file, true)
-        .then(decodedText => {
-          processScannedText(decodedText);
-        })
-        .catch(err => {
-          showProfessionalAttendanceToast({
-            isError: true,
-            title: 'Gambar Tidak Terbaca',
-            subtitle: 'Barcode tidak terdeteksi pada file gambar yang diupload. Coba foto lebih terang & jelas.',
-            statusText: 'Gagal Membaca File'
-          });
-          playAttendanceErrorSound('File tidak terbaca');
-        });
-      e.target.value = '';
     }
 
     function setAttendanceType(type) {
