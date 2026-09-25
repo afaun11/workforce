@@ -2641,8 +2641,16 @@
   </div>
 
   <!-- ELEMEN AUDIO RESMI SISTEM (SUARA ABSEN BERHASIL & SUARA ABSEN GAGAL) -->
-  <audio id="audio-file-success" src="suara%20absen-berhasil.mpeg" preload="auto"></audio>
-  <audio id="audio-file-error" src="suara%20absen-gagal.mpeg" preload="auto"></audio>
+  <audio id="audio-file-success" preload="auto">
+    <source src="suara%20absen-berhasil.mpeg" type="audio/mpeg">
+    <source src="suara absen-berhasil.mpeg" type="audio/mpeg">
+    <source src="suara absen-berhasil.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="audio-file-error" preload="auto">
+    <source src="suara%20absen-gagal.mpeg" type="audio/mpeg">
+    <source src="suara absen-gagal.mpeg" type="audio/mpeg">
+    <source src="suara absen-gagal.mp3" type="audio/mpeg">
+  </audio>
 
   <!-- ========================================================= -->
   <!-- MODAL PENGATURAN SUARA NOTIFIKASI PRESENSI (KHUSUS ADMIN) -->
@@ -5150,18 +5158,28 @@
           source.start(0);
         }
 
-        // Pancingan audio DOM
+        // Pancingan audio DOM tanpa meninggalkan status muted terkunci
         const s = document.getElementById('audio-file-success');
         const e = document.getElementById('audio-file-error');
-        if (s && s.paused) {
+        if (s) {
           s.muted = true;
           const ps = s.play();
-          if (ps && ps.then) ps.then(() => { s.pause(); s.currentTime = 0; s.muted = false; }).catch(() => {});
+          if (ps && typeof ps.then === 'function') {
+            ps.then(() => { s.pause(); s.currentTime = 0; s.muted = false; })
+              .catch(() => { s.muted = false; });
+          } else {
+            s.muted = false;
+          }
         }
-        if (e && e.paused) {
+        if (e) {
           e.muted = true;
           const pe = e.play();
-          if (pe && pe.then) pe.then(() => { e.pause(); e.currentTime = 0; e.muted = false; }).catch(() => {});
+          if (pe && typeof pe.then === 'function') {
+            pe.then(() => { e.pause(); e.currentTime = 0; e.muted = false; })
+              .catch(() => { e.muted = false; });
+          } else {
+            e.muted = false;
+          }
         }
 
         isAudioContextUnlocked = true;
@@ -5267,11 +5285,11 @@
       }
     }
 
-    // 3. DISPATCHER SUARA UTAMA (Prioritas: Kustom Storage -> File Resmi Bawaan -> Native Synthesizer)
+    // 3. DISPATCHER SUARA UTAMA (Prioritas: Kustom Storage Admin -> File Resmi Bawaan -> Native Synthesizer)
     function playOfficialAudio(isSuccess, extraReason = '') {
       unlockAudioContextOnGesture();
 
-      // Cek apakah ada file audio kustom yang disimpan di memori Base64 (dari upload laptop atau sync cloud)
+      // Cek apakah ada file audio kustom yang disimpan di memori Base64 (dari upload laptop admin atau sync cloud)
       const customStorage = isSuccess 
         ? (localStorage.getItem('wfm_sound_in') || localStorage.getItem('wfm_sound_out'))
         : localStorage.getItem('wfm_sound_err');
@@ -5279,6 +5297,8 @@
       if (customStorage && customStorage.startsWith('data:audio')) {
         try {
           const a = new Audio(customStorage);
+          a.muted = false;
+          a.volume = 1.0;
           const p = a.play();
           if (p && typeof p.then === 'function') {
             p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
@@ -5302,6 +5322,8 @@
       let played = false;
       if (domAudio) {
         try {
+          domAudio.muted = false;
+          domAudio.volume = 1.0;
           domAudio.currentTime = 0;
           const p = domAudio.play();
           if (p && typeof p.then === 'function') {
@@ -5319,16 +5341,30 @@
     }
 
     function tryDirectAudioFile(targetFile, isSuccess, extraReason) {
-      try {
-        const audio = new Audio(targetFile);
-        const p = audio.play();
-        if (p && typeof p.then === 'function') {
-          p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
-           .catch(() => fallbackToEmbeddedChime(isSuccess, extraReason));
+      const candidates = isSuccess
+        ? ['suara%20absen-berhasil.mpeg', 'suara absen-berhasil.mpeg', 'suara absen-berhasil.mp3']
+        : ['suara%20absen-gagal.mpeg', 'suara absen-gagal.mpeg', 'suara absen-gagal.mp3'];
+
+      function tryCandidate(index) {
+        if (index >= candidates.length) {
+          fallbackToEmbeddedChime(isSuccess, extraReason);
           return;
         }
-      } catch (e) {}
-      fallbackToEmbeddedChime(isSuccess, extraReason);
+        try {
+          const audio = new Audio(candidates[index]);
+          audio.muted = false;
+          audio.volume = 1.0;
+          const p = audio.play();
+          if (p && typeof p.then === 'function') {
+            p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
+             .catch(() => tryCandidate(index + 1));
+            return;
+          }
+        } catch (e) {}
+        tryCandidate(index + 1);
+      }
+
+      tryCandidate(0);
     }
 
     function fallbackToEmbeddedChime(isSuccess, extraReason = '') {
@@ -5856,6 +5892,8 @@
       }
 
       if (!matchedUser) {
+        const gunCard = document.getElementById('last-gun-success-card');
+        if (gunCard) gunCard.classList.add('hidden');
         showProfessionalAttendanceToast({
           isError: true,
           title: 'Kartu Tidak Terdaftar',
@@ -5887,6 +5925,8 @@
 
       if (selectedAttendanceType === 'check_in') {
         if (existing) {
+          const gunCard = document.getElementById('last-gun-success-card');
+          if (gunCard) gunCard.classList.add('hidden');
           showProfessionalAttendanceToast({
             isWarning: true,
             title: 'Sudah Absen Masuk',
@@ -5942,6 +5982,8 @@
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
         if (!existing) {
+          const gunCard = document.getElementById('last-gun-success-card');
+          if (gunCard) gunCard.classList.add('hidden');
           showProfessionalAttendanceToast({
             isError: true,
             title: 'Belum Absen Masuk',
@@ -5958,6 +6000,8 @@
           return;
         }
         if (existing.checkOutTime) {
+          const gunCard = document.getElementById('last-gun-success-card');
+          if (gunCard) gunCard.classList.add('hidden');
           showProfessionalAttendanceToast({
             isWarning: true,
             title: 'Sudah Absen Pulang',
@@ -6101,6 +6145,8 @@
       if (!isCam) {
         stopScanner();
         resetExternalBarcodeTracker();
+        unlockAudioContextOnGesture();
+        preloadGPSLocation();
         setTimeout(() => {
           const inputEl = document.getElementById('external-barcode-input');
           if (inputEl) {
@@ -6145,12 +6191,13 @@
       if (!val || val.length < 3) return false;
       const t = val.trim().toUpperCase();
       if (isLikelyBarcodePattern(t)) return true;
-      const mbi = getWhDB('MBI', 'users', []);
-      const mai = getWhDB('MAI', 'users', []);
+      const mbi = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const mai = getWhDB('MAI', 'users', SEED_MAI_USERS);
       return [...mbi, ...mai].some(u => (u.nik && u.nik.toUpperCase() === t) || (u.barcodeValue && u.barcodeValue.toUpperCase() === t) || (u.id && u.id.toUpperCase() === t));
     }
 
     function handleExternalBarcodeInput(e) {
+      unlockAudioContextOnGesture();
       const val = (e.target.value || '').trim();
       const now = performance.now();
 
@@ -6171,13 +6218,13 @@
         externalBarcodeTimer = null;
       }
 
-      // AKSELERASI SUPER CEPAT & INSTAN (ZERO PERCEPTIBLE DELAY):
-      // 1. Jika pola barcode sudah lengkap / cocok NIK karyawan: langsung eksekusi dalam 10ms!
-      // 2. Jika batch commit dari PDA Android (seluruh string masuk dalam 1-2 event): langsung eksekusi dalam 15ms!
-      // 3. Jika stream karakter barcode gun: jeda hanya 35ms setelah karakter terakhir!
+      // AKSELERASI SUPER CEPAT & PRESISI:
+      // 1. Jika pola barcode sudah lengkap / cocok NIK karyawan (panjang >= 7): eksekusi sangat cepat (20ms)!
+      // 2. Jika batch commit PDA Android (panjang >= 6 dengan <= 2 event): eksekusi dalam 25ms!
+      // 3. Jika karakter masih mengalir dari barcode gun (belum lengkap): tunggu 120ms jeda karakter terakhir agar seluruh NIK masuk utuh!
       const isComplete = isLikelyBarcodePattern(val) || isKnownUserBarcode(val);
       const isBatchPDA = externalBarcodeEntries.length <= 2 && val.length >= 6;
-      const delayMs = isComplete ? 10 : (isBatchPDA ? 15 : 35);
+      const delayMs = (isComplete && val.length >= 7) ? 20 : (isBatchPDA ? 25 : 120);
 
       if (val.length >= 4) {
         externalBarcodeTimer = setTimeout(() => {
@@ -6187,6 +6234,7 @@
     }
 
     function handleExternalBarcodeKeyDown(e) {
+      unlockAudioContextOnGesture();
       // Deteksi jika user mencoba shortcut keyboard Ctrl+V / Cmd+V untuk paste manual
       if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
         isManualPasteAttempted = true;
@@ -6232,19 +6280,19 @@
       // Pada perangkat Android PDA, seluruh string barcode (misal 9-10 karakter) langsung diinjeksikan dalam 1-3 event
       if (count <= 3 && rawText.length >= 4) {
         const totalDuration = count > 1 ? (entries[count - 1].time - entries[0].time) : 0;
-        if (totalDuration < 160) {
+        if (totalDuration < 300) {
           return true; // 100% Alat Scanner Hardware PDA Android
         }
       }
 
       // Skenario 2: Alat Scanner Barcode Gun USB / Bluetooth / Wireless 2.4G (keystroke burst)
-      // Karakter dikirim berurutan dengan burst ultra cepat. Berikan toleransi hardware hingga 65ms per char & total waktu <= 500ms
+      // Karakter dikirim berurutan dengan burst cepat. Berikan toleransi hardware hingga 90ms per char
       const firstTime = entries[0].time;
       const lastTime = entries[count - 1].time;
       const totalDuration = lastTime - firstTime;
       const avgGap = count > 1 ? (totalDuration / (count - 1)) : 0;
 
-      if (rawText.length >= 4 && avgGap <= 65 && totalDuration <= 500) {
+      if (rawText.length >= 4 && avgGap <= 90 && totalDuration <= (count * 95 + 200)) {
         return true; // 100% Alat Scanner Barcode Gun
       }
 
@@ -6252,7 +6300,7 @@
       return false;
     }
 
-    function processExternalBarcodeSubmit() {
+    async function processExternalBarcodeSubmit() {
       if (isExternalBarcodeProcessing) return;
 
       const inputEl = document.getElementById('external-barcode-input');
@@ -6274,6 +6322,8 @@
         clearTimeout(externalBarcodeTimer);
         externalBarcodeTimer = null;
       }
+
+      unlockAudioContextOnGesture();
 
       // Evaluasi apakah input berasal dari Alat Scanner Fisik Asli (PDA / Barcode Gun)
       const isHardware = checkIsHardwareScanner(inputVal);
@@ -6310,24 +6360,37 @@
         return;
       }
 
-      // Jika pengetikan manual dilakukan oleh Akun Admin saat pengujian:
-      if (!isHardware && isAdminTestMode) {
-        showProfessionalAttendanceToast({
-          isWarning: true,
-          title: 'Mode Uji Coba Admin',
-          subtitle: 'Pengetikan manual diizinkan khusus untuk akun Administrator selama tahap pengujian sistem.',
-          name: 'Admin Testing',
-          nik: inputVal,
-          dept: 'Administrator',
-          statusText: 'Uji Coba Admin'
-        });
+      // VERIFIKASI GPS KETAT UNTUK SCANNER EXTERNAL (Berlaku jika bukan mode uji coba Admin)
+      if (!isAdminTestMode) {
+        const targetWhCoords = getWarehouseCoords(activeWarehouse);
+        const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
+
+        const gpsCheck = await verifyGPSLocation(activeWarehouse);
+        if (!gpsCheck.valid) {
+          showProfessionalAttendanceToast({
+            isError: true,
+            title: 'Di Luar Radius Gudang',
+            subtitle: gpsCheck.error || `Anda berada di luar batas ${curRad} meter dari titik lokasi gudang.`,
+            statusText: 'GPS Tidak Valid'
+          });
+          playAttendanceErrorSound('Di luar lokasi');
+
+          setTimeout(() => {
+            isExternalBarcodeProcessing = false;
+            const el = document.getElementById('external-barcode-input');
+            if (el && activeScanMethod === 'gun') {
+              el.focus();
+            }
+          }, 800);
+          return;
+        }
       }
 
       // Catat barcode terakhir yang sukses diproses
       lastProcessedBarcode = inputVal;
       lastProcessedBarcodeTime = now;
 
-      // Eksekusi pemrosesan absensi secepat kilat
+      // Eksekusi pemrosesan absensi secepat kilat (Menampilkan Toast Pop-Up dan Memutar Suara Sesuai Setting Admin)
       processAttendanceScan(inputVal);
 
       // Buka kunci input seketika (hanya jeda 40ms) dan pastikan kursor selalu fokus untuk karyawan berikutnya
@@ -6547,9 +6610,14 @@
 
     function setAttendanceType(type) {
       selectedAttendanceType = type;
+      unlockAudioContextOnGesture();
       const isIn = type === 'check_in';
       document.getElementById('btn-type-in').className = isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
       document.getElementById('btn-type-out').className = !isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
+      if (activeScanMethod === 'gun') {
+        const inputEl = document.getElementById('external-barcode-input');
+        if (inputEl) inputEl.focus();
+      }
     }
 
     // =========================================================
