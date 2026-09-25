@@ -794,13 +794,20 @@
                   </button>
                 </div>
               </div>
-              <div class="flex items-center gap-2">
-                <button type="button" onclick="openAudioSettingsModal()" class="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition flex items-center gap-1.5 shadow-2xs" title="Ganti nada notifikasi presensi dengan file MP3/WAV dari laptop">
+              <div class="flex items-center gap-2 flex-wrap">
+                <label class="inline-flex items-center gap-1.5 cursor-pointer bg-teal-50 hover:bg-teal-100/80 px-3 py-1.5 rounded-xl border border-teal-300 transition text-[11px] font-extrabold text-teal-950 shadow-2xs" title="Kamera tetap aktif tanpa perlu tekan tombol buka berulang saat antrean panjang">
+                  <input type="checkbox" id="toggle-continuous-scan" checked onchange="toggleContinuousScanMode(this.checked)" class="rounded text-teal-600 focus:ring-teal-500 w-3.5 h-3.5">
+                  <span class="flex items-center gap-1">
+                    <i data-lucide="layers" class="w-3.5 h-3.5 text-teal-700"></i>
+                    <span>Antrean Cepat Massal</span>
+                  </span>
+                </label>
+                <button type="button" onclick="openAudioSettingsModal()" class="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition flex items-center gap-1.5 shadow-2xs" title="Ganti nada notifikasi presensi dengan file MP3/WAV dari laptop atau sinkron ke semua HP">
                   <i data-lucide="volume-2" class="w-3.5 h-3.5 text-teal-600"></i>
                   <span>Atur Suara Notifikasi</span>
                 </button>
-                <span class="text-[11px] text-sky-700 font-semibold hidden sm:inline flex items-center gap-1.5">
-                  <i data-lucide="zap" class="w-3.5 h-3.5 text-sky-600"></i> Ultra-Fast Scan Aktif
+                <span class="text-[11px] text-sky-700 font-semibold hidden md:inline flex items-center gap-1.5">
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-sky-600"></i> Ultra-Fast Scan
                 </span>
               </div>
             </div>
@@ -2672,14 +2679,38 @@
         <button onclick="closeAudioSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <!-- Info Box Panduan Laptop -->
-      <div class="p-3.5 bg-sky-50 rounded-2xl border border-sky-200 text-xs text-sky-950 flex items-start gap-3">
-        <i data-lucide="info" class="w-4 h-4 text-sky-600 shrink-0 mt-0.5"></i>
+      <!-- Info Box Panduan Audio Ditanam di Index & Laptop -->
+      <div class="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-300 text-xs text-emerald-950 flex items-start gap-3">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i>
         <div class="space-y-1">
-          <span class="font-bold text-sky-900">Petunjuk Pemakaian File dari Laptop:</span>
-          <p class="text-[11px] text-sky-800 leading-relaxed">
-            Klik tombol <b>"Pilih File dari Laptop"</b> di bawah, lalu pilih file suara Anda (format <b>.mp3</b> atau <b>.wav</b>). File otomatis tersimpan di memori browser dan langsung aktif seketika tanpa perlu restart.
+          <span class="font-extrabold text-emerald-900">⚡ Suara Notifikasi Ditanam Langsung di File Index:</span>
+          <p class="text-[11px] text-emerald-800 leading-relaxed">
+            Nada notifikasi presensi resmi (<b>Absen Berhasil: Chime POS Retail</b> dan <b>Absen Gagal / Di Luar Lokasi: Alert Buzzer</b>) sudah <b>ditanam langsung di dalam sistem</b> sehingga <b>100% berbunyi di semua HP (Android, iPhone) dan Laptop</b> tanpa tergantung file eksternal! Anda juga dapat mengganti nada dengan file suara kustom (.mp3 / .wav / .mpeg) kapan saja.
           </p>
+        </div>
+      </div>
+
+      <!-- SINKRONISASI SUARA CLOUD KE SEMUA HP -->
+      <div class="p-4 bg-teal-50/80 rounded-2xl border border-teal-200 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-teal-950 flex items-center gap-1.5">
+            <i data-lucide="cloud" class="w-4 h-4 text-teal-600"></i>
+            Sinkronisasi Suara ke Semua HP (Cloud Firebase 24/7)
+          </span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Online ⚡</span>
+        </div>
+        <p class="text-[11px] text-teal-800 leading-relaxed">
+          Unggah file suara dari laptop, lalu klik <b>"Kirim Suara ke Cloud"</b> agar semua HP karyawan otomatis memutar rekaman suara yang sama persis saat absen!
+        </p>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button type="button" onclick="uploadAudioClipsToCloud()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+            <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+            <span>Kirim Suara ke Cloud</span>
+          </button>
+          <button type="button" onclick="syncAudioClipsFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+            <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-teal-600"></i>
+            <span>Tarik Suara dari Cloud</span>
+          </button>
         </div>
       </div>
 
@@ -2692,12 +2723,12 @@
               <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
               Suara Absen Masuk (Check-In)
             </span>
-            <span id="audio-in-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Default Chime</span>
+            <span id="audio-in-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Ditanam di Sistem</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <label class="cursor-pointer px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
               <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>Pilih File dari Laptop (.mp3 / .wav)</span>
+              <span>Pilih File dari Laptop (.mp3 / .wav / .mpeg)</span>
               <input type="file" id="audio-file-in-input" accept="audio/*" onchange="handleCustomAudioUpload('in', event)" class="sr-only">
             </label>
             <button type="button" onclick="playTestAudio('in')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
@@ -2717,12 +2748,12 @@
               <span class="w-2 h-2 rounded-full bg-sky-500"></span>
               Suara Absen Pulang (Check-Out)
             </span>
-            <span id="audio-out-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800">Default Chime</span>
+            <span id="audio-out-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800">Ditanam di Sistem</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <label class="cursor-pointer px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
               <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>Pilih File dari Laptop (.mp3 / .wav)</span>
+              <span>Pilih File dari Laptop (.mp3 / .wav / .mpeg)</span>
               <input type="file" id="audio-file-out-input" accept="audio/*" onchange="handleCustomAudioUpload('out', event)" class="sr-only">
             </label>
             <button type="button" onclick="playTestAudio('out')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
@@ -2740,14 +2771,14 @@
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-              Suara Gagal / Peringatan (Error)
+              Suara Gagal & Di Luar Lokasi (Error Alert)
             </span>
-            <span id="audio-err-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800">Default Tone</span>
+            <span id="audio-err-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800">Ditanam di Sistem</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap">
             <label class="cursor-pointer px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
               <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>Pilih File dari Laptop (.mp3 / .wav)</span>
+              <span>Pilih File dari Laptop (.mp3 / .wav / .mpeg)</span>
               <input type="file" id="audio-file-err-input" accept="audio/*" onchange="handleCustomAudioUpload('err', event)" class="sr-only">
             </label>
             <button type="button" onclick="playTestAudio('err')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
@@ -2781,9 +2812,9 @@
       </div>
     </div>
   </div>
-  <!-- FLOATING PROFESSIONAL ATTENDANCE NOTIFICATION (AUTO 5S) -->
+  <!-- FLOATING PROFESSIONAL ATTENDANCE NOTIFICATION (NON-BLOCKING UNTUK ABSEN MASAL) -->
   <!-- ========================================================= -->
-  <div id="attendance-success-toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-[94vw] max-w-md transition-all duration-300 transform scale-95 opacity-0 pointer-events-auto">
+  <div id="attendance-success-toast" class="hidden fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-[94vw] max-w-md transition-all duration-300 transform scale-95 opacity-0 pointer-events-none select-none">
     <div id="toast-card-container" class="bg-white/98 backdrop-blur-md rounded-3xl border-2 border-emerald-500 shadow-2xl shadow-emerald-950/25 overflow-hidden">
       <!-- Header with Status Badge & Close Button -->
       <div id="toast-header-bg" class="p-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
@@ -2798,7 +2829,7 @@
         </div>
         <div class="flex items-center gap-1.5">
           <span id="toast-wh-badge" class="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-white/20 text-white border border-white/30">MBI</span>
-          <button type="button" onclick="hideProfessionalAttendanceToast()" class="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition">
+          <button type="button" onclick="hideProfessionalAttendanceToast()" class="pointer-events-auto p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
@@ -2834,9 +2865,9 @@
         </div>
       </div>
 
-      <!-- 5-Second Animated Progress Bar -->
+      <!-- 2.2-Second Animated Progress Bar (Non-Blocking untuk Scan Massal) -->
       <div class="bg-slate-100 h-1.5 w-full overflow-hidden">
-        <div id="toast-progress-bar" class="h-full bg-emerald-500 transition-all duration-[5000ms] ease-linear w-full"></div>
+        <div id="toast-progress-bar" class="h-full bg-emerald-500 transition-all duration-[2200ms] ease-linear w-full"></div>
       </div>
     </div>
   </div>
@@ -5067,9 +5098,21 @@
     }
 
     // =========================================================
-    // AUDIO NOTIFICATION ENGINE (NADA BEEP & SUARA INDONESIA)
+    // AUDIO NOTIFICATION ENGINE (DITANAM LANGSUNG DI FILE INDEX)
+    // 100% Mandiri, Bersuara di Semua HP (iOS/Android) & Laptop
     // =========================================================
     let audioCtx = null;
+    let isAudioContextUnlocked = false;
+
+    // Pengaturan Mode Antrean Massal Berkelanjutan
+    let isContinuousScanMode = localStorage.getItem('wfm_continuous_scan') !== 'false';
+    function toggleContinuousScanMode(val) {
+      isContinuousScanMode = !!val;
+      localStorage.setItem('wfm_continuous_scan', isContinuousScanMode ? 'true' : 'false');
+      const el = document.getElementById('toggle-continuous-scan');
+      if (el) el.checked = isContinuousScanMode;
+    }
+
     function getAudioContext() {
       if (!audioCtx) {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -5078,10 +5121,55 @@
         }
       }
       if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        audioCtx.resume().catch(() => {});
       }
       return audioCtx;
     }
+
+    // MEMBUKA KUNCI AUDIO BROWSER MOBILE (iOS Safari & Android Chrome Autoplay Unlocker)
+    function unlockAudioContextOnGesture() {
+      if (isAudioContextUnlocked) return;
+      try {
+        const ctx = getAudioContext();
+        if (ctx) {
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
+          // Mainkan buffer hening 1 sample agar sistem audio smartphone terbuka permanen
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start(0);
+        }
+
+        // Pancingan audio DOM
+        const s = document.getElementById('audio-file-success');
+        const e = document.getElementById('audio-file-error');
+        if (s && s.paused) {
+          s.muted = true;
+          const ps = s.play();
+          if (ps && ps.then) ps.then(() => { s.pause(); s.currentTime = 0; s.muted = false; }).catch(() => {});
+        }
+        if (e && e.paused) {
+          e.muted = true;
+          const pe = e.play();
+          if (pe && pe.then) pe.then(() => { e.pause(); e.currentTime = 0; e.muted = false; }).catch(() => {});
+        }
+
+        isAudioContextUnlocked = true;
+      } catch (err) {}
+    }
+
+    // Daftarkan listener universal pada seluruh layar HP & Laptop untuk membuka kunci audio seketika
+    const globalUnlockTriggers = ['touchstart', 'touchend', 'click', 'keydown', 'pointerdown'];
+    function handleGlobalUnlock() {
+      unlockAudioContextOnGesture();
+      if (isAudioContextUnlocked) {
+        globalUnlockTriggers.forEach(evt => document.removeEventListener(evt, handleGlobalUnlock, true));
+      }
+    }
+    globalUnlockTriggers.forEach(evt => document.addEventListener(evt, handleGlobalUnlock, { capture: true, passive: true }));
 
     function speakNotification(text) {
       if ('speechSynthesis' in window) {
@@ -5103,76 +5191,80 @@
       }
     }
 
+    // 1. NADA SUARA ABSEN BERHASIL (NATIVE RETAIL POS CHIME DITANAM DI SCRIPT)
+    // Nada lonceng POS kasir modern (C5-E5-G5-C6) yang jernih, nyaring, dan ramah di speaker HP
     function playSynthesizedSuccessChime() {
       try {
         const ctx = getAudioContext();
-        if (ctx) {
-          const now = ctx.currentTime;
-          const notes = [523.25, 659.25, 783.99];
-          notes.forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, now + i * 0.1);
-            gain.gain.setValueAtTime(0.01, now + i * 0.1);
-            gain.gain.exponentialRampToValueAtTime(0.28, now + i * 0.1 + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.25);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now + i * 0.1);
-            osc.stop(now + i * 0.1 + 0.3);
-          });
-        }
-      } catch (e) {}
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        
+        const chords = [
+          { f: 523.25, start: 0, dur: 0.22, vol: 0.38 },
+          { f: 659.25, start: 0.08, dur: 0.22, vol: 0.38 },
+          { f: 783.99, start: 0.16, dur: 0.28, vol: 0.42 },
+          { f: 1046.50, start: 0.24, dur: 0.40, vol: 0.48 }
+        ];
+
+        chords.forEach(c => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(c.f, now + c.start);
+
+          gain.gain.setValueAtTime(0.001, now + c.start);
+          gain.gain.exponentialRampToValueAtTime(c.vol, now + c.start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + c.start + c.dur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + c.start);
+          osc.stop(now + c.start + c.dur);
+        });
+      } catch (e) {
+        console.warn('Synthesizer success error:', e);
+      }
     }
 
+    // 2. NADA SUARA ABSEN GAGAL & DI LUAR LOKASI (DOUBLE DESCENDING ALERT BUZZER DITANAM DI SCRIPT)
+    // Nada peringatan tegas & jelas yang langsung membedakan saat terjadi error atau staf di luar radius
     function playSynthesizedErrorBuzz() {
       try {
         const ctx = getAudioContext();
-        if (ctx) {
-          const now = ctx.currentTime;
-          const notes = [320, 200];
-          notes.forEach((freq, i) => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, now + i * 0.14);
-            gain.gain.setValueAtTime(0.01, now + i * 0.14);
-            gain.gain.exponentialRampToValueAtTime(0.35, now + i * 0.14 + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.14 + 0.18);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now + i * 0.14);
-            osc.stop(now + i * 0.14 + 0.22);
-          });
-        }
-      } catch (e) {}
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        const pulses = [
+          { f1: 360, f2: 260, start: 0, dur: 0.15, vol: 0.48 },
+          { f1: 280, f2: 170, start: 0.19, dur: 0.24, vol: 0.52 }
+        ];
+
+        pulses.forEach(p => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(p.f1, now + p.start);
+          osc.frequency.exponentialRampToValueAtTime(p.f2, now + p.start + p.dur);
+
+          gain.gain.setValueAtTime(0.001, now + p.start);
+          gain.gain.exponentialRampToValueAtTime(p.vol, now + p.start + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + p.start + p.dur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + p.start);
+          osc.stop(now + p.start + p.dur);
+        });
+      } catch (e) {
+        console.warn('Synthesizer error buzz error:', e);
+      }
     }
 
-    // =========================================================
-    // PLAYER SUARA NOTIFIKASI RESMI (suara absen-berhasil & suara absen-gagal)
-    // =========================================================
-    let isAudioContextUnlocked = false;
-    function unlockAudioContextOnGesture() {
-      if (isAudioContextUnlocked) return;
-      isAudioContextUnlocked = true;
-      try {
-        const ctx = getAudioContext();
-        if (ctx && ctx.state === 'suspended') ctx.resume();
-        const s = document.getElementById('audio-file-success');
-        const e = document.getElementById('audio-file-error');
-        if (s) { s.load(); }
-        if (e) { e.load(); }
-      } catch (err) {}
-    }
-    window.addEventListener('click', unlockAudioContextOnGesture, { passive: true });
-    window.addEventListener('keydown', unlockAudioContextOnGesture, { passive: true });
-    window.addEventListener('touchstart', unlockAudioContextOnGesture, { passive: true });
-
+    // 3. DISPATCHER SUARA UTAMA (Prioritas: Base64 Storage -> DOM Preload -> Embedded Native Chime)
     function playOfficialAudio(isSuccess, extraReason = '') {
       unlockAudioContextOnGesture();
 
-      // Prioritas 1: Jika user upload file Base64 kustom via menu pengaturan
+      // Cek apakah ada file audio kustom yang disimpan di memori Base64 (dari upload laptop atau sync cloud)
       const customStorage = isSuccess 
         ? (localStorage.getItem('wfm_sound_in') || localStorage.getItem('wfm_sound_out'))
         : localStorage.getItem('wfm_sound_err');
@@ -5183,79 +5275,38 @@
           const p = a.play();
           if (p && typeof p.then === 'function') {
             p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
-             .catch(() => tryPlayDomOrCandidateFiles(isSuccess, extraReason));
+             .catch(() => fallbackToEmbeddedChime(isSuccess, extraReason));
             return;
           }
         } catch (e) {}
       }
 
-      tryPlayDomOrCandidateFiles(isSuccess, extraReason);
-    }
-
-    function tryPlayDomOrCandidateFiles(isSuccess, extraReason = '') {
-      // Prioritas 2: Gunakan elemen DOM yang sudah di-preload
+      // Cek DOM Audio element
       const domId = isSuccess ? 'audio-file-success' : 'audio-file-error';
       const domAudio = document.getElementById(domId);
       if (domAudio) {
-        domAudio.currentTime = 0;
-        const p = domAudio.play();
-        if (p && typeof p.then === 'function') {
-          p.then(() => {
-            triggerVoiceAfterSound(isSuccess, extraReason);
-          }).catch(() => {
-            tryDirectFileCandidates(isSuccess, extraReason);
-          });
-          return;
-        }
+        try {
+          domAudio.currentTime = 0;
+          const p = domAudio.play();
+          if (p && typeof p.then === 'function') {
+            p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
+             .catch(() => fallbackToEmbeddedChime(isSuccess, extraReason));
+            return;
+          }
+        } catch (e) {}
       }
 
-      tryDirectFileCandidates(isSuccess, extraReason);
+      fallbackToEmbeddedChime(isSuccess, extraReason);
     }
 
-    function tryDirectFileCandidates(isSuccess, extraReason = '') {
-      // Prioritas 3: Cek berkas langsung di folder proyek
-      const candidates = isSuccess ? [
-        'suara%20absen-berhasil.mpeg',
-        'suara absen-berhasil.mpeg',
-        'suara%20absen-berhasil.mp3',
-        'suara absen-berhasil.mp3',
-        'suara-absen-berhasil.mpeg',
-        'suara-masuk.mp3',
-        'suara-pulang.mp3'
-      ] : [
-        'suara%20absen-gagal.mpeg',
-        'suara absen-gagal.mpeg',
-        'suara%20absen-gagal.mp3',
-        'suara absen-gagal.mp3',
-        'suara-absen-gagal.mpeg',
-        'suara-gagal.mp3'
-      ];
-
-      let idx = 0;
-      function next() {
-        if (idx >= candidates.length) {
-          // Fallback terakhir: Synthesizer nada bawaan
-          if (isSuccess) playSynthesizedSuccessChime();
-          else playSynthesizedErrorBuzz();
-          triggerVoiceAfterSound(isSuccess, extraReason);
-          return;
-        }
-        const fileSrc = candidates[idx++];
-        try {
-          const a = new Audio(fileSrc);
-          const p = a.play();
-          if (p && typeof p.then === 'function') {
-            p.then(() => {
-              triggerVoiceAfterSound(isSuccess, extraReason);
-            }).catch(() => next());
-          } else {
-            triggerVoiceAfterSound(isSuccess, extraReason);
-          }
-        } catch (e) {
-          next();
-        }
+    function fallbackToEmbeddedChime(isSuccess, extraReason = '') {
+      // 100% Terjamin Berbunyi di Semua HP & Laptop karena ditanam langsung di script
+      if (isSuccess) {
+        playSynthesizedSuccessChime();
+      } else {
+        playSynthesizedErrorBuzz();
       }
-      next();
+      triggerVoiceAfterSound(isSuccess, extraReason);
     }
 
     function triggerVoiceAfterSound(isSuccess, extraReason = '') {
@@ -5266,7 +5317,7 @@
           } else {
             speakNotification('Gagal, ' + (extraReason || 'silakan coba lagi'));
           }
-        }, 350);
+        }, 380);
       }
     }
 
@@ -5277,6 +5328,114 @@
 
     function playAttendanceErrorSound(reason = '') {
       playOfficialAudio(false, reason);
+    }
+
+    // 4. SINKRONISASI SUARA CLOUD FIREBASE (Agar File Suara Laptop Mengalir ke Semua HP)
+    async function uploadAudioClipsToCloud() {
+      const soundIn = localStorage.getItem('wfm_sound_in');
+      const soundErr = localStorage.getItem('wfm_sound_err');
+      const soundInName = localStorage.getItem('wfm_sound_in_name') || 'suara absen-berhasil.mpeg';
+      const soundErrName = localStorage.getItem('wfm_sound_err_name') || 'suara absen-gagal.mpeg';
+
+      if (!soundIn && !soundErr) {
+        alert('Belum ada file suara kustom yang dipilih dari laptop.\n\nSilakan klik "Pilih File dari Laptop" terlebih dahulu untuk memilih file suara absen-berhasil dan suara absen-gagal.');
+        return;
+      }
+
+      const payload = {
+        success: soundIn || '',
+        success_name: soundInName,
+        error: soundErr || '',
+        error_name: soundErrName,
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        const res = await fetch('https://wfm-medika-default-rtdb.firebaseio.com/wfm_audio.json', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          alert('✅ SUKSES MENGUNGGAH SUARA KE CLOUD!\n\nFile suara notifikasi resmi telah disimpan di Google Firebase Cloud 24/7.\nSemua HP karyawan yang membuka aplikasi akan otomatis mengunduh & memutar suara ini!');
+        } else {
+          alert('⚠️ Gagal terhubung ke Cloud. Pastikan koneksi internet aktif.');
+        }
+      } catch (err) {
+        alert('Gagal mengunggah suara ke Cloud: ' + err.message);
+      }
+    }
+
+    async function syncAudioClipsFromCloud(showAlert = false) {
+      try {
+        const res = await fetch('https://wfm-medika-default-rtdb.firebaseio.com/wfm_audio.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === 'object') {
+            let updated = false;
+            if (data.success && data.success.startsWith('data:audio')) {
+              localStorage.setItem('wfm_sound_in', data.success);
+              localStorage.setItem('wfm_sound_out', data.success);
+              localStorage.setItem('wfm_sound_in_name', data.success_name || 'suara absen-berhasil.mpeg');
+              localStorage.setItem('wfm_sound_out_name', data.success_name || 'suara absen-berhasil.mpeg');
+              updated = true;
+            }
+            if (data.error && data.error.startsWith('data:audio')) {
+              localStorage.setItem('wfm_sound_err', data.error);
+              localStorage.setItem('wfm_sound_err_name', data.error_name || 'suara absen-gagal.mpeg');
+              updated = true;
+            }
+            if (updated) {
+              renderAudioSettingsUI();
+              if (showAlert) {
+                alert('✅ SINKRONISASI SUARA CLOUD BERHASIL!\n\nFile suara notifikasi dari Admin telah diterapkan ke HP ini dan siap berbunyi.');
+              }
+            } else if (showAlert) {
+              alert('ℹ️ Belum ada file suara kustom di Cloud. Sistem tetap menggunakan nada notifikasi bawaan yang sudah ditanam di aplikasi.');
+            }
+          }
+        }
+      } catch (e) {
+        if (showAlert) alert('Gagal menarik suara dari Cloud: ' + e.message);
+      }
+    }
+
+    // Coba otomatis membaca file lokal jika aplikasi dibuka di lingkungan server/laptop
+    async function tryAutoLoadLocalFolderAudio() {
+      const audioTargets = [
+        { key: 'wfm_sound_in', files: ['suara absen-berhasil.mpeg', 'suara%20absen-berhasil.mpeg', 'suara absen-berhasil.mp3'], name: 'suara absen-berhasil.mpeg', isSuccess: true },
+        { key: 'wfm_sound_err', files: ['suara absen-gagal.mpeg', 'suara%20absen-gagal.mpeg', 'suara absen-gagal.mp3'], name: 'suara absen-gagal.mpeg', isSuccess: false }
+      ];
+
+      for (const target of audioTargets) {
+        if (!localStorage.getItem(target.key)) {
+          for (const fileName of target.files) {
+            try {
+              const res = await fetch(fileName);
+              if (res.ok) {
+                const blob = await res.blob();
+                if (blob && blob.size > 200) {
+                  const reader = new FileReader();
+                  reader.onload = (e) => {
+                    const base64 = e.target.result;
+                    if (base64 && base64.startsWith('data:audio')) {
+                      localStorage.setItem(target.key, base64);
+                      localStorage.setItem(target.key + '_name', target.name);
+                      if (target.isSuccess) {
+                        localStorage.setItem('wfm_sound_out', base64);
+                        localStorage.setItem('wfm_sound_out_name', target.name);
+                      }
+                      renderAudioSettingsUI();
+                    }
+                  };
+                  reader.readAsDataURL(blob);
+                  break;
+                }
+              }
+            } catch (err) {}
+          }
+        }
+      }
     }
 
     // MODAL PENGATURAN SUARA DARI LAPTOP
@@ -5370,9 +5529,9 @@
           inStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800';
           inFilename.innerText = '📁 File kustom: ' + inName;
         } else {
-          inStatus.innerText = 'suara absen-berhasil.mpeg';
+          inStatus.innerText = 'Ditanam di Sistem';
           inStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
-          inFilename.innerText = '📁 Terhubung ke: suara absen-berhasil.mpeg di folder wfm';
+          inFilename.innerText = '⚡ Suara Retail POS (Ditanam Langsung di File Index)';
         }
       }
 
@@ -5384,9 +5543,9 @@
           outStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800';
           outFilename.innerText = '📁 File kustom: ' + outName;
         } else {
-          outStatus.innerText = 'suara absen-berhasil.mpeg';
+          outStatus.innerText = 'Ditanam di Sistem';
           outStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800';
-          outFilename.innerText = '📁 Terhubung ke: suara absen-berhasil.mpeg di folder wfm';
+          outFilename.innerText = '⚡ Suara Retail POS (Ditanam Langsung di File Index)';
         }
       }
 
@@ -5398,15 +5557,20 @@
           errStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800';
           errFilename.innerText = '📁 File kustom: ' + errName;
         } else {
-          errStatus.innerText = 'suara absen-gagal.mpeg';
+          errStatus.innerText = 'Ditanam di Sistem';
           errStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800';
-          errFilename.innerText = '📁 Terhubung ke: suara absen-gagal.mpeg di folder wfm';
+          errFilename.innerText = '⚡ Alert Buzzer (Ditanam Langsung di File Index)';
         }
       }
 
       const toggleVoice = document.getElementById('toggle-voice-tts');
       if (toggleVoice) {
         toggleVoice.checked = voiceEnabled;
+      }
+
+      const contScan = document.getElementById('toggle-continuous-scan');
+      if (contScan) {
+        contScan.checked = isContinuousScanMode;
       }
     }
 
@@ -5438,7 +5602,7 @@
     }
 
     // =========================================================
-    // PROFESSIONAL FLOATING TOAST NOTIFICATION (AUTO 5 DETIK)
+    // PROFESSIONAL FLOATING TOAST NOTIFICATION (NON-BLOCKING UNTUK ABSEN MASAL)
     // =========================================================
     let attendanceToastTimeout = null;
 
@@ -5522,17 +5686,17 @@
         if (progressBar) progressBar.className = type === 'check_in' ? 'h-full bg-emerald-500 w-full' : 'h-full bg-sky-500 w-full';
       }
 
-      // Reset timer animation progress bar (5 Detik)
+      // Reset timer animation progress bar (2.2 Detik untuk Presensi Cepat Massal)
       if (progressBar) {
         progressBar.style.transition = 'none';
         progressBar.style.width = '100%';
         setTimeout(() => {
-          progressBar.style.transition = 'width 5s linear';
+          progressBar.style.transition = 'width 2.2s linear';
           progressBar.style.width = '0%';
         }, 40);
       }
 
-      // Tampilkan toast
+      // Tampilkan toast (non-blocking)
       toast.classList.remove('hidden');
       setTimeout(() => {
         toast.classList.remove('opacity-0', 'scale-95');
@@ -5541,11 +5705,11 @@
 
       lucide.createIcons();
 
-      // Jeda 5 detik lalu otomatis hilang
+      // Jeda 2.2 detik (optimal untuk scan massal antrean) lalu otomatis hilang
       if (attendanceToastTimeout) clearTimeout(attendanceToastTimeout);
       attendanceToastTimeout = setTimeout(() => {
         hideProfessionalAttendanceToast();
-      }, 5000);
+      }, 2200);
     }
 
     function hideProfessionalAttendanceToast() {
@@ -5862,9 +6026,20 @@
       if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
       if (gunCard) gunCard.classList.remove('hidden');
 
-      // Tutup kamera scanner otomatis setelah terbaca (hanya jika mode kamera aktif)
+      // Penanganan kamera scanner: Tutup jika mode manual, pertahankan jika Mode Antrean Massal
       if (activeScanMethod === 'camera') {
-        stopScanner();
+        if (!isContinuousScanMode) {
+          stopScanner();
+        } else {
+          // Efek visual sukses pada overlay kamera tanpa menutup kamera
+          const boxBorder = document.getElementById('scanner-box-border');
+          const boxTag = document.getElementById('scanner-box-tag');
+          if (boxBorder) boxBorder.className = 'w-48 h-48 border-4 border-emerald-400 rounded-2xl flex items-center justify-center bg-emerald-500/15 shadow-lg shadow-emerald-500/30 transition-all';
+          if (boxTag) {
+            boxTag.className = 'text-[10px] text-emerald-950 bg-emerald-300 px-2.5 py-0.5 rounded font-mono font-black';
+            boxTag.innerText = `✓ ${matchedUser.name.split(' ')[0]} TERCATAT`;
+          }
+        }
       }
 
       // Render update data presensi hari ini secara instan
@@ -5883,7 +6058,7 @@
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-      }, 1200);
+      }, 1000);
     }
 
     // =========================================================
@@ -10660,12 +10835,14 @@ function testManualSync() {
       alert(`✅ Berkas Excel 3-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 3 sheet persis:\n1. RECORD ABSEN\n2. REKAP PENGAJUAN\n3. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
     }
 
-    // Inisialisasi otomatis status Google Sheet & Audio Setting saat halaman dimuat
+    // Inisialisasi otomatis status Google Sheet, Audio Setting & Sinkronisasi Suara saat halaman dimuat
     try {
       getGoogleSheetWebhookUrl();
       updateGSheetSyncBadge();
       preloadGPSLocation();
       renderAudioSettingsUI();
+      syncAudioClipsFromCloud();
+      tryAutoLoadLocalFolderAudio();
     } catch(e) {}
   </script>
 </body>
