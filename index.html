@@ -494,6 +494,12 @@
           <span id="nav-cloud-label">Cloud: Live</span>
         </button>
 
+        <!-- Tombol Pengaturan Suara (Khusus Admin) -->
+        <button id="nav-btn-audio-admin" onclick="openAudioSettingsModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Pengaturan Suara Notifikasi Presensi (Khusus Admin)">
+          <i data-lucide="volume-2" class="w-3.5 h-3.5 text-teal-600"></i>
+          <span>Suara Notif</span>
+        </button>
+
         <!-- Live Google Sheet Auto-Sync Indicator & Trigger (Hidden as requested) -->
         <button id="nav-btn-gsheet-status" onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
           <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -587,6 +593,10 @@
             <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition items-center gap-2.5">
               <i data-lucide="cloud" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Database Cloud 24/7</span>
+            </button>
+            <button onclick="openAudioSettingsModal()" id="nav-btn-audio-settings" title="Pengaturan Suara Notifikasi (Khusus Admin)" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition items-center gap-2.5">
+              <i data-lucide="volume-2" class="w-4 h-4 flex-shrink-0 text-teal-400"></i>
+              <span class="sidebar-text">Suara Notifikasi</span>
             </button>
             <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
               <i data-lucide="user-cog" class="w-4 h-4 flex-shrink-0"></i>
@@ -793,22 +803,6 @@
                     <span>Scanner External (PDA / Barcode Gun)</span>
                   </button>
                 </div>
-              </div>
-              <div class="flex items-center gap-2 flex-wrap">
-                <label class="inline-flex items-center gap-1.5 cursor-pointer bg-teal-50 hover:bg-teal-100/80 px-3 py-1.5 rounded-xl border border-teal-300 transition text-[11px] font-extrabold text-teal-950 shadow-2xs" title="Kamera tetap aktif tanpa perlu tekan tombol buka berulang saat antrean panjang">
-                  <input type="checkbox" id="toggle-continuous-scan" checked onchange="toggleContinuousScanMode(this.checked)" class="rounded text-teal-600 focus:ring-teal-500 w-3.5 h-3.5">
-                  <span class="flex items-center gap-1">
-                    <i data-lucide="layers" class="w-3.5 h-3.5 text-teal-700"></i>
-                    <span>Antrean Cepat Massal</span>
-                  </span>
-                </label>
-                <button type="button" onclick="openAudioSettingsModal()" class="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 border border-slate-300 transition flex items-center gap-1.5 shadow-2xs" title="Ganti nada notifikasi presensi dengan file MP3/WAV dari laptop atau sinkron ke semua HP">
-                  <i data-lucide="volume-2" class="w-3.5 h-3.5 text-teal-600"></i>
-                  <span>Atur Suara Notifikasi</span>
-                </button>
-                <span class="text-[11px] text-sky-700 font-semibold hidden md:inline flex items-center gap-1.5">
-                  <i data-lucide="zap" class="w-3.5 h-3.5 text-sky-600"></i> Ultra-Fast Scan
-                </span>
               </div>
             </div>
 
@@ -2171,23 +2165,28 @@
                 </div>
             </div>
 
-            <!-- Kartu Pengaturan Suara Notifikasi Presensi -->
-            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div class="flex items-center justify-between gap-3 flex-wrap">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0">
-                    <i data-lucide="volume-2" class="w-5 h-5"></i>
+            <!-- Kartu Pengaturan Suara Notifikasi Presensi (Khusus Admin) -->
+            <div id="admin-audio-settings-card" class="hidden bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl p-6 shadow-xl space-y-4 border border-slate-700">
+              <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div class="flex items-center gap-3.5">
+                  <div class="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
+                    <i data-lucide="volume-2" class="w-6 h-6"></i>
                   </div>
                   <div>
-                    <h3 class="font-extrabold text-sm text-slate-900">
-                      Suara Notifikasi Presensi Barcode (Laptop &amp; POS)
-                    </h3>
-                    <p class="text-xs text-slate-500 mt-0.5">Ubah nada absensi masuk, pulang, atau peringatan menggunakan file audio (.mp3 / .wav) dari laptop Anda.</p>
+                    <div class="flex items-center gap-2">
+                      <h3 class="font-extrabold text-base text-white tracking-tight">
+                        Suara Notifikasi Presensi Barcode
+                      </h3>
+                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-500 text-slate-950 uppercase tracking-wider">Khusus Admin</span>
+                    </div>
+                    <p class="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                      Sistem menggunakan berkas audio resmi folder: <b class="text-teal-300">suara absen-berhasil.mpeg</b> (Masuk &amp; Pulang) dan <b class="text-rose-300">suara absen-gagal.mpeg</b> (Gagal &amp; Di Luar Lokasi).
+                    </p>
                   </div>
                 </div>
-                <button type="button" onclick="openAudioSettingsModal()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-                  <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
-                  <span>Atur Suara Notifikasi</span>
+                <button type="button" onclick="openAudioSettingsModal()" class="px-5 py-3 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-2xl text-xs font-black transition flex items-center gap-2 shadow-lg shadow-teal-500/25 active:scale-95">
+                  <i data-lucide="sliders" class="w-4 h-4"></i>
+                  <span>Buka Panel Pengaturan Suara</span>
                 </button>
               </div>
             </div>
@@ -2641,173 +2640,167 @@
     </div>
   </div>
 
-  <!-- ELEMEN AUDIO RESMI PRELOADED (SUARA ABSEN BERHASIL & SUARA ABSEN GAGAL) -->
-  <audio id="audio-file-success" preload="auto">
-    <source src="suara%20absen-berhasil.mpeg" type="audio/mpeg">
-    <source src="suara absen-berhasil.mpeg" type="audio/mpeg">
-    <source src="suara%20absen-berhasil.mp3" type="audio/mpeg">
-    <source src="suara-absen-berhasil.mpeg" type="audio/mpeg">
-    <source src="suara-masuk.mp3" type="audio/mpeg">
-  </audio>
-  <audio id="audio-file-error" preload="auto">
-    <source src="suara%20absen-gagal.mpeg" type="audio/mpeg">
-    <source src="suara absen-gagal.mpeg" type="audio/mpeg">
-    <source src="suara%20absen-gagal.mp3" type="audio/mpeg">
-    <source src="suara-absen-gagal.mpeg" type="audio/mpeg">
-    <source src="suara-gagal.mp3" type="audio/mpeg">
-  </audio>
+  <!-- ELEMEN AUDIO RESMI SISTEM (SUARA ABSEN BERHASIL & SUARA ABSEN GAGAL) -->
+  <audio id="audio-file-success" src="suara%20absen-berhasil.mpeg" preload="auto"></audio>
+  <audio id="audio-file-error" src="suara%20absen-gagal.mpeg" preload="auto"></audio>
 
   <!-- ========================================================= -->
-  <!-- MODAL PENGATURAN SUARA NOTIFIKASI PRESENSI DARI LAPTOP -->
+  <!-- MODAL PENGATURAN SUARA NOTIFIKASI PRESENSI (KHUSUS ADMIN) -->
   <!-- ========================================================= -->
   <div id="audio-settings-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-3 sm:p-5">
-    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto custom-scroll">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto custom-scroll">
       
       <!-- Modal Header -->
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0">
+          <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0 shadow-2xs">
             <i data-lucide="volume-2" class="w-5 h-5"></i>
           </div>
           <div>
-            <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-              <span>Pengaturan Suara Notifikasi</span>
-            </h3>
-            <p class="text-xs text-slate-500">Ganti suara absensi menggunakan file audio (.mp3 / .wav) dari laptop</p>
+            <div class="flex items-center gap-2">
+              <h3 class="font-black text-base text-slate-900 tracking-tight">
+                Pengaturan Suara Notifikasi
+              </h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-900 border border-teal-200 uppercase">Khusus Admin</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Kelola nada notifikasi resmi sistem untuk pemindaian presensi karyawan</p>
           </div>
         </div>
-        <button onclick="closeAudioSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeAudioSettingsModal()" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <!-- Info Box Panduan Audio Ditanam di Index & Laptop -->
-      <div class="p-3.5 bg-emerald-50 rounded-2xl border border-emerald-300 text-xs text-emerald-950 flex items-start gap-3">
-        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i>
-        <div class="space-y-1">
-          <span class="font-extrabold text-emerald-900">⚡ Suara Notifikasi Ditanam Langsung di File Index:</span>
-          <p class="text-[11px] text-emerald-800 leading-relaxed">
-            Nada notifikasi presensi resmi (<b>Absen Berhasil: Chime POS Retail</b> dan <b>Absen Gagal / Di Luar Lokasi: Alert Buzzer</b>) sudah <b>ditanam langsung di dalam sistem</b> sehingga <b>100% berbunyi di semua HP (Android, iPhone) dan Laptop</b> tanpa tergantung file eksternal! Anda juga dapat mengganti nada dengan file suara kustom (.mp3 / .wav / .mpeg) kapan saja.
-          </p>
-        </div>
-      </div>
-
-      <!-- SINKRONISASI SUARA CLOUD KE SEMUA HP -->
-      <div class="p-4 bg-teal-50/80 rounded-2xl border border-teal-200 space-y-2.5">
+      <!-- Info Box: Suara Bawaan Sistem Aktif -->
+      <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-teal-950 flex items-center gap-1.5">
-            <i data-lucide="cloud" class="w-4 h-4 text-teal-600"></i>
-            Sinkronisasi Suara ke Semua HP (Cloud Firebase 24/7)
+          <span class="text-xs font-black text-slate-900 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Suara Resmi Bawaan Sistem Aktif Langsung
           </span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Online ⚡</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">Siap Digunakan</span>
         </div>
-        <p class="text-[11px] text-teal-800 leading-relaxed">
-          Unggah file suara dari laptop, lalu klik <b>"Kirim Suara ke Cloud"</b> agar semua HP karyawan otomatis memutar rekaman suara yang sama persis saat absen!
+        <p class="text-[11px] text-slate-600 leading-relaxed">
+          Sistem secara otomatis telah terhubung dengan file suara resmi di folder:
         </p>
-        <div class="grid grid-cols-2 gap-2 pt-1">
-          <button type="button" onclick="uploadAudioClipsToCloud()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-            <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
-            <span>Kirim Suara ke Cloud</span>
-          </button>
-          <button type="button" onclick="syncAudioClipsFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-            <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-teal-600"></i>
-            <span>Tarik Suara dari Cloud</span>
-          </button>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] font-mono">
+          <div class="p-2.5 rounded-xl bg-white border border-slate-200 text-emerald-800 flex items-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+            <span class="truncate">suara absen-berhasil.mpeg</span>
+          </div>
+          <div class="p-2.5 rounded-xl bg-white border border-slate-200 text-rose-800 flex items-center gap-2">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0"></i>
+            <span class="truncate">suara absen-gagal.mpeg</span>
+          </div>
         </div>
       </div>
 
-      <!-- Form Settings -->
-      <div class="space-y-4">
-        <!-- 1. Suara Absen Masuk -->
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-              Suara Absen Masuk (Check-In)
-            </span>
-            <span id="audio-in-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Ditanam di Sistem</span>
+      <!-- Form Settings Cards -->
+      <div class="space-y-3.5">
+        
+        <!-- 1. Suara Absen Berhasil (Masuk & Keluar) -->
+        <div class="p-4 bg-white rounded-2xl border-2 border-emerald-200/80 shadow-2xs space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span class="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Suara Absen Berhasil (Masuk &amp; Pulang)
+              </span>
+              <p class="text-[11px] text-slate-500 mt-0.5">Diputar saat scan absen masuk atau pulang berhasil tercatat</p>
+            </div>
+            <span id="audio-in-status" class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300">Bawaan Folder</span>
           </div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <label class="cursor-pointer px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>Pilih File dari Laptop (.mp3 / .wav / .mpeg)</span>
+
+          <div class="flex items-center gap-2 flex-wrap pt-1">
+            <button type="button" onclick="playTestAudio('in')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
+              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+              <span>Putar Suara Berhasil</span>
+            </button>
+            <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
+              <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
+              <span>Ganti File Kustom</span>
               <input type="file" id="audio-file-in-input" accept="audio/*" onchange="handleCustomAudioUpload('in', event)" class="sr-only">
             </label>
-            <button type="button" onclick="playTestAudio('in')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="play" class="w-3.5 h-3.5 text-teal-600"></i> Putar Tes
-            </button>
-            <button type="button" onclick="resetAudioToDefault('in')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs" title="Kembali ke nada bawaan">
-              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+            <button type="button" onclick="resetAudioToDefault('in')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-2xs" title="Kembalikan ke file suara bawaan folder">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Reset Bawaan</span>
             </button>
           </div>
-          <div id="audio-in-filename" class="text-[11px] font-mono text-slate-500 truncate"></div>
+          <div id="audio-in-filename" class="text-[11px] font-mono text-emerald-800 font-semibold truncate pt-0.5"></div>
         </div>
 
-        <!-- 2. Suara Absen Pulang -->
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-sky-500"></span>
-              Suara Absen Pulang (Check-Out)
-            </span>
-            <span id="audio-out-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800">Ditanam di Sistem</span>
+        <!-- 2. Suara Absen Gagal & Di Luar Lokasi -->
+        <div class="p-4 bg-white rounded-2xl border-2 border-rose-200/80 shadow-2xs space-y-3">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <span class="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                Suara Absen Gagal &amp; Di Luar Radius Lokasi
+              </span>
+              <p class="text-[11px] text-slate-500 mt-0.5">Diputar saat staf di luar radius GPS, kartu belum terdaftar, atau dobel absen</p>
+            </div>
+            <span id="audio-err-status" class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-300">Bawaan Folder</span>
           </div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <label class="cursor-pointer px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>Pilih File dari Laptop (.mp3 / .wav / .mpeg)</span>
-              <input type="file" id="audio-file-out-input" accept="audio/*" onchange="handleCustomAudioUpload('out', event)" class="sr-only">
-            </label>
-            <button type="button" onclick="playTestAudio('out')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="play" class="w-3.5 h-3.5 text-sky-600"></i> Putar Tes
-            </button>
-            <button type="button" onclick="resetAudioToDefault('out')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs" title="Kembali ke nada bawaan">
-              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
-            </button>
-          </div>
-          <div id="audio-out-filename" class="text-[11px] font-mono text-slate-500 truncate"></div>
-        </div>
 
-        <!-- 3. Suara Gagal / Error -->
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-              Suara Gagal & Di Luar Lokasi (Error Alert)
-            </span>
-            <span id="audio-err-status" class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800">Ditanam di Sistem</span>
-          </div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <label class="cursor-pointer px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="upload" class="w-3.5 h-3.5"></i>
-              <span>Pilih File dari Laptop (.mp3 / .wav / .mpeg)</span>
+          <div class="flex items-center gap-2 flex-wrap pt-1">
+            <button type="button" onclick="playTestAudio('err')" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
+              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+              <span>Putar Suara Gagal</span>
+            </button>
+            <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
+              <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
+              <span>Ganti File Kustom</span>
               <input type="file" id="audio-file-err-input" accept="audio/*" onchange="handleCustomAudioUpload('err', event)" class="sr-only">
             </label>
-            <button type="button" onclick="playTestAudio('err')" class="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="play" class="w-3.5 h-3.5 text-rose-600"></i> Putar Tes
-            </button>
-            <button type="button" onclick="resetAudioToDefault('err')" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-2xs" title="Kembali ke nada bawaan">
-              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+            <button type="button" onclick="resetAudioToDefault('err')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-2xs" title="Kembalikan ke file suara bawaan folder">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Reset Bawaan</span>
             </button>
           </div>
-          <div id="audio-err-filename" class="text-[11px] font-mono text-slate-500 truncate"></div>
+          <div id="audio-err-filename" class="text-[11px] font-mono text-rose-800 font-semibold truncate pt-0.5"></div>
         </div>
 
-        <!-- 4. Suara Sebut Nama Karyawan (TTS Indonesia) -->
+        <!-- 3. Suara Sebut Nama Karyawan (TTS Indonesia) -->
         <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between gap-3">
           <div>
-            <span class="text-xs font-bold text-slate-800 block">Sebutkan Nama Karyawan (Suara AI Indonesia)</span>
-            <p class="text-[11px] text-slate-500">Menyebutkan "Absen masuk sukses, [Nama Karyawan]" setelah nada berbunyi</p>
+            <span class="text-xs font-black text-slate-800 block">Sebutkan Nama Karyawan (AI Voice Indonesia)</span>
+            <p class="text-[11px] text-slate-500">Menyebutkan konfirmasi nama karyawan setelah nada notifikasi berbunyi</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="toggle-voice-tts" onchange="toggleVoiceTTS(this.checked)" checked class="sr-only peer">
-            <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
           </label>
         </div>
+
+        <!-- 4. Sinkronisasi Suara Cloud Firebase 24/7 -->
+        <div class="p-4 bg-gradient-to-br from-teal-50 to-sky-50 rounded-2xl border border-teal-200/90 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-black text-teal-950 flex items-center gap-1.5">
+              <i data-lucide="cloud" class="w-4 h-4 text-teal-600"></i>
+              Sinkronisasi Suara ke Seluruh HP (Cloud Firebase 24/7)
+            </span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Online ⚡</span>
+          </div>
+          <p class="text-[11px] text-teal-900/80 leading-relaxed">
+            Klik tombol di bawah jika Anda ingin membagikan file suara ini ke seluruh smartphone karyawan yang mengakses sistem.
+          </p>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button type="button" onclick="uploadAudioClipsToCloud()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+              <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+              <span>Kirim Suara ke Cloud</span>
+            </button>
+            <button type="button" onclick="syncAudioClipsFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+              <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-teal-600"></i>
+              <span>Tarik Suara dari Cloud</span>
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-        <button type="button" onclick="closeAudioSettingsModal()" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">
-          Tutup &amp; Terapkan
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+        <button type="button" onclick="closeAudioSettingsModal()" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition shadow-xs flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Selesai &amp; Terapkan</span>
         </button>
       </div>
     </div>
@@ -4225,6 +4218,20 @@
         }
       }
 
+      // 2.5 Pengaturan Suara Notifikasi Presensi (KHUSUS ADMIN)
+      const navAudioBtn = document.getElementById('nav-btn-audio-settings');
+      const navAudioAdmin = document.getElementById('nav-btn-audio-admin');
+      const settingsAudioSection = document.getElementById('admin-audio-settings-card');
+      if (isAdmin) {
+        if (navAudioBtn) { navAudioBtn.classList.remove('hidden'); navAudioBtn.classList.add('flex'); }
+        if (navAudioAdmin) { navAudioAdmin.classList.remove('hidden'); navAudioAdmin.classList.add('inline-flex'); }
+        if (settingsAudioSection) settingsAudioSection.classList.remove('hidden');
+      } else {
+        if (navAudioBtn) { navAudioBtn.classList.add('hidden'); navAudioBtn.classList.remove('flex'); }
+        if (navAudioAdmin) { navAudioAdmin.classList.add('hidden'); navAudioAdmin.classList.remove('inline-flex'); }
+        if (settingsAudioSection) settingsAudioSection.classList.add('hidden');
+      }
+
       // 3. Pengaturan Akun (Atas & Bawah) & Akses Menu Sesuai Role
       const navBtnSettings = document.getElementById('nav-btn-settings');
       const navSettings = document.getElementById('nav-settings');
@@ -5260,7 +5267,7 @@
       }
     }
 
-    // 3. DISPATCHER SUARA UTAMA (Prioritas: Base64 Storage -> DOM Preload -> Embedded Native Chime)
+    // 3. DISPATCHER SUARA UTAMA (Prioritas: Kustom Storage -> File Resmi Bawaan -> Native Synthesizer)
     function playOfficialAudio(isSuccess, extraReason = '') {
       unlockAudioContextOnGesture();
 
@@ -5275,32 +5282,57 @@
           const p = a.play();
           if (p && typeof p.then === 'function') {
             p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
-             .catch(() => fallbackToEmbeddedChime(isSuccess, extraReason));
+             .catch(() => playOfficialFileOrFallback(isSuccess, extraReason));
             return;
           }
         } catch (e) {}
       }
 
-      // Cek DOM Audio element
+      playOfficialFileOrFallback(isSuccess, extraReason);
+    }
+
+    function playOfficialFileOrFallback(isSuccess, extraReason = '') {
+      // Mainkan berkas suara resmi bawaan sistem di folder wfm:
+      // - Berhasil (Masuk & Keluar): "suara absen-berhasil.mpeg"
+      // - Gagal & Di Luar Lokasi: "suara absen-gagal.mpeg"
+      const targetFileName = isSuccess ? 'suara%20absen-berhasil.mpeg' : 'suara%20absen-gagal.mpeg';
       const domId = isSuccess ? 'audio-file-success' : 'audio-file-error';
       const domAudio = document.getElementById(domId);
+
+      let played = false;
       if (domAudio) {
         try {
           domAudio.currentTime = 0;
           const p = domAudio.play();
           if (p && typeof p.then === 'function') {
+            played = true;
             p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
-             .catch(() => fallbackToEmbeddedChime(isSuccess, extraReason));
+             .catch(() => tryDirectAudioFile(targetFileName, isSuccess, extraReason));
             return;
           }
         } catch (e) {}
       }
 
+      if (!played) {
+        tryDirectAudioFile(targetFileName, isSuccess, extraReason);
+      }
+    }
+
+    function tryDirectAudioFile(targetFile, isSuccess, extraReason) {
+      try {
+        const audio = new Audio(targetFile);
+        const p = audio.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => triggerVoiceAfterSound(isSuccess, extraReason))
+           .catch(() => fallbackToEmbeddedChime(isSuccess, extraReason));
+          return;
+        }
+      } catch (e) {}
       fallbackToEmbeddedChime(isSuccess, extraReason);
     }
 
     function fallbackToEmbeddedChime(isSuccess, extraReason = '') {
-      // 100% Terjamin Berbunyi di Semua HP & Laptop karena ditanam langsung di script
+      // Cadangan synthesizer jika perangkat mobile offline tidak memiliki berkas lokal
       if (isSuccess) {
         playSynthesizedSuccessChime();
       } else {
@@ -5438,8 +5470,12 @@
       }
     }
 
-    // MODAL PENGATURAN SUARA DARI LAPTOP
+    // MODAL PENGATURAN SUARA DARI LAPTOP (KHUSUS ADMIN)
     function openAudioSettingsModal() {
+      if (!isUserAdmin(currentUser)) {
+        alert('Akses Ditolak: Pengaturan suara notifikasi presensi hanya dapat diakses oleh Akun Administrator.');
+        return;
+      }
       const modal = document.getElementById('audio-settings-modal');
       if (!modal) return;
       modal.classList.remove('hidden');
@@ -5508,7 +5544,7 @@
         localStorage.removeItem('wfm_sound_err_name');
       }
       renderAudioSettingsUI();
-      alert('Suara telah dikembalikan ke file bawaan folder (suara absen-berhasil & suara absen-gagal).');
+      alert('Suara telah dikembalikan ke file resmi bawaan sistem: suara absen-berhasil.mpeg & suara absen-gagal.mpeg.');
     }
 
     function toggleVoiceTTS(enabled) {
@@ -5517,7 +5553,6 @@
 
     function renderAudioSettingsUI() {
       const inName = localStorage.getItem('wfm_sound_in_name');
-      const outName = localStorage.getItem('wfm_sound_out_name');
       const errName = localStorage.getItem('wfm_sound_err_name');
       const voiceEnabled = localStorage.getItem('wfm_sound_voice_enabled') === 'true';
 
@@ -5525,27 +5560,13 @@
       const inFilename = document.getElementById('audio-in-filename');
       if (inStatus && inFilename) {
         if (inName) {
-          inStatus.innerText = 'Custom Upload';
-          inStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-teal-100 text-teal-800';
-          inFilename.innerText = '📁 File kustom: ' + inName;
+          inStatus.innerText = 'Kustom: ' + inName;
+          inStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-300';
+          inFilename.innerText = '📁 File kustom aktif: ' + inName;
         } else {
-          inStatus.innerText = 'Ditanam di Sistem';
-          inStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
-          inFilename.innerText = '⚡ Suara Retail POS (Ditanam Langsung di File Index)';
-        }
-      }
-
-      const outStatus = document.getElementById('audio-out-status');
-      const outFilename = document.getElementById('audio-out-filename');
-      if (outStatus && outFilename) {
-        if (outName) {
-          outStatus.innerText = 'Custom Upload';
-          outStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800';
-          outFilename.innerText = '📁 File kustom: ' + outName;
-        } else {
-          outStatus.innerText = 'Ditanam di Sistem';
-          outStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800';
-          outFilename.innerText = '⚡ Suara Retail POS (Ditanam Langsung di File Index)';
+          inStatus.innerText = 'Bawaan Folder';
+          inStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300';
+          inFilename.innerText = '⚡ File resmi sistem: suara absen-berhasil.mpeg';
         }
       }
 
@@ -5553,24 +5574,19 @@
       const errFilename = document.getElementById('audio-err-filename');
       if (errStatus && errFilename) {
         if (errName) {
-          errStatus.innerText = 'Custom Upload';
-          errStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800';
-          errFilename.innerText = '📁 File kustom: ' + errName;
+          errStatus.innerText = 'Kustom: ' + errName;
+          errStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-300';
+          errFilename.innerText = '📁 File kustom aktif: ' + errName;
         } else {
-          errStatus.innerText = 'Ditanam di Sistem';
-          errStatus.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-800';
-          errFilename.innerText = '⚡ Alert Buzzer (Ditanam Langsung di File Index)';
+          errStatus.innerText = 'Bawaan Folder';
+          errStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-300';
+          errFilename.innerText = '⚡ File resmi sistem: suara absen-gagal.mpeg';
         }
       }
 
       const toggleVoice = document.getElementById('toggle-voice-tts');
       if (toggleVoice) {
         toggleVoice.checked = voiceEnabled;
-      }
-
-      const contScan = document.getElementById('toggle-continuous-scan');
-      if (contScan) {
-        contScan.checked = isContinuousScanMode;
       }
     }
 
