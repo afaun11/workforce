@@ -812,11 +812,13 @@
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
                   <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-900 text-white shadow-xs transition">
-                      Absen Masuk
+                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center gap-1.5">
+                      <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                      <span>Absen Masuk</span>
                     </button>
-                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition">
-                      Absen Keluar
+                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5">
+                      <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                      <span>Absen Keluar</span>
                     </button>
                   </div>
                 </div>
@@ -3990,6 +3992,7 @@
 
       renderLocationQRCode();
       updateRegisteredCoordsDisplay();
+      setAttendanceType('check_in');
 
       // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 2.5 Detik + SSE LiveStream)
       fetchFullDatabaseFromCloud();
@@ -4770,6 +4773,7 @@
       }
 
       resetVerificationState();
+      setAttendanceType('check_in');
       updateRegisteredCoordsDisplay();
       renderScannerTodayRecords();
       refreshAllDashboardData();
@@ -4908,6 +4912,7 @@
       if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5';
 
       if (viewName === 'attendance') {
+        setAttendanceType('check_in');
         renderScannerTodayRecords();
         switchScanMethod('camera');
         updateRegisteredCoordsDisplay();
@@ -5957,8 +5962,11 @@
           checkInTime: now.toISOString(),
           checkOutTime: null,
           checkInStatus: isLate ? 'late' : 'on_time',
-          notes: document.getElementById('att-notes')?.value || (isLate ? 'Terlambat' : 'Tepat Waktu')
+          notes: (document.getElementById('att-notes')?.value || '').trim()
         });
+
+        const notesInput = document.getElementById('att-notes');
+        if (notesInput) notesInput.value = '';
 
         // 1. Simpan langsung ke database lokal & background cloud
         setWhDB(targetWh, 'attendance', attendances);
@@ -6470,7 +6478,6 @@
                 <th class="p-3.5 min-w-[120px]">Jam Masuk</th>
                 <th class="p-3.5 min-w-[120px]">Status Masuk</th>
                 <th class="p-3.5 min-w-[140px]">Jam Pulang</th>
-                <th class="p-3.5 min-w-[120px]">Keterangan</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -6499,11 +6506,11 @@
               <span class="px-2.5 py-1 rounded-lg text-[10px] font-black ${isLate ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
                 ${isLate ? 'Terlambat' : 'Tepat Waktu'}
               </span>
+              ${(a.notes && a.notes !== 'Tepat Waktu' && a.notes !== 'Terlambat' && a.notes !== '-') ? `<div class="text-[10px] text-slate-500 font-medium mt-1 italic">${a.notes}</div>` : ''}
             </td>
             <td class="p-3.5 font-mono font-bold ${a.checkOutTime ? 'text-rose-600' : 'text-slate-400 italic'}">
               ${outTime !== '-' ? outTime : 'Belum Absen Pulang'}
             </td>
-            <td class="p-3.5 text-slate-500 text-[11px]">${a.notes || '-'}</td>
           </tr>
         `;
       });
@@ -6612,12 +6619,23 @@
       selectedAttendanceType = type;
       unlockAudioContextOnGesture();
       const isIn = type === 'check_in';
-      document.getElementById('btn-type-in').className = isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
-      document.getElementById('btn-type-out').className = !isIn ? 'py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-md' : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200';
+      const btnIn = document.getElementById('btn-type-in');
+      const btnOut = document.getElementById('btn-type-out');
+      if (btnIn) {
+        btnIn.className = isIn 
+          ? 'py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center gap-1.5' 
+          : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5';
+      }
+      if (btnOut) {
+        btnOut.className = !isIn 
+          ? 'py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-md transition flex items-center justify-center gap-1.5' 
+          : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5';
+      }
       if (activeScanMethod === 'gun') {
         const inputEl = document.getElementById('external-barcode-input');
         if (inputEl) inputEl.focus();
       }
+      if (window.lucide) lucide.createIcons();
     }
 
     // =========================================================
