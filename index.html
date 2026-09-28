@@ -1115,11 +1115,11 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
-                        <input type="text" id="record-search-input" oninput="renderRecordsTable()" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <input type="text" id="record-search-input" oninput="renderRecordsTable(true)" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
-                        <select id="record-sort-order" onchange="renderRecordsTable()" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <select id="record-sort-order" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                           <option value="time_asc">Jam Masuk (Paling Awal &rarr; Akhir)</option>
                           <option value="time_desc">Jam Masuk (Terbaru &rarr; Awal)</option>
                           <option value="name_asc">Nama Karyawan (A - Z)</option>
@@ -1128,16 +1128,16 @@
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
-                        <input type="date" id="record-start-date" onchange="renderRecordsTable()" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <input type="date" id="record-start-date" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
-                        <input type="date" id="record-end-date" onchange="renderRecordsTable()" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <input type="date" id="record-end-date" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                      <button onclick="renderRecordsTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                      <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
                         <i data-lucide="filter" class="w-3.5 h-3.5"></i>
                         Filter Record
                       </button>
@@ -1223,6 +1223,26 @@
                       <!-- Rendered by JS -->
                     </tbody>
                   </table>
+                </div>
+
+                <!-- Toolbar Paginasi Rekord Absensi (Cepat, Ringan & Responsif untuk Jangka Panjang) -->
+                <div id="records-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span id="records-page-info" class="font-medium text-slate-700">Menampilkan 0 - 0 dari 0 data</span>
+                    <span class="text-slate-300 hidden sm:inline">•</span>
+                    <label class="flex items-center gap-1.5 font-medium text-slate-600">
+                      <span>Baris per halaman:</span>
+                      <select id="records-page-size" onchange="changeRecordsPageSize(this.value)" class="h-7 px-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900">
+                        <option value="50" selected>50 Baris</option>
+                        <option value="100">100 Baris</option>
+                        <option value="200">200 Baris</option>
+                        <option value="all">Tampilkan Semua</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="records-pagination-controls" class="flex items-center gap-1">
+                    <!-- Tombol Halaman oleh JS -->
+                  </div>
                 </div>
               </div>
             </div>
@@ -3230,7 +3250,8 @@
     }
 
     // =========================================================
-    // PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE
+    // PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE (MULTI-DEVICE BIDIRECTIONAL SYNC)
+    // Mendukung Sinkronisasi Banyak HP Karyawan Bersamaan Tanpa Data Tertimpa / Hilang
     // =========================================================
     const FIREBASE_ENDPOINT = 'https://wfm-medika-default-rtdb.firebaseio.com/wfm_database.json';
     const CLOUD_ENDPOINTS = [FIREBASE_ENDPOINT];
@@ -3242,11 +3263,102 @@
       return [];
     }
 
+    // 1. SMART MERGE ABSENSI (Kunci ID / NIK+Tanggal+JamMasuk)
+    function mergeAttendanceArrays(localList, cloudList) {
+      const map = new Map();
+      (cloudList || []).forEach(item => {
+        if (!item) return;
+        const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
+        map.set(key, item);
+      });
+      (localList || []).forEach(localItem => {
+        if (!localItem) return;
+        const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.checkInTime || ''}`;
+        if (!map.has(key)) {
+          map.set(key, localItem);
+        } else {
+          const cloudItem = map.get(key);
+          const merged = { ...cloudItem, ...localItem };
+          // Pertahankan jam checkout jika salah satu sisi telah melakukan tap pulang
+          if (cloudItem.checkOutTime && !localItem.checkOutTime) {
+            merged.checkOutTime = cloudItem.checkOutTime;
+          }
+          map.set(key, merged);
+        }
+      });
+      return Array.from(map.values());
+    }
+
+    // 2. SMART MERGE PENGAJUAN SAKIT / CUTI (Kunci ID / NIK+TglMulai+Jenis)
+    function mergeLeaveArrays(localList, cloudList) {
+      const map = new Map();
+      (cloudList || []).forEach(item => {
+        if (!item) return;
+        const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.startDate || ''}_${item.type || ''}`;
+        map.set(key, item);
+      });
+      (localList || []).forEach(localItem => {
+        if (!localItem) return;
+        const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.startDate || ''}_${localItem.type || ''}`;
+        if (!map.has(key)) {
+          map.set(key, localItem);
+        } else {
+          const cloudItem = map.get(key);
+          // Status approval (approved/rejected) selalu diutamakan dibanding status pending
+          const status = (cloudItem.status === 'approved' || cloudItem.status === 'rejected') ? cloudItem.status : localItem.status;
+          map.set(key, { ...cloudItem, ...localItem, status });
+        }
+      });
+      return Array.from(map.values());
+    }
+
+    // 3. SMART MERGE LEMBURAN (Kunci ID / NIK+Tanggal+JamMulai)
+    function mergeOvertimeArrays(localList, cloudList) {
+      const map = new Map();
+      (cloudList || []).forEach(item => {
+        if (!item) return;
+        const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`;
+        map.set(key, item);
+      });
+      (localList || []).forEach(localItem => {
+        if (!localItem) return;
+        const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.startTime || ''}`;
+        if (!map.has(key)) {
+          map.set(key, localItem);
+        } else {
+          const cloudItem = map.get(key);
+          const status = (cloudItem.status === 'approved' || cloudItem.status === 'rejected') ? cloudItem.status : localItem.status;
+          map.set(key, { ...cloudItem, ...localItem, status });
+        }
+      });
+      return Array.from(map.values());
+    }
+
+    // 4. SMART MERGE MASTER KARYAWAN (Kunci NIK / ID)
+    function mergeUserArrays(localList, cloudList, wh) {
+      const map = new Map();
+      (cloudList || []).forEach(item => {
+        if (!item || !item.name) return;
+        const key = (item.nik || item.id || item.name).trim().toUpperCase();
+        map.set(key, item);
+      });
+      (localList || []).forEach(localItem => {
+        if (!localItem || !localItem.name) return;
+        const key = (localItem.nik || localItem.id || localItem.name).trim().toUpperCase();
+        if (!map.has(key)) {
+          map.set(key, localItem);
+        } else {
+          const cloudItem = map.get(key);
+          map.set(key, { ...cloudItem, ...localItem });
+        }
+      });
+      return deduplicateUserList(Array.from(map.values()), wh);
+    }
+
     let lastAppliedCloudUpdatedAt = null;
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
 
-      // Dirty Checking: Cek apakah ada data yang benar-benar berbeda dibanding memori lokal
       const currMbiUsers = localStorage.getItem('wfm_mbi_users') || '';
       const currMaiUsers = localStorage.getItem('wfm_mai_users') || '';
       const currMbiAtt = localStorage.getItem('wfm_mbi_attendance') || '';
@@ -3256,8 +3368,7 @@
       const currMbiLeaves = localStorage.getItem('wfm_mbi_leaves') || '';
       const currMaiLeaves = localStorage.getItem('wfm_mai_leaves') || '';
 
-      const rawMbiUsers = normalizeFirebaseArray(db.mbi_users);
-      const cleanMbiUsers = rawMbiUsers.length > 0 ? deduplicateUserList(rawMbiUsers, 'MBI') : SEED_MBI_USERS;
+      const cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), normalizeFirebaseArray(db.mbi_users), 'MBI');
       cleanMbiUsers.forEach(u => {
         if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
           u.name = 'Scanner Presensi Gudang';
@@ -3265,8 +3376,7 @@
       });
       const newMbiUsers = JSON.stringify(cleanMbiUsers);
 
-      const rawMaiUsers = normalizeFirebaseArray(db.mai_users);
-      const cleanMaiUsers = rawMaiUsers.length > 0 ? deduplicateUserList(rawMaiUsers, 'MAI') : SEED_MAI_USERS;
+      const cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), normalizeFirebaseArray(db.mai_users), 'MAI');
       cleanMaiUsers.forEach(u => {
         if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
           u.name = 'Scanner Presensi Gudang';
@@ -3274,12 +3384,12 @@
       });
       const newMaiUsers = JSON.stringify(cleanMaiUsers);
 
-      const newMbiAtt = JSON.stringify(normalizeFirebaseArray(db.mbi_attendance));
-      const newMaiAtt = JSON.stringify(normalizeFirebaseArray(db.mai_attendance));
-      const newMbiOt = JSON.stringify(normalizeFirebaseArray(db.mbi_overtime));
-      const newMaiOt = JSON.stringify(normalizeFirebaseArray(db.mai_overtime));
-      const newMbiLeaves = JSON.stringify(normalizeFirebaseArray(db.mbi_leaves));
-      const newMaiLeaves = JSON.stringify(normalizeFirebaseArray(db.mai_leaves));
+      const newMbiAtt = JSON.stringify(mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(db.mbi_attendance)));
+      const newMaiAtt = JSON.stringify(mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(db.mai_attendance)));
+      const newMbiOt = JSON.stringify(mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(db.mbi_overtime)));
+      const newMaiOt = JSON.stringify(mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(db.mai_overtime)));
+      const newMbiLeaves = JSON.stringify(mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(db.mbi_leaves)));
+      const newMaiLeaves = JSON.stringify(mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(db.mai_leaves)));
 
       const hasUsersChanged = (currMbiUsers !== newMbiUsers || currMaiUsers !== newMaiUsers);
       const hasAttChanged = (currMbiAtt !== newMbiAtt || currMaiAtt !== newMaiAtt);
@@ -3316,13 +3426,10 @@
         updateRegisteredCoordsDisplay();
       }
 
-      // JIKA DATA DARI CLOUD PERSIS SAMA DENGAN LOKAL, STOP!
-      // Jangan pernah update localStorage dan jangan pernah me-refresh layar DOM agar aktivitas pengguna/scroll di HP tidak terganggu!
       if (!hasUsersChanged && !hasAttChanged && !hasOtChanged && !hasLeavesChanged && !hasCoordsChanged) {
         return;
       }
 
-      // Perbarui hanya item yang benar-benar berubah
       if (hasUsersChanged) {
         localStorage.setItem('wfm_mbi_users', newMbiUsers);
         localStorage.setItem('wfm_mai_users', newMaiUsers);
@@ -3340,10 +3447,9 @@
         localStorage.setItem('wfm_mai_leaves', newMaiLeaves);
       }
 
-      // Render ulang layar dengan proteksi scroll position
+      // Render ulang layar aktif secara selektif & cepat
       renderAllLiveScreens();
 
-      // Otomatis backup ke Google Sheet jika ada pembaruan data dari Cloud
       if (db.updatedAt && db.updatedAt !== lastAppliedCloudUpdatedAt) {
         lastAppliedCloudUpdatedAt = db.updatedAt;
         if (typeof syncGoogleSheetDirectly === 'function') {
@@ -3352,26 +3458,40 @@
       }
     }
 
+    // PENGHEMAT KINERJA: HANYA PERBARUI PANEL LAYAR YANG SEDANG AKTIF DILIHAT PENGGUNA
     let renderScreensTimeout = null;
     function renderAllLiveScreens() {
       if (renderScreensTimeout) clearTimeout(renderScreensTimeout);
       renderScreensTimeout = setTimeout(() => {
-        renderScannerTodayRecords();
-        renderAccountLookupList();
-        renderEmployeeTable();
-        populateDropdownEmployees();
-        renderOvertimeEmployeeGrid();
-        renderOvertimeTable();
-        renderReportOvertimeTable();
-        renderLeavesTable();
-        renderReportLeavesTable();
-        renderRecordsTable();
-        renderMatrixTable();
-        renderWorkHoursReport();
-        updateRegisteredCoordsDisplay();
         refreshAllDashboardData();
-        lucide.createIcons();
-      }, 80);
+
+        const activePanel = document.querySelector('.view-panel:not(.hidden)');
+        const activeViewId = activePanel ? activePanel.id : '';
+
+        if (activeViewId === 'view-attendance') {
+          renderScannerTodayRecords();
+          updateRegisteredCoordsDisplay();
+        } else if (activeViewId === 'view-employees') {
+          renderEmployeeTable();
+        } else if (activeViewId === 'view-reports-group') {
+          if (activeReportTab === 'records') renderRecordsTable();
+          else if (activeReportTab === 'matrix') renderMatrixTable();
+          else if (activeReportTab === 'workhours') renderWorkHoursReport();
+          else if (activeReportTab === 'leaves') renderReportLeavesTable();
+          else if (activeReportTab === 'overtime') renderReportOvertimeTable();
+        } else if (activeViewId === 'view-leaves') {
+          renderLeavesTable();
+        } else if (activeViewId === 'view-overtime') {
+          renderOvertimeEmployeeGrid();
+          renderOvertimeTable();
+        } else if (activeViewId === 'view-idcard') {
+          populateDropdownEmployees();
+        }
+
+        if (!currentUser) {
+          renderAccountLookupList();
+        }
+      }, 60);
     }
 
     function updateCloudSyncStatusBadge(status) {
@@ -3404,8 +3524,39 @@
     }
 
     let cloudSaveTimeout = null;
+    let isSavingToCloud = false;
     async function saveFullDatabaseToCloud(forceAlert = false, immediate = false) {
       const executeSave = async () => {
+        if (isSavingToCloud) return;
+        isSavingToCloud = true;
+
+        updateCloudSyncStatusBadge('uploading');
+
+        // Pre-Merge dengan data terkini di Firebase Cloud agar presensi/cuti dari HP lain tidak tertimpa
+        try {
+          const fetchRes = await fetch(FIREBASE_ENDPOINT + '?t=' + Date.now(), { cache: 'no-store' });
+          if (fetchRes.ok) {
+            const cloudDb = await fetchRes.json();
+            if (cloudDb && typeof cloudDb === 'object' && !Array.isArray(cloudDb)) {
+              const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudDb.mbi_attendance));
+              const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudDb.mai_attendance));
+              const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudDb.mbi_leaves));
+              const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(cloudDb.mai_leaves));
+              const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudDb.mbi_overtime));
+              const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(cloudDb.mai_overtime));
+
+              localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mergedMbiAtt));
+              localStorage.setItem('wfm_mai_attendance', JSON.stringify(mergedMaiAtt));
+              localStorage.setItem('wfm_mbi_leaves', JSON.stringify(mergedMbiLeaves));
+              localStorage.setItem('wfm_mai_leaves', JSON.stringify(mergedMaiLeaves));
+              localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mergedMbiOt));
+              localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
+            }
+          }
+        } catch (eMerge) {
+          console.warn('Pre-save merge fetch skipped/offline:', eMerge);
+        }
+
         const payload = {
           mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
           mbi_attendance: getWhDB('MBI', 'attendance', []),
@@ -3422,12 +3573,11 @@
 
         if ((!payload.mbi_users || payload.mbi_users.length === 0) && (!payload.mai_users || payload.mai_users.length === 0)) {
           console.warn('Skip saving completely empty database to cloud.');
+          isSavingToCloud = false;
           return;
         }
 
-        updateCloudSyncStatusBadge('uploading');
         let success = false;
-
         try {
           const res = await fetch(FIREBASE_ENDPOINT, {
             method: 'PUT',
@@ -3446,10 +3596,10 @@
           console.warn('Firebase upload error:', e);
         }
 
+        isSavingToCloud = false;
         updateCloudSyncStatusBadge(success ? 'synced' : 'local');
 
         // SINKRONISASI OTOMATIS KE GOOGLE SPREADSHEET (DATABASE BACKUP REAL-TIME)
-        // Setiap kali data tersimpan ke Firebase Cloud, otomatis data juga langsung ter-backup ke Google Sheet
         try {
           if (typeof syncGoogleSheetDirectly === 'function') {
             syncGoogleSheetDirectly();
@@ -5010,9 +5160,8 @@
       }
       if (viewName === 'employees') renderEmployeeTable();
       if (viewName === 'reports-group') {
-        renderRecordsTable();
-        renderMatrixTable();
-        renderWorkHoursReport();
+        const targetTab = activeReportTab || 'records';
+        switchReportTab(targetTab);
       }
       if (viewName === 'leaves') renderLeavesTable();
       if (viewName === 'overtime') {
@@ -5054,6 +5203,7 @@
       }
     }
 
+    let lastRecordsRenderTime = 0;
     function refreshAllDashboardData() {
       updateRealtimeDashboardDate();
       const todayStr = new Date().toISOString().split('T')[0];
@@ -5079,7 +5229,9 @@
       if (repGroup && !repGroup.classList.contains('hidden')) {
         const tabRec = document.getElementById('tab-content-records');
         if (tabRec && !tabRec.classList.contains('hidden')) {
-          renderRecordsTable();
+          if (Date.now() - lastRecordsRenderTime > 300) {
+            renderRecordsTable();
+          }
         }
       }
     }
@@ -8989,6 +9141,32 @@
       let totalMinutesAllEmployees = 0;
       let achievedTargetCount = 0;
 
+      // Optimasi O(N + A): Indexing lookup cepat untuk user dan mapping presensi dalam 1 kali pass
+      const nikToEmp = new Map();
+      const nameToEmp = new Map();
+      const idToEmp = new Map();
+      const empAttsMap = new Map();
+
+      regularUsers.forEach(emp => {
+        empAttsMap.set(emp, []);
+        if (emp.nik) nikToEmp.set(emp.nik.toUpperCase(), emp);
+        if (emp.name) nameToEmp.set(cleanStr(emp.name), emp);
+        if (emp.id) idToEmp.set(emp.id, emp);
+      });
+
+      // Filter tanggal & mapping ke karyawan dalam O(A)
+      attendances.forEach(a => {
+        if (!a || !a.date) return;
+        if ((startStr && a.date < startStr) || (endStr && a.date > endStr)) return;
+
+        const emp = (a.userNik && nikToEmp.get(a.userNik.toUpperCase())) ||
+                    (a.userName && nameToEmp.get(cleanStr(a.userName))) ||
+                    (a.userId && idToEmp.get(a.userId));
+        if (emp && empAttsMap.has(emp)) {
+          empAttsMap.get(emp).push(a);
+        }
+      });
+
       regularUsers.forEach(emp => {
         if (searchQ) {
           const matchName = emp.name && emp.name.toLowerCase().includes(searchQ);
@@ -8997,15 +9175,8 @@
           if (!matchName && !matchNik && !matchDept) return;
         }
 
-        // Ambil Presensi dalam Rentang Tanggal
-        const empAtts = attendances.filter(a => {
-          if (!a || !a.date) return false;
-          const inRange = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
-          if (!inRange) return false;
-          return (a.userNik && a.userNik.toUpperCase() === emp.nik.toUpperCase()) ||
-                 (a.userName && cleanStr(a.userName) === cleanStr(emp.name)) ||
-                 (a.userId && a.userId === emp.id);
-        });
+        // Ambil Presensi dalam Rentang Tanggal yang sudah di-grouping instan O(1)
+        const empAtts = empAttsMap.get(emp) || [];
 
         // Grouping per tanggal (mengambil in paling awal dan out paling akhir jika ada duplikasi)
         const dateMap = {};
@@ -9468,9 +9639,28 @@
       exportReportOvertimeToExcel();
     }
 
-    function renderRecordsTable() {
-      const startStr = document.getElementById('record-start-date').value;
-      const endStr = document.getElementById('record-end-date').value;
+    // =========================================================
+    // STATE PAGINASI RECORD ABSENSI (RINGAN, CEPAT & JANGKA PANJANG)
+    // =========================================================
+    let recordsCurrentPage = 1;
+    let recordsPageSize = 50;
+
+    function changeRecordsPageSize(val) {
+      recordsPageSize = val === 'all' ? 999999 : parseInt(val, 10);
+      recordsCurrentPage = 1;
+      renderRecordsTable();
+    }
+
+    function setRecordsPage(page) {
+      recordsCurrentPage = page;
+      renderRecordsTable();
+    }
+
+    function renderRecordsTable(resetPage = false) {
+      lastRecordsRenderTime = Date.now();
+      if (resetPage) recordsCurrentPage = 1;
+      const startStr = document.getElementById('record-start-date')?.value || '';
+      const endStr = document.getElementById('record-end-date')?.value || '';
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -9556,19 +9746,83 @@
         return 0;
       });
 
-      const tbody = document.getElementById('records-table-body');
-      tbody.innerHTML = '';
+      // Hitung Paginasi Responsif
+      const totalFiltered = filtered.length;
+      const totalPages = recordsPageSize >= 999999 ? 1 : Math.max(1, Math.ceil(totalFiltered / recordsPageSize));
+      if (recordsCurrentPage > totalPages) recordsCurrentPage = totalPages;
+      if (recordsCurrentPage < 1) recordsCurrentPage = 1;
 
-      if (filtered.length === 0) {
+      const startIndex = (recordsCurrentPage - 1) * (recordsPageSize >= 999999 ? totalFiltered : recordsPageSize);
+      const endIndex = recordsPageSize >= 999999 ? totalFiltered : Math.min(startIndex + recordsPageSize, totalFiltered);
+      const pageRecords = recordsPageSize >= 999999 ? filtered : filtered.slice(startIndex, endIndex);
+
+      // Update Label & Kontrol Paginasi
+      const elPageInfo = document.getElementById('records-page-info');
+      const elPageControls = document.getElementById('records-pagination-controls');
+
+      if (elPageInfo) {
+        if (totalFiltered === 0) {
+          elPageInfo.innerText = 'Menampilkan 0 dari 0 data';
+        } else {
+          elPageInfo.innerText = `Menampilkan ${startIndex + 1} - ${endIndex} dari ${totalFiltered} data`;
+        }
+      }
+
+      if (elPageControls) {
+        if (totalPages <= 1) {
+          elPageControls.innerHTML = '';
+        } else {
+          let controlsHTML = '';
+          const prevDisabled = recordsCurrentPage === 1;
+          controlsHTML += `<button onclick="setRecordsPage(${recordsCurrentPage - 1})" ${prevDisabled ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border text-xs font-semibold ${prevDisabled ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs transition'}">Prev</button>`;
+
+          const startP = Math.max(1, recordsCurrentPage - 2);
+          const endP = Math.min(totalPages, recordsCurrentPage + 2);
+
+          if (startP > 1) {
+            controlsHTML += `<button onclick="setRecordsPage(1)" class="w-7 h-7 rounded-lg border text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border-slate-300 transition">1</button>`;
+            if (startP > 2) controlsHTML += `<span class="px-1 text-slate-400">...</span>`;
+          }
+
+          for (let p = startP; p <= endP; p++) {
+            const isActive = p === recordsCurrentPage;
+            controlsHTML += `<button onclick="setRecordsPage(${p})" class="w-7 h-7 rounded-lg border text-xs font-bold ${isActive ? 'bg-slate-900 text-white border-slate-900' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs transition'}">${p}</button>`;
+          }
+
+          if (endP < totalPages) {
+            if (endP < totalPages - 1) controlsHTML += `<span class="px-1 text-slate-400">...</span>`;
+            controlsHTML += `<button onclick="setRecordsPage(${totalPages})" class="w-7 h-7 rounded-lg border text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border-slate-300 transition">${totalPages}</button>`;
+          }
+
+          const nextDisabled = recordsCurrentPage === totalPages;
+          controlsHTML += `<button onclick="setRecordsPage(${recordsCurrentPage + 1})" ${nextDisabled ? 'disabled' : ''} class="px-2.5 py-1 rounded-lg border text-xs font-semibold ${nextDisabled ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs transition'}">Next</button>`;
+
+          elPageControls.innerHTML = controlsHTML;
+        }
+      }
+
+      const tbody = document.getElementById('records-table-body');
+      if (totalFiltered === 0) {
         tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
         return;
       }
 
-      filtered.forEach((rec, idx) => {
-        let emp = null;
-        if (rec.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(rec.userName));
-        if (!emp && rec.userNik) emp = users.find(u => u.nik && u.nik.toUpperCase() === rec.userNik.toUpperCase());
-        if (!emp && rec.userId) emp = users.find(u => u.id === rec.userId);
+      // Optimasi O(1) Lookup Karyawan
+      const usersByName = new Map();
+      const usersByNik = new Map();
+      const usersById = new Map();
+      users.forEach(u => {
+        if (u.name) usersByName.set(cleanStr(u.name), u);
+        if (u.nik) usersByNik.set(u.nik.toUpperCase(), u);
+        if (u.id) usersById.set(u.id, u);
+      });
+
+      const rowsHTML = [];
+      pageRecords.forEach((rec, idx) => {
+        const globalIdx = startIndex + idx;
+        const emp = (rec.userName && usersByName.get(cleanStr(rec.userName))) ||
+                    (rec.userNik && usersByNik.get(rec.userNik.toUpperCase())) ||
+                    (rec.userId && usersById.get(rec.userId));
 
         const finalName = emp ? emp.name : (rec.userName || '-');
         const finalNik = emp ? emp.nik : (rec.userNik || '-');
@@ -9592,7 +9846,6 @@
         const minute = checkInDate.getMinutes();
         const isLate = rec.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         
-        // Tampilan Badge Tenang, Profesional & Rapi (Tanpa Warna Mencolok)
         const lateBadge = isLate 
           ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Late In</span>' 
           : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Normal</span>';
@@ -9605,34 +9858,35 @@
           ? `<div class="text-[10px] text-slate-500 font-medium italic mt-1 flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3 text-slate-400 shrink-0"></i><span class="truncate max-w-[200px]">${rec.notes}</span></div>`
           : '';
 
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
-        tr.innerHTML = `
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
-          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${rec.date}</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 font-bold">${finalNik}</td>
-          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${finalName}</td>
-          <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : '<span class="text-slate-400 font-medium italic text-[11px]">Miss Scan</span>'}</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800">${durationStr}</td>
-          <td class="p-3.5 border-r border-slate-100">
-            <div class="flex flex-col gap-1 items-start">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                ${lateBadge}
-                ${outBadge}
+        rowsHTML.push(`
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${globalIdx + 1}</td>
+            <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${rec.date}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 font-bold">${finalNik}</td>
+            <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${finalName}</td>
+            <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : '<span class="text-slate-400 font-medium italic text-[11px]">Miss Scan</span>'}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800">${durationStr}</td>
+            <td class="p-3.5 border-r border-slate-100">
+              <div class="flex flex-col gap-1 items-start">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  ${lateBadge}
+                  ${outBadge}
+                </div>
+                ${notesHtml}
               </div>
-              ${notesHtml}
-            </div>
-          </td>
-          <td class="p-3.5 text-right">
-            <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-[11px] font-semibold transition">
-              Hapus
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
+            </td>
+            <td class="p-3.5 text-right">
+              <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-[11px] font-semibold transition">
+                Hapus
+              </button>
+            </td>
+          </tr>
+        `);
       });
+
+      tbody.innerHTML = rowsHTML.join('');
       lucide.createIcons();
     }
 
@@ -9758,6 +10012,7 @@
       if (!startStr || !endStr) return;
 
       const dateList = getDatesInRange(startStr, endStr);
+      const dateKeys = dateList.map(d => d.toISOString().split('T')[0]);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
@@ -9802,8 +10057,32 @@
       headerHTML += `</tr>`;
       thead.innerHTML = headerHTML;
 
-      tbody.innerHTML = '';
+      // Optimasi O(1): Indexing kehadiran ke dalam Set
+      const attSet = new Set();
+      attendances.forEach(a => {
+        if (!a || !a.date) return;
+        if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${a.date}`);
+        if (a.userName) attSet.add(`${cleanStr(a.userName)}__${a.date}`);
+        if (a.userId) attSet.add(`${a.userId}__${a.date}`);
+      });
+
+      // Optimasi O(1): Indexing cuti/sakit yang sudah disetujui ke dalam Map
+      const leaveMap = new Map();
+      leaves.forEach(l => {
+        if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
+        const lDates = getDatesInRange(l.startDate, l.endDate);
+        lDates.forEach(ld => {
+          const ldStr = ld.toISOString().split('T')[0];
+          const type = l.type;
+          if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
+          if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
+          if (l.userId) leaveMap.set(`${l.userId}__${ldStr}`, type);
+        });
+      });
+
       const regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      const rowsHTML = [];
+
       regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
         let rowHTML = `
@@ -9812,31 +10091,40 @@
             <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${user.name} <span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span></td>
         `;
 
-        dateList.forEach(d => {
-          const dStr = d.toISOString().split('T')[0];
-          const att = attendances.find(a => ((a.userName && cleanStr(a.userName) === cleanStr(user.name)) || (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || (a.userId && a.userId === user.id)) && a.date === dStr);
-          const approvedLeave = leaves.find(l => ((l.userName && cleanStr(l.userName) === cleanStr(user.name)) || (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || (l.userId && l.userId === user.id)) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+        const uNik = user.nik ? user.nik.toUpperCase() : '';
+        const uCleanName = user.name ? cleanStr(user.name) : '';
+        const uId = user.id || '';
 
-          if (att) {
+        dateKeys.forEach(dStr => {
+          const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
+                        (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
+                        (uId && attSet.has(`${uId}__${dStr}`));
+
+          if (isAtt) {
             totalHariKerja += 1;
             rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-emerald-800 bg-emerald-50">1</td>`;
-          } else if (approvedLeave) {
-            if (approvedLeave.type === 'sakit') {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-amber-800 bg-amber-50">S</td>`;
-            } else if (approvedLeave.type === 'izin') {
-              // Sesuai arahan: Dikosongkan saja jika ada yang input izin
-              rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
-            } else {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-purple-800 bg-purple-50">AL</td>`;
-            }
           } else {
-            rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
+            const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
+                              (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
+                              (uId && leaveMap.get(`${uId}__${dStr}`));
+            if (leaveType === 'sakit') {
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-amber-800 bg-amber-50">S</td>`;
+            } else if (leaveType === 'izin') {
+              rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
+            } else if (leaveType) {
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-purple-800 bg-purple-50">AL</td>`;
+            } else {
+              rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
+            }
           }
         });
 
         rowHTML += `<td class="p-2 font-black text-slate-900 bg-amber-50/60">${totalHariKerja}</td></tr>`;
-        tbody.innerHTML += rowHTML;
+        rowsHTML.push(rowHTML);
       });
+
+      // Update DOM sekali saja (batch)
+      tbody.innerHTML = rowsHTML.join('');
     }
 
     // =========================================================
@@ -9854,10 +10142,32 @@
       renderMatrixTable();
 
       const dateList = getDatesInRange(startStr, endStr);
+      const dateKeys = dateList.map(d => d.toISOString().split('T')[0]);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => isMatrixEligibleUser(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+
+      const attSet = new Set();
+      attendances.forEach(a => {
+        if (!a || !a.date) return;
+        if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${a.date}`);
+        if (a.userName) attSet.add(`${cleanStr(a.userName)}__${a.date}`);
+        if (a.userId) attSet.add(`${a.userId}__${a.date}`);
+      });
+
+      const leaveMap = new Map();
+      leaves.forEach(l => {
+        if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
+        const lDates = getDatesInRange(l.startDate, l.endDate);
+        lDates.forEach(ld => {
+          const ldStr = ld.toISOString().split('T')[0];
+          const type = l.type;
+          if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
+          if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
+          if (l.userId) leaveMap.set(`${l.userId}__${ldStr}`, type);
+        });
+      });
 
       // 1. Format TSV (Tab-Separated Values) - Sangat rapi untuk langsung di-paste ke Excel atau Google Sheets
       const headerRow = ['No', 'Nama Karyawan', 'NIK'];
@@ -9873,25 +10183,31 @@
       regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
         const row = [uIdx + 1, user.name, user.nik];
+        const uNik = user.nik ? user.nik.toUpperCase() : '';
+        const uCleanName = user.name ? cleanStr(user.name) : '';
+        const uId = user.id || '';
 
-        dateList.forEach(d => {
-          const dStr = d.toISOString().split('T')[0];
-          const att = attendances.find(a => ((a.userName && cleanStr(a.userName) === cleanStr(user.name)) || (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || (a.userId && a.userId === user.id)) && a.date === dStr);
-          const approvedLeave = leaves.find(l => ((l.userName && cleanStr(l.userName) === cleanStr(user.name)) || (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || (l.userId && l.userId === user.id)) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+        dateKeys.forEach(dStr => {
+          const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
+                        (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
+                        (uId && attSet.has(`${uId}__${dStr}`));
 
-          if (att) {
+          if (isAtt) {
             totalHariKerja += 1;
             row.push('1');
-          } else if (approvedLeave) {
-            if (approvedLeave.type === 'sakit') {
-              row.push('S');
-            } else if (approvedLeave.type === 'izin') {
-              row.push(''); // Dikosongkan jika izin sesuai instruksi
-            } else {
-              row.push('AL');
-            }
           } else {
-            row.push('-');
+            const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
+                              (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
+                              (uId && leaveMap.get(`${uId}__${dStr}`));
+            if (leaveType === 'sakit') {
+              row.push('S');
+            } else if (leaveType === 'izin') {
+              row.push('');
+            } else if (leaveType) {
+              row.push('AL');
+            } else {
+              row.push('-');
+            }
           }
         });
 
