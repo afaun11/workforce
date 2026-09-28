@@ -2957,10 +2957,90 @@
     let newlyCreatedUser = null;
     let isLocationVerified = false;
 
+    // =========================================================
+    // MASTER DATA KARYAWAN: TOMBSTONE TRACKING & STRICT SORTING ENGINE
+    // Mencegah data terhapus bangkit kembali (anti-zombie) & sorting join date akurat
+    // =========================================================
+    function getDeletedUserKeys() {
+      try {
+        const stored = localStorage.getItem('wfm_deleted_user_keys');
+        if (stored) {
+          const arr = JSON.parse(stored);
+          if (Array.isArray(arr)) return new Set(arr);
+        }
+      } catch (e) {}
+      return new Set();
+    }
+
+    function saveDeletedUserKeys(setKeys) {
+      try {
+        const arr = Array.from(setKeys).slice(-1000);
+        localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(arr));
+      } catch (e) {}
+    }
+
+    function trackDeletedUsers(usersOrNiks) {
+      if (!usersOrNiks) return;
+      const setKeys = getDeletedUserKeys();
+      const list = Array.isArray(usersOrNiks) ? usersOrNiks : [usersOrNiks];
+      list.forEach(u => {
+        if (!u) return;
+        if (typeof u === 'string') {
+          const cleanK = u.trim().toUpperCase();
+          if (cleanK) setKeys.add(cleanK);
+          const normK = cleanStr(u);
+          if (normK) setKeys.add(normK);
+        } else {
+          if (u.id) setKeys.add(String(u.id).trim().toLowerCase());
+          if (u.name) setKeys.add(cleanStr(u.name));
+          if (u.nik) setKeys.add(String(u.nik).trim().toUpperCase());
+        }
+      });
+      saveDeletedUserKeys(setKeys);
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+    }
+
+    function unmarkDeletedUser(nameOrNik) {
+      if (!nameOrNik) return;
+      const setKeys = getDeletedUserKeys();
+      setKeys.delete(String(nameOrNik).trim().toUpperCase());
+      setKeys.delete(cleanStr(nameOrNik));
+      saveDeletedUserKeys(setKeys);
+    }
+
+    function isUserMarkedDeleted(user, deletedKeys) {
+      if (!user) return false;
+      if (typeof isManagementSystemAccount === 'function' && isManagementSystemAccount(user)) return false;
+      const role = (user.role || '').toLowerCase();
+      const nik = (user.nik || '').toUpperCase();
+      if (role === 'admin' || role === 'scanner' || nik.startsWith('ADM') || nik.startsWith('ABSEN')) return false;
+
+      const keys = deletedKeys || getDeletedUserKeys();
+      if (user.id && keys.has(String(user.id).trim().toLowerCase())) return true;
+      if (user.name && keys.has(cleanStr(user.name))) return true;
+      if (user.nik && keys.has(String(user.nik).trim().toUpperCase())) return true;
+      return false;
+    }
+
+    function getSortableJoinDate(val) {
+      if (!val) return '9999-99-99';
+      const s = String(val).trim();
+      if (!s || s === '-' || s === ' - ' || s === '--' || s.toLowerCase() === 'n/a' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined' || s.startsWith('0000')) {
+        return '9999-99-99';
+      }
+      const formatted = typeof formatExcelDate === 'function' ? formatExcelDate(s) : s;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(formatted)) {
+        const y = parseInt(formatted.substring(0, 4), 10);
+        if (y >= 1970 && y <= 2099) return formatted;
+      }
+      return '9999-99-99';
+    }
+
     function deduplicateUserList(users, warehouse = 'MBI') {
       if (!Array.isArray(users)) return [];
       const seenNames = new Set();
       const cleanList = [];
+      const deletedKeys = getDeletedUserKeys();
 
       // 1. Tempatkan Admin di awal
       const admin = users.find(u => u.role === 'admin') || (warehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
@@ -2985,10 +3065,11 @@
         seenNames.add(cleanStr(scanner.name));
       }
 
-      // 3. Kumpulkan seluruh karyawan reguler tanpa duplikasi nama & normalisasi departemen
+      // 3. Kumpulkan seluruh karyawan reguler tanpa duplikasi nama & buang yang telah dihapus
       const regularEmployees = [];
       users.forEach(u => {
         if (!u || u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
+        if (isUserMarkedDeleted(u, deletedKeys)) return;
         const normName = cleanStr(u.name);
         if (!normName || seenNames.has(normName)) return;
         seenNames.add(normName);
@@ -3018,16 +3099,16 @@
         }
 
         if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
-          u.joinDate = formatExcelDate(u.joinDate);
+          u.joinDate = typeof formatExcelDate === 'function' ? formatExcelDate(u.joinDate) : u.joinDate;
         }
 
         regularEmployees.push(u);
       });
 
-      // 4. Urutkan seluruh karyawan reguler berdasarkan JOIN DATE PERTAMA hingga TERAKHIR
+      // 4. Urutkan seluruh karyawan reguler berdasarkan JOIN DATE PERTAMA hingga TERAKHIR (KOSONG / STRIP DI PALING BAWAH)
       regularEmployees.sort((a, b) => {
-        const dateA = a.joinDate || '9999-99-99';
-        const dateB = b.joinDate || '9999-99-99';
+        const dateA = getSortableJoinDate(a.joinDate);
+        const dateB = getSortableJoinDate(b.joinDate);
         const cmp = dateA.localeCompare(dateB);
         if (cmp !== 0) return cmp;
         return (a.name || '').localeCompare(b.name || '');
@@ -3200,30 +3281,51 @@
       return Array.from(map.values());
     }
 
-    // 4. SMART MERGE MASTER KARYAWAN (Kunci NIK / ID)
+    // 4. SMART MERGE MASTER KARYAWAN (Bebas Zombie Data & Resequence Sesuai Urutan Join Date)
     function mergeUserArrays(localList, cloudList, wh) {
+      const deletedKeys = getDeletedUserKeys();
+      const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 15000);
+
+      // Jika baru saja dilakukan operasi lokal (hapus, tambah, atau import excel), jangan biarkan Cloud mengembalikan data lama
+      if (isRecentLocalChange && Array.isArray(localList) && localList.length > 0) {
+        return deduplicateUserList(localList.filter(u => !isUserMarkedDeleted(u, deletedKeys)), wh);
+      }
+
       const map = new Map();
+
+      // 1. Masukkan data Cloud yang sah (tidak termasuk akun yang telah dihapus)
       (cloudList || []).forEach(item => {
         if (!item || !item.name) return;
-        const key = (item.nik || item.id || item.name).trim().toUpperCase();
-        map.set(key, item);
+        if (isUserMarkedDeleted(item, deletedKeys)) return;
+        const normName = cleanStr(item.name);
+        if (!normName) return;
+        map.set(normName, item);
       });
+
+      // 2. Gabungkan dengan data Lokal (data lokal lebih diutamakan jika ada perubahan)
       (localList || []).forEach(localItem => {
         if (!localItem || !localItem.name) return;
-        const key = (localItem.nik || localItem.id || localItem.name).trim().toUpperCase();
-        if (!map.has(key)) {
-          map.set(key, localItem);
+        if (isUserMarkedDeleted(localItem, deletedKeys)) return;
+        const normName = cleanStr(localItem.name);
+        if (!normName) return;
+        if (!map.has(normName)) {
+          map.set(normName, localItem);
         } else {
-          const cloudItem = map.get(key);
-          map.set(key, { ...cloudItem, ...localItem });
+          const cloudItem = map.get(normName);
+          map.set(normName, { ...cloudItem, ...localItem });
         }
       });
+
       return deduplicateUserList(Array.from(map.values()), wh);
     }
 
     let lastAppliedCloudUpdatedAt = null;
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
+
+      const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 15000);
 
       const currMbiUsers = localStorage.getItem('wfm_mbi_users') || '';
       const currMaiUsers = localStorage.getItem('wfm_mai_users') || '';
@@ -3234,7 +3336,16 @@
       const currMbiLeaves = localStorage.getItem('wfm_mbi_leaves') || '';
       const currMaiLeaves = localStorage.getItem('wfm_mai_leaves') || '';
 
-      const cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), normalizeFirebaseArray(db.mbi_users), 'MBI');
+      let cleanMbiUsers;
+      let cleanMaiUsers;
+      if (isRecentLocalChange) {
+        cleanMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        cleanMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      } else {
+        cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), normalizeFirebaseArray(db.mbi_users), 'MBI');
+        cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), normalizeFirebaseArray(db.mai_users), 'MAI');
+      }
+
       cleanMbiUsers.forEach(u => {
         if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
           u.name = 'Scanner Presensi Gudang';
@@ -3242,7 +3353,6 @@
       });
       const newMbiUsers = JSON.stringify(cleanMbiUsers);
 
-      const cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), normalizeFirebaseArray(db.mai_users), 'MAI');
       cleanMaiUsers.forEach(u => {
         if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
           u.name = 'Scanner Presensi Gudang';
@@ -3392,10 +3502,16 @@
 
     let cloudSaveTimeout = null;
     let isSavingToCloud = false;
+    let hasPendingCloudSave = false;
+
     async function saveFullDatabaseToCloud(forceAlert = false, immediate = false) {
       const executeSave = async () => {
-        if (isSavingToCloud) return;
+        if (isSavingToCloud) {
+          hasPendingCloudSave = true;
+          return;
+        }
         isSavingToCloud = true;
+        hasPendingCloudSave = false;
 
         updateCloudSyncStatusBadge('uploading');
 
@@ -3424,6 +3540,7 @@
           console.warn('Pre-save merge fetch skipped/offline:', eMerge);
         }
 
+        const nowIso = new Date().toISOString();
         const payload = {
           mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
           mbi_attendance: getWhDB('MBI', 'attendance', []),
@@ -3435,8 +3552,10 @@
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: getWarehouseCoords('MAI'),
-          updatedAt: new Date().toISOString()
+          updatedAt: nowIso
         };
+
+        lastAppliedCloudUpdatedAt = nowIso;
 
         if ((!payload.mbi_users || payload.mbi_users.length === 0) && (!payload.mai_users || payload.mai_users.length === 0)) {
           console.warn('Skip saving completely empty database to cloud.');
@@ -3473,6 +3592,11 @@
           }
         } catch (eGSheet) {
           console.warn('Google Sheet auto backup error:', eGSheet);
+        }
+
+        if (hasPendingCloudSave) {
+          hasPendingCloudSave = false;
+          executeSave();
         }
 
         if (forceAlert) {
@@ -3558,6 +3682,7 @@
     }
 
     function sanitizeEmployeesData() {
+      const deletedKeys = getDeletedUserKeys();
       ['MBI', 'MAI'].forEach(wh => {
         const storageKey = `wfm_${wh.toLowerCase()}_users`;
         const data = localStorage.getItem(storageKey);
@@ -3567,7 +3692,7 @@
           if (!Array.isArray(users)) return;
           let hasChanges = false;
 
-          const cleanUsers = users.filter(u => u && u.name && u.name.trim() !== '' && u.nik !== 'SPV-MBI' && u.nik !== 'SPV-MAI' && u.id !== 'mbi-spv' && u.id !== 'mai-spv');
+          const cleanUsers = users.filter(u => u && u.name && u.name.trim() !== '' && u.nik !== 'SPV-MBI' && u.nik !== 'SPV-MAI' && u.id !== 'mbi-spv' && u.id !== 'mai-spv' && !isUserMarkedDeleted(u, deletedKeys));
           if (cleanUsers.length !== users.length) hasChanges = true;
 
           cleanUsers.forEach(u => {
@@ -3576,7 +3701,7 @@
               hasChanges = true;
             }
             if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
-              u.joinDate = formatExcelDate(u.joinDate);
+              u.joinDate = typeof formatExcelDate === 'function' ? formatExcelDate(u.joinDate) : u.joinDate;
               hasChanges = true;
             }
 
@@ -3630,6 +3755,7 @@
 
     function harmonizeAndResequenceAllNIKs() {
       sanitizeEmployeesData();
+      const deletedKeys = getDeletedUserKeys();
 
       ['MBI', 'MAI'].forEach(wh => {
         let rawUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -3654,12 +3780,13 @@
         scanner.hasAccount = true;
         scanner.barcodeValue = scanner.nik;
 
-        // 2. Kumpulkan seluruh karyawan reguler (bukan admin & bukan scanner)
+        // 2. Kumpulkan seluruh karyawan reguler (bukan admin & bukan scanner & bukan yang terhapus)
         const seenNames = new Set([cleanStr(admin.name), cleanStr(scanner.name)]);
         const regularEmployees = [];
 
         rawUsers.forEach(u => {
           if (!u || isManagementSystemAccount(u) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
+          if (isUserMarkedDeleted(u, deletedKeys)) return;
           const normName = cleanStr(u.name);
           if (!normName || seenNames.has(normName)) return;
           seenNames.add(normName);
@@ -3688,16 +3815,16 @@
           }
 
           if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
-            u.joinDate = formatExcelDate(u.joinDate);
+            u.joinDate = typeof formatExcelDate === 'function' ? formatExcelDate(u.joinDate) : u.joinDate;
           }
 
           regularEmployees.push(u);
         });
 
-        // 3. URUTKAN KARYAWAN BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR
+        // 3. URUTKAN KARYAWAN BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR (KOSONG / STRIP DI PALING BAWAH)
         regularEmployees.sort((a, b) => {
-          const dateA = a.joinDate || '9999-99-99';
-          const dateB = b.joinDate || '9999-99-99';
+          const dateA = getSortableJoinDate(a.joinDate);
+          const dateB = getSortableJoinDate(b.joinDate);
           const cmp = dateA.localeCompare(dateB);
           if (cmp !== 0) return cmp;
           return (a.name || '').localeCompare(b.name || '');
@@ -8162,7 +8289,7 @@
       }
     }
 
-    function handleSaveEditEmployee(e) {
+    async function handleSaveEditEmployee(e) {
       e.preventDefault();
       const id = document.getElementById('edit-emp-id').value;
       const oldNikVal = (document.getElementById('edit-emp-old-nik')?.value || '').trim().toUpperCase();
@@ -8193,6 +8320,9 @@
       const email = document.getElementById('edit-emp-email') ? document.getElementById('edit-emp-email').value.trim() : '';
       const joinDate = document.getElementById('edit-emp-joindate').value;
       const customPass = document.getElementById('edit-emp-pass').value.trim();
+
+      unmarkDeletedUser(name);
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
 
       let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       let idx = users.findIndex(u => (id && u.id === id) || (oldNikVal && (u.nik || '').toUpperCase() === oldNikVal) || (nik && (u.nik || '').toUpperCase() === nik));
@@ -8235,7 +8365,7 @@
         }
 
         setWhDB(activeWarehouse, 'users', users);
-        saveFullDatabaseToCloud();
+        await saveFullDatabaseToCloud(false, true);
 
         // Update riwayat absensi, cuti & lembur jika NIK, Nama, atau Departemen berubah
         if (oldNik !== nik || oldName !== name || oldDept !== dept) {
@@ -8330,10 +8460,12 @@
         return;
       }
 
-      const updatedUsers = users.filter(u => u.nik !== nik);
+      trackDeletedUsers(user);
+      const updatedUsers = users.filter(u => u.nik !== nik && cleanStr(u.name) !== cleanStr(user.name));
       setWhDB(targetWh, 'users', updatedUsers);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsers));
-      await saveFullDatabaseToCloud(false);
+      harmonizeAndResequenceAllNIKs();
+      await saveFullDatabaseToCloud(false, true);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -8377,14 +8509,18 @@
 
       const targetWh = activeWarehouse || 'MBI';
       let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      users = users.filter(u => {
+      const toDelete = users.filter(u => selectedNiks.has(u.nik) && !isManagementSystemAccount(u));
+      trackDeletedUsers(toDelete);
+
+      const updatedUsers = users.filter(u => {
         if (isManagementSystemAccount(u)) return true;
-        return !selectedNiks.has(u.nik);
+        return !selectedNiks.has(u.nik) && !isUserMarkedDeleted(u);
       });
 
-      setWhDB(targetWh, 'users', users);
-      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(users));
-      await saveFullDatabaseToCloud(false);
+      setWhDB(targetWh, 'users', updatedUsers);
+      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsers));
+      harmonizeAndResequenceAllNIKs();
+      await saveFullDatabaseToCloud(false, true);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -8392,7 +8528,7 @@
       refreshAllDashboardData();
       renderRecordsTable();
       renderMatrixTable();
-      alert(`✅ Berhasil menghapus ${selectedNiks.size} karyawan secara permanen.`);
+      alert(`✅ Berhasil menghapus ${toDelete.length} karyawan secara permanen.`);
     }
 
     async function deleteAllEmployees() {
@@ -8406,11 +8542,14 @@
       }
 
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const toDelete = users.filter(u => !isManagementSystemAccount(u));
+      trackDeletedUsers(toDelete);
+
       const preserved = users.filter(u => isManagementSystemAccount(u));
-      
       setWhDB(targetWh, 'users', preserved);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(preserved));
-      await saveFullDatabaseToCloud(false);
+      harmonizeAndResequenceAllNIKs();
+      await saveFullDatabaseToCloud(false, true);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -8517,7 +8656,7 @@
       document.getElementById('add-emp-modal').classList.add('hidden');
     }
 
-    function handleManualAddEmployee(e) {
+    async function handleManualAddEmployee(e) {
       e.preventDefault();
       const name = document.getElementById('m-emp-name').value.trim();
       const customNik = document.getElementById('m-emp-nik').value.trim();
@@ -8548,6 +8687,9 @@
 
       const autoNik = customNik ? customNik.toUpperCase() : generateUniqueNIK(activeWarehouse, name);
 
+      unmarkDeletedUser(name);
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const newEmp = { 
         id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, 
@@ -8569,6 +8711,7 @@
       users.push(newEmp);
       setWhDB(activeWarehouse, 'users', users);
       harmonizeAndResequenceAllNIKs();
+      await saveFullDatabaseToCloud(false, true);
 
       // Cari NIK aktual karyawan setelah harmonisasi resequencing berdasarkan join date
       const updatedUsers = getWhDB(activeWarehouse, 'users', []);
@@ -8681,8 +8824,11 @@
     }
 
     function formatExcelDate(val) {
-      if (!val) return new Date().toISOString().split('T')[0];
+      if (!val) return '-';
       const strVal = String(val).trim();
+      if (!strVal || strVal === '-' || strVal === ' - ' || strVal === '--' || strVal.toLowerCase() === 'n/a' || strVal.toLowerCase() === 'null') {
+        return '-';
+      }
       // Jika angka serial Excel seperti 45200 atau 46225
       if (/^\d{4,5}(\.\d+)?$/.test(strVal)) {
         const serial = parseFloat(strVal);
@@ -8691,17 +8837,28 @@
         const yyyy = dateInfo.getUTCFullYear();
         const mm = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
         const dd = String(dateInfo.getUTCDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
+        if (yyyy >= 1970 && yyyy <= 2099) {
+          return `${yyyy}-${mm}-${dd}`;
+        }
+        return '-';
       }
       // Jika format tanggal standar YYYY-MM-DD
-      if (/^\d{4}-\d{2}-\d{2}$/.test(strVal)) return strVal;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(strVal)) {
+        const yyyy = parseInt(strVal.substring(0, 4), 10);
+        if (yyyy >= 1970 && yyyy <= 2099) return strVal;
+        return '-';
+      }
       // Jika format DD/MM/YYYY atau DD-MM-YYYY
       if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(strVal)) {
         const parts = strVal.split(/[\/\-]/);
         const dd = String(parts[0]).padStart(2, '0');
         const mm = String(parts[1]).padStart(2, '0');
         const yyyy = parts[2];
-        return `${yyyy}-${mm}-${dd}`;
+        const numY = parseInt(yyyy, 10);
+        if (numY >= 1970 && numY <= 2099) {
+          return `${yyyy}-${mm}-${dd}`;
+        }
+        return '-';
       }
       return strVal;
     }
@@ -8747,7 +8904,7 @@
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
           const data = new Uint8Array(event.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
@@ -8794,6 +8951,12 @@
           let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
           const managementAccounts = existingUsers.filter(u => isManagementSystemAccount(u));
           
+          if (replaceMode) {
+            // Tandai karyawan lama sebagai terhapus agar Cloud tidak pernah membangkitkannya lagi
+            const oldEmployees = existingUsers.filter(u => !isManagementSystemAccount(u));
+            trackDeletedUsers(oldEmployees);
+          }
+
           let users = managementAccounts.length > 0 ? [...managementAccounts] : (targetWh === 'MBI' ? [...SEED_MBI_USERS] : [...SEED_MAI_USERS]);
 
           if (!replaceMode) {
@@ -8811,6 +8974,7 @@
             const cleanName = cleanStr(name);
             if (seenNamesInExcel.has(cleanName)) return; // Cegah dobel nama di file Excel itu sendiri
             seenNamesInExcel.add(cleanName);
+            unmarkDeletedUser(name);
 
             const rawDept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], '', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
             const rawRole = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
@@ -8846,7 +9010,7 @@
             const rawEmail = getExcelVal(r, ['email', 'surel', 'e-mail', 'alamat email', 'mail'], '', ['nama', 'telp', 'phone', 'nik', 'dept', 'outsource']).trim();
             const email = rawEmail;
             
-            const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], new Date().toISOString().split('T')[0], ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept', 'email']);
+            const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], '-', ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept', 'email']);
             const joinDate = formatExcelDate(rawJoin);
 
             parsedRows.push({
@@ -8863,10 +9027,10 @@
             });
           });
 
-          // URUTKAN SELURUH DATA EXCEL BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR (EARLIEST TO NEWEST)
+          // URUTKAN SELURUH DATA EXCEL BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR (KOSONG / STRIP DI PALING BAWAH)
           parsedRows.sort((a, b) => {
-            const dateA = a.joinDate || '9999-99-99';
-            const dateB = b.joinDate || '9999-99-99';
+            const dateA = getSortableJoinDate(a.joinDate);
+            const dateB = getSortableJoinDate(b.joinDate);
             const cmp = dateA.localeCompare(dateB);
             if (cmp !== 0) return cmp;
             return (a.name || '').localeCompare(b.name || '');
@@ -8921,14 +9085,15 @@
 
           const finalCleanUsers = deduplicateUserList(users, targetWh);
           setWhDB(targetWh, 'users', finalCleanUsers);
+          localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
           harmonizeAndResequenceAllNIKs();
-          saveFullDatabaseToCloud(true);
+          await saveFullDatabaseToCloud(true, true);
           renderEmployeeTable();
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
           
-          alert(`✅ BERHASIL IMPORT DATA KARYAWAN DARI EXCEL!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Total Karyawan Aktif: ${finalCleanUsers.filter(u => !isManagementSystemAccount(u)).length} orang\n• NIK & Barcode: 100% Terurut Berdasarkan Join Date Pertama hingga Terakhir (${prefix}001, ${prefix}002, ...)\n• Departemen: Disederhanakan Menjadi Warehouse Staff / Coordinator / Supervisor\n• ID Card & Barcode: Siap Digunakan untuk Presensi`);
+          alert(`✅ BERHASIL IMPORT DATA KARYAWAN DARI EXCEL!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Total Karyawan Aktif: ${finalCleanUsers.filter(u => !isManagementSystemAccount(u)).length} orang\n• NIK & Barcode: 100% Terurut Berdasarkan Join Date Pertama hingga Terakhir (${prefix}001, ${prefix}002, ...)\n• Karyawan Tanpa Join Date: Ditempatkan di Urutan Paling Bawah\n• Departemen: Disederhanakan Menjadi Warehouse Staff / Coordinator / Supervisor\n• ID Card & Barcode: Siap Digunakan untuk Presensi`);
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
