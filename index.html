@@ -2121,7 +2121,7 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <select id="m-emp-position" onchange="handleModalPositionChange('add', this.value)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="staff">Staff</option>
               <option value="coordinator">Coordinator</option>
               <option value="supervisor">Supervisor</option>
@@ -2131,9 +2131,9 @@
 
         <div class="relative" id="add-dept-container">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-          <input type="hidden" id="m-emp-dept" value="picker">
+          <input type="hidden" id="m-emp-dept" value="warehouse staff">
           <button type="button" id="add-dept-btn" onclick="toggleDeptDropdown('add')" class="w-full px-3 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-slate-900">
-            <span id="add-dept-label" class="truncate">Picker</span>
+            <span id="add-dept-label" class="truncate">Warehouse Staff</span>
             <i data-lucide="chevron-down" id="add-dept-chevron" class="w-4 h-4 text-slate-500 shrink-0 ml-2 transition-transform duration-200"></i>
           </button>
           <div id="add-dept-menu" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-1.5 max-h-52 overflow-y-auto custom-scroll space-y-0.5">
@@ -2199,7 +2199,7 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="edit-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <select id="edit-emp-position" onchange="handleModalPositionChange('edit', this.value)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="staff">Staff</option>
               <option value="coordinator">Coordinator</option>
               <option value="supervisor">Supervisor</option>
@@ -2210,9 +2210,9 @@
 
         <div class="relative" id="edit-dept-container">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
-          <input type="hidden" id="edit-emp-dept" value="picker">
+          <input type="hidden" id="edit-emp-dept" value="warehouse staff">
           <button type="button" id="edit-dept-btn" onclick="toggleDeptDropdown('edit')" class="w-full px-3 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-slate-900">
-            <span id="edit-dept-label" class="truncate">Picker</span>
+            <span id="edit-dept-label" class="truncate">Warehouse Staff</span>
             <i data-lucide="chevron-down" id="edit-dept-chevron" class="w-4 h-4 text-slate-500 shrink-0 ml-2 transition-transform duration-200"></i>
           </button>
           <div id="edit-dept-menu" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-1.5 max-h-52 overflow-y-auto custom-scroll space-y-0.5">
@@ -2960,56 +2960,87 @@
     function deduplicateUserList(users, warehouse = 'MBI') {
       if (!Array.isArray(users)) return [];
       const seenNames = new Set();
-      const usedNiks = new Set();
       const cleanList = [];
 
       // 1. Tempatkan Admin di awal
       const admin = users.find(u => u.role === 'admin') || (warehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
+      admin.nik = warehouse === 'MBI' ? 'ADM001' : 'ADM-MAI';
+      admin.dept = 'Administrator';
+      admin.role = 'admin';
+      admin.hasAccount = true;
+      admin.barcodeValue = admin.nik;
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
-      if (admin.nik) usedNiks.add(admin.nik.toUpperCase().trim());
 
       // 2. Tempatkan Akun Dedicated Scanner Absen
-      const scanner = users.find(u => u.role === 'scanner' || u.nik === `ABSEN-${warehouse}`) || (warehouse === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
+      const scanner = users.find(u => u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) || (warehouse === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
       if (scanner) {
+        scanner.nik = `ABSEN-${warehouse}`;
+        scanner.dept = 'presensi';
+        scanner.name = 'Scanner Presensi Gudang';
+        scanner.role = 'scanner';
+        scanner.hasAccount = true;
+        scanner.barcodeValue = scanner.nik;
         cleanList.push(scanner);
         seenNames.add(cleanStr(scanner.name));
-        if (scanner.nik) usedNiks.add(scanner.nik.toUpperCase().trim());
       }
 
-      // 3. Kumpulkan seluruh karyawan tanpa duplikasi nama, dan KUNCI NIK ASLINYA!
+      // 3. Kumpulkan seluruh karyawan reguler tanpa duplikasi nama & normalisasi departemen
+      const regularEmployees = [];
       users.forEach(u => {
         if (!u || u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
         const normName = cleanStr(u.name);
-        if (!normName) return;
-
-        // Hilangkan data duplikat nama
-        if (seenNames.has(normName)) return;
+        if (!normName || seenNames.has(normName)) return;
         seenNames.add(normName);
 
-        // Kunci NIK yang sudah dimiliki karyawan
-        if (u.nik) {
-          u.nik = u.nik.toUpperCase().trim();
-          usedNiks.add(u.nik);
+        // Pilihan departemen diperkecil hanya 3: Warehouse Staff, Coordinator, Supervisor
+        const uRole = (u.role || 'staff').toLowerCase().trim();
+        const uDept = (u.dept || '').toLowerCase().trim();
+
+        const isSpv = uRole.includes('supervisor') || uRole === 'spv' || uDept.includes('supervisor') || uDept === 'spv';
+        const isCoord = uRole.includes('coordinator') || uRole.includes('koordinator') || uRole.includes('cordinator') || uDept.includes('coordinator') || uDept.includes('koordinator') || uDept.includes('cordinator');
+
+        if (isSpv) {
+          u.dept = 'Supervisor';
+          u.role = 'supervisor';
+          u.hasAccount = true;
+          if (!u.password) u.password = 'medika123';
+        } else if (isCoord) {
+          u.dept = 'Coordinator';
+          u.role = 'coordinator';
+          u.hasAccount = true;
+          if (!u.password) u.password = 'medika123';
+        } else {
+          u.dept = 'Warehouse Staff';
+          u.role = 'staff';
+          u.hasAccount = false;
+          u.password = '';
         }
-        u.barcodeValue = u.nik || '';
-        cleanList.push(u);
+
+        if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
+          u.joinDate = formatExcelDate(u.joinDate);
+        }
+
+        regularEmployees.push(u);
       });
 
-      // 4. Hanya jika ada karyawan yang BELUM punya NIK sama sekali, berikan NIK unik
-      const prefix = warehouse === 'MBI' ? 'MBI26-' : 'MAI26-';
-      let seq = 1;
-      cleanList.forEach((u) => {
-        if (u.role === 'admin' || u.role === 'scanner') return;
-        if (!u.nik) {
-          while (usedNiks.has(`${prefix}${String(seq).padStart(3, '0')}`)) {
-            seq++;
-          }
-          const newNik = `${prefix}${String(seq).padStart(3, '0')}`;
-          u.nik = newNik;
-          usedNiks.add(newNik);
-        }
-        u.barcodeValue = u.nik;
+      // 4. Urutkan seluruh karyawan reguler berdasarkan JOIN DATE PERTAMA hingga TERAKHIR
+      regularEmployees.sort((a, b) => {
+        const dateA = a.joinDate || '9999-99-99';
+        const dateB = b.joinDate || '9999-99-99';
+        const cmp = dateA.localeCompare(dateB);
+        if (cmp !== 0) return cmp;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      // 5. Pembentukan NIK berurutan (001, 002, ...) sesuai urutan Join Date
+      const year = new Date().getFullYear().toString().slice(-2);
+      const prefix = `${warehouse.toUpperCase()}${year}-`;
+      regularEmployees.forEach((u, idx) => {
+        const newNik = `${prefix}${String(idx + 1).padStart(3, '0')}`;
+        u.nik = newNik;
+        u.barcodeValue = newNik;
+        cleanList.push(u);
       });
 
       return cleanList;
@@ -3549,34 +3580,43 @@
               hasChanges = true;
             }
 
-            // Kebijakan Akun: Hanya Admin, Scanner, Supervisor, & Coordinator yang memiliki akun login
             const userRole = (u.role || 'staff').toLowerCase().trim();
-            const isManagement = ['admin', 'superadmin', 'supervisor', 'coordinator', 'cordinator', 'scanner'].includes(userRole) || (u.nik && (u.nik.startsWith('ADM') || u.nik.startsWith('ABSEN') || u.nik.startsWith('SPV')));
-            if (!isManagement) {
-              if (u.password) {
-                u.password = '';
-                hasChanges = true;
-              }
-              if (u.hasAccount !== false) {
-                u.hasAccount = false;
-                hasChanges = true;
-              }
-            } else {
-              if (u.hasAccount !== true) {
-                u.hasAccount = true;
-                hasChanges = true;
-              }
-              if (!u.password || u.password.trim() === '') {
-                u.password = userRole.includes('admin') ? 'password123' : 'medika123';
-                hasChanges = true;
-              }
-            }
+            const userDept = (u.dept || '').toLowerCase().trim();
+            const isSysAdmin = u.role === 'admin' || (u.nik && u.nik.startsWith('ADM'));
+            const isSysScanner = u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN'));
 
-            // Standarisasi Nama Akun Scanner Presensi agar Seragam & Profesional di Gudang MBI & MAI
-            if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
-              if (u.name !== 'Scanner Presensi Gudang') {
-                u.name = 'Scanner Presensi Gudang';
-                hasChanges = true;
+            if (isSysAdmin) {
+              if (u.dept !== 'Administrator') { u.dept = 'Administrator'; hasChanges = true; }
+              if (u.role !== 'admin') { u.role = 'admin'; hasChanges = true; }
+              if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
+              if (!u.password) { u.password = 'password123'; hasChanges = true; }
+            } else if (isSysScanner) {
+              if (u.dept !== 'presensi') { u.dept = 'presensi'; hasChanges = true; }
+              if (u.role !== 'scanner') { u.role = 'scanner'; hasChanges = true; }
+              if (u.name !== 'Scanner Presensi Gudang') { u.name = 'Scanner Presensi Gudang'; hasChanges = true; }
+              if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
+              if (!u.password) { u.password = 'medika123'; hasChanges = true; }
+            } else {
+              // Karyawan biasa: batasi hanya Supervisor, Coordinator, atau Warehouse Staff
+              const isSpv = userRole.includes('supervisor') || userRole === 'spv' || userDept.includes('supervisor') || userDept === 'spv';
+              const isCoord = userRole.includes('coordinator') || userRole.includes('koordinator') || userRole.includes('cordinator') || userDept.includes('coordinator') || userDept.includes('koordinator') || userDept.includes('cordinator');
+
+              if (isSpv) {
+                if (u.dept !== 'Supervisor') { u.dept = 'Supervisor'; hasChanges = true; }
+                if (u.role !== 'supervisor') { u.role = 'supervisor'; hasChanges = true; }
+                if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
+                if (!u.password) { u.password = 'medika123'; hasChanges = true; }
+              } else if (isCoord) {
+                if (u.dept !== 'Coordinator') { u.dept = 'Coordinator'; hasChanges = true; }
+                if (u.role !== 'coordinator') { u.role = 'coordinator'; hasChanges = true; }
+                if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
+                if (!u.password) { u.password = 'medika123'; hasChanges = true; }
+              } else {
+                // Semua staf biasa / yang tidak punya akun / selain SPV & Coordinator otomatis menjadi Warehouse Staff
+                if (u.dept !== 'Warehouse Staff') { u.dept = 'Warehouse Staff'; hasChanges = true; }
+                if (u.role !== 'staff') { u.role = 'staff'; hasChanges = true; }
+                if (u.hasAccount !== false) { u.hasAccount = false; hasChanges = true; }
+                if (u.password !== '') { u.password = ''; hasChanges = true; }
               }
             }
           });
@@ -3594,126 +3634,158 @@
       ['MBI', 'MAI'].forEach(wh => {
         let rawUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         if (!Array.isArray(rawUsers) || rawUsers.length === 0) return;
-        let users = deduplicateUserList(rawUsers, wh);
 
-        let hasChanges = false;
-        const usedNiks = new Set();
-        const prefix = `${wh.toUpperCase()}${new Date().getFullYear().toString().slice(-2)}-`;
+        const year = new Date().getFullYear().toString().slice(-2);
+        const prefix = `${wh.toUpperCase()}${year}-`;
 
-        // 1. Admin selalu memegang NIK resmi
-        users.forEach(u => {
-          if (u.role === 'admin') {
-            const adminNik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
-            if (u.nik !== adminNik) {
-              u.nik = adminNik;
-              hasChanges = true;
-            }
-            usedNiks.add(adminNik.toUpperCase());
+        // 1. Ambil Admin & Dedicated Scanner
+        const admin = rawUsers.find(u => u.role === 'admin') || (wh === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
+        admin.nik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
+        admin.dept = 'Administrator';
+        admin.role = 'admin';
+        admin.hasAccount = true;
+        admin.barcodeValue = admin.nik;
+
+        let scanner = rawUsers.find(u => u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) || (wh === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
+        scanner.nik = `ABSEN-${wh}`;
+        scanner.dept = 'presensi';
+        scanner.name = 'Scanner Presensi Gudang';
+        scanner.role = 'scanner';
+        scanner.hasAccount = true;
+        scanner.barcodeValue = scanner.nik;
+
+        // 2. Kumpulkan seluruh karyawan reguler (bukan admin & bukan scanner)
+        const seenNames = new Set([cleanStr(admin.name), cleanStr(scanner.name)]);
+        const regularEmployees = [];
+
+        rawUsers.forEach(u => {
+          if (!u || isManagementSystemAccount(u) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
+          const normName = cleanStr(u.name);
+          if (!normName || seenNames.has(normName)) return;
+          seenNames.add(normName);
+
+          const uRole = (u.role || 'staff').toLowerCase().trim();
+          const uDept = (u.dept || '').toLowerCase().trim();
+
+          const isSpv = uRole.includes('supervisor') || uRole === 'spv' || uDept.includes('supervisor') || uDept === 'spv';
+          const isCoord = uRole.includes('coordinator') || uRole.includes('koordinator') || uRole.includes('cordinator') || uDept.includes('coordinator') || uDept.includes('koordinator') || uDept.includes('cordinator');
+
+          if (isSpv) {
+            u.dept = 'Supervisor';
+            u.role = 'supervisor';
+            u.hasAccount = true;
+            if (!u.password) u.password = 'medika123';
+          } else if (isCoord) {
+            u.dept = 'Coordinator';
+            u.role = 'coordinator';
+            u.hasAccount = true;
+            if (!u.password) u.password = 'medika123';
+          } else {
+            u.dept = 'Warehouse Staff';
+            u.role = 'staff';
+            u.hasAccount = false;
+            u.password = '';
           }
+
+          if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
+            u.joinDate = formatExcelDate(u.joinDate);
+          }
+
+          regularEmployees.push(u);
         });
 
-        // 2. Karyawan yang sudah punya NIK valid, catat dan pertahankan NIK-nya
-        users.forEach(u => {
-          if (u.role === 'admin' || !u.nik) return;
-          const cleanNik = u.nik.trim().toUpperCase();
-          if (usedNiks.has(cleanNik)) {
-            // Jika ada duplikasi NIK persis sama dengan orang lain, beri NIK bebas baru
-            let newSeq = 1;
-            while (usedNiks.has(`${prefix}${String(newSeq).padStart(3, '0')}`)) {
-              newSeq++;
-            }
-            u.nik = `${prefix}${String(newSeq).padStart(3, '0')}`;
-            hasChanges = true;
-          }
-          usedNiks.add(u.nik.toUpperCase());
+        // 3. URUTKAN KARYAWAN BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR
+        regularEmployees.sort((a, b) => {
+          const dateA = a.joinDate || '9999-99-99';
+          const dateB = b.joinDate || '9999-99-99';
+          const cmp = dateA.localeCompare(dateB);
+          if (cmp !== 0) return cmp;
+          return (a.name || '').localeCompare(b.name || '');
         });
 
-        // 3. Karyawan tanpa NIK sama sekali, berikan NIK
-        let seq = 1;
-        users.forEach(u => {
-          if (u.role === 'admin') return;
-          if (!u.nik) {
-            while (usedNiks.has(`${prefix}${String(seq).padStart(3, '0')}`)) {
-              seq++;
-            }
-            u.nik = `${prefix}${String(seq).padStart(3, '0')}`;
-            usedNiks.add(u.nik.toUpperCase());
-            hasChanges = true;
+        // 4. PEMBENTUKAN ID KARYAWAN (NIK) BERURUTAN SESUAI URUTAN JOIN DATE (001, 002, ...)
+        const nikMap = {}; // oldNik -> newNik
+        regularEmployees.forEach((u, idx) => {
+          const oldNik = u.nik;
+          const newNik = `${prefix}${String(idx + 1).padStart(3, '0')}`;
+          if (oldNik && oldNik !== newNik) {
+            nikMap[oldNik.toUpperCase()] = newNik;
           }
-          u.barcodeValue = u.nik;
+          u.nik = newNik;
+          u.barcodeValue = newNik;
         });
 
-        if (hasChanges) {
-          const storageKey = `wfm_${wh.toLowerCase()}_users`;
-          localStorage.setItem(storageKey, JSON.stringify(users));
+        const updatedUsersList = [admin, scanner, ...regularEmployees];
+        const storageKey = `wfm_${wh.toLowerCase()}_users`;
+        localStorage.setItem(storageKey, JSON.stringify(updatedUsersList));
 
-          // Sinkronkan seluruh riwayat absensi Masuk & Pulang seketika
-          let att = getWhDB(wh, 'attendance', []);
-          let attChanged = false;
-          att.forEach(a => {
-            let user = users.find(u => a.userName && cleanStr(u.name) === cleanStr(a.userName));
-            if (!user && a.userNik) {
-              user = users.find(u => u.nik === a.userNik);
+        // 5. Sinkronkan seluruh riwayat absensi Masuk & Pulang
+        let att = getWhDB(wh, 'attendance', []);
+        let attChanged = false;
+        att.forEach(a => {
+          let user = updatedUsersList.find(u => (a.userId && u.id === a.userId) || (a.userName && cleanStr(u.name) === cleanStr(a.userName)) || (a.userNik && u.nik === a.userNik) || (a.userNik && nikMap[a.userNik.toUpperCase()] === u.nik));
+          if (user) {
+            if (a.userNik !== user.nik || a.userName !== user.name || a.dept !== user.dept || a.userId !== user.id) {
+              a.userNik = user.nik;
+              a.userName = user.name;
+              a.dept = user.dept;
+              a.userId = user.id;
+              attChanged = true;
             }
-            if (!user && a.userId) {
-              user = users.find(u => u.id === a.userId);
-            }
-            if (user) {
-              if (a.userNik !== user.nik || a.userName !== user.name || a.userId !== user.id) {
-                a.userNik = user.nik;
-                a.userName = user.name;
-                a.userId = user.id;
-                a.dept = user.dept;
-                attChanged = true;
-              }
-            }
-          });
-          if (attChanged) setWhDB(wh, 'attendance', att);
+          }
+        });
+        if (attChanged) setWhDB(wh, 'attendance', att);
 
-          // Sinkronkan data lembur
-          let ots = getWhDB(wh, 'overtime', []);
-          let otsChanged = false;
-          ots.forEach(o => {
-            let user = users.find(u => o.userName && cleanStr(u.name) === cleanStr(o.userName));
-            if (!user && o.userNik) {
-              user = users.find(u => u.nik === o.userNik);
+        // 6. Sinkronkan data lembur
+        let ots = getWhDB(wh, 'overtime', []);
+        let otsChanged = false;
+        ots.forEach(o => {
+          let user = updatedUsersList.find(u => (o.userId && u.id === o.userId) || (o.userName && cleanStr(u.name) === cleanStr(o.userName)) || (o.userNik && u.nik === o.userNik) || (o.userNik && nikMap[o.userNik.toUpperCase()] === u.nik));
+          if (user) {
+            if (o.userNik !== user.nik || o.userName !== user.name || o.dept !== user.dept || o.userId !== user.id) {
+              o.userNik = user.nik;
+              o.userName = user.name;
+              o.dept = user.dept;
+              o.userId = user.id;
+              otsChanged = true;
             }
-            if (!user && o.userId) {
-              user = users.find(u => u.id === o.userId);
-            }
-            if (user) {
-              if (o.userNik !== user.nik || o.userName !== user.name || o.userId !== user.id || o.dept !== user.dept) {
-                o.userNik = user.nik;
-                o.userName = user.name;
-                o.userId = user.id;
-                o.dept = user.dept;
-                otsChanged = true;
-              }
-            }
-          });
-          if (otsChanged) setWhDB(wh, 'overtime', ots);
+          }
+        });
+        if (otsChanged) setWhDB(wh, 'overtime', ots);
 
-          // Sinkronkan pengajuan izin / cuti
-          let lvs = getWhDB(wh, 'leaves', []);
-          let lvsChanged = false;
-          lvs.forEach(l => {
-            let user = users.find(u => l.userName && cleanStr(u.name) === cleanStr(l.userName));
-            if (!user && l.userNik) {
-              user = users.find(u => u.nik === l.userNik);
+        // 7. Sinkronkan pengajuan izin / cuti
+        let lvs = getWhDB(wh, 'leaves', []);
+        let lvsChanged = false;
+        lvs.forEach(l => {
+          let user = updatedUsersList.find(u => (l.userName && cleanStr(u.name) === cleanStr(l.userName)) || (l.userNik && u.nik === l.userNik) || (l.userNik && nikMap[l.userNik.toUpperCase()] === u.nik));
+          if (user) {
+            if (l.userNik !== user.nik || l.userName !== user.name) {
+              l.userNik = user.nik;
+              l.userName = user.name;
+              lvsChanged = true;
             }
-            if (user) {
-              if (l.userNik !== user.nik || l.userName !== user.name) {
-                l.userNik = user.nik;
-                l.userName = user.name;
-                lvsChanged = true;
-              }
-            }
-          });
-          if (lvsChanged) setWhDB(wh, 'leaves', lvs);
-
-          saveFullDatabaseToCloud();
-        }
+          }
+        });
+        if (lvsChanged) setWhDB(wh, 'leaves', lvs);
       });
+
+      // Update sesi login jika currentUser adalah staf yang NIK-nya ikut diperbarui
+      if (currentUser && !isManagementSystemAccount(currentUser)) {
+        const currentWh = currentUser.warehouse || activeWarehouse;
+        const freshUsers = getWhDB(currentWh, 'users', []);
+        const freshUser = freshUsers.find(u => (currentUser.id && u.id === currentUser.id) || cleanStr(u.name) === cleanStr(currentUser.name));
+        if (freshUser) {
+          currentUser = { ...freshUser };
+          localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+          updateNavbarBrand(currentWh);
+          const navName = document.getElementById('nav-user-name');
+          if (navName) navName.innerText = currentUser.name;
+          const navDept = document.getElementById('nav-user-dept');
+          if (navDept) navDept.innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
+        }
+      }
+
+      saveFullDatabaseToCloud();
     }
 
     function deduplicateAndFixNIKs() {
@@ -7950,6 +8022,18 @@
       lucide.createIcons();
     }
 
+    function handleModalPositionChange(type, roleVal) {
+      if (roleVal === 'supervisor') {
+        syncDepartmentDropdownOptions(type, 'supervisor');
+      } else if (roleVal === 'coordinator') {
+        syncDepartmentDropdownOptions(type, 'coordinator');
+      } else {
+        syncDepartmentDropdownOptions(type, 'warehouse staff');
+      }
+      if (type === 'edit') updateEditEmployeeRoleNotice(roleVal);
+      else updateAddEmployeeRoleNotice(roleVal);
+    }
+
     function selectDeptItem(type, val, formattedName) {
       const inputEl = document.getElementById(type === 'edit' ? 'edit-emp-dept' : 'm-emp-dept');
       const labelEl = document.getElementById(type === 'edit' ? 'edit-dept-label' : 'add-dept-label');
@@ -7962,6 +8046,16 @@
       if (chevronEl) chevronEl.classList.remove('rotate-180');
 
       syncDepartmentDropdownOptions(type, val);
+
+      // Sinkronkan pilihan posisi di modal sesuai departemen
+      const posSelect = document.getElementById(type === 'edit' ? 'edit-emp-position' : 'm-emp-position');
+      if (posSelect) {
+        if (val === 'supervisor') posSelect.value = 'supervisor';
+        else if (val === 'coordinator') posSelect.value = 'coordinator';
+        else posSelect.value = 'staff';
+        if (type === 'edit') updateEditEmployeeRoleNotice(posSelect.value);
+        else updateAddEmployeeRoleNotice(posSelect.value);
+      }
     }
 
     function syncDepartmentDropdownOptions(typeOrId, targetDept = '') {
@@ -7970,62 +8064,32 @@
       const labelEl = document.getElementById(type === 'edit' ? 'edit-dept-label' : 'add-dept-label');
       const menuEl = document.getElementById(type === 'edit' ? 'edit-dept-menu' : 'add-dept-menu');
 
+      // Pilihan departemen fix hanya 3 opsi sesuai instruksi
       const baseDepts = [
-        "tenaga teknis kefarmasian",
-        "picker",
-        "packer",
-        "packing",
-        "inbound",
-        "checker 1",
-        "checker 2",
-        "cyclecount",
-        "return",
-        "driver",
-        "picking plan",
-        "adm. sales order",
-        "dispatch",
-        "staff office",
-        "supervisor",
-        "coordinator"
+        "warehouse staff",
+        "coordinator",
+        "supervisor"
       ];
 
-      try {
-        const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-        users.forEach(u => {
-          if (u.dept && !isManagementSystemAccount(u)) {
-            const d = u.dept.trim().toLowerCase();
-            if (d && !baseDepts.some(b => b.toLowerCase() === d || b.replace(/\./g, '') === d.replace(/\./g, ''))) {
-              baseDepts.push(d);
-            }
-          }
-        });
-      } catch (e) {}
-
-      if (targetDept) {
-        const t = targetDept.trim().toLowerCase();
-        if (t && !baseDepts.some(b => b.toLowerCase() === t || b.replace(/\./g, '') === t.replace(/\./g, ''))) {
-          baseDepts.push(t);
-        }
+      const rawVal = (targetDept || (inputEl ? inputEl.value : '') || 'warehouse staff').toString().trim().toLowerCase();
+      let activeVal = 'warehouse staff';
+      if (rawVal.includes('supervisor') || rawVal === 'spv') {
+        activeVal = 'supervisor';
+      } else if (rawVal.includes('coordinator') || rawVal.includes('koordinator') || rawVal.includes('cordinator')) {
+        activeVal = 'coordinator';
+      } else {
+        activeVal = 'warehouse staff';
       }
 
-      const activeVal = (targetDept || (inputEl ? inputEl.value : '') || 'picker').trim().toLowerCase();
-      const normActive = activeVal.replace(/\./g, '').replace(/\s+/g, ' ');
+      const activeFormatted = activeVal.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-      let activeFormatted = 'Picker';
-      const matched = baseDepts.find(d => d.toLowerCase() === activeVal || d.replace(/\./g, '').replace(/\s+/g, ' ') === normActive);
-      if (matched) {
-        activeFormatted = matched.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      } else if (activeVal) {
-        activeFormatted = activeVal.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      }
-
-      if (inputEl) inputEl.value = matched || activeVal;
+      if (inputEl) inputEl.value = activeVal;
       if (labelEl) labelEl.innerText = activeFormatted;
 
       if (menuEl) {
         menuEl.innerHTML = '';
         baseDepts.forEach(d => {
-          const isSelected = (d.toLowerCase() === activeVal || d.replace(/\./g, '').replace(/\s+/g, ' ') === normActive);
+          const isSelected = (d === activeVal);
           const formatted = d.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
           const item = document.createElement('div');
           item.className = `px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition flex items-center justify-between ${isSelected ? 'bg-slate-900 text-white font-bold active-dept-item' : 'hover:bg-slate-100 text-slate-700'}`;
@@ -8036,7 +8100,7 @@
           };
           menuEl.appendChild(item);
         });
-        lucide.createIcons();
+        if (window.lucide) lucide.createIcons();
       }
     }
 
@@ -8106,7 +8170,24 @@
       const nik = document.getElementById('edit-emp-nik').value.trim().toUpperCase();
       const role = document.getElementById('edit-emp-position').value;
       const deptInput = document.getElementById('edit-emp-dept');
-      const dept = ((deptInput ? deptInput.value : '') || document.getElementById('edit-dept-label')?.innerText || 'picker').trim().toLowerCase();
+      const rawDept = ((deptInput ? deptInput.value : '') || document.getElementById('edit-dept-label')?.innerText || 'warehouse staff').trim().toLowerCase();
+      
+      let finalDept = 'Warehouse Staff';
+      let finalRole = role;
+      if (role === 'supervisor' || rawDept.includes('supervisor') || rawDept === 'spv') {
+        finalDept = 'Supervisor';
+        finalRole = 'supervisor';
+      } else if (role === 'coordinator' || rawDept.includes('coordinator') || rawDept.includes('koordinator') || rawDept.includes('cordinator')) {
+        finalDept = 'Coordinator';
+        finalRole = 'coordinator';
+      } else if (role === 'admin') {
+        finalDept = 'Administrator';
+        finalRole = 'admin';
+      } else {
+        finalDept = 'Warehouse Staff';
+        finalRole = 'staff';
+      }
+
       const outsource = document.getElementById('edit-emp-outsource').value.trim();
       const phone = document.getElementById('edit-emp-phone').value.trim();
       const email = document.getElementById('edit-emp-email') ? document.getElementById('edit-emp-email').value.trim() : '';
@@ -8128,12 +8209,12 @@
         const oldName = users[idx].name;
         const oldDept = users[idx].dept;
 
-        const isManagementRole = (role === 'supervisor' || role === 'coordinator' || role === 'admin');
+        const isManagementRole = (finalRole === 'supervisor' || finalRole === 'coordinator' || finalRole === 'admin');
         users[idx].id = users[idx].id || id || `${activeWarehouse.toLowerCase()}-${Date.now()}`;
         users[idx].name = name;
         users[idx].nik = nik;
-        users[idx].role = role;
-        users[idx].dept = dept;
+        users[idx].role = finalRole;
+        users[idx].dept = finalDept;
         users[idx].outsource = outsource;
         users[idx].phone = phone;
         users[idx].email = email;
@@ -8423,7 +8504,7 @@
       document.getElementById('m-emp-joindate').value = new Date().toISOString().split('T')[0];
       document.getElementById('m-emp-nik').value = '';
       if (document.getElementById('m-emp-email')) document.getElementById('m-emp-email').value = '';
-      syncDepartmentDropdownOptions('add', 'picker');
+      syncDepartmentDropdownOptions('add', 'warehouse staff');
       document.getElementById('add-emp-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -8440,27 +8521,45 @@
       e.preventDefault();
       const name = document.getElementById('m-emp-name').value.trim();
       const customNik = document.getElementById('m-emp-nik').value.trim();
-      const dept = document.getElementById('m-emp-dept').value;
+      const rawDept = (document.getElementById('m-emp-dept').value || document.getElementById('add-dept-label')?.innerText || 'warehouse staff').toLowerCase();
       const outsource = document.getElementById('m-emp-outsource').value.trim();
       const phone = document.getElementById('m-emp-phone').value.trim();
       const email = document.getElementById('m-emp-email') ? document.getElementById('m-emp-email').value.trim() : '';
       const joinDate = document.getElementById('m-emp-joindate').value;
       const role = document.getElementById('m-emp-position').value;
       
+      let finalDept = 'Warehouse Staff';
+      let finalRole = role;
+      let isManagementRole = false;
+
+      if (role === 'supervisor' || rawDept.includes('supervisor') || rawDept === 'spv') {
+        finalDept = 'Supervisor';
+        finalRole = 'supervisor';
+        isManagementRole = true;
+      } else if (role === 'coordinator' || rawDept.includes('coordinator') || rawDept.includes('koordinator') || rawDept.includes('cordinator')) {
+        finalDept = 'Coordinator';
+        finalRole = 'coordinator';
+        isManagementRole = true;
+      } else {
+        finalDept = 'Warehouse Staff';
+        finalRole = 'staff';
+        isManagementRole = false;
+      }
+
       const autoNik = customNik ? customNik.toUpperCase() : generateUniqueNIK(activeWarehouse, name);
-      const isManagementRole = (role === 'supervisor' || role === 'coordinator');
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const newEmp = { 
         id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, 
         name, 
-        dept, 
+        dept: finalDept, 
         outsource, 
         phone, 
         email, 
         joinDate, 
         nik: autoNik, 
-        role, 
+        barcodeValue: autoNik,
+        role: finalRole, 
         password: isManagementRole ? 'medika123' : '', 
         isFirstLogin: isManagementRole, 
         hasAccount: isManagementRole,
@@ -8469,19 +8568,24 @@
       
       users.push(newEmp);
       setWhDB(activeWarehouse, 'users', users);
-      saveFullDatabaseToCloud();
+      harmonizeAndResequenceAllNIKs();
+
+      // Cari NIK aktual karyawan setelah harmonisasi resequencing berdasarkan join date
+      const updatedUsers = getWhDB(activeWarehouse, 'users', []);
+      const matchedUser = updatedUsers.find(u => u.name === name) || newEmp;
+      const finalEffectiveNik = matchedUser.nik;
 
       closeAddEmployeeModal();
       renderEmployeeTable();
-      populateDropdownEmployees(autoNik);
-      renderSelectedIDCard(autoNik);
+      populateDropdownEmployees(finalEffectiveNik);
+      renderSelectedIDCard(finalEffectiveNik);
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
       
       if (isManagementRole) {
-        alert(`✅ Karyawan ${name} (${autoNik}) berhasil ditambahkan dengan jabatan ${role.toUpperCase()}!\nAkun login sistem telah dibuat otomatis (Password: medika123).`);
+        alert(`✅ Karyawan ${name} (${finalEffectiveNik}) berhasil ditambahkan dengan jabatan ${finalRole.toUpperCase()}!\nAkun login sistem telah dibuat otomatis (Password: medika123).`);
       } else {
-        alert(`✅ Data karyawan ${name} (${autoNik}) berhasil ditambahkan!\nKartu ID Card & Barcode siap digunakan untuk absensi.`);
+        alert(`✅ Data karyawan ${name} (${finalEffectiveNik}) berhasil ditambahkan dengan Departemen WAREHOUSE STAFF!\nKartu ID Card & Barcode siap digunakan untuk absensi.`);
       }
     }
 
@@ -8543,8 +8647,10 @@
 
     function downloadEmployeeTemplate() {
       const templateData = [
-        { "No": 1, "Nama Karyawan": "Afuani Huyan", "Departemen": "inbound", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
-        { "No": 2, "Nama Karyawan": "Budi Santoso", "Departemen": "packer", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "budi@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" }
+        { "No": 1, "Nama Karyawan": "Afuani Huyan", "Departemen": "Warehouse Staff", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
+        { "No": 2, "Nama Karyawan": "Budi Santoso", "Departemen": "Warehouse Staff", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "budi@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
+        { "No": 3, "Nama Karyawan": "Citra Lestari", "Departemen": "Coordinator", "Outsource": "Internal", "No Telpon": "08129876544", "Email": "citra@medika.com", "JOIN DATE": "2022-06-10", "Posisi": "coordinator" },
+        { "No": 4, "Nama Karyawan": "Dedi Kurniawan", "Departemen": "Supervisor", "Outsource": "Internal", "No Telpon": "08129876545", "Email": "dedi@medika.com", "JOIN DATE": "2021-03-05", "Posisi": "supervisor" }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -8695,21 +8801,47 @@
           }
 
           let countAdded = 0;
-          const seenNames = new Set(users.map(u => cleanStr(u.name)));
+          const parsedRows = [];
+          const seenNamesInExcel = new Set();
 
-          rows.forEach((r, idx) => {
+          rows.forEach((r) => {
             const name = getExcelVal(r, ['nama', 'name', 'karyawan', 'pegawai'], '').trim();
             if (!name) return; // Lewati jika baris tanpa nama
             
             const cleanName = cleanStr(name);
-            if (replaceMode && seenNames.has(cleanName)) return; // Cegah dobel nama di file Excel itu sendiri
+            if (seenNamesInExcel.has(cleanName)) return; // Cegah dobel nama di file Excel itu sendiri
+            seenNamesInExcel.add(cleanName);
 
-            const dept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], 'packer', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
+            const rawDept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], '', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
+            const rawRole = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
+
+            // Pilihan departemen diperkecil hanya 3: Warehouse Staff, Coordinator, Supervisor
+            let finalDept = 'Warehouse Staff';
+            let finalRole = 'staff';
+            let hasAccount = false;
+
+            const isSpv = rawDept.includes('supervisor') || rawDept === 'spv' || rawRole.includes('supervisor') || rawRole === 'spv';
+            const isCoord = rawDept.includes('coordinator') || rawDept.includes('koordinator') || rawDept.includes('cordinator') || rawRole.includes('coordinator') || rawRole.includes('koordinator') || rawRole.includes('cordinator');
+
+            if (isSpv) {
+              finalDept = 'Supervisor';
+              finalRole = 'supervisor';
+              hasAccount = true;
+            } else if (isCoord) {
+              finalDept = 'Coordinator';
+              finalRole = 'coordinator';
+              hasAccount = true;
+            } else {
+              finalDept = 'Warehouse Staff';
+              finalRole = 'staff';
+              hasAccount = false;
+            }
+
             let rawOutsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi', 'pt', 'cv'], 'Internal', ['nama', 'telp', 'phone', 'nik', 'dept', 'email']);
             const outsource = (rawOutsource === name) ? 'Internal' : rawOutsource;
             
             const rawPhone = getExcelVal(r, ['no telp', 'no hp', 'nomor hp', 'nomor telp', 'no telepon', 'telepon', 'phone', 'mobile', 'whatsapp', 'wa', 'telp', 'kontak'], '-', ['nama', 'name', 'dept', 'departemen', 'outsource', 'vendor', 'nik', 'join', 'tgl', 'email']);
-            const phone = cleanExcelPhone(rawPhone, name, dept);
+            const phone = cleanExcelPhone(rawPhone, name, finalDept);
 
             const rawEmail = getExcelVal(r, ['email', 'surel', 'e-mail', 'alamat email', 'mail'], '', ['nama', 'telp', 'phone', 'nik', 'dept', 'outsource']).trim();
             const email = rawEmail;
@@ -8717,42 +8849,75 @@
             const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], new Date().toISOString().split('T')[0], ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept', 'email']);
             const joinDate = formatExcelDate(rawJoin);
 
-            // Kolom NIK
-            let rawNik = getExcelVal(r, ['nik karyawan', 'id karyawan', 'nik', 'kode karyawan'], '', ['telp', 'phone', 'hp', 'wa', 'kontak', 'urut', 'no.', 'no ', 'email']);
-            if (rawNik) {
-              const cleanDigits = rawNik.replace(/\D/g, '');
-              if (rawNik.startsWith('08') || rawNik.startsWith('62') || cleanDigits.length >= 8 || /^\d{1,4}$/.test(rawNik.trim())) {
-                rawNik = '';
-              }
-            }
-
-            let finalNik = rawNik ? rawNik.toUpperCase() : '';
-            if (!finalNik || users.some(u => (u.nik || '').toUpperCase() === finalNik)) {
-              finalNik = generateUniqueNIK(targetWh, name, users);
-            }
-
-            const rawRole = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
-            const isSpvOrCoord = rawRole === 'supervisor' || rawRole === 'coordinator';
-            const normalizedRole = isSpvOrCoord ? rawRole : 'staff';
-
-            users.push({
-              id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+            parsedRows.push({
               name,
-              dept,
+              dept: finalDept,
+              role: finalRole,
+              hasAccount,
+              password: hasAccount ? 'medika123' : '',
+              isFirstLogin: hasAccount,
               outsource,
               phone,
               email,
-              joinDate,
-              nik: finalNik,
-              role: normalizedRole,
-              hasAccount: isSpvOrCoord,
-              password: isSpvOrCoord ? 'medika123' : '',
-              isFirstLogin: isSpvOrCoord,
-              warehouse: targetWh
+              joinDate
             });
-            seenNames.add(cleanName);
-            countAdded++;
           });
+
+          // URUTKAN SELURUH DATA EXCEL BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR (EARLIEST TO NEWEST)
+          parsedRows.sort((a, b) => {
+            const dateA = a.joinDate || '9999-99-99';
+            const dateB = b.joinDate || '9999-99-99';
+            const cmp = dateA.localeCompare(dateB);
+            if (cmp !== 0) return cmp;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+
+          const year = new Date().getFullYear().toString().slice(-2);
+          const prefix = `${targetWh.toUpperCase()}${year}-`;
+
+          if (replaceMode) {
+            users = managementAccounts.length > 0 ? [...managementAccounts] : (targetWh === 'MBI' ? [...SEED_MBI_USERS] : [...SEED_MAI_USERS]);
+            parsedRows.forEach((item, idx) => {
+              const seqNik = `${prefix}${String(idx + 1).padStart(3, '0')}`;
+              users.push({
+                id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+                name: item.name,
+                dept: item.dept,
+                outsource: item.outsource,
+                phone: item.phone,
+                email: item.email,
+                joinDate: item.joinDate,
+                nik: seqNik,
+                barcodeValue: seqNik,
+                role: item.role,
+                hasAccount: item.hasAccount,
+                password: item.password,
+                isFirstLogin: item.isFirstLogin,
+                warehouse: targetWh
+              });
+              countAdded++;
+            });
+          } else {
+            parsedRows.forEach((item, idx) => {
+              if (users.some(u => cleanStr(u.name) === cleanStr(item.name))) return;
+              users.push({
+                id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+                name: item.name,
+                dept: item.dept,
+                outsource: item.outsource,
+                phone: item.phone,
+                email: item.email,
+                joinDate: item.joinDate,
+                nik: '',
+                role: item.role,
+                hasAccount: item.hasAccount,
+                password: item.password,
+                isFirstLogin: item.isFirstLogin,
+                warehouse: targetWh
+              });
+              countAdded++;
+            });
+          }
 
           const finalCleanUsers = deduplicateUserList(users, targetWh);
           setWhDB(targetWh, 'users', finalCleanUsers);
@@ -8763,7 +8928,7 @@
           renderOvertimeEmployeeGrid();
           refreshAllDashboardData();
           
-          alert(`✅ BERHASIL IMPORT DATA KARYAWAN!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Total Karyawan Gudang ${targetWh}: ${finalCleanUsers.filter(u => !isManagementSystemAccount(u)).length} orang\n• Barcode ID Card: 100% Siap Digunakan untuk Presensi\n• Sistem Pengelolaan: Terpusat pada Akun Admin & Akun Scan`);
+          alert(`✅ BERHASIL IMPORT DATA KARYAWAN DARI EXCEL!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Total Karyawan Aktif: ${finalCleanUsers.filter(u => !isManagementSystemAccount(u)).length} orang\n• NIK & Barcode: 100% Terurut Berdasarkan Join Date Pertama hingga Terakhir (${prefix}001, ${prefix}002, ...)\n• Departemen: Disederhanakan Menjadi Warehouse Staff / Coordinator / Supervisor\n• ID Card & Barcode: Siap Digunakan untuk Presensi`);
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
