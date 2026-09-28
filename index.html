@@ -1695,6 +1695,9 @@
                 <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="h-9 px-3.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
                   <!-- Rendered by JS -->
                 </select>
+                <button type="button" onclick="openEditEmployeeModalFromIDCard()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Edit Departemen / Data Karyawan yang sedang dipilih">
+                  Edit Karyawan
+                </button>
                 <button onclick="downloadIDCardImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download gambar PNG kartu ID">
                   Download ID Card (PNG)
                 </button>
@@ -2182,6 +2185,7 @@
       <form onsubmit="handleSaveEditEmployee(event)" class="space-y-3">
         <input type="hidden" id="edit-emp-id">
         <input type="hidden" id="edit-emp-wh">
+        <input type="hidden" id="edit-emp-old-nik">
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
@@ -3317,6 +3321,7 @@
           renderOvertimeTable();
         } else if (activeViewId === 'view-idcard') {
           populateDropdownEmployees();
+          renderSelectedIDCard();
         }
 
         if (!currentUser) {
@@ -6730,23 +6735,36 @@
       }
     }
 
-    function populateDropdownEmployees() {
+    function populateDropdownEmployees(targetNik = null) {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       
       const idSelect = document.getElementById('idcard-select-emp');
+      const prevSelected = (targetNik || (idSelect ? idSelect.value : '') || '').trim().toUpperCase();
+
       if (idSelect) {
         idSelect.innerHTML = '';
         regularUsers.forEach(u => {
           const opt = document.createElement('option');
           opt.value = u.nik;
-          opt.innerText = `${u.name} (${u.nik})`;
-          if (currentUser && u.nik === currentUser.nik) opt.selected = true;
+          const uDept = (u.dept || 'STAFF').trim().toUpperCase();
+          opt.innerText = `${u.name} (${u.nik}) - ${uDept}`;
+          if (prevSelected && (u.nik || '').toUpperCase() === prevSelected) {
+            opt.selected = true;
+          } else if (!prevSelected && currentUser && (u.nik || '').toUpperCase() === (currentUser.nik || '').toUpperCase()) {
+            opt.selected = true;
+          }
           idSelect.appendChild(opt);
         });
+
+        // Pastikan ada yang terpilih jika belum
+        if (!idSelect.value && regularUsers.length > 0) {
+          idSelect.value = regularUsers[0].nik;
+        }
       }
 
       filterLeaveEmployeeDropdown(document.getElementById('leave-emp-search-input')?.value || '');
+      renderSelectedIDCard(idSelect ? idSelect.value : null);
     }
 
     function filterLeaveEmployeeDropdown(query = '') {
@@ -6771,7 +6789,8 @@
       filtered.forEach(u => {
         const opt = document.createElement('option');
         opt.value = u.nik;
-        opt.innerText = `${u.name} (${u.nik}) - ${u.dept}`;
+        const uDept = (u.dept || 'STAFF').trim().toUpperCase();
+        opt.innerText = `${u.name} (${u.nik}) - ${uDept}`;
         if (currentVal && u.nik === currentVal) {
           opt.selected = true;
         } else if (!currentVal && currentUser && u.nik === currentUser.nik) {
@@ -6781,11 +6800,20 @@
       });
     }
 
-    function renderSelectedIDCard() {
+    function renderSelectedIDCard(targetNik = null) {
       const select = document.getElementById('idcard-select-emp');
-      const nik = select ? select.value : (currentUser ? currentUser.nik : '');
+      if (targetNik && select) {
+        select.value = targetNik;
+      }
+      const rawNik = (select ? select.value : '') || targetNik || (currentUser ? currentUser.nik : '');
+      const cleanNik = (rawNik || '').trim().toUpperCase();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const user = users.find(u => u.nik === nik) || currentUser;
+      let user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
+      if (!user) {
+        const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+        user = regularUsers[0] || currentUser;
+        if (user && select && !select.value) select.value = user.nik;
+      }
       if (user) renderIDCard(user);
     }
 
@@ -6828,17 +6856,29 @@
 
     function renderIDCard(user) {
       if (!user) return;
-      document.getElementById('idcard-name').innerText = user.name;
-      document.getElementById('idcard-dept').innerText = `${user.dept.toUpperCase()}`;
-      document.getElementById('idcard-nik').innerText = user.nik;
-      document.getElementById('idcard-wh-badge').innerText = user.warehouse || activeWarehouse;
+      const deptText = (user.dept || 'STAFF').trim().toUpperCase();
+      const nameText = user.name || 'NAMA KARYAWAN';
+      const nikText = user.nik || '-';
+      const whText = user.warehouse || activeWarehouse || 'MBI';
+
+      const nameEl = document.getElementById('idcard-name');
+      if (nameEl) nameEl.innerText = nameText;
+
+      const deptEl = document.getElementById('idcard-dept');
+      if (deptEl) deptEl.innerText = deptText;
+
+      const nikEl = document.getElementById('idcard-nik');
+      if (nikEl) nikEl.innerText = nikText;
+
+      const whBadgeEl = document.getElementById('idcard-wh-badge');
+      if (whBadgeEl) whBadgeEl.innerText = whText;
 
       const avatarInitial = document.getElementById('idcard-avatar-initial');
       if (avatarInitial) {
         avatarInitial.innerText = (user.name || 'U').charAt(0).toUpperCase();
       }
 
-      const isMBI = (user.warehouse || activeWarehouse) === 'MBI';
+      const isMBI = whText === 'MBI';
       const headerEl = document.getElementById('idcard-header');
       if (headerEl) {
         headerEl.style.backgroundColor = isMBI ? '#0369a1' : '#7c3aed';
@@ -6862,18 +6902,19 @@
       }
 
       const img = document.getElementById('img-qrcode-emp');
-      if (img) {
+      if (img && user.nik) {
         img.src = getQrCodeUrl(user.nik);
       }
     }
 
     function renderIDCardAndShow(nik) {
+      switchView('idcard');
+      populateDropdownEmployees(nik);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const targetUser = users.find(u => u.nik === nik);
+      const targetUser = users.find(u => (u.nik || '').trim().toUpperCase() === (nik || '').trim().toUpperCase());
       if (targetUser) {
-        switchView('idcard');
         const select = document.getElementById('idcard-select-emp');
-        if (select) select.value = nik;
+        if (select) select.value = targetUser.nik;
         renderIDCard(targetUser);
       }
     }
@@ -7446,8 +7487,9 @@
 
     async function downloadIDCardImage() {
       const select = document.getElementById('idcard-select-emp');
+      const cleanNik = (select?.value || '').trim().toUpperCase();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const user = users.find(u => u.nik === (select ? select.value : '')) || currentUser;
+      const user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik) || currentUser;
       if (!user) return;
       const filename = `ID_Card_${user.nik}_${user.name.replace(/\s+/g, '_')}.png`;
 
@@ -7513,7 +7555,7 @@
                 </div>
                 <div style="margin-top: 0.4mm;">
                   <span style="font-size: 5.5pt; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border-radius: 1mm; padding: 0.4mm 1.8mm; text-transform: uppercase; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                    ${user.dept || 'STAFF'}
+                    ${(user.dept || 'STAFF').trim().toUpperCase()}
                   </span>
                 </div>
                 <div style="margin-top: 0.6mm;">
@@ -7566,7 +7608,7 @@
               
               <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
                 <span style="font-size: 10.5px; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 10px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block;">
-                  ${user.dept || 'STAFF'}
+                  ${(user.dept || 'STAFF').trim().toUpperCase()}
                 </span>
                 <span style="font-size: 11.5px; font-family: monospace; font-weight: 800; color: #334155; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 2px 10px; line-height: 1.2; display: inline-block;">
                   ${user.nik}
@@ -7706,8 +7748,9 @@
     }
 
     async function downloadSingleUserCardPNG(nik) {
+      const cleanNik = (nik || '').trim().toUpperCase();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const user = users.find(u => u.nik === nik);
+      const user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
       if (!user) return;
 
       try {
@@ -7998,11 +8041,17 @@
     }
 
     function openEditEmployeeModal(nik) {
+      const cleanNik = (nik || '').trim().toUpperCase();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const user = users.find(u => u.nik === nik);
+      const user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
       if (!user) return;
 
-      document.getElementById('edit-emp-id').value = user.id;
+      if (!user.id) {
+        user.id = `${(user.warehouse || activeWarehouse).toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      }
+      document.getElementById('edit-emp-id').value = user.id || '';
+      const oldNikInput = document.getElementById('edit-emp-old-nik');
+      if (oldNikInput) oldNikInput.value = user.nik || '';
       document.getElementById('edit-emp-wh').value = user.warehouse || activeWarehouse;
       document.getElementById('edit-emp-name').value = user.name || '';
       document.getElementById('edit-emp-nik').value = user.nik || '';
@@ -8018,6 +8067,16 @@
 
       document.getElementById('edit-emp-modal').classList.remove('hidden');
       lucide.createIcons();
+    }
+
+    function openEditEmployeeModalFromIDCard() {
+      const select = document.getElementById('idcard-select-emp');
+      const nik = select ? select.value : '';
+      if (!nik) {
+        alert('Silakan pilih karyawan terlebih dahulu.');
+        return;
+      }
+      openEditEmployeeModal(nik);
     }
 
     function closeEditEmployeeModal() {
@@ -8042,10 +8101,12 @@
     function handleSaveEditEmployee(e) {
       e.preventDefault();
       const id = document.getElementById('edit-emp-id').value;
+      const oldNikVal = (document.getElementById('edit-emp-old-nik')?.value || '').trim().toUpperCase();
       const name = document.getElementById('edit-emp-name').value.trim();
       const nik = document.getElementById('edit-emp-nik').value.trim().toUpperCase();
       const role = document.getElementById('edit-emp-position').value;
-      const dept = document.getElementById('edit-emp-dept').value;
+      const deptInput = document.getElementById('edit-emp-dept');
+      const dept = ((deptInput ? deptInput.value : '') || document.getElementById('edit-dept-label')?.innerText || 'picker').trim().toLowerCase();
       const outsource = document.getElementById('edit-emp-outsource').value.trim();
       const phone = document.getElementById('edit-emp-phone').value.trim();
       const email = document.getElementById('edit-emp-email') ? document.getElementById('edit-emp-email').value.trim() : '';
@@ -8053,7 +8114,7 @@
       const customPass = document.getElementById('edit-emp-pass').value.trim();
 
       let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const idx = users.findIndex(u => u.id === id);
+      let idx = users.findIndex(u => (id && u.id === id) || (oldNikVal && (u.nik || '').toUpperCase() === oldNikVal) || (nik && (u.nik || '').toUpperCase() === nik));
 
       if (idx !== -1) {
         // Cek apakah NIK baru sudah dipakai karyawan lain di gudang ini
@@ -8063,10 +8124,12 @@
           return;
         }
 
-        const oldNik = users[idx].nik;
+        const oldNik = users[idx].nik || oldNikVal;
         const oldName = users[idx].name;
+        const oldDept = users[idx].dept;
 
         const isManagementRole = (role === 'supervisor' || role === 'coordinator' || role === 'admin');
+        users[idx].id = users[idx].id || id || `${activeWarehouse.toLowerCase()}-${Date.now()}`;
         users[idx].name = name;
         users[idx].nik = nik;
         users[idx].role = role;
@@ -8093,35 +8156,42 @@
         setWhDB(activeWarehouse, 'users', users);
         saveFullDatabaseToCloud();
 
-        // Update riwayat absensi & lembur jika NIK atau Nama berubah
-        if (oldNik !== nik || oldName !== name) {
+        // Update riwayat absensi, cuti & lembur jika NIK, Nama, atau Departemen berubah
+        if (oldNik !== nik || oldName !== name || oldDept !== dept) {
           let att = getWhDB(activeWarehouse, 'attendance', []);
+          let attChanged = false;
           att.forEach(a => {
-            if (a.userNik === oldNik || a.userId === id) {
+            if (a.userNik === oldNik || a.userNik === nik || (id && a.userId === id)) {
               a.userNik = nik;
               a.userName = name;
+              a.dept = dept;
+              attChanged = true;
             }
           });
-          setWhDB(activeWarehouse, 'attendance', att);
+          if (attChanged) setWhDB(activeWarehouse, 'attendance', att);
 
           let lvs = getWhDB(activeWarehouse, 'leaves', []);
+          let lvsChanged = false;
           lvs.forEach(l => {
-            if (l.userNik === oldNik) {
+            if (l.userNik === oldNik || l.userNik === nik) {
               l.userNik = nik;
               l.userName = name;
+              lvsChanged = true;
             }
           });
-          setWhDB(activeWarehouse, 'leaves', lvs);
+          if (lvsChanged) setWhDB(activeWarehouse, 'leaves', lvs);
 
           let ots = getWhDB(activeWarehouse, 'overtime', []);
+          let otsChanged = false;
           ots.forEach(o => {
-            if (o.userNik === oldNik || o.userId === id) {
+            if (o.userNik === oldNik || o.userNik === nik || (id && o.userId === id)) {
               o.userNik = nik;
               o.userName = name;
               o.dept = dept;
+              otsChanged = true;
             }
           });
-          setWhDB(activeWarehouse, 'overtime', ots);
+          if (otsChanged) setWhDB(activeWarehouse, 'overtime', ots);
         }
 
         // Jika user yang diedit adalah akun yang sedang aktif/login (atau super admin yang mengedit profil admin), update sesi dan navbar seketika!
@@ -8156,11 +8226,12 @@
 
         closeEditEmployeeModal();
         renderEmployeeTable();
-        populateDropdownEmployees();
+        populateDropdownEmployees(nik);
+        renderSelectedIDCard(nik);
         renderOvertimeEmployeeGrid();
         refreshAllDashboardData();
         renderAccountLookupList();
-        alert(`Data karyawan ${name} (${nik}) berhasil diperbarui!`);
+        alert(`✅ Perubahan Data Berhasil Disimpan!\n\n• Nama: ${name}\n• NIK: ${nik}\n• Departemen (Bagian): ${dept.toUpperCase()}\n\nKartu ID Card Karyawan telah otomatis diperbarui.`);
       }
     }
 
@@ -8402,7 +8473,8 @@
 
       closeAddEmployeeModal();
       renderEmployeeTable();
-      populateDropdownEmployees();
+      populateDropdownEmployees(autoNik);
+      renderSelectedIDCard(autoNik);
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
       
