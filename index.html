@@ -3078,12 +3078,13 @@
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${warehouse.toUpperCase()}${year}-`;
 
-      const usedNiks = new Set();
+      const assignedNiks = new Set([admin.nik.toUpperCase()]);
+      if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
+
       let maxNum = 0;
       regularEmployees.forEach(u => {
         if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
           const cleanU = u.nik.trim().toUpperCase();
-          usedNiks.add(cleanU);
           if (cleanU.startsWith(prefix)) {
             const numPart = parseInt(cleanU.replace(prefix, ''), 10);
             if (!isNaN(numPart) && numPart > maxNum) {
@@ -3094,14 +3095,21 @@
       });
 
       regularEmployees.forEach((u) => {
-        if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
-          // Karyawan sudah punya NIK: KUNCI PERMANEN, JANGAN PERNAH DIGANTI
-          u.barcodeValue = u.nik;
+        const rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
+        if (rawNik && !assignedNiks.has(rawNik)) {
+          // Karyawan sudah punya NIK & unik: KUNCI PERMANEN, JANGAN PERNAH DIGANTI
+          assignedNiks.add(rawNik);
+          u.nik = rawNik;
+          u.barcodeValue = rawNik;
         } else {
-          // Karyawan baru yang belum punya NIK: berikan nomor urut berikutnya (maxNum + 1)
+          // Karyawan baru yang belum punya NIK ATAU NIK duplikat: berikan nomor urut unik baru
           maxNum++;
-          const newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
-          usedNiks.add(newNik);
+          let newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
+          while (assignedNiks.has(newNik)) {
+            maxNum++;
+            newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
+          }
+          assignedNiks.add(newNik);
           u.nik = newNik;
           u.barcodeValue = newNik;
         }
@@ -3266,18 +3274,27 @@
     }
 
     // 4. SMART MERGE MASTER KARYAWAN (Bebas Zombie Data & Tidak Mengembalikan Karyawan Terhapus)
-    function mergeUserArrays(localList, cloudList, wh) {
+    function mergeUserArrays(localList, cloudList, wh, cloudUpdatedAt = '') {
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-      const isRecentLocalChange = (Date.now() - lastMasterChange < 300000); // 5 menit proteksi master lokal
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 600000); // 10 menit proteksi master lokal
+      const localMasterUpdatedAt = localStorage.getItem('wfm_master_updated_at') || '';
 
-      // Jika baru saja ada perubahan master lokal (upload excel, tambah, edit, hapus),
+      // 1. Jika baru saja ada perubahan master lokal (upload excel, tambah, edit, hapus),
       // data lokal adalah 100% otoritatif dan Cloud DILARANG menambahkan data lama.
       if (isRecentLocalChange && Array.isArray(localList) && localList.length > 0) {
         return deduplicateUserList(localList, wh);
       }
 
-      // Adopsi data Cloud secara utuh tanpa union gabung-gabungan agar data terhapus tidak hidup lagi
+      // 2. Proteksi Timestamp: Jika timestamp lokal lebih baru atau sama dengan cloud, data lokal tetap dipertahankan
+      if (localMasterUpdatedAt && cloudUpdatedAt && localMasterUpdatedAt >= cloudUpdatedAt && Array.isArray(localList) && localList.length > 0) {
+        return deduplicateUserList(localList, wh);
+      }
+
+      // 3. Adopsi data Cloud hanya jika Cloud memiliki timestamp yang lebih baru (update resmi dari admin lain)
       if (Array.isArray(cloudList) && cloudList.length > 0) {
+        if (localMasterUpdatedAt && cloudUpdatedAt && localMasterUpdatedAt > cloudUpdatedAt) {
+          return deduplicateUserList(localList || [], wh);
+        }
         return deduplicateUserList(cloudList, wh);
       }
 
@@ -3289,7 +3306,8 @@
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
 
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-      const isRecentLocalChange = (Date.now() - lastMasterChange < 300000);
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 600000);
+      const cloudUpdatedAt = db.updatedAt || '';
 
       const currMbiUsers = localStorage.getItem('wfm_mbi_users') || '';
       const currMaiUsers = localStorage.getItem('wfm_mai_users') || '';
@@ -3306,8 +3324,8 @@
         cleanMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
         cleanMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       } else {
-        cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), normalizeFirebaseArray(db.mbi_users), 'MBI');
-        cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), normalizeFirebaseArray(db.mai_users), 'MAI');
+        cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), normalizeFirebaseArray(db.mbi_users), 'MBI', cloudUpdatedAt);
+        cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), normalizeFirebaseArray(db.mai_users), 'MAI', cloudUpdatedAt);
       }
 
       cleanMbiUsers.forEach(u => {
@@ -3798,14 +3816,15 @@
           return (a.name || '').localeCompare(b.name || '');
         });
 
-        // 4. FIX & KUNCI ID KARYAWAN (NIK PERMANEN):
+        // 4. FIX & KUNCI ID KARYAWAN (NIK PERMANEN & ANTI-DOBEL):
         // NIK yang sudah ada TIDAK BOLEH BERUBAH ATAU DIGESER saat ada karyawan keluar/resign/dihapus!
-        const usedNiks = new Set();
+        const assignedNiks = new Set([admin.nik.toUpperCase()]);
+        if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
+
         let maxNum = 0;
         regularEmployees.forEach(u => {
           if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
             const cleanU = u.nik.trim().toUpperCase();
-            usedNiks.add(cleanU);
             if (cleanU.startsWith(prefix)) {
               const numPart = parseInt(cleanU.replace(prefix, ''), 10);
               if (!isNaN(numPart) && numPart > maxNum) {
@@ -3815,15 +3834,24 @@
           }
         });
 
-        const nikMap = {}; // oldNik -> newNik (hanya jika ada yang belum punya NIK)
+        const nikMap = {}; // oldNik -> newNik (jika ada perbaikan NIK duplikat/kosong)
         regularEmployees.forEach((u) => {
-          if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
-            // FIX: NIK SUDAH ADA 100% DIKUNCI PERMANEN
-            u.barcodeValue = u.nik;
+          const rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
+          if (rawNik && !assignedNiks.has(rawNik)) {
+            // FIX: NIK SUDAH ADA & UNIK -> 100% DIKUNCI PERMANEN
+            assignedNiks.add(rawNik);
+            u.nik = rawNik;
+            u.barcodeValue = rawNik;
           } else {
+            // NIK kosong ATAU duplikat dengan karyawan lain -> alokasikan nomor urut unik baru
             maxNum++;
-            const newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
-            usedNiks.add(newNik);
+            let newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
+            while (assignedNiks.has(newNik)) {
+              maxNum++;
+              newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
+            }
+            if (rawNik) nikMap[rawNik] = newNik;
+            assignedNiks.add(newNik);
             u.nik = newNik;
             u.barcodeValue = newNik;
           }
@@ -8651,6 +8679,7 @@
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${wh.toUpperCase()}${year}-`;
       const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const assignedNiks = new Set(users.map(u => (u.nik || '').trim().toUpperCase()));
       let maxNum = 0;
       users.forEach(u => {
         if (u && u.nik && typeof u.nik === 'string' && u.nik.toUpperCase().startsWith(prefix)) {
@@ -8660,7 +8689,13 @@
           }
         }
       });
-      return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
+      let nextNum = maxNum + 1;
+      let candidate = `${prefix}${String(nextNum).padStart(3, '0')}`;
+      while (assignedNiks.has(candidate)) {
+        nextNum++;
+        candidate = `${prefix}${String(nextNum).padStart(3, '0')}`;
+      }
+      return candidate;
     }
 
     async function handleManualAddEmployee(e) {
@@ -8690,6 +8725,15 @@
         finalDept = 'Warehouse Staff';
         finalRole = 'staff';
         isManagementRole = false;
+      }
+
+      if (customNik) {
+        const existingUsersList = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        const dupNikUser = existingUsersList.find(u => (u.nik || '').trim().toUpperCase() === customNik.toUpperCase());
+        if (dupNikUser) {
+          alert(`⚠️ NIK "${customNik.toUpperCase()}" sudah digunakan oleh karyawan: ${dupNikUser.name}.\nSilakan kosongkan kolom NIK agar sistem membuatkan NIK otomatis yang unik, atau gunakan NIK yang berbeda.`);
+          return;
+        }
       }
 
       const autoNik = customNik ? customNik.toUpperCase() : generateUniqueNIK(activeWarehouse, name);
@@ -9066,15 +9110,17 @@
           const usedNiks = new Set();
           let maxSeqNum = 0;
 
-          existingUsers.forEach(u => {
-            if (u.nik && typeof u.nik === 'string' && u.nik.toUpperCase().startsWith(prefix)) {
-              const numPart = parseInt(u.nik.toUpperCase().replace(prefix, ''), 10);
-              if (!isNaN(numPart) && numPart > maxSeqNum) {
-                maxSeqNum = numPart;
+          if (!replaceMode) {
+            existingUsers.forEach(u => {
+              if (u.nik && typeof u.nik === 'string' && u.nik.toUpperCase().startsWith(prefix)) {
+                const numPart = parseInt(u.nik.toUpperCase().replace(prefix, ''), 10);
+                if (!isNaN(numPart) && numPart > maxSeqNum) {
+                  maxSeqNum = numPart;
+                }
+                usedNiks.add(u.nik.toUpperCase().trim());
               }
-              usedNiks.add(u.nik.toUpperCase().trim());
-            }
-          });
+            });
+          }
 
           parsedRows.forEach(item => {
             if (item.nik && typeof item.nik === 'string' && item.nik.toUpperCase().startsWith(prefix)) {
@@ -9090,10 +9136,16 @@
             users = managementAccounts.length > 0 ? [...managementAccounts] : (targetWh === 'MBI' ? [...SEED_MBI_USERS] : [...SEED_MAI_USERS]);
             parsedRows.forEach((item, idx) => {
               let finalNik = item.nik;
-              if (!finalNik) {
+              if (!finalNik || usedNiks.has(finalNik.toUpperCase())) {
                 maxSeqNum++;
                 finalNik = `${prefix}${String(maxSeqNum).padStart(3, '0')}`;
-                usedNiks.add(finalNik);
+                while (usedNiks.has(finalNik.toUpperCase())) {
+                  maxSeqNum++;
+                  finalNik = `${prefix}${String(maxSeqNum).padStart(3, '0')}`;
+                }
+                usedNiks.add(finalNik.toUpperCase());
+              } else {
+                usedNiks.add(finalNik.toUpperCase());
               }
               users.push({
                 id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
@@ -9117,10 +9169,16 @@
             parsedRows.forEach((item, idx) => {
               if (users.some(u => cleanStr(u.name) === cleanStr(item.name))) return;
               let finalNik = item.nik;
-              if (!finalNik) {
+              if (!finalNik || usedNiks.has(finalNik.toUpperCase())) {
                 maxSeqNum++;
                 finalNik = `${prefix}${String(maxSeqNum).padStart(3, '0')}`;
-                usedNiks.add(finalNik);
+                while (usedNiks.has(finalNik.toUpperCase())) {
+                  maxSeqNum++;
+                  finalNik = `${prefix}${String(maxSeqNum).padStart(3, '0')}`;
+                }
+                usedNiks.add(finalNik.toUpperCase());
+              } else {
+                usedNiks.add(finalNik.toUpperCase());
               }
               users.push({
                 id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
