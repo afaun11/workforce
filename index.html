@@ -215,40 +215,11 @@
       <!-- Top Banner Header -->
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
         <div class="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-3 overflow-hidden relative">
-          <img id="login-logo-img" src="logo-wfm.png.jpeg" alt="Logo WFM Medika" class="w-full h-full object-contain relative z-10" onerror="this.style.display='none'; document.getElementById('login-logo-svg')?.classList.remove('hidden');" onload="document.getElementById('login-logo-svg')?.classList.add('hidden');">
-          <div id="login-logo-svg" class="w-full h-full flex items-center justify-center">
-            <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="orbitGradLogin" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#0284c7"/>
-                  <stop offset="60%" stop-color="#0d9488"/>
-                  <stop offset="100%" stop-color="#16a34a"/>
-                </linearGradient>
-              </defs>
-              <circle cx="142" cy="50" r="22" fill="none" stroke="#0284c7" stroke-width="4.5"/>
-              <circle cx="142" cy="50" r="2.5" fill="#0284c7"/>
-              <line x1="142" y1="50" x2="142" y2="36" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round"/>
-              <line x1="142" y1="50" x2="154" y2="58" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round"/>
-              <circle cx="68" cy="85" r="16" fill="#0d9488"/>
-              <path d="M46,128 C46,104 60,98 68,98 C76,98 90,104 90,128 Z" fill="#0d9488"/>
-              <circle cx="132" cy="85" r="16" fill="#0d9488"/>
-              <path d="M110,128 C110,104 124,98 132,98 C140,98 154,104 154,128 Z" fill="#0d9488"/>
-              <circle cx="100" cy="68" r="21" fill="#0284c7"/>
-              <path d="M68,136 C68,106 82,98 100,98 C118,98 132,106 132,136 Z" fill="#0284c7"/>
-              <polygon points="90,98 100,113 110,98 104,98 100,107 96,98" fill="#ffffff"/>
-              <rect x="97" y="112" width="6" height="15" rx="1.5" fill="#ffffff"/>
-              <rect x="92.5" y="116.5" width="15" height="6" rx="1.5" fill="#ffffff"/>
-              <path d="M72,42 C38,58 24,94 36,128 C46,156 82,168 116,162 C146,156 172,136 178,110 C166,134 138,150 110,152 C74,154 48,138 42,112 C36,88 52,58 72,42 Z" fill="url(#orbitGradLogin)"/>
-              <g transform="translate(156, 138) rotate(-40)">
-                <rect x="-10" y="-12" width="20" height="24" rx="10" fill="#ffffff" stroke="#ffffff" stroke-width="2"/>
-                <path d="M-9,0 C-9,-11 9,-11 9,0 Z" fill="#0284c7"/>
-                <path d="M-9,0 C-9,11 9,11 9,0 Z" fill="#16a34a"/>
-                <line x1="-5" y1="-7" x2="-5" y2="-2" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-              </g>
-            </svg>
+          <div id="login-logo-container" class="w-full h-full flex items-center justify-center">
+            <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
           </div>
         </div>
-        <h1 class="text-xl font-extrabold tracking-tight">WFM MEDIKA GROUP</h1>
+        <h1 id="login-brand-title" class="text-xl font-extrabold tracking-tight">Medika Bina Investama</h1>
         <p class="text-xs text-slate-400 mt-0.5">Sistem Presensi & Operasional Gudang</p>
       </div>
 
@@ -443,43 +414,14 @@
     <!-- Top Navbar (Fixed di Posisi Atas) -->
     <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0 relative">
-          <img id="nav-logo-img" src="logo-wfm.png.jpeg" alt="Logo Medika WFM" class="w-full h-full object-contain relative z-10" onerror="this.style.display='none'; document.getElementById('nav-logo-svg')?.classList.remove('hidden');" onload="document.getElementById('nav-logo-svg')?.classList.add('hidden');">
-          <div id="nav-logo-svg" class="w-full h-full flex items-center justify-center">
-            <svg class="w-full h-full" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="orbitGradNav" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#0284c7"/>
-                  <stop offset="60%" stop-color="#0d9488"/>
-                  <stop offset="100%" stop-color="#16a34a"/>
-                </linearGradient>
-              </defs>
-              <circle cx="142" cy="50" r="22" fill="none" stroke="#0284c7" stroke-width="4.5"/>
-              <circle cx="142" cy="50" r="2.5" fill="#0284c7"/>
-              <line x1="142" y1="50" x2="142" y2="36" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round"/>
-              <line x1="142" y1="50" x2="154" y2="58" stroke="#0284c7" stroke-width="4.5" stroke-linecap="round"/>
-              <circle cx="68" cy="85" r="16" fill="#0d9488"/>
-              <path d="M46,128 C46,104 60,98 68,98 C76,98 90,104 90,128 Z" fill="#0d9488"/>
-              <circle cx="132" cy="85" r="16" fill="#0d9488"/>
-              <path d="M110,128 C110,104 124,98 132,98 C140,98 154,104 154,128 Z" fill="#0d9488"/>
-              <circle cx="100" cy="68" r="21" fill="#0284c7"/>
-              <path d="M68,136 C68,106 82,98 100,98 C118,98 132,106 132,136 Z" fill="#0284c7"/>
-              <polygon points="90,98 100,113 110,98 104,98 100,107 96,98" fill="#ffffff"/>
-              <rect x="97" y="112" width="6" height="15" rx="1.5" fill="#ffffff"/>
-              <rect x="92.5" y="116.5" width="15" height="6" rx="1.5" fill="#ffffff"/>
-              <path d="M72,42 C38,58 24,94 36,128 C46,156 82,168 116,162 C146,156 172,136 178,110 C166,134 138,150 110,152 C74,154 48,138 42,112 C36,88 52,58 72,42 Z" fill="url(#orbitGradNav)"/>
-              <g transform="translate(156, 138) rotate(-40)">
-                <rect x="-10" y="-12" width="20" height="24" rx="10" fill="#ffffff" stroke="#ffffff" stroke-width="2"/>
-                <path d="M-9,0 C-9,-11 9,-11 9,0 Z" fill="#0284c7"/>
-                <path d="M-9,0 C-9,11 9,11 9,0 Z" fill="#16a34a"/>
-                <line x1="-5" y1="-7" x2="-5" y2="-2" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
-              </g>
-            </svg>
+        <div id="nav-logo-box" class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0 relative">
+          <div id="nav-logo-container" class="w-full h-full flex items-center justify-center">
+            <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
           </div>
         </div>
         <div>
           <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
-            <span>MEDIKA WFM</span>
+            <span id="nav-company-name">Medika Bina Investama</span>
             <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200">GUDANG MBI</span>
             <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">SUPERVISOR</span>
           </h1>
@@ -4108,6 +4050,46 @@
     // Jalankan inisialisasi font seketika
     initAppFont();
 
+    // =========================================================
+    // BRANDING & LOGO ENGINE (MBI: GAMBAR 2, MAI: GAMBAR 3)
+    // =========================================================
+    function getMBIIconHTML(size = 32) {
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: ${size}px; height: ${size}px; display: block;" fill="none">
+          <!-- MBI Icon (Gambar 2): Yellow Head + Cyan Petal + Pink Petal overlapping -->
+          <circle cx="50" cy="22" r="16" fill="#F8B133"/>
+          <rect x="37" y="28" width="26" height="58" rx="13" fill="#1CA3DC" transform="rotate(45 50 57)"/>
+          <rect x="37" y="28" width="26" height="58" rx="13" fill="#EC1D6A" transform="rotate(-45 50 57)"/>
+        </svg>
+      `;
+    }
+
+    function getMAIIconHTML(size = 32) {
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: ${size}px; height: ${size}px; display: block;" fill="none">
+          <!-- MAI Icon (Gambar 3): Yellow Left/Bottom + Crimson Red Top/Right overlapping -->
+          <rect x="8" y="36" width="56" height="28" rx="14" fill="#FDB913"/>
+          <rect x="36" y="36" width="28" height="56" rx="14" fill="#FDB913"/>
+          <path d="M 36,22 A 14,14 0 0,1 64,22 L 64,36 L 78,36 A 14,14 0 0,1 78,64 L 50,64 A 14,14 0 0,1 36,50 Z" fill="#E30638"/>
+        </svg>
+      `;
+    }
+
+    function updateNavbarBrand(targetWh = null) {
+      const wh = targetWh || activeWarehouse || (currentUser ? currentUser.warehouse : 'MBI');
+      const isMBI = wh === 'MBI';
+
+      const nameEl = document.getElementById('nav-company-name');
+      if (nameEl) {
+        nameEl.innerText = isMBI ? 'Medika Bina Investama' : 'Medika Akses Investama';
+      }
+
+      const logoContainer = document.getElementById('nav-logo-container');
+      if (logoContainer) {
+        logoContainer.innerHTML = isMBI ? getMBIIconHTML(34) : getMAIIconHTML(34);
+      }
+    }
+
     function updateLoginWhStyle() {
       const val = document.querySelector('input[name="login-warehouse"]:checked')?.value || 'MBI';
       const isMBI = val === 'MBI';
@@ -4115,6 +4097,15 @@
       const maiEl = document.getElementById('lbl-login-mai');
       if (mbiEl) mbiEl.className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
       if (maiEl) maiEl.className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+
+      const loginLogo = document.getElementById('login-logo-container');
+      if (loginLogo) {
+        loginLogo.innerHTML = isMBI ? getMBIIconHTML(46) : getMAIIconHTML(46);
+      }
+      const loginTitle = document.getElementById('login-brand-title');
+      if (loginTitle) {
+        loginTitle.innerText = isMBI ? 'Medika Bina Investama' : 'Medika Akses Investama';
+      }
     }
 
     function cleanStr(str) {
@@ -4758,6 +4749,7 @@
 
       // Terapkan visibility & hak akses tombol / menu sesuai role
       applyRolePermissions();
+      updateNavbarBrand(currentUser.warehouse);
 
       if (isUserScanner(currentUser)) {
         // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
@@ -4805,6 +4797,7 @@
         return;
       }
       activeWarehouse = wh;
+      updateNavbarBrand(wh);
       updateWhSwitcherButtons();
       refreshAllDashboardData();
       renderEmployeeTable();
@@ -6715,11 +6708,11 @@
 
     function getMBILogoHTML(height = 20) {
       return `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 66" style="height: ${height}px; width: auto; max-width: 175px; display: block;">
-          <g id="mbi-icon">
-            <circle cx="31" cy="11.5" r="9" fill="#F8B133"/>
-            <rect x="23" y="19" width="16" height="38" rx="8" fill="#EC1D6A" transform="rotate(-45 31 38)"/>
-            <rect x="23" y="19" width="16" height="38" rx="8" fill="#1CA3DC" transform="rotate(45 31 38)"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 66" style="height: ${height}px; width: auto; max-width: 180px; display: block;" fill="none">
+          <g transform="translate(6, 6) scale(0.54)">
+            <circle cx="50" cy="22" r="16" fill="#F8B133"/>
+            <rect x="37" y="28" width="26" height="58" rx="13" fill="#1CA3DC" transform="rotate(45 50 57)"/>
+            <rect x="37" y="28" width="26" height="58" rx="13" fill="#EC1D6A" transform="rotate(-45 50 57)"/>
           </g>
           <text x="70" y="44" font-family="'Plus Jakarta Sans', 'Segoe UI', Montserrat, Roboto, sans-serif" font-weight="800" font-size="31" fill="#0B4B8A" letter-spacing="-0.2px">Medika Bina Investama</text>
         </svg>
@@ -6728,12 +6721,13 @@
 
     function getMAILogoHTML(height = 20) {
       return `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 455 66" style="height: ${height}px; width: auto; max-width: 175px; display: block;">
-          <text x="6" y="44" font-family="'Plus Jakarta Sans', 'Segoe UI', Montserrat, Roboto, sans-serif" font-weight="800" font-size="31" fill="#E30638" letter-spacing="-0.2px">Medika Akses Investama</text>
-          <g id="mai-icon" transform="translate(408, 33)">
-            <rect x="-21" y="-7.5" width="42" height="15" rx="7.5" fill="#FDB913"/>
-            <rect x="-7.5" y="-21" width="15" height="42" rx="7.5" fill="#E30638"/>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 66" style="height: ${height}px; width: auto; max-width: 180px; display: block;" fill="none">
+          <g transform="translate(6, 6) scale(0.54)">
+            <rect x="8" y="36" width="56" height="28" rx="14" fill="#FDB913"/>
+            <rect x="36" y="36" width="28" height="56" rx="14" fill="#FDB913"/>
+            <path d="M 36,22 A 14,14 0 0,1 64,22 L 64,36 L 78,36 A 14,14 0 0,1 78,64 L 50,64 A 14,14 0 0,1 36,50 Z" fill="#E30638"/>
           </g>
+          <text x="70" y="44" font-family="'Plus Jakarta Sans', 'Segoe UI', Montserrat, Roboto, sans-serif" font-weight="800" font-size="31" fill="#E30638" letter-spacing="-0.2px">Medika Akses Investama</text>
         </svg>
       `;
     }
@@ -6908,22 +6902,22 @@
         ctx.arc(31, 11.5, 9, 0, Math.PI * 2);
         ctx.fill();
 
-        // Pink Left Petal (rotated -45 deg around 31, 38)
+        // Cyan Right Petal (rotated +45 deg around 31, 38)
         ctx.save();
         ctx.translate(31, 38);
-        ctx.rotate(-45 * Math.PI / 180);
-        ctx.fillStyle = '#EC1D6A';
+        ctx.rotate(45 * Math.PI / 180);
+        ctx.fillStyle = '#1CA3DC';
         ctx.beginPath();
         if (ctx.roundRect) ctx.roundRect(-8, -19, 16, 38, 8);
         else ctx.rect(-8, -19, 16, 38);
         ctx.fill();
         ctx.restore();
 
-        // Cyan Right Petal (rotated +45 deg around 31, 38)
+        // Pink Left Petal (rotated -45 deg around 31, 38, on top of cyan)
         ctx.save();
         ctx.translate(31, 38);
-        ctx.rotate(45 * Math.PI / 180);
-        ctx.fillStyle = '#1CA3DC';
+        ctx.rotate(-45 * Math.PI / 180);
+        ctx.fillStyle = '#EC1D6A';
         ctx.beginPath();
         if (ctx.roundRect) ctx.roundRect(-8, -19, 16, 38, 8);
         else ctx.rect(-8, -19, 16, 38);
@@ -6937,34 +6931,43 @@
         ctx.textBaseline = 'alphabetic';
         ctx.fillText('Medika Bina Investama', 68, 44);
       } else {
-        // Medika Akses Investama Logo (Text Left: Crimson; Icon Right: Yellow/Crimson Rounded Cross)
-        ctx.translate(logoPillX + 10, logoPillY + 5);
+        // Medika Akses Investama Logo (Icon Left: Image 3 Heart Cross; Text Right: Crimson)
+        ctx.translate(logoPillX + 12, logoPillY + 5);
         ctx.scale(0.58, 0.58);
+
+        // Yellow Left Arm & Bottom Arm
+        ctx.fillStyle = '#FDB913';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(8, 22, 28, 14, 7);
+          ctx.roundRect(22, 22, 14, 28, 7);
+        } else {
+          ctx.rect(8, 22, 28, 14);
+          ctx.rect(22, 22, 14, 28);
+        }
+        ctx.fill();
+
+        // Crimson Red Top & Right with bottom-left rounded corner (Image 3)
+        ctx.fillStyle = '#E30638';
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(22, 8, 14, 28, 7);
+          ctx.roundRect(22, 22, 28, 14, 7);
+        } else {
+          ctx.rect(22, 8, 14, 28);
+          ctx.rect(22, 22, 28, 14);
+        }
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(29, 29, 7, 0, Math.PI * 2);
+        ctx.fill();
 
         // Crimson Brand Text
         ctx.fillStyle = '#E30638';
         ctx.font = '800 30px "Plus Jakarta Sans", "Segoe UI", Montserrat, sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
-        ctx.fillText('Medika Akses Investama', 6, 44);
-
-        // Cross Icon at (408, 33)
-        const iconX = 408;
-        const iconY = 33;
-
-        // Horizontal Golden-Yellow Pill
-        ctx.fillStyle = '#FDB913';
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(iconX - 21, iconY - 7.5, 42, 15, 7.5);
-        else ctx.rect(iconX - 21, iconY - 7.5, 42, 15);
-        ctx.fill();
-
-        // Vertical Crimson Pill
-        ctx.fillStyle = '#E30638';
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(iconX - 7.5, iconY - 21, 15, 42, 7.5);
-        else ctx.rect(iconX - 7.5, iconY - 21, 15, 42);
-        ctx.fill();
+        ctx.fillText('Medika Akses Investama', 68, 44);
       }
       ctx.restore();
 
@@ -11081,6 +11084,8 @@ function testManualSync() {
       renderAudioSettingsUI();
       syncAudioClipsFromCloud();
       tryAutoLoadLocalFolderAudio();
+      updateNavbarBrand();
+      updateLoginWhStyle();
     } catch(e) {}
   </script>
 </body>
