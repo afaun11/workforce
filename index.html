@@ -71,7 +71,13 @@
           }
         }
       }
-    }
+    };
+
+    // Inisialisasi Cepat Tema Warna (Mencegah kedip tampilan / Zero Flash)
+    try {
+      const earlyTheme = localStorage.getItem('wfm_app_theme') || 'navy';
+      document.documentElement.classList.add('theme-' + earlyTheme);
+    } catch (e) {}
   </script>
 
   <style>
@@ -201,6 +207,120 @@
     }
     #app-sidebar.is-collapsed .sidebar-link i {
       margin: 0;
+    }
+
+    /* ========================================================= */
+    /* 3 PILIHAN TEMA WARNA: NAVY BLUE (DEFAULT), EMERALD, INDIGO */
+    /* Ringan, cepat, dan otomatis tersinkron ke semua perangkat */
+    /* ========================================================= */
+    :root, html.theme-navy, body.theme-navy {
+      --theme-name: 'navy';
+      --theme-primary: #1e3a5f;
+      --theme-primary-hover: #264a78;
+      --theme-primary-dark: #152840;
+      --theme-primary-light: #e8f0fe;
+      --theme-sidebar-bg: #132237;
+      --theme-sidebar-border: #1d3350;
+      --theme-sidebar-hover: #1c3250;
+      --theme-sidebar-active: #223f66;
+      --theme-auth-bg: #101c2e;
+      --theme-auth-from: #132237;
+      --theme-auth-to: #1e3a5f;
+      --theme-accent: #3b82f6;
+      --theme-badge-bg: #1e3a5f;
+    }
+
+    html.theme-emerald, body.theme-emerald {
+      --theme-name: 'emerald';
+      --theme-primary: #065f46;
+      --theme-primary-hover: #047857;
+      --theme-primary-dark: #064e3b;
+      --theme-primary-light: #ecfdf5;
+      --theme-sidebar-bg: #06392b;
+      --theme-sidebar-border: #0b5340;
+      --theme-sidebar-hover: #0a4f3d;
+      --theme-sidebar-active: #0d614b;
+      --theme-auth-bg: #04291f;
+      --theme-auth-from: #06392b;
+      --theme-auth-to: #065f46;
+      --theme-accent: #10b981;
+      --theme-badge-bg: #065f46;
+    }
+
+    html.theme-indigo, body.theme-indigo {
+      --theme-name: 'indigo';
+      --theme-primary: #312e81;
+      --theme-primary-hover: #3730a3;
+      --theme-primary-dark: #1e1b4b;
+      --theme-primary-light: #eef2ff;
+      --theme-sidebar-bg: #19173d;
+      --theme-sidebar-border: #2c2866;
+      --theme-sidebar-hover: #29255e;
+      --theme-sidebar-active: #3b3685;
+      --theme-auth-bg: #12102e;
+      --theme-auth-from: #19173d;
+      --theme-auth-to: #312e81;
+      --theme-accent: #6366f1;
+      --theme-badge-bg: #312e81;
+    }
+
+    /* Sidebar Dynamic Colors */
+    #app-sidebar {
+      background-color: var(--theme-sidebar-bg) !important;
+      border-color: var(--theme-sidebar-border) !important;
+    }
+    #app-sidebar .sidebar-heading {
+      color: #94a3b8 !important;
+    }
+    #app-sidebar .border-slate-800 {
+      border-color: var(--theme-sidebar-border) !important;
+    }
+    #app-sidebar .sidebar-link:hover {
+      background-color: var(--theme-sidebar-hover) !important;
+      color: #ffffff !important;
+    }
+    #app-sidebar .sidebar-link[class*="bg-slate-800"] {
+      background-color: var(--theme-sidebar-active) !important;
+      border-color: var(--theme-sidebar-border) !important;
+      color: #ffffff !important;
+    }
+    #btn-toggle-sidebar:hover {
+      background-color: var(--theme-sidebar-hover) !important;
+    }
+
+    /* Auth Screen Dynamic Gradient & Background */
+    #auth-container {
+      background-color: var(--theme-auth-bg) !important;
+    }
+    #auth-container .bg-gradient-to-br {
+      background-image: linear-gradient(135deg, var(--theme-auth-from) 0%, var(--theme-auth-to) 100%) !important;
+    }
+
+    /* Dynamic Button & Dark Surface Styling (Replaces harsh black with elegant Theme Primary) */
+    .bg-slate-900:not(.theme-exempt) {
+      background-color: var(--theme-primary) !important;
+    }
+    .hover\:bg-slate-800:hover {
+      background-color: var(--theme-primary-hover) !important;
+    }
+    .bg-slate-800:not(#app-sidebar):not(.theme-exempt) {
+      background-color: var(--theme-primary-dark) !important;
+    }
+    .hover\:bg-slate-700:hover {
+      background-color: var(--theme-primary-hover) !important;
+    }
+    .border-slate-900 {
+      border-color: var(--theme-primary) !important;
+    }
+    .focus\:ring-slate-900:focus {
+      --tw-ring-color: var(--theme-primary) !important;
+    }
+    .peer:checked ~ .peer-checked\:bg-slate-900 {
+      background-color: var(--theme-primary) !important;
+    }
+    #user-role-badge {
+      background-color: var(--theme-primary) !important;
+      color: #ffffff !important;
     }
   </style>
 </head>
@@ -2005,6 +2125,103 @@
               </form>
             </div>
 
+            <!-- Kartu Pengaturan Tema Warna Tampilan Aplikasi (Khusus Admin) -->
+            <div id="admin-theme-settings-card" class="hidden bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-extrabold text-sm text-slate-900">
+                      Tema Warna Tampilan Aplikasi (Sinkronisasi Global)
+                    </h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-900 border border-blue-300 uppercase tracking-wider">Khusus Admin</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">Pilih warna tema utama sistem. Saat Admin mengubah tema di sini, seluruh akun (Supervisor, Coordinator, Scanner, &amp; Staff) di semua HP &amp; laptop otomatis ikut berganti secara serentak.</p>
+                </div>
+                <span class="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-lg border border-slate-200 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Auto-Sync Realtime</span>
+                </span>
+              </div>
+
+              <!-- Pilihan 3 Tema Warna Interaktif -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                <!-- Opsi 1: Biru Navy Elegan (Default) -->
+                <div onclick="setAppThemeByAdmin('navy')" data-theme-key="navy" class="theme-choice-card cursor-pointer p-4 rounded-2xl border-2 border-slate-300 bg-white transition hover:shadow-md flex flex-col justify-between">
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border border-white shadow-xs shrink-0" style="background-color: #1e3a5f;"></span>
+                        <span class="text-xs font-black text-slate-900">Biru Navy (Default)</span>
+                      </div>
+                      <span class="theme-active-tag hidden px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-900 text-white">Aktif ✓</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug">
+                      Nuansa biru navy eksekutif &amp; berkelas. Tidak terlalu cerah dan tidak terlalu gelap, sangat nyaman untuk operasional harian.
+                    </p>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Palet Warna</span>
+                    <div class="flex items-center gap-1">
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #132237;" title="Sidebar Navy"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #1e3a5f;" title="Primary Navy"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #264a78;" title="Hover"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs border border-slate-200" style="background-color: #e8f0fe;" title="Light Tint"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Opsi 2: Emerald Medika -->
+                <div onclick="setAppThemeByAdmin('emerald')" data-theme-key="emerald" class="theme-choice-card cursor-pointer p-4 rounded-2xl border-2 border-slate-300 bg-white transition hover:shadow-md flex flex-col justify-between">
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border border-white shadow-xs shrink-0" style="background-color: #065f46;"></span>
+                        <span class="text-xs font-black text-slate-900">Emerald Medika</span>
+                      </div>
+                      <span class="theme-active-tag hidden px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-800 text-white">Aktif ✓</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug">
+                      Nuansa hijau zamrud medika / farmasi kesehatan. Teduh, sejuk di mata, dan memberikan karakter medis modern.
+                    </p>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Palet Warna</span>
+                    <div class="flex items-center gap-1">
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #06392b;" title="Sidebar Emerald"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #065f46;" title="Primary Emerald"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #047857;" title="Hover"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs border border-slate-200" style="background-color: #ecfdf5;" title="Light Tint"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Opsi 3: Royal Indigo -->
+                <div onclick="setAppThemeByAdmin('indigo')" data-theme-key="indigo" class="theme-choice-card cursor-pointer p-4 rounded-2xl border-2 border-slate-300 bg-white transition hover:shadow-md flex flex-col justify-between">
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-4 h-4 rounded-full border border-white shadow-xs shrink-0" style="background-color: #312e81;"></span>
+                        <span class="text-xs font-black text-slate-900">Royal Indigo</span>
+                      </div>
+                      <span class="theme-active-tag hidden px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-900 text-white">Aktif ✓</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug">
+                      Nuansa deep indigo violet modern. Kontras tinggi, futuristik, dan memberikan kesan enterprise yang elegan.
+                    </p>
+                  </div>
+                  <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase">Palet Warna</span>
+                    <div class="flex items-center gap-1">
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #19173d;" title="Sidebar Indigo"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #312e81;" title="Primary Indigo"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs" style="background-color: #3730a3;" title="Hover"></span>
+                      <span class="w-3.5 h-3.5 rounded shadow-2xs border border-slate-200" style="background-color: #eef2ff;" title="Light Tint"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Kartu Pengaturan Tipografi & Font Tampilan Web -->
             <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -3384,6 +3601,14 @@
         updateRegisteredCoordsDisplay();
       }
 
+      // SINKRONISASI TEMA WARNA GLOBAL DARI CLOUD (ADMIN-CONTROLLED)
+      if (db.app_theme && typeof db.app_theme === 'string' && typeof APP_THEMES !== 'undefined' && APP_THEMES[db.app_theme]) {
+        const curTheme = localStorage.getItem('wfm_app_theme') || 'navy';
+        if (db.app_theme !== curTheme) {
+          applyAppTheme(db.app_theme, true);
+        }
+      }
+
       if (!hasUsersChanged && !hasAttChanged && !hasOtChanged && !hasLeavesChanged && !hasCoordsChanged) {
         return;
       }
@@ -3534,6 +3759,7 @@
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: getWarehouseCoords('MAI'),
+          app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
           updatedAt: nowIso
         };
 
@@ -3616,6 +3842,7 @@
         mai_leaves: getWhDB('MAI', 'leaves', []),
         mai_overtime: getWhDB('MAI', 'overtime', []),
         mai_coords: getWarehouseCoords('MAI'),
+        app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
         updatedAt: new Date().toISOString()
       };
 
@@ -4219,6 +4446,7 @@
 
       initSidebarState();
       initAppFont();
+      initAppTheme();
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
@@ -4300,6 +4528,145 @@
 
     // Jalankan inisialisasi font seketika
     initAppFont();
+
+    // =========================================================
+    // TEMA WARNA APLIKASI (NAVY BLUE DEFAULT, EMERALD MEDIKA, ROYAL INDIGO)
+    // Pengaturan Terpusat di Admin, Otomatis Sinkron ke Semua Akun & Perangkat
+    // =========================================================
+    const APP_THEMES = {
+      'navy': {
+        name: 'Biru Navy',
+        className: 'theme-navy',
+        primary: '#1e3a5f',
+        primaryHover: '#264a78',
+        primaryDark: '#152840',
+        primaryLight: '#e8f0fe',
+        sidebarBg: '#132237',
+        sidebarBorder: '#1d3350',
+        sidebarHover: '#1c3250',
+        sidebarActive: '#223f66',
+        authBg: '#101c2e',
+        authFrom: '#132237',
+        authTo: '#1e3a5f',
+        accent: '#3b82f6'
+      },
+      'emerald': {
+        name: 'Emerald Medika',
+        className: 'theme-emerald',
+        primary: '#065f46',
+        primaryHover: '#047857',
+        primaryDark: '#064e3b',
+        primaryLight: '#ecfdf5',
+        sidebarBg: '#06392b',
+        sidebarBorder: '#0b5340',
+        sidebarHover: '#0a4f3d',
+        sidebarActive: '#0d614b',
+        authBg: '#04291f',
+        authFrom: '#06392b',
+        authTo: '#065f46',
+        accent: '#10b981'
+      },
+      'indigo': {
+        name: 'Royal Indigo',
+        className: 'theme-indigo',
+        primary: '#312e81',
+        primaryHover: '#3730a3',
+        primaryDark: '#1e1b4b',
+        primaryLight: '#eef2ff',
+        sidebarBg: '#19173d',
+        sidebarBorder: '#2c2866',
+        sidebarHover: '#29255e',
+        sidebarActive: '#3b3685',
+        authBg: '#12102e',
+        authFrom: '#19173d',
+        authTo: '#312e81',
+        accent: '#6366f1'
+      }
+    };
+
+    function applyAppTheme(themeKey, save = true) {
+      if (!APP_THEMES[themeKey]) themeKey = 'navy';
+      const t = APP_THEMES[themeKey];
+
+      document.documentElement.classList.remove('theme-navy', 'theme-emerald', 'theme-indigo');
+      document.body.classList.remove('theme-navy', 'theme-emerald', 'theme-indigo');
+      document.documentElement.classList.add(t.className);
+      document.body.classList.add(t.className);
+
+      const root = document.documentElement;
+      root.style.setProperty('--theme-name', themeKey);
+      root.style.setProperty('--theme-primary', t.primary);
+      root.style.setProperty('--theme-primary-hover', t.primaryHover);
+      root.style.setProperty('--theme-primary-dark', t.primaryDark);
+      root.style.setProperty('--theme-primary-light', t.primaryLight);
+      root.style.setProperty('--theme-sidebar-bg', t.sidebarBg);
+      root.style.setProperty('--theme-sidebar-border', t.sidebarBorder);
+      root.style.setProperty('--theme-sidebar-hover', t.sidebarHover);
+      root.style.setProperty('--theme-sidebar-active', t.sidebarActive);
+      root.style.setProperty('--theme-auth-bg', t.authBg);
+      root.style.setProperty('--theme-auth-from', t.authFrom);
+      root.style.setProperty('--theme-auth-to', t.authTo);
+      root.style.setProperty('--theme-accent', t.accent);
+
+      if (save) {
+        localStorage.setItem('wfm_app_theme', themeKey);
+      }
+
+      // Update visual highlight pada kartu tema di Pengaturan
+      document.querySelectorAll('.theme-choice-card').forEach(card => {
+        const key = card.getAttribute('data-theme-key');
+        const activeTag = card.querySelector('.theme-active-tag');
+        if (key === themeKey) {
+          card.classList.add('border-blue-600', 'bg-blue-50/40', 'ring-2', 'ring-blue-500/20');
+          card.classList.remove('border-slate-300', 'bg-white');
+          if (activeTag) activeTag.classList.remove('hidden');
+        } else {
+          card.classList.remove('border-blue-600', 'bg-blue-50/40', 'ring-2', 'ring-blue-500/20');
+          card.classList.add('border-slate-300', 'bg-white');
+          if (activeTag) activeTag.classList.add('hidden');
+        }
+      });
+    }
+
+    async function setAppThemeByAdmin(themeKey) {
+      if (!isUserAdmin(currentUser)) {
+        alert('Akses Ditolak: Hanya Akun Administrator yang berwenang mengubah tema warna sistem.');
+        return;
+      }
+      applyAppTheme(themeKey, true);
+
+      // Siarkan ke tab/jendela lain di browser yang sama
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          new BroadcastChannel('wfm_theme_live_channel').postMessage(themeKey);
+        }
+      } catch (e) {}
+
+      // Simpan perubahan tema ke Firebase Cloud agar HP seluruh staf otomatis ikut berganti
+      await saveFullDatabaseToCloud(false, true);
+    }
+
+    function initAppTheme() {
+      try {
+        const savedTheme = localStorage.getItem('wfm_app_theme') || 'navy';
+        applyAppTheme(savedTheme, false);
+      } catch (e) {}
+    }
+
+    // Jalankan inisialisasi tema warna seketika sebelum render halaman
+    initAppTheme();
+
+    // Listener Live Sync Tema antar-Tab
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const themeBc = new BroadcastChannel('wfm_theme_live_channel');
+        themeBc.onmessage = (e) => {
+          if (e.data) {
+            applyAppTheme(e.data, false);
+          }
+        };
+      }
+    } catch(e) {}
 
     // =========================================================
     // BRANDING & LOGO ENGINE (MBI: GAMBAR 2 / UPLOAD, MAI: GAMBAR 3)
@@ -4526,6 +4893,14 @@
         if (navAudioBtn) { navAudioBtn.classList.add('hidden'); navAudioBtn.classList.remove('flex'); }
         if (navAudioAdmin) { navAudioAdmin.classList.add('hidden'); navAudioAdmin.classList.remove('inline-flex'); }
         if (settingsAudioSection) settingsAudioSection.classList.add('hidden');
+      }
+
+      // 2.6 Pengaturan Tema Warna Tampilan Aplikasi (KHUSUS ADMIN)
+      const settingsThemeSection = document.getElementById('admin-theme-settings-card');
+      if (isAdmin) {
+        if (settingsThemeSection) settingsThemeSection.classList.remove('hidden');
+      } else {
+        if (settingsThemeSection) settingsThemeSection.classList.add('hidden');
       }
 
       // 3. Pengaturan Akun (Atas & Bawah) & Akses Menu Sesuai Role
@@ -9278,6 +9653,12 @@
       try {
         const currentFont = localStorage.getItem('wfm_app_font') || 'plus-jakarta';
         applyWebFont(currentFont, false);
+      } catch (e) {}
+
+      // Highlight kartu tema pilihan yang sedang aktif
+      try {
+        const currentTheme = localStorage.getItem('wfm_app_theme') || 'navy';
+        applyAppTheme(currentTheme, false);
       } catch (e) {}
 
       lucide.createIcons();
