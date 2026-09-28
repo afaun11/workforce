@@ -2962,63 +2962,16 @@
     // Mencegah data terhapus bangkit kembali (anti-zombie) & sorting join date akurat
     // =========================================================
     function getDeletedUserKeys() {
-      try {
-        const stored = localStorage.getItem('wfm_deleted_user_keys');
-        if (stored) {
-          const arr = JSON.parse(stored);
-          if (Array.isArray(arr)) return new Set(arr);
-        }
-      } catch (e) {}
       return new Set();
     }
 
-    function saveDeletedUserKeys(setKeys) {
-      try {
-        const arr = Array.from(setKeys).slice(-1000);
-        localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(arr));
-      } catch (e) {}
-    }
+    function saveDeletedUserKeys(setKeys) {}
 
-    function trackDeletedUsers(usersOrNiks) {
-      if (!usersOrNiks) return;
-      const setKeys = getDeletedUserKeys();
-      const list = Array.isArray(usersOrNiks) ? usersOrNiks : [usersOrNiks];
-      list.forEach(u => {
-        if (!u) return;
-        if (typeof u === 'string') {
-          const cleanK = u.trim().toUpperCase();
-          if (cleanK) setKeys.add(cleanK);
-          const normK = cleanStr(u);
-          if (normK) setKeys.add(normK);
-        } else {
-          if (u.id) setKeys.add(String(u.id).trim().toLowerCase());
-          if (u.name) setKeys.add(cleanStr(u.name));
-          if (u.nik) setKeys.add(String(u.nik).trim().toUpperCase());
-        }
-      });
-      saveDeletedUserKeys(setKeys);
-      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
-    }
+    function trackDeletedUsers(usersOrNiks) {}
 
-    function unmarkDeletedUser(nameOrNik) {
-      if (!nameOrNik) return;
-      const setKeys = getDeletedUserKeys();
-      setKeys.delete(String(nameOrNik).trim().toUpperCase());
-      setKeys.delete(cleanStr(nameOrNik));
-      saveDeletedUserKeys(setKeys);
-    }
+    function unmarkDeletedUser(nameOrNik) {}
 
     function isUserMarkedDeleted(user, deletedKeys) {
-      if (!user) return false;
-      if (typeof isManagementSystemAccount === 'function' && isManagementSystemAccount(user)) return false;
-      const role = (user.role || '').toLowerCase();
-      const nik = (user.nik || '').toUpperCase();
-      if (role === 'admin' || role === 'scanner' || nik.startsWith('ADM') || nik.startsWith('ABSEN')) return false;
-
-      const keys = deletedKeys || getDeletedUserKeys();
-      if (user.id && keys.has(String(user.id).trim().toLowerCase())) return true;
-      if (user.name && keys.has(cleanStr(user.name))) return true;
-      if (user.nik && keys.has(String(user.nik).trim().toUpperCase())) return true;
       return false;
     }
 
@@ -3069,7 +3022,6 @@
       const regularEmployees = [];
       users.forEach(u => {
         if (!u || u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
-        if (isUserMarkedDeleted(u, deletedKeys)) return;
         const normName = cleanStr(u.name);
         if (!normName || seenNames.has(normName)) return;
         seenNames.add(normName);
@@ -3313,43 +3265,23 @@
       return Array.from(map.values());
     }
 
-    // 4. SMART MERGE MASTER KARYAWAN (Bebas Zombie Data & Resequence Sesuai Urutan Join Date)
+    // 4. SMART MERGE MASTER KARYAWAN (Bebas Zombie Data & Tidak Mengembalikan Karyawan Terhapus)
     function mergeUserArrays(localList, cloudList, wh) {
-      const deletedKeys = getDeletedUserKeys();
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-      const isRecentLocalChange = (Date.now() - lastMasterChange < 15000);
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 300000); // 5 menit proteksi master lokal
 
-      // Jika baru saja dilakukan operasi lokal (hapus, tambah, atau import excel), jangan biarkan Cloud mengembalikan data lama
+      // Jika baru saja ada perubahan master lokal (upload excel, tambah, edit, hapus),
+      // data lokal adalah 100% otoritatif dan Cloud DILARANG menambahkan data lama.
       if (isRecentLocalChange && Array.isArray(localList) && localList.length > 0) {
-        return deduplicateUserList(localList.filter(u => !isUserMarkedDeleted(u, deletedKeys)), wh);
+        return deduplicateUserList(localList, wh);
       }
 
-      const map = new Map();
+      // Adopsi data Cloud secara utuh tanpa union gabung-gabungan agar data terhapus tidak hidup lagi
+      if (Array.isArray(cloudList) && cloudList.length > 0) {
+        return deduplicateUserList(cloudList, wh);
+      }
 
-      // 1. Masukkan data Cloud yang sah (tidak termasuk akun yang telah dihapus)
-      (cloudList || []).forEach(item => {
-        if (!item || !item.name) return;
-        if (isUserMarkedDeleted(item, deletedKeys)) return;
-        const normName = cleanStr(item.name);
-        if (!normName) return;
-        map.set(normName, item);
-      });
-
-      // 2. Gabungkan dengan data Lokal (data lokal lebih diutamakan jika ada perubahan)
-      (localList || []).forEach(localItem => {
-        if (!localItem || !localItem.name) return;
-        if (isUserMarkedDeleted(localItem, deletedKeys)) return;
-        const normName = cleanStr(localItem.name);
-        if (!normName) return;
-        if (!map.has(normName)) {
-          map.set(normName, localItem);
-        } else {
-          const cloudItem = map.get(normName);
-          map.set(normName, { ...cloudItem, ...localItem });
-        }
-      });
-
-      return deduplicateUserList(Array.from(map.values()), wh);
+      return deduplicateUserList(localList || [], wh);
     }
 
     let lastAppliedCloudUpdatedAt = null;
@@ -3357,7 +3289,7 @@
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
 
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-      const isRecentLocalChange = (Date.now() - lastMasterChange < 15000);
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 300000);
 
       const currMbiUsers = localStorage.getItem('wfm_mbi_users') || '';
       const currMaiUsers = localStorage.getItem('wfm_mai_users') || '';
@@ -3588,6 +3520,7 @@
         };
 
         lastAppliedCloudUpdatedAt = nowIso;
+        localStorage.setItem('wfm_master_updated_at', nowIso);
 
         if ((!payload.mbi_users || payload.mbi_users.length === 0) && (!payload.mai_users || payload.mai_users.length === 0)) {
           console.warn('Skip saving completely empty database to cloud.');
@@ -3722,9 +3655,7 @@
         try {
           let users = JSON.parse(data);
           if (!Array.isArray(users)) return;
-          let hasChanges = false;
-
-          const cleanUsers = users.filter(u => u && u.name && u.name.trim() !== '' && u.nik !== 'SPV-MBI' && u.nik !== 'SPV-MAI' && u.id !== 'mbi-spv' && u.id !== 'mai-spv' && !isUserMarkedDeleted(u, deletedKeys));
+          const cleanUsers = users.filter(u => u && u.name && u.name.trim() !== '' && u.nik !== 'SPV-MBI' && u.nik !== 'SPV-MAI' && u.id !== 'mbi-spv' && u.id !== 'mai-spv');
           if (cleanUsers.length !== users.length) hasChanges = true;
 
           cleanUsers.forEach(u => {
@@ -3818,7 +3749,6 @@
 
         rawUsers.forEach(u => {
           if (!u || isManagementSystemAccount(u) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
-          if (isUserMarkedDeleted(u, deletedKeys)) return;
           const normName = cleanStr(u.name);
           if (!normName || seenNames.has(normName)) return;
           seenNames.add(normName);
@@ -8517,10 +8447,12 @@
         return;
       }
 
-      trackDeletedUsers(user);
-      const updatedUsers = users.filter(u => u.nik !== nik && cleanStr(u.name) !== cleanStr(user.name));
+      const updatedUsers = users.filter(u => isManagementSystemAccount(u) || (u.nik !== nik && cleanStr(u.name) !== cleanStr(user.name)));
       setWhDB(targetWh, 'users', updatedUsers);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsers));
+      const nowIso = new Date().toISOString();
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+      localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
       await saveFullDatabaseToCloud(false, true);
 
@@ -8566,16 +8498,13 @@
 
       const targetWh = activeWarehouse || 'MBI';
       let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const toDelete = users.filter(u => selectedNiks.has(u.nik) && !isManagementSystemAccount(u));
-      trackDeletedUsers(toDelete);
-
-      const updatedUsers = users.filter(u => {
-        if (isManagementSystemAccount(u)) return true;
-        return !selectedNiks.has(u.nik) && !isUserMarkedDeleted(u);
-      });
+      const updatedUsers = users.filter(u => isManagementSystemAccount(u) || !selectedNiks.has(u.nik));
 
       setWhDB(targetWh, 'users', updatedUsers);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsers));
+      const nowIso = new Date().toISOString();
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+      localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
       await saveFullDatabaseToCloud(false, true);
 
@@ -8585,7 +8514,7 @@
       refreshAllDashboardData();
       renderRecordsTable();
       renderMatrixTable();
-      alert(`✅ Berhasil menghapus ${toDelete.length} karyawan secara permanen.`);
+      alert(`✅ Berhasil menghapus ${selectedNiks.size} karyawan secara permanen.`);
     }
 
     async function deleteAllEmployees() {
@@ -8598,13 +8527,17 @@
         return;
       }
 
-      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const toDelete = users.filter(u => !isManagementSystemAccount(u));
-      trackDeletedUsers(toDelete);
+      try {
+        localStorage.removeItem('wfm_deleted_user_keys');
+      } catch(e) {}
 
+      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const preserved = users.filter(u => isManagementSystemAccount(u));
       setWhDB(targetWh, 'users', preserved);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(preserved));
+      const nowIso = new Date().toISOString();
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+      localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
       await saveFullDatabaseToCloud(false, true);
 
@@ -8614,7 +8547,7 @@
       refreshAllDashboardData();
       renderRecordsTable();
       renderMatrixTable();
-      alert(`✅ Seluruh data karyawan di Gudang ${targetWh} telah berhasil dikosongkan secara permanen.`);
+      alert(`✅ Seluruh data karyawan di Gudang ${targetWh} telah berhasil dikosongkan secara permanen.\n\nMemori lokal dan Firebase Cloud telah bersih. Anda dapat langsung mengunggah file Excel baru.`);
     }
 
     async function deleteAllAttendanceRecords() {
@@ -9025,11 +8958,10 @@
           let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
           const managementAccounts = existingUsers.filter(u => isManagementSystemAccount(u));
           
-          if (replaceMode) {
-            // Tandai karyawan lama sebagai terhapus agar Cloud tidak pernah membangkitkannya lagi
-            const oldEmployees = existingUsers.filter(u => !isManagementSystemAccount(u));
-            trackDeletedUsers(oldEmployees);
-          }
+          // Bersihkan seluruh tombstone / riwayat hapus lama agar upload baru tidak pernah terblokir
+          try {
+            localStorage.removeItem('wfm_deleted_user_keys');
+          } catch(e) {}
 
           let users = managementAccounts.length > 0 ? [...managementAccounts] : (targetWh === 'MBI' ? [...SEED_MBI_USERS] : [...SEED_MAI_USERS]);
 
@@ -9050,15 +8982,14 @@
             const cleanName = cleanStr(name);
             if (seenNamesInExcel.has(cleanName)) return; // Cegah dobel nama di file Excel itu sendiri
             seenNamesInExcel.add(cleanName);
-            unmarkDeletedUser(name);
 
-            // Cek kolom NIK dari Excel atau NIK yang sudah ada di database sistem sebelumnya
+            // Cek kolom NIK dari Excel atau NIK yang sudah ada di database sistem sebelumnya (jika mode gabung)
             const rawNik = getExcelVal(r, ['nik', 'id karyawan', 'id', 'nomor induk', 'no induk', 'kode karyawan', 'barcode'], '', ['nama', 'telp', 'phone', 'email', 'dept', 'role']).trim().toUpperCase();
             const existingEmp = existingUsers.find(u => cleanStr(u.name) === cleanName);
             let preservedNik = '';
             if (rawNik && rawNik.startsWith(prefix)) {
               preservedNik = rawNik;
-            } else if (existingEmp && existingEmp.nik && existingEmp.nik.startsWith(prefix)) {
+            } else if (!replaceMode && existingEmp && existingEmp.nik && existingEmp.nik.startsWith(prefix)) {
               preservedNik = existingEmp.nik;
             } else if (rawNik) {
               preservedNik = rawNik;
@@ -9213,7 +9144,10 @@
 
           const finalCleanUsers = deduplicateUserList(users, targetWh);
           setWhDB(targetWh, 'users', finalCleanUsers);
+          localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(finalCleanUsers));
+          const nowIso = new Date().toISOString();
           localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+          localStorage.setItem('wfm_master_updated_at', nowIso);
           harmonizeAndResequenceAllNIKs();
           await saveFullDatabaseToCloud(true, true);
           renderEmployeeTable();
@@ -9224,9 +9158,11 @@
           alert(`✅ BERHASIL IMPORT DATA KARYAWAN DARI EXCEL!\n\n• Total Karyawan Diimpor: ${countAdded} orang\n• Total Karyawan Aktif: ${finalCleanUsers.filter(u => !isManagementSystemAccount(u)).length} orang\n• NIK & Barcode: 100% Terurut Berdasarkan Join Date Pertama hingga Terakhir (${prefix}001, ${prefix}002, ...)\n• Karyawan Tanpa Join Date: Ditempatkan di Urutan Paling Bawah\n• Departemen: Disederhanakan Menjadi Warehouse Staff / Coordinator / Supervisor\n• ID Card & Barcode: Siap Digunakan untuk Presensi`);
         } catch (err) {
           console.error('Excel parse error:', err);
-          alert('Gagal membaca file Excel. Pastikan format tabel sesuai template.');
+          alert('Gagal membaca file Excel: ' + (err.message || err));
         } finally {
           e.target.value = '';
+          const fileInput = document.getElementById('emp-excel-file');
+          if (fileInput) fileInput.value = '';
         }
       };
       reader.readAsArrayBuffer(file);
