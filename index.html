@@ -3105,8 +3105,14 @@
         regularEmployees.push(u);
       });
 
-      // 4. Urutkan seluruh karyawan reguler berdasarkan JOIN DATE PERTAMA hingga TERAKHIR (KOSONG / STRIP DI PALING BAWAH)
+      // 4. Urutkan seluruh karyawan reguler:
+      // Karyawan yang sudah punya NIK diurutkan berdasarkan NIK mereka agar urutan stabil & permanen.
+      // Karyawan baru yang belum punya NIK diurutkan berdasarkan Join Date.
       regularEmployees.sort((a, b) => {
+        if (a.nik && b.nik) {
+          const cmpNik = a.nik.localeCompare(b.nik, undefined, { numeric: true });
+          if (cmpNik !== 0) return cmpNik;
+        }
         const dateA = getSortableJoinDate(a.joinDate);
         const dateB = getSortableJoinDate(b.joinDate);
         const cmp = dateA.localeCompare(dateB);
@@ -3114,13 +3120,39 @@
         return (a.name || '').localeCompare(b.name || '');
       });
 
-      // 5. Pembentukan NIK berurutan (001, 002, ...) sesuai urutan Join Date
+      // 5. FIX & KUNCI ID KARYAWAN (NIK PERMANEN):
+      // Jika karyawan SUDAH punya NIK, JANGAN PERNAH DIRUBAH ATAU DIGESER!
+      // Jika ada karyawan keluar / resign / dihapus, karyawan lain TETAP MEMEGANG NIK ASLINYA.
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${warehouse.toUpperCase()}${year}-`;
-      regularEmployees.forEach((u, idx) => {
-        const newNik = `${prefix}${String(idx + 1).padStart(3, '0')}`;
-        u.nik = newNik;
-        u.barcodeValue = newNik;
+
+      const usedNiks = new Set();
+      let maxNum = 0;
+      regularEmployees.forEach(u => {
+        if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
+          const cleanU = u.nik.trim().toUpperCase();
+          usedNiks.add(cleanU);
+          if (cleanU.startsWith(prefix)) {
+            const numPart = parseInt(cleanU.replace(prefix, ''), 10);
+            if (!isNaN(numPart) && numPart > maxNum) {
+              maxNum = numPart;
+            }
+          }
+        }
+      });
+
+      regularEmployees.forEach((u) => {
+        if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
+          // Karyawan sudah punya NIK: KUNCI PERMANEN, JANGAN PERNAH DIGANTI
+          u.barcodeValue = u.nik;
+        } else {
+          // Karyawan baru yang belum punya NIK: berikan nomor urut berikutnya (maxNum + 1)
+          maxNum++;
+          const newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
+          usedNiks.add(newNik);
+          u.nik = newNik;
+          u.barcodeValue = newNik;
+        }
         cleanList.push(u);
       });
 
@@ -3821,8 +3853,14 @@
           regularEmployees.push(u);
         });
 
-        // 3. URUTKAN KARYAWAN BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR (KOSONG / STRIP DI PALING BAWAH)
+        // 3. Urutkan seluruh karyawan reguler:
+        // Karyawan yang sudah punya NIK diurutkan berdasarkan NIK mereka agar urutan tetap konsisten & stabil.
+        // Karyawan baru yang belum punya NIK diurutkan berdasarkan Join Date.
         regularEmployees.sort((a, b) => {
+          if (a.nik && b.nik) {
+            const cmpNik = a.nik.localeCompare(b.nik, undefined, { numeric: true });
+            if (cmpNik !== 0) return cmpNik;
+          }
           const dateA = getSortableJoinDate(a.joinDate);
           const dateB = getSortableJoinDate(b.joinDate);
           const cmp = dateA.localeCompare(dateB);
@@ -3830,16 +3868,35 @@
           return (a.name || '').localeCompare(b.name || '');
         });
 
-        // 4. PEMBENTUKAN ID KARYAWAN (NIK) BERURUTAN SESUAI URUTAN JOIN DATE (001, 002, ...)
-        const nikMap = {}; // oldNik -> newNik
-        regularEmployees.forEach((u, idx) => {
-          const oldNik = u.nik;
-          const newNik = `${prefix}${String(idx + 1).padStart(3, '0')}`;
-          if (oldNik && oldNik !== newNik) {
-            nikMap[oldNik.toUpperCase()] = newNik;
+        // 4. FIX & KUNCI ID KARYAWAN (NIK PERMANEN):
+        // NIK yang sudah ada TIDAK BOLEH BERUBAH ATAU DIGESER saat ada karyawan keluar/resign/dihapus!
+        const usedNiks = new Set();
+        let maxNum = 0;
+        regularEmployees.forEach(u => {
+          if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
+            const cleanU = u.nik.trim().toUpperCase();
+            usedNiks.add(cleanU);
+            if (cleanU.startsWith(prefix)) {
+              const numPart = parseInt(cleanU.replace(prefix, ''), 10);
+              if (!isNaN(numPart) && numPart > maxNum) {
+                maxNum = numPart;
+              }
+            }
           }
-          u.nik = newNik;
-          u.barcodeValue = newNik;
+        });
+
+        const nikMap = {}; // oldNik -> newNik (hanya jika ada yang belum punya NIK)
+        regularEmployees.forEach((u) => {
+          if (u.nik && typeof u.nik === 'string' && u.nik.trim() !== '') {
+            // FIX: NIK SUDAH ADA 100% DIKUNCI PERMANEN
+            u.barcodeValue = u.nik;
+          } else {
+            maxNum++;
+            const newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
+            usedNiks.add(newNik);
+            u.nik = newNik;
+            u.barcodeValue = newNik;
+          }
         });
 
         const updatedUsersList = [admin, scanner, ...regularEmployees];
@@ -8656,6 +8713,23 @@
       document.getElementById('add-emp-modal').classList.add('hidden');
     }
 
+    function generateUniqueNIK(warehouse = 'MBI', name = '') {
+      const wh = warehouse || activeWarehouse || 'MBI';
+      const year = new Date().getFullYear().toString().slice(-2);
+      const prefix = `${wh.toUpperCase()}${year}-`;
+      const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let maxNum = 0;
+      users.forEach(u => {
+        if (u && u.nik && typeof u.nik === 'string' && u.nik.toUpperCase().startsWith(prefix)) {
+          const numPart = parseInt(u.nik.toUpperCase().replace(prefix, ''), 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
+        }
+      });
+      return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
+    }
+
     async function handleManualAddEmployee(e) {
       e.preventDefault();
       const name = document.getElementById('m-emp-name').value.trim();
@@ -8966,6 +9040,8 @@
           let countAdded = 0;
           const parsedRows = [];
           const seenNamesInExcel = new Set();
+          const year = new Date().getFullYear().toString().slice(-2);
+          const prefix = `${targetWh.toUpperCase()}${year}-`;
 
           rows.forEach((r) => {
             const name = getExcelVal(r, ['nama', 'name', 'karyawan', 'pegawai'], '').trim();
@@ -8975,6 +9051,18 @@
             if (seenNamesInExcel.has(cleanName)) return; // Cegah dobel nama di file Excel itu sendiri
             seenNamesInExcel.add(cleanName);
             unmarkDeletedUser(name);
+
+            // Cek kolom NIK dari Excel atau NIK yang sudah ada di database sistem sebelumnya
+            const rawNik = getExcelVal(r, ['nik', 'id karyawan', 'id', 'nomor induk', 'no induk', 'kode karyawan', 'barcode'], '', ['nama', 'telp', 'phone', 'email', 'dept', 'role']).trim().toUpperCase();
+            const existingEmp = existingUsers.find(u => cleanStr(u.name) === cleanName);
+            let preservedNik = '';
+            if (rawNik && rawNik.startsWith(prefix)) {
+              preservedNik = rawNik;
+            } else if (existingEmp && existingEmp.nik && existingEmp.nik.startsWith(prefix)) {
+              preservedNik = existingEmp.nik;
+            } else if (rawNik) {
+              preservedNik = rawNik;
+            }
 
             const rawDept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], '', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
             const rawRole = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
@@ -9023,12 +9111,19 @@
               outsource,
               phone,
               email,
-              joinDate
+              joinDate,
+              nik: preservedNik
             });
           });
 
-          // URUTKAN SELURUH DATA EXCEL BERDASARKAN JOIN DATE PERTAMA HINGGA TERAKHIR (KOSONG / STRIP DI PALING BAWAH)
+          // URUTKAN DATA EXCEL:
+          // Karyawan yang sudah memiliki NIK diurutkan berdasarkan NIK.
+          // Karyawan baru yang belum memiliki NIK diurutkan berdasarkan Join Date pertama hingga terakhir (kosong di paling bawah).
           parsedRows.sort((a, b) => {
+            if (a.nik && b.nik) {
+              const cmpNik = a.nik.localeCompare(b.nik, undefined, { numeric: true });
+              if (cmpNik !== 0) return cmpNik;
+            }
             const dateA = getSortableJoinDate(a.joinDate);
             const dateB = getSortableJoinDate(b.joinDate);
             const cmp = dateA.localeCompare(dateB);
@@ -9036,13 +9131,39 @@
             return (a.name || '').localeCompare(b.name || '');
           });
 
-          const year = new Date().getFullYear().toString().slice(-2);
-          const prefix = `${targetWh.toUpperCase()}${year}-`;
+          // Cari angka urutan NIK tertinggi yang pernah tercatat agar NIK bersifat permanen & tidak bergeser
+          const usedNiks = new Set();
+          let maxSeqNum = 0;
+
+          existingUsers.forEach(u => {
+            if (u.nik && typeof u.nik === 'string' && u.nik.toUpperCase().startsWith(prefix)) {
+              const numPart = parseInt(u.nik.toUpperCase().replace(prefix, ''), 10);
+              if (!isNaN(numPart) && numPart > maxSeqNum) {
+                maxSeqNum = numPart;
+              }
+              usedNiks.add(u.nik.toUpperCase().trim());
+            }
+          });
+
+          parsedRows.forEach(item => {
+            if (item.nik && typeof item.nik === 'string' && item.nik.toUpperCase().startsWith(prefix)) {
+              const numPart = parseInt(item.nik.toUpperCase().replace(prefix, ''), 10);
+              if (!isNaN(numPart) && numPart > maxSeqNum) {
+                maxSeqNum = numPart;
+              }
+              usedNiks.add(item.nik.toUpperCase().trim());
+            }
+          });
 
           if (replaceMode) {
             users = managementAccounts.length > 0 ? [...managementAccounts] : (targetWh === 'MBI' ? [...SEED_MBI_USERS] : [...SEED_MAI_USERS]);
             parsedRows.forEach((item, idx) => {
-              const seqNik = `${prefix}${String(idx + 1).padStart(3, '0')}`;
+              let finalNik = item.nik;
+              if (!finalNik) {
+                maxSeqNum++;
+                finalNik = `${prefix}${String(maxSeqNum).padStart(3, '0')}`;
+                usedNiks.add(finalNik);
+              }
               users.push({
                 id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
                 name: item.name,
@@ -9051,8 +9172,8 @@
                 phone: item.phone,
                 email: item.email,
                 joinDate: item.joinDate,
-                nik: seqNik,
-                barcodeValue: seqNik,
+                nik: finalNik,
+                barcodeValue: finalNik,
                 role: item.role,
                 hasAccount: item.hasAccount,
                 password: item.password,
@@ -9064,6 +9185,12 @@
           } else {
             parsedRows.forEach((item, idx) => {
               if (users.some(u => cleanStr(u.name) === cleanStr(item.name))) return;
+              let finalNik = item.nik;
+              if (!finalNik) {
+                maxSeqNum++;
+                finalNik = `${prefix}${String(maxSeqNum).padStart(3, '0')}`;
+                usedNiks.add(finalNik);
+              }
               users.push({
                 id: `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
                 name: item.name,
@@ -9072,7 +9199,8 @@
                 phone: item.phone,
                 email: item.email,
                 joinDate: item.joinDate,
-                nik: '',
+                nik: finalNik,
+                barcodeValue: finalNik,
                 role: item.role,
                 hasAccount: item.hasAccount,
                 password: item.password,
