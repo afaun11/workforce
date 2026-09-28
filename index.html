@@ -214,7 +214,7 @@
       
       <!-- Top Banner Header -->
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
-        <div class="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/20 mb-3 overflow-hidden relative">
+        <div class="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto shadow-md mb-3 overflow-hidden relative">
           <div id="login-logo-container" class="w-full h-full flex items-center justify-center">
             <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
           </div>
@@ -230,24 +230,17 @@
       <div id="form-login-box" class="p-6 space-y-5">
         
         <!-- BAGIAN 1: AKSES SATU AKUN ABSENSI HP (UNTUK SEMUA KARYAWAN SCAN KARTU) -->
-        <div class="p-4 bg-teal-50/80 border-2 border-teal-500 rounded-2xl space-y-3">
-          <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-xs">
-              <i data-lucide="scan-line" class="w-4 h-4"></i>
-            </div>
-            <div>
-              <h3 class="font-extrabold text-xs text-teal-950">Mode Akun Scanner Presensi</h3>
-              <p class="text-[10px] text-teal-700 font-medium">Satu akun resmi untuk pos pemindaian kartu ID karyawan</p>
-            </div>
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+          <div>
+            <h3 class="font-extrabold text-xs text-slate-900">Mode Akun Scanner Presensi</h3>
+            <p class="text-[10px] text-slate-500 font-medium">Satu akun resmi untuk pos pemindaian kartu ID karyawan</p>
           </div>
 
           <div class="grid grid-cols-2 gap-2 pt-1">
-            <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
-              <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center">
               Scanner Gudang MBI
             </button>
-            <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
-              <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center">
               Scanner Gudang MAI
             </button>
           </div>
@@ -264,11 +257,11 @@
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Gudang</label>
             <div class="grid grid-cols-2 gap-2">
-              <label id="lbl-login-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs">
+              <label id="lbl-login-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs">
                 <input type="radio" name="login-warehouse" value="MBI" checked onchange="updateLoginWhStyle()" class="sr-only">
                 <span>Gudang MBI</span>
               </label>
-              <label id="lbl-login-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
+              <label id="lbl-login-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
                 <input type="radio" name="login-warehouse" value="MAI" onchange="updateLoginWhStyle()" class="sr-only">
                 <span>Gudang MAI</span>
               </label>
@@ -277,12 +270,12 @@
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK / Username</label>
-            <input type="text" id="login-identifier" required placeholder="Masukkan NIK atau Username" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none font-medium">
+            <input type="text" id="login-identifier" required placeholder="Masukkan NIK atau Username" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium">
           </div>
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
-            <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none">
+            <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
 
           <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20">
@@ -313,7 +306,7 @@
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-900">1. Sinkronisasi Otomatis Cloud:</span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">Online 24/7</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">Online 24/7</span>
           </div>
           <p class="text-[11px] text-slate-600">Klik tombol di bawah di HP Anda untuk langsung menyamakan data dengan Laptop Admin.</p>
           <div class="grid grid-cols-2 gap-2 pt-1">
@@ -432,20 +425,19 @@
       <div class="flex items-center gap-2.5">
         <!-- Live Cloud Sync Button (Khusus Admin) -->
         <button id="nav-btn-cloud-sync" onclick="openDirectSyncModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime HP & Laptop">
-          <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+          <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
           <span id="nav-cloud-label">Cloud: Live</span>
         </button>
 
         <!-- Tombol Pengaturan Suara (Khusus Admin) -->
         <button id="nav-btn-audio-admin" onclick="openAudioSettingsModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Pengaturan Suara Notifikasi Presensi (Khusus Admin)">
-          <i data-lucide="volume-2" class="w-3.5 h-3.5 text-teal-600"></i>
           <span>Suara Notif</span>
         </button>
 
         <!-- Live Google Sheet Auto-Sync Indicator & Trigger (Hidden as requested) -->
-        <button id="nav-btn-gsheet-status" onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
-          <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="nav-gsheet-label">Google Sheet: Auto ⚡</span>
+        <button id="nav-btn-gsheet-status" onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
+          <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
+          <span id="nav-gsheet-label">Google Sheet: Auto</span>
         </button>
 
         <!-- Switch Database Gudang View (Khusus Super Admin Saja) -->
@@ -460,10 +452,10 @@
             <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
             <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
           </div>
-          <button id="nav-btn-settings" onclick="switchView('settings')" class="p-2 rounded-xl text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition" title="Pengaturan Profil & Akun">
+          <button id="nav-btn-settings" onclick="switchView('settings')" class="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition" title="Pengaturan Profil & Akun">
             <i data-lucide="user-cog" class="w-4 h-4"></i>
           </button>
-          <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition" title="Logout">
+          <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition" title="Logout">
             <i data-lucide="log-out" class="w-4 h-4"></i>
           </button>
         </div>
@@ -484,7 +476,7 @@
               <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Dashboard</span>
             </button>
-            <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5">
+            <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-white border border-slate-700 shadow-sm transition flex items-center gap-2.5">
               <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Absensi Barcode</span>
             </button>
@@ -537,7 +529,7 @@
               <span class="sidebar-text">Database Cloud 24/7</span>
             </button>
             <button onclick="openAudioSettingsModal()" id="nav-btn-audio-settings" title="Pengaturan Suara Notifikasi (Khusus Admin)" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition items-center gap-2.5">
-              <i data-lucide="volume-2" class="w-4 h-4 flex-shrink-0 text-teal-400"></i>
+              <i data-lucide="volume-2" class="w-4 h-4 flex-shrink-0 text-slate-400"></i>
               <span class="sidebar-text">Suara Notifikasi</span>
             </button>
             <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
@@ -566,16 +558,14 @@
             <div class="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <span class="px-3.5 py-1 rounded-full bg-slate-800 text-teal-300 text-xs font-bold border border-slate-700 inline-flex items-center gap-1.5 shadow-2xs">
-                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-teal-400"></i>
+                  <span class="px-3.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700 inline-flex items-center shadow-2xs">
                     <span id="dash-date-text">Senin, 21 September 2026</span>
                   </span>
-                  <span class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-mono font-bold border border-slate-700 inline-flex items-center gap-1.5 shadow-2xs">
-                    <i data-lucide="clock" class="w-3.5 h-3.5 text-teal-400"></i>
+                  <span class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-mono font-bold border border-slate-700 inline-flex items-center shadow-2xs">
                     <span id="dash-time-text">00:00:00 WIB</span>
                   </span>
                 </div>
-                <h2 class="text-2xl font-black mt-2 tracking-tight">Portal Manajemen Gudang <span id="dash-wh-label" class="text-teal-400">MBI</span></h2>
+                <h2 class="text-2xl font-black mt-2 tracking-tight">Portal Manajemen Gudang <span id="dash-wh-label" class="text-white font-black">MBI</span></h2>
                 <p class="text-xs text-slate-400 mt-1">Data Karyawan, Presensi Barcode & GPS, Record Absen Harian & Rekap Matriks</p>
               </div>
               <div class="flex items-center gap-3">
@@ -586,7 +576,7 @@
               </div>
             </div>
 
-            <!-- KPI Cards Minimalis -->
+            <!-- KPI Cards Minimalis Senada -->
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Karyawan</p>
@@ -596,19 +586,19 @@
 
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Hadir Hari Ini</p>
-                <h3 id="stat-today-att" class="text-2xl font-black text-teal-800 mt-1">0 Hadir</h3>
-                <p class="text-[11px] text-teal-700 font-semibold mt-0.5">Presensi Masuk</p>
+                <h3 id="stat-today-att" class="text-2xl font-black text-slate-900 mt-1">0 Hadir</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">Presensi Masuk</p>
               </div>
 
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sakit / Cuti</p>
-                <h3 id="stat-today-leave" class="text-2xl font-black text-rose-800 mt-1">0 Orang</h3>
-                <p class="text-[11px] text-rose-700 font-semibold mt-0.5">Disetujui</p>
+                <h3 id="stat-today-leave" class="text-2xl font-black text-slate-900 mt-1">0 Orang</h3>
+                <p class="text-[11px] text-slate-500 mt-0.5">Disetujui</p>
               </div>
 
               <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
                 <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan Lembur</p>
-                <h3 id="stat-pending-ot" class="text-2xl font-black text-amber-800 mt-1">0 Pending</h3>
+                <h3 id="stat-pending-ot" class="text-2xl font-black text-slate-900 mt-1">0 Pending</h3>
                 <p class="text-[11px] text-slate-500 mt-0.5">Perlu Review</p>
               </div>
             </div>
@@ -639,36 +629,30 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                  Data Karyawan Gudang <span id="emp-wh-title" class="text-teal-700 font-black">MBI</span>
+                  Data Karyawan Gudang <span id="emp-wh-title" class="text-slate-900 font-black">MBI</span>
                 </h2>
                 <p class="text-xs text-slate-500 mt-0.5">Kelola data master karyawan presensi, cetak ID Card barcode, serta upload Excel</p>
               </div>
 
               <!-- Action Buttons Bersih, Rapi & Elegan -->
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="openAddEmployeeModal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+                <button onclick="openAddEmployeeModal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                   Tambah Karyawan
                 </button>
-                <label class="cursor-pointer h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <i data-lucide="file-up" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <label class="cursor-pointer h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                   Upload Excel
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Data Karyawan Excel">
-                  <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <button onclick="downloadAccountsExcel()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download Data Karyawan Excel">
                   Download Excel
                 </button>
-                <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+                <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                   Template
                 </button>
-                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="h-9 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition shadow-xs opacity-50 inline-flex items-center gap-1.5">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i>
+                <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="h-9 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs opacity-50 inline-flex items-center">
                   Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
-                <button id="btn-reset-all-emp" onclick="deleteAllEmployees()" class="hidden h-9 px-3.5 bg-white hover:bg-rose-50 text-rose-600 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5" title="Kosongkan Seluruh Data Karyawan untuk Upload Excel Bersih (Khusus Admin)">
-                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 text-rose-500"></i>
+                <button id="btn-reset-all-emp" onclick="deleteAllEmployees()" class="hidden h-9 px-3.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs items-center" title="Kosongkan Seluruh Data Karyawan untuk Upload Excel Bersih (Khusus Admin)">
                   Reset Semua
                 </button>
               </div>
@@ -678,10 +662,10 @@
             <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
               <div class="flex items-center justify-between gap-4 flex-wrap">
                 <div class="relative flex-1 min-w-[240px]">
-                  <input type="text" id="emp-search-input" onkeyup="renderEmployeeTable()" placeholder="Cari Nama Karyawan, Departemen, atau NIK..." class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                  <input type="text" id="emp-search-input" onkeyup="renderEmployeeTable()" placeholder="Cari Nama Karyawan, Departemen, atau NIK..." class="w-full px-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
                 </div>
                 <div class="flex items-center gap-2">
-                  <span id="emp-total-badge" class="text-xs font-bold px-3 py-1.5 bg-sky-50 text-sky-800 rounded-xl border border-sky-200">
+                  <span id="emp-total-badge" class="text-xs font-bold px-3 py-1.5 bg-slate-100 text-slate-800 rounded-xl border border-slate-300">
                     Total: 0 Karyawan
                   </span>
                 </div>
@@ -693,7 +677,7 @@
                   <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
                     <tr>
                       <th class="p-3.5 border-r border-slate-200 w-10 text-center">
-                        <input type="checkbox" id="emp-master-check" onchange="toggleSelectAllEmployees(this.checked)" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+                        <input type="checkbox" id="emp-master-check" onchange="toggleSelectAllEmployees(this.checked)" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-500 border-slate-300 cursor-pointer">
                       </th>
                       <th class="p-3.5 border-r border-slate-200">No</th>
                       <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
@@ -721,7 +705,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                  Absensi Barcode Kamera (<span id="att-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
+                  Absensi Barcode Kamera (<span id="att-wh-label" class="text-slate-900 font-black">Gudang MBI</span>)
                 </h2>
                 <p class="text-xs text-slate-500 mt-0.5">Langsung scan Barcode ID Card Karyawan (Wajib aktifkan GPS & berada di radius <span id="att-sub-radius-label" class="font-bold text-slate-700">30m</span> lokasi gudang)</p>
               </div>
@@ -736,12 +720,10 @@
               <div class="flex items-center gap-2">
                 <span class="text-xs font-bold text-slate-700">Metode Pemindaian:</span>
                 <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <button type="button" id="tab-scan-camera" onclick="switchScanMethod('camera')" class="px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center gap-1.5">
-                    <i data-lucide="camera" class="w-3.5 h-3.5 text-teal-600"></i>
+                  <button type="button" id="tab-scan-camera" onclick="switchScanMethod('camera')" class="px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center justify-center">
                     <span>Kamera HP</span>
                   </button>
-                  <button type="button" id="tab-scan-gun" onclick="switchScanMethod('gun')" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
-                    <i data-lucide="scan-line" class="w-3.5 h-3.5 text-sky-600"></i>
+                  <button type="button" id="tab-scan-gun" onclick="switchScanMethod('gun')" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center justify-center">
                     <span>Scanner External (PDA / Barcode Gun)</span>
                   </button>
                 </div>
@@ -754,27 +736,24 @@
                 <div>
                   <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
                   <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center gap-1.5">
-                      <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center">
                       <span>Absen Masuk</span>
                     </button>
-                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5">
-                      <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center">
                       <span>Absen Keluar</span>
                     </button>
                   </div>
                 </div>
 
                 <!-- GPS Location Radius Status Indicator -->
-                <div class="p-4 rounded-2xl border border-emerald-300 bg-emerald-50/80 space-y-2">
+                <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
                   <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 font-bold text-xs text-emerald-950">
-                      <i data-lucide="map-pin" class="w-4 h-4 text-emerald-700"></i>
+                    <div class="flex items-center gap-2 font-bold text-xs text-slate-900">
                       <span id="att-gps-radius-label">Radius GPS: 30 Meter</span>
                     </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-200 text-emerald-900">AKTIF</span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800">AKTIF</span>
                   </div>
-                  <p id="att-gps-desc-label" class="text-[11px] text-emerald-800 leading-relaxed">
+                  <p id="att-gps-desc-label" class="text-[11px] text-slate-600 leading-relaxed">
                     Sistem otomatis memverifikasi koordinat GPS HP saat kartu di-scan. Staf di luar radius yang ditentukan tidak dapat melakukan absensi.
                   </p>
                 </div>
@@ -796,8 +775,7 @@
                     <!-- Slot Bukti Scan Terakhir (Muncul Saat Berhasil Scan) -->
                     <div id="last-scan-success-card" class="hidden w-full max-w-sm p-4 bg-emerald-50 border-2 border-emerald-500 rounded-2xl text-left space-y-2 shadow-xs animate-pulse">
                       <div class="flex items-center justify-between pb-1.5 border-b border-emerald-200">
-                        <span class="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                          <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                        <span class="text-xs font-black text-emerald-950">
                           ABSEN BERHASIL TERCATAT
                         </span>
                         <span id="last-scan-type-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900 uppercase">MASUK</span>
@@ -813,11 +791,6 @@
                       </div>
                     </div>
 
-                    <!-- Standby Graphic Icon -->
-                    <div id="standby-icon-box" class="w-16 h-16 rounded-3xl bg-teal-50 border-2 border-teal-200 flex items-center justify-center text-teal-700 shadow-inner">
-                      <i data-lucide="camera-off" class="w-8 h-8"></i>
-                    </div>
-
                     <div>
                       <h3 id="standby-title" class="font-extrabold text-base text-slate-900">Kamera Scanner Tertutup</h3>
                       <p id="standby-subtitle" class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
@@ -826,8 +799,7 @@
                     </div>
 
                     <div class="pt-2 w-full max-w-xs mx-auto">
-                      <button type="button" onclick="startScanner()" class="w-full py-3.5 px-6 bg-teal-600 hover:bg-teal-700 active:scale-[0.98] text-white font-black text-xs rounded-2xl transition shadow-lg shadow-teal-600/30 flex items-center justify-center gap-2">
-                        <i data-lucide="camera" class="w-4 h-4"></i>
+                      <button type="button" onclick="startScanner()" class="w-full py-3.5 px-6 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-black text-xs rounded-2xl transition shadow-xs flex items-center justify-center">
                         <span id="btn-open-cam-text">Buka Kamera untuk Absen</span>
                       </button>
                     </div>
@@ -836,27 +808,25 @@
                   <!-- STATE B: ACTIVE / KAMERA TERBUKA -->
                   <div id="camera-video-wrapper" class="hidden w-full flex flex-col items-center justify-center space-y-3">
                     <!-- Status Scan Banner -->
-                    <div id="scanner-instruction" class="w-full p-3 rounded-2xl bg-teal-50 border border-teal-300 text-teal-950 text-xs font-bold text-center flex items-center justify-center gap-2">
-                      <i data-lucide="qr-code" class="w-4 h-4 text-teal-700 animate-spin"></i>
+                    <div id="scanner-instruction" class="w-full p-3 rounded-2xl bg-slate-100 border border-slate-300 text-slate-800 text-xs font-bold text-center flex items-center justify-center">
                       <span id="cam-status-msg">Arahkan kamera ke Barcode ID Card Karyawan...</span>
                     </div>
 
                     <!-- Video Stream Element -->
-                    <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-teal-500">
+                    <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-700">
                       <div id="qr-reader" class="w-full h-full"></div>
                       
                       <!-- Kotak Target Overlay -->
                       <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div id="scanner-box-border" class="w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
-                          <span id="scanner-box-tag" class="text-[10px] text-teal-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN BARCODE</span>
+                        <div id="scanner-box-border" class="w-48 h-48 border-2 border-slate-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
+                          <span id="scanner-box-tag" class="text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN BARCODE</span>
                         </div>
                       </div>
                     </div>
 
                     <!-- Tombol Tutup Manual -->
                     <div class="pt-2">
-                      <button type="button" onclick="stopScanner()" class="px-5 py-2.5 bg-slate-100 hover:bg-rose-50 text-rose-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                      <button type="button" onclick="stopScanner()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
                         <span>Tutup Kamera</span>
                       </button>
                     </div>
@@ -868,8 +838,7 @@
                   <!-- Slot Bukti Scan Terakhir Gun -->
                   <div id="last-gun-success-card" class="hidden w-full max-w-sm p-4 bg-sky-50 border-2 border-sky-500 rounded-2xl text-left space-y-2 shadow-xs animate-pulse">
                     <div class="flex items-center justify-between pb-1.5 border-b border-sky-200">
-                      <span class="text-xs font-black text-sky-950 flex items-center gap-1.5">
-                        <i data-lucide="check-circle-2" class="w-4 h-4 text-sky-600"></i>
+                      <span class="text-xs font-black text-sky-950">
                         ABSEN EXTERNAL TERCATAT
                       </span>
                       <span id="last-gun-type-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-200 text-sky-900 uppercase">MASUK</span>
@@ -885,10 +854,6 @@
                     </div>
                   </div>
 
-                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-50 to-blue-50 border border-sky-200/80 flex items-center justify-center text-sky-600 shadow-2xs">
-                    <i data-lucide="scan-line" class="w-7 h-7 text-sky-600"></i>
-                  </div>
-
                   <div class="space-y-1">
                     <h3 class="font-extrabold text-base text-slate-900 tracking-tight">Scanner Barcode External</h3>
                     <p class="text-xs text-slate-500 max-w-xs mx-auto">
@@ -899,20 +864,16 @@
                   <!-- Form & Input Khusus Scanner PDA / Gun -->
                   <form onsubmit="handleExternalBarcodeFormSubmit(event)" class="w-full max-w-sm space-y-3 pt-1">
                     <div class="relative group">
-                      <input type="text" id="external-barcode-input" onkeydown="handleExternalBarcodeKeyDown(event)" oninput="handleExternalBarcodeInput(event)" onfocus="resetExternalBarcodeTracker()" placeholder="Menunggu scan barcode..." class="w-full px-4 py-3.5 bg-slate-900 text-teal-300 font-mono font-bold text-center rounded-2xl border-2 border-sky-500/80 focus:border-sky-400 focus:outline-none focus:ring-4 focus:ring-sky-500/20 text-sm tracking-widest placeholder:text-slate-500 shadow-inner transition-all" autocomplete="off" spellcheck="false" autofocus>
-                      <div class="absolute right-3.5 top-3.5 text-sky-400 pointer-events-none">
-                        <i data-lucide="zap" class="w-5 h-5 animate-pulse"></i>
-                      </div>
+                      <input type="text" id="external-barcode-input" onkeydown="handleExternalBarcodeKeyDown(event)" oninput="handleExternalBarcodeInput(event)" onfocus="resetExternalBarcodeTracker()" placeholder="Menunggu scan barcode..." class="w-full px-4 py-3.5 bg-slate-900 text-slate-100 font-mono font-bold text-center rounded-2xl border-2 border-slate-400 focus:border-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-300/20 text-sm tracking-widest placeholder:text-slate-500 shadow-inner transition-all" autocomplete="off" spellcheck="false" autofocus>
                     </div>
 
                     <!-- Status Badges Minimalis & Elegan -->
                     <div class="flex items-center justify-center gap-2 pt-0.5">
-                      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
+                      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         Auto-Submit Aktif
                       </span>
-                      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
-                        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span class="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs">
                         Hardware Scanner Only
                       </span>
                     </div>
@@ -932,21 +893,17 @@
               <!-- Header Bar yang Bisa Diklik untuk Buka / Tutup -->
               <button type="button" onclick="toggleTodayScanHistory()" class="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 transition select-none bg-white">
                 <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-bold shadow-2xs shrink-0">
-                    <i data-lucide="history" class="w-5 h-5"></i>
-                  </div>
                   <div>
                     <div class="flex items-center gap-2 flex-wrap">
                       <h3 class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi Hari Ini</h3>
-                      <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-100 text-teal-800">0 Hadir</span>
+                      <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">0 Hadir</span>
                     </div>
                     <p class="text-xs text-slate-500 mt-0.5">Klik untuk melihat daftar karyawan yang sudah absen hari ini</p>
                   </div>
                 </div>
                 
                 <div class="flex items-center gap-2 shrink-0">
-                  <span id="history-toggle-label" class="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200 hidden sm:inline-flex items-center gap-1.5">
-                    <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                  <span id="history-toggle-label" class="text-xs font-bold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 hidden sm:inline-flex items-center">
                     <span>Lihat Daftar Absen</span>
                   </span>
                   <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
@@ -958,9 +915,9 @@
               <!-- Panel Daftar Karyawan yang Muncul Saat Diklik -->
               <div id="today-scan-history-panel" class="hidden border-t border-slate-200 p-4 sm:p-6 bg-slate-50/50 space-y-4">
                 <div class="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-200">
-                  <span class="text-xs font-bold text-slate-600">Daftar Presensi Karyawan Hari Ini (<span id="history-wh-name" class="font-black text-teal-800">Gudang MBI</span>)</span>
-                  <button type="button" onclick="renderScannerTodayRecords()" class="text-xs font-bold text-slate-700 hover:text-slate-950 bg-white hover:bg-slate-100 border border-slate-300 px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs">
-                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-teal-600"></i> Segarkan Data
+                  <span class="text-xs font-bold text-slate-600">Daftar Presensi Karyawan Hari Ini (<span id="history-wh-name" class="font-black text-slate-900">Gudang MBI</span>)</span>
+                  <button type="button" onclick="renderScannerTodayRecords()" class="text-xs font-bold text-slate-700 hover:text-slate-950 bg-white hover:bg-slate-100 border border-slate-300 px-3.5 py-1.5 rounded-xl transition flex items-center shadow-2xs">
+                    Segarkan Data
                   </button>
                 </div>
                 <div id="scanner-today-records-list" class="w-full">
@@ -976,7 +933,7 @@
           <div id="view-leaves" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                Form Pengajuan (<span id="leave-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
+                Form Pengajuan (<span id="leave-wh-label" class="text-slate-900 font-black">Gudang MBI</span>)
               </h2>
               <p class="text-xs text-slate-500 mt-0.5">Pengajuan Sakit atau Cuti. Data yang disetujui otomatis tercatat pada Rekap Absen & Matriks</p>
             </div>
@@ -1061,15 +1018,14 @@
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 flex-wrap">
               <div>
                 <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                  Laporan & Rekapitulasi Absensi (<span id="reports-wh-title" class="text-teal-700 font-black">Gudang MBI</span>)
+                  Laporan & Rekapitulasi Absensi (<span id="reports-wh-title" class="text-slate-900 font-black">Gudang MBI</span>)
                 </h2>
                 <p class="text-xs text-slate-500 mt-0.5">Record riwayat kehadiran harian, Rekap Matriks, Jam Kerja, Pengajuan & Lembur</p>
               </div>
 
               <div class="flex items-center gap-2.5 flex-wrap">
                 <!-- Tombol Backup Google Sheet (Khusus Admin) -->
-                <button id="btn-reports-gsheet-backup" onclick="openGoogleSheetBackupModal()" class="hidden h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-xs items-center gap-2">
-                  <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <button id="btn-reports-gsheet-backup" onclick="openGoogleSheetBackupModal()" class="hidden h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs items-center">
                   <span>Backup ke Google Sheet</span>
                 </button>
 
@@ -1102,12 +1058,10 @@
                 <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
-                      <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-slate-500"></i>
                       <span class="text-xs font-bold text-slate-800">Filter & Pengurutan Record</span>
                     </div>
-                    <button onclick="toggleFilterCard('filter-body-records', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                    <button onclick="toggleFilterCard('filter-body-records', this)" class="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
-                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                     </button>
                   </div>
 
@@ -1137,14 +1091,12 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                      <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                      <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Filter Record
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
-                        <button onclick="exportRecordsToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                          <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                        <button onclick="exportRecordsToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                           Download Record Excel
                         </button>
                       </div>
@@ -1155,50 +1107,38 @@
                 <!-- MINI DASHBOARD STATISTIK RECORD ABSEN (DESAIN ENTERPRISE MINIMALIS & PROFESIONAL) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-4">
                   <!-- Card 1: Total Hadir -->
-                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between gap-3">
-                    <div class="space-y-1 min-w-0">
+                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    <div class="space-y-1">
                       <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jumlah Hadir</p>
                       <h3 id="record-mini-total-hadir" class="text-2xl font-black text-slate-900 font-mono tracking-tight leading-none">0</h3>
                       <p id="record-mini-period-label" class="text-[11px] font-medium text-slate-400 truncate">Semua data tanggal</p>
                     </div>
-                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                      <i data-lucide="users" class="w-5 h-5"></i>
-                    </div>
                   </div>
 
                   <!-- Card 2: Absen Normal -->
-                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between gap-3">
-                    <div class="space-y-1 min-w-0">
+                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    <div class="space-y-1">
                       <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Absen Normal</p>
                       <h3 id="record-mini-absen-normal" class="text-2xl font-black text-slate-900 font-mono tracking-tight leading-none">0</h3>
                       <p id="record-mini-normal-pct" class="text-[11px] font-medium text-slate-500">0% Tepat Waktu</p>
                     </div>
-                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                      <i data-lucide="check-circle" class="w-5 h-5"></i>
-                    </div>
                   </div>
 
                   <!-- Card 3: Late In -->
-                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between gap-3">
-                    <div class="space-y-1 min-w-0">
+                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    <div class="space-y-1">
                       <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Jumlah Late In</p>
                       <h3 id="record-mini-late-in" class="text-2xl font-black text-slate-900 font-mono tracking-tight leading-none">0</h3>
                       <p id="record-mini-late-pct" class="text-[11px] font-medium text-slate-500">0% Terlambat</p>
                     </div>
-                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                      <i data-lucide="clock" class="w-5 h-5"></i>
-                    </div>
                   </div>
 
                   <!-- Card 4: Miss Scan (Lupa / Belum Tap Pulang) -->
-                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex items-center justify-between gap-3">
-                    <div class="space-y-1 min-w-0">
+                  <div class="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+                    <div class="space-y-1">
                       <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Miss Scan</p>
                       <h3 id="record-mini-miss-scan" class="text-2xl font-black text-slate-900 font-mono tracking-tight leading-none">0</h3>
                       <p id="record-mini-miss-scan-sub" class="text-[11px] font-medium text-slate-500 truncate">Lupa / Belum Tap Pulang</p>
-                    </div>
-                    <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                      <i data-lucide="log-out" class="w-5 h-5"></i>
                     </div>
                   </div>
                 </div>
@@ -1255,12 +1195,10 @@
                 <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
-                      <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-500"></i>
                       <span class="text-xs font-bold text-slate-800">Rentang Periode Matriks</span>
                     </div>
-                    <button onclick="toggleFilterCard('filter-body-matrix', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                    <button onclick="toggleFilterCard('filter-body-matrix', this)" class="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
-                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                     </button>
                   </div>
 
@@ -1274,25 +1212,21 @@
                         <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
                         <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                       </div>
-                      <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                      <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Tarik Matriks
                       </button>
                     </div>
 
                     <div class="flex items-center gap-2 flex-wrap">
-                      <button onclick="copyMatrixTable()" id="btn-copy-matrix" title="Salin seluruh tabel matriks ke clipboard (bisa langsung di-paste ke Excel / Spreadsheet)" class="h-9 px-4 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                        <i data-lucide="copy" id="icon-copy-matrix" class="w-3.5 h-3.5 text-sky-600"></i>
+                      <button onclick="copyMatrixTable()" id="btn-copy-matrix" title="Salin seluruh tabel matriks ke clipboard (bisa langsung di-paste ke Excel / Spreadsheet)" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         <span id="btn-copy-matrix-text">Copy Matriks</span>
                       </button>
 
-                      <button onclick="exportMatrixToExcel()" class="h-9 px-4 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                      <button onclick="exportMatrixToExcel()" class="h-9 px-4 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Download Matriks Excel
                       </button>
 
-                      <button id="btn-matrix-gsheet-backup" onclick="openGoogleSheetBackupModal('matrix')" title="Backup data rekap ke Google Spreadsheet (Khusus Admin)" class="hidden h-9 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5">
-                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i>
+                      <button id="btn-matrix-gsheet-backup" onclick="openGoogleSheetBackupModal('matrix')" title="Backup data rekap ke Google Spreadsheet (Khusus Admin)" class="hidden h-9 px-4 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs items-center">
                         <span>Backup Google Sheet</span>
                       </button>
                     </div>
@@ -1328,12 +1262,10 @@
                 <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
-                      <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-500"></i>
                       <span class="text-xs font-bold text-slate-800">Filter Periode Monitoring Jam Kerja</span>
                     </div>
-                    <button onclick="toggleFilterCard('filter-body-workhours', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                    <button onclick="toggleFilterCard('filter-body-workhours', this)" class="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
-                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                     </button>
                   </div>
 
@@ -1354,40 +1286,38 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                      <button onclick="renderWorkHoursReport()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                        <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
+                      <button onclick="renderWorkHoursReport()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Hitung Jam Kerja
                       </button>
 
-                      <button onclick="exportWorkHoursToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                      <button onclick="exportWorkHoursToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Download Rekap Jam Kerja (Excel)
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <!-- KPI Cards Ringkasan Monitoring Jam Kerja -->
+                <!-- KPI Cards Ringkasan Monitoring Jam Kerja Senada -->
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  <div class="p-3.5 rounded-2xl bg-teal-50 border border-teal-200">
-                    <span class="text-[10px] font-black uppercase text-teal-700 tracking-wider">Standar Kerja</span>
-                    <h4 class="text-base sm:text-lg font-black text-teal-950 mt-0.5">40 Jam / Minggu</h4>
-                    <p class="text-[10px] text-teal-700">7 Jam Kerja Efektif / Hari</p>
+                  <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                    <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Standar Kerja</span>
+                    <h4 class="text-base sm:text-lg font-black text-slate-900 mt-0.5">40 Jam / Minggu</h4>
+                    <p class="text-[10px] text-slate-500">7 Jam Kerja Efektif / Hari</p>
                   </div>
-                  <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                    <span class="text-[10px] font-black uppercase text-slate-500 tracking-wider">Total Karyawan Hadir</span>
+                  <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                    <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Total Karyawan Hadir</span>
                     <h4 id="kpi-wh-active-emp" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0 Orang</h4>
                     <p class="text-[10px] text-slate-500">Mempunyai catatan jam masuk</p>
                   </div>
-                  <div class="p-3.5 rounded-2xl bg-sky-50 border border-sky-200">
-                    <span class="text-[10px] font-black uppercase text-sky-700 tracking-wider">Rata-rata Jam Kerja</span>
-                    <h4 id="kpi-wh-avg-hours" class="text-base sm:text-lg font-black text-sky-950 mt-0.5">0.0 Jam</h4>
-                    <p class="text-[10px] text-sky-700">Rata-rata durasi per staf</p>
+                  <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                    <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Rata-rata Jam Kerja</span>
+                    <h4 id="kpi-wh-avg-hours" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0.0 Jam</h4>
+                    <p class="text-[10px] text-slate-500">Rata-rata durasi per staf</p>
                   </div>
-                  <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                    <span class="text-[10px] font-black uppercase text-emerald-700 tracking-wider">Capai Target (&ge; 40 Jam)</span>
-                    <h4 id="kpi-wh-achieved-emp" class="text-base sm:text-lg font-black text-emerald-950 mt-0.5">0 Orang</h4>
-                    <p class="text-[10px] text-emerald-700">Karyawan capai/lebih 40 jam</p>
+                  <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+                    <span class="text-[10px] font-bold uppercase text-slate-500 tracking-wider">Capai Target (&ge; 40 Jam)</span>
+                    <h4 id="kpi-wh-achieved-emp" class="text-base sm:text-lg font-black text-slate-900 mt-0.5">0 Orang</h4>
+                    <p class="text-[10px] text-slate-500">Karyawan capai/lebih 40 jam</p>
                   </div>
                 </div>
 
@@ -1401,7 +1331,7 @@
                         <th class="p-3.5 min-w-[110px] border-r border-slate-200">NIK</th>
                         <th class="p-3.5 min-w-[120px] border-r border-slate-200">Departemen</th>
                         <th class="p-3.5 min-w-[100px] text-center border-r border-slate-200">Hari Hadir</th>
-                        <th class="p-3.5 min-w-[130px] text-center border-r border-slate-200 bg-teal-50/50">Total Jam Kerja</th>
+                        <th class="p-3.5 min-w-[130px] text-center border-r border-slate-200">Total Jam Kerja</th>
                         <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200">Target (40 Jam)</th>
                         <th class="p-3.5 min-w-[120px] text-center border-r border-slate-200">Selisih Jam</th>
                         <th class="p-3.5 min-w-[150px] text-center border-slate-200">Status Capaian Jam</th>
@@ -1415,7 +1345,6 @@
 
                 <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between flex-wrap gap-2">
                   <div class="flex items-center gap-2">
-                    <i data-lucide="info" class="w-4 h-4 text-teal-600"></i>
                     <span><b>Rumus:</b> Sehari shift 8 jam kerja terhitung <b>7 jam kerja efektif</b> (otomatis dipotong 1 jam istirahat untuk durasi &ge; 5 jam). Perhitungan presisi disesuaikan dalam format Jam &amp; Menit. Target standar 40 jam per minggu.</span>
                   </div>
                   <span class="font-bold text-slate-700">Khusus Monitoring Jam Kerja Karyawan</span>
@@ -1431,12 +1360,10 @@
                 <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
-                      <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-500"></i>
                       <span class="text-xs font-bold text-slate-800">Filter Pengajuan Sakit / Cuti</span>
                     </div>
-                    <button onclick="toggleFilterCard('filter-body-leaves', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                    <button onclick="toggleFilterCard('filter-body-leaves', this)" class="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
-                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                     </button>
                   </div>
 
@@ -1474,13 +1401,11 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                      <button onclick="renderReportLeavesTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                      <button onclick="renderReportLeavesTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Filter Pengajuan
                       </button>
 
-                      <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                      <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Download Pengajuan Excel
                       </button>
                     </div>
@@ -1517,12 +1442,10 @@
                 <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
                   <div class="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/80 bg-slate-100/60">
                     <div class="flex items-center gap-2">
-                      <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-500"></i>
                       <span class="text-xs font-bold text-slate-800">Filter Rekap Lembur</span>
                     </div>
-                    <button onclick="toggleFilterCard('filter-body-overtime', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                    <button onclick="toggleFilterCard('filter-body-overtime', this)" class="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                       <span class="card-toggle-text">Sembunyikan Filter</span>
-                      <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                     </button>
                   </div>
 
@@ -1552,8 +1475,7 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-                      <button onclick="renderReportOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                        <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                      <button onclick="renderReportOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Filter Lembur
                       </button>
 
@@ -1561,8 +1483,7 @@
                         <span id="report-ot-total-nominal-badge" class="h-9 px-4 bg-white text-slate-800 border border-slate-300 rounded-xl text-xs font-black inline-flex items-center shadow-2xs">
                           Total Biaya: Rp 0
                         </span>
-                        <button onclick="exportReportOvertimeToExcel()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-2">
-                          <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <button onclick="exportReportOvertimeToExcel()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                           Download Rekap Lembur (Excel)
                         </button>
                       </div>
@@ -1602,7 +1523,7 @@
           <div id="view-overtime" class="view-panel hidden space-y-6">
             <div>
               <h2 class="text-xl font-black text-slate-900 tracking-tight">
-                Input & Persetujuan Lembur (<span id="ot-wh-label" class="text-teal-700 font-black">Gudang MBI</span>)
+                Input & Persetujuan Lembur (<span id="ot-wh-label" class="text-slate-900 font-black">Gudang MBI</span>)
               </h2>
               <p class="text-xs text-slate-500 mt-0.5">Pilih karyawan secara massal (grid), hitung upah otomatis (Hari Kerja Rp 125.000 / Hari Libur Rp 120.000), & approval supervisor</p>
             </div>
@@ -1613,15 +1534,13 @@
             <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
               <div class="p-5 flex items-center justify-between border-b border-slate-100 bg-slate-50/50 flex-wrap gap-2">
                 <div class="flex items-center gap-2.5">
-                  <i data-lucide="clock" class="w-4 h-4 text-slate-700"></i>
                   <h3 class="font-extrabold text-sm text-slate-900">Form Penugasan Lembur Karyawan</h3>
                   <div id="ot-calc-summary-badge" class="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 rounded-lg text-[11px] font-extrabold">
                     Estimasi: Rp 125.000 / orang (4 Jam Kerja)
                   </div>
                 </div>
-                <button onclick="toggleFilterCard('form-body-overtime', this)" class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
+                <button onclick="toggleFilterCard('form-body-overtime', this)" class="inline-flex items-center text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs hover:bg-slate-50 transition">
                   <span class="card-toggle-text">Sembunyikan Form</span>
-                  <i data-lucide="chevron-up" class="w-3.5 h-3.5 card-toggle-icon transition-transform duration-200"></i>
                 </button>
               </div>
 
@@ -1698,8 +1617,7 @@
                     </div>
 
                     <div class="flex justify-end pt-1">
-                      <button type="submit" class="w-full sm:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs inline-flex items-center justify-center gap-1.5">
-                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                      <button type="submit" class="w-full sm:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-xs inline-flex items-center justify-center">
                         Ajukan Lembur (Menunggu Approval Supervisor)
                       </button>
                     </div>
@@ -1724,8 +1642,7 @@
                     <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
                     <input type="date" id="ot-filter-end" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                   </div>
-                  <button onclick="renderOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                    <i data-lucide="filter" class="w-3.5 h-3.5"></i>
+                  <button onclick="renderOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                     Filter Data
                   </button>
                 </div>
@@ -1772,19 +1689,16 @@
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="openAllIDCardsA4Modal()" class="h-9 px-4 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Semua ID Card per Karyawan (ZIP / PNG) dan Cetak Lembar A4">
-                  <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <button onclick="openAllIDCardsA4Modal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download Semua ID Card per Karyawan (ZIP / PNG) dan Cetak Lembar A4">
                   <span>Download Semua ID Card (ZIP)</span>
                 </button>
                 <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="h-9 px-3.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
                   <!-- Rendered by JS -->
                 </select>
-                <button onclick="downloadIDCardImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download gambar PNG kartu ID">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <button onclick="downloadIDCardImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download gambar PNG kartu ID">
                   Download ID Card (PNG)
                 </button>
-                <button onclick="printCard('idcard')" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
-                  <svg class="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <button onclick="printCard('idcard')" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                   Cetak ID Card
                 </button>
               </div>
@@ -1852,22 +1766,19 @@
             <div id="gps-config-box" class="w-full bg-white rounded-3xl border border-slate-200 p-6 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
               <div class="space-y-1.5">
                 <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center">
-                    <i data-lucide="map-pin" class="w-4 h-4"></i>
-                  </div>
                   <h4 class="font-extrabold text-sm text-slate-900 uppercase tracking-wider">Titik Koordinat & Radius GPS Presensi</h4>
                 </div>
                 <p class="text-xs text-slate-500">
                   Gudang Aktif: <span id="lbl-registered-wh" class="font-bold text-slate-800">Gudang MBI</span>
                   • Titik: <span id="lbl-registered-coords" class="font-mono font-bold text-slate-800">-6.208800, 106.845600</span> 
-                  • Radius Aktif: <span id="lbl-registered-radius" class="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-extrabold text-xs">30 METER</span>
+                  • Radius Aktif: <span id="lbl-registered-radius" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-extrabold text-xs">30 METER</span>
                 </p>
               </div>
 
               <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                 <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
                   <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih Radius:</label>
-                  <select id="select-gps-radius" onchange="changeWarehouseGPSRadius(this.value)" class="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-teal-800 focus:outline-none cursor-pointer">
+                  <select id="select-gps-radius" onchange="changeWarehouseGPSRadius(this.value)" class="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-800 focus:outline-none cursor-pointer">
                     <option value="10">10 Meter</option>
                     <option value="15">15 Meter</option>
                     <option value="20">20 Meter</option>
@@ -1876,12 +1787,10 @@
                     <option value="50">50 Meter</option>
                   </select>
                 </div>
-                <button type="button" onclick="checkLiveGPSDistance()" class="h-9 px-3.5 bg-teal-50 hover:bg-teal-100 text-teal-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 border border-teal-200 shadow-2xs">
-                  <i data-lucide="radar" class="w-3.5 h-3.5 text-teal-600"></i>
+                <button type="button" onclick="checkLiveGPSDistance()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center border border-slate-300 shadow-2xs">
                   <span>Cek Jarak GPS</span>
                 </button>
-                <button type="button" onclick="calibrateCurrentWarehouseGPS()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs">
-                  <i data-lucide="crosshair" class="w-3.5 h-3.5 text-teal-400"></i>
+                <button type="button" onclick="calibrateCurrentWarehouseGPS()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center shadow-xs">
                   <span>Daftarkan GPS</span>
                 </button>
                 <button type="button" onclick="openManualGPSModal()" class="h-9 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition border border-slate-200">
@@ -1901,15 +1810,14 @@
           <div id="view-github" class="view-panel hidden space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  <i data-lucide="cloud" class="w-6 h-6 text-teal-600"></i>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
                   Database Cloud Firebase (Online 24 Jam Nonstop)
                 </h2>
                 <p class="text-xs text-slate-500 mt-0.5">Sistem database terpusat di Google Cloud Server. Sistem absensi di HP tetap berjalan normal meskipun laptop Admin mati.</p>
               </div>
               <div class="flex items-center gap-2">
-                <span class="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="px-3 py-1 bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                  <span class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
                   Firebase Backend: Aktif
                 </span>
               </div>
@@ -1920,50 +1828,40 @@
               <!-- CARD 1: PUSAT KONTROL FIREBASE REALTIME DATABASE (UTAMA) -->
               <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-5">
                 <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center flex-shrink-0 shadow-xs">
-                      <i data-lucide="database" class="w-5 h-5"></i>
-                    </div>
-                    <div>
-                      <h3 class="font-extrabold text-sm text-slate-900">Google Firebase Realtime Database</h3>
-                      <p class="text-[11px] text-slate-500 font-mono">https://wfm-medika-default-rtdb.firebaseio.com/</p>
-                    </div>
+                  <div>
+                    <h3 class="font-extrabold text-sm text-slate-900">Google Firebase Realtime Database</h3>
+                    <p class="text-[11px] text-slate-500 font-mono">https://wfm-medika-default-rtdb.firebaseio.com/</p>
                   </div>
-                  <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-teal-100 text-teal-900 uppercase tracking-wider">Cloud 24/7</span>
+                  <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wider">Cloud 24/7</span>
                 </div>
 
                 <!-- Info Box Fitur Otomatis -->
                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
                   <div class="flex items-center gap-2 text-slate-900 font-bold">
-                    <i data-lucide="check-circle-2" class="w-4 h-4 text-teal-600"></i>
                     <span>Otomatis Tersinkronisasi ke Seluruh HP & Laptop</span>
                   </div>
-                  <p class="text-[11px] text-slate-600 leading-relaxed pl-6">
+                  <p class="text-[11px] text-slate-600 leading-relaxed">
                     Setiap ada karyawan yang melakukan scan absensi di HP, atau Admin menambah karyawan baru, data akan <b>otomatis masuk seketika ke Firebase</b> tanpa perlu tombol manual lagi.
                   </p>
                 </div>
 
                 <!-- Action Buttons Khusus & Rapih -->
                 <div class="space-y-3 pt-1">
-                  <button type="button" onclick="initializeAndUploadToFirebase()" class="w-full py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-sm">
-                    <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-                    <span>🚀 Inisialisasi & Unggah Database Master ke Firebase Cloud</span>
+                  <button type="button" onclick="initializeAndUploadToFirebase()" class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-black transition flex items-center justify-center shadow-sm">
+                    <span>Inisialisasi & Unggah Database Master ke Firebase Cloud</span>
                   </button>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-                      <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-teal-400"></i>
+                    <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
                       <span>Tarik Data Terbaru dari Cloud</span>
                     </button>
-                    <button type="button" onclick="purgeAndReloadFromFirebase()" class="py-2.5 px-3 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-                      <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i>
-                      <span>🧹 Bersihkan Cache HP & Laptop</span>
+                    <button type="button" onclick="purgeAndReloadFromFirebase()" class="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
+                      <span>Bersihkan Cache HP & Laptop</span>
                     </button>
                   </div>
                 </div>
 
-                <div class="p-3 bg-amber-50/80 rounded-2xl border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2">
-                  <i data-lucide="info" class="w-4 h-4 text-amber-700 flex-shrink-0"></i>
+                <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200 text-[11px] text-slate-700 flex items-center gap-2">
                   <span>Gunakan tombol <b>"Bersihkan Cache"</b> jika masih ada nama karyawan lama/dummy yang nyangkut di browser HP Anda.</span>
                 </div>
               </div>
@@ -1971,24 +1869,17 @@
               <!-- CARD 2: CADANGAN MANUAL FILE JSON & GITHUB (OPSIONAL) -->
               <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4 flex flex-col justify-between">
                 <div>
-                  <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100 mb-3">
-                    <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center flex-shrink-0">
-                      <i data-lucide="file-json" class="w-4 h-4"></i>
-                    </div>
-                    <div>
-                      <h3 class="font-extrabold text-sm text-slate-900">Cadangan Manual (File JSON)</h3>
-                      <p class="text-[11px] text-slate-500">Simpan cadangan database ke file komputer Anda</p>
-                    </div>
+                  <div class="pb-3 border-b border-slate-100 mb-3">
+                    <h3 class="font-extrabold text-sm text-slate-900">Cadangan Manual (File JSON)</h3>
+                    <p class="text-[11px] text-slate-500">Simpan cadangan database ke file komputer Anda</p>
                   </div>
                   
                   <div class="space-y-2.5 pt-1">
-                    <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2">
-                      <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <button type="button" onclick="exportFullDatabaseJSON()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center">
                       <span>Ekspor Cadangan Database (.json)</span>
                     </button>
 
-                    <label class="cursor-pointer w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition text-center flex items-center justify-center gap-2">
-                      <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <label class="cursor-pointer w-full py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition text-center flex items-center justify-center">
                       <span>Impor File Database (.json)</span>
                       <input type="file" id="db-json-input" accept=".json" onchange="importFullDatabaseJSON(event)" class="sr-only">
                     </label>
@@ -1998,11 +1889,10 @@
                 <!-- GitHub Config Toggle -->
                 <div class="pt-3 border-t border-slate-100">
                   <div class="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
-                    <span class="flex items-center gap-1.5"><i data-lucide="github" class="w-4 h-4"></i> Repositori GitHub</span>
-                    <span id="github-mode-status" class="text-[10px] text-teal-700 font-semibold">Tersedia</span>
+                    <span>Repositori GitHub</span>
+                    <span id="github-mode-status" class="text-[10px] text-slate-600 font-semibold">Tersedia</span>
                   </div>
-                  <button type="button" onclick="syncAllToGitHub()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-                    <i data-lucide="git-commit" class="w-3.5 h-3.5"></i>
+                  <button type="button" onclick="syncAllToGitHub()" class="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
                     <span>Sinkronkan ke Repo GitHub</span>
                   </button>
                 </div>
@@ -2017,14 +1907,13 @@
           <div id="view-settings" class="view-panel hidden space-y-6 max-w-4xl mx-auto">
             <div class="flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <h2 class="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  <i data-lucide="user-cog" class="w-5 h-5 text-teal-700"></i>
+                <h2 class="text-xl font-black text-slate-900 tracking-tight">
                   Pengaturan Akun & Profil
                 </h2>
                 <p class="text-xs text-slate-500 mt-0.5">Kelola identitas, nomor telepon, email, dan kata sandi akun Anda.</p>
               </div>
-              <div id="settings-status-badge" class="px-3 py-1.5 bg-teal-50 text-teal-800 border border-teal-200 rounded-xl text-xs font-bold flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+              <div id="settings-status-badge" class="px-3 py-1.5 bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-slate-900"></span>
                 Akun Terverifikasi
               </div>
             </div>
@@ -2047,7 +1936,7 @@
                 <div class="flex items-center gap-2 flex-wrap">
                   <span id="settings-wh-badge" class="px-2.5 py-1 bg-slate-100 text-slate-800 border border-slate-200 rounded-lg text-xs font-bold">Gudang MBI</span>
                   <span id="settings-role-badge" class="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-bold">STAFF</span>
-                  <span id="settings-dept-badge" class="px-2.5 py-1 bg-teal-50 text-teal-800 border border-teal-200 rounded-lg text-xs font-bold">INBOUND</span>
+                  <span id="settings-dept-badge" class="px-2.5 py-1 bg-slate-100 text-slate-800 border border-slate-200 rounded-lg text-xs font-bold">INBOUND</span>
                 </div>
               </div>
 
@@ -2055,8 +1944,7 @@
               <form onsubmit="handleSaveAccountSettings(event)" class="p-6 space-y-6">
                 <!-- Bagian 1: Data Identitas & Kontak -->
                 <div class="space-y-4">
-                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <i data-lucide="contact" class="w-3.5 h-3.5"></i>
+                  <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">
                     Informasi Pribadi & Kontak
                   </h4>
                   
@@ -2086,8 +1974,7 @@
                 <!-- Bagian 2: Kata Sandi Akun -->
                 <div class="space-y-4 pt-4 border-t border-slate-100">
                   <div>
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                      <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700">
                       Keamanan & Kata Sandi
                     </h4>
                     <p class="text-[11px] text-slate-500 mt-0.5">Kosongkan jika Anda tidak ingin mengganti kata sandi akun saat ini.</p>
@@ -2108,8 +1995,7 @@
 
                 <!-- Tombol Submit -->
                 <div class="pt-2 flex justify-end">
-                  <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center justify-center gap-2">
-                    <i data-lucide="check" class="w-4 h-4"></i>
+                  <button type="submit" class="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center justify-center">
                     Simpan Perubahan Akun
                   </button>
                 </div>
@@ -2120,8 +2006,7 @@
             <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
               <div class="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                    <i data-lucide="type" class="w-4 h-4 text-teal-600"></i>
+                  <h3 class="font-extrabold text-sm text-slate-900">
                     Tipografi &amp; Font Tampilan Web (Secara Keseluruhan)
                   </h3>
                   <p class="text-xs text-slate-500 mt-0.5">Pilih jenis font yang paling nyaman untuk seluruh teks, tabel data, tombol, dan kartu operasional.</p>
@@ -2134,17 +2019,17 @@
               <!-- Pilihan Card Font Interaktif -->
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <!-- Opsi 1: Plus Jakarta Sans (Rekomendasi Utama) -->
-                <div onclick="applyWebFont('plus-jakarta')" data-font-key="plus-jakarta" class="font-choice-card cursor-pointer p-4 rounded-2xl border-2 border-teal-600 bg-teal-50/50 ring-2 ring-teal-500/20 transition hover:shadow-md flex flex-col justify-between">
+                <div onclick="applyWebFont('plus-jakarta')" data-font-key="plus-jakarta" class="font-choice-card cursor-pointer p-4 rounded-2xl border-2 border-slate-900 bg-slate-50 ring-2 ring-slate-900/10 transition hover:shadow-md flex flex-col justify-between">
                   <div class="space-y-1">
                     <div class="flex items-center justify-between">
                       <span class="text-xs font-black text-slate-900" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
-                      <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-600 text-white">Saran Terbaik ⭐</span>
+                      <span class="px-2 py-0.5 rounded-full text-[9px] font-black bg-slate-900 text-white">Saran Terbaik ⭐</span>
                     </div>
                     <p class="text-[11px] text-slate-600 leading-snug" style="font-family: 'Plus Jakarta Sans', sans-serif;">
                       Font modern Indonesia standar startup &amp; enterprise. Sangat jernih, tegas, dan proporsional di layar HP &amp; laptop.
                     </p>
                   </div>
-                  <div class="mt-3 pt-2 border-t border-teal-200/60 text-[11px] font-mono text-teal-800 font-bold">
+                  <div class="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono text-slate-800 font-bold">
                     Aa Bb Gg 123 • Rp 45.000
                   </div>
                 </div>
@@ -2185,24 +2070,18 @@
             <!-- Kartu Pengaturan Suara Notifikasi Presensi (Khusus Admin) -->
             <div id="admin-audio-settings-card" class="hidden bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl p-6 shadow-xl space-y-4 border border-slate-700">
               <div class="flex items-center justify-between gap-4 flex-wrap">
-                <div class="flex items-center gap-3.5">
-                  <div class="w-12 h-12 rounded-2xl bg-teal-500/20 border border-teal-500/30 text-teal-400 flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/10">
-                    <i data-lucide="volume-2" class="w-6 h-6"></i>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <h3 class="font-extrabold text-base text-white tracking-tight">
+                      Suara Notifikasi Presensi Barcode
+                    </h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-white text-slate-950 uppercase tracking-wider">Khusus Admin</span>
                   </div>
-                  <div>
-                    <div class="flex items-center gap-2">
-                      <h3 class="font-extrabold text-base text-white tracking-tight">
-                        Suara Notifikasi Presensi Barcode
-                      </h3>
-                      <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-teal-500 text-slate-950 uppercase tracking-wider">Khusus Admin</span>
-                    </div>
-                    <p class="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
-                      Sistem menggunakan berkas audio resmi folder: <b class="text-teal-300">suara absen-berhasil.mpeg</b> (Masuk &amp; Pulang) dan <b class="text-rose-300">suara absen-gagal.mpeg</b> (Gagal &amp; Di Luar Lokasi).
-                    </p>
-                  </div>
+                  <p class="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                    Sistem menggunakan berkas audio resmi: <b class="text-white font-bold">suara absen-berhasil.mpeg</b> (Masuk &amp; Pulang) dan <b class="text-white font-bold">suara absen-gagal.mpeg</b> (Gagal &amp; Di Luar Lokasi).
+                  </p>
                 </div>
-                <button type="button" onclick="openAudioSettingsModal()" class="px-5 py-3 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-2xl text-xs font-black transition flex items-center gap-2 shadow-lg shadow-teal-500/25 active:scale-95">
-                  <i data-lucide="sliders" class="w-4 h-4"></i>
+                <button type="button" onclick="openAudioSettingsModal()" class="px-5 py-3 bg-white hover:bg-slate-100 text-slate-950 rounded-2xl text-xs font-black transition flex items-center shadow-md active:scale-95">
                   <span>Buka Panel Pengaturan Suara</span>
                 </button>
               </div>
@@ -2220,8 +2099,7 @@
   <div id="add-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200">
       <div class="flex items-center justify-between pb-3 border-b">
-        <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-          <i data-lucide="user-plus" class="w-5 h-5 text-teal-600"></i>
+        <h3 class="font-extrabold text-base text-slate-900">
           Tambah Karyawan Baru (<span id="modal-emp-wh">MBI</span>)
         </h3>
         <button onclick="closeAddEmployeeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -2230,17 +2108,17 @@
       <form onsubmit="handleManualAddEmployee(event)" class="space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Karyawan *</label>
-          <input type="text" id="m-emp-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <input type="text" id="m-emp-name" required placeholder="Nama Lengkap Karyawan" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK (Opsional)</label>
-            <input type="text" id="m-emp-nik" placeholder="Otomatis jika kosong" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="text" id="m-emp-nik" placeholder="Otomatis jika kosong" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <select id="m-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="staff">Staff</option>
               <option value="coordinator">Coordinator</option>
               <option value="supervisor">Supervisor</option>
@@ -2251,7 +2129,7 @@
         <div class="relative" id="add-dept-container">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
           <input type="hidden" id="m-emp-dept" value="picker">
-          <button type="button" id="add-dept-btn" onclick="toggleDeptDropdown('add')" class="w-full px-3 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <button type="button" id="add-dept-btn" onclick="toggleDeptDropdown('add')" class="w-full px-3 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-slate-900">
             <span id="add-dept-label" class="truncate">Picker</span>
             <i data-lucide="chevron-down" id="add-dept-chevron" class="w-4 h-4 text-slate-500 shrink-0 ml-2 transition-transform duration-200"></i>
           </button>
@@ -2262,23 +2140,23 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-          <input type="text" id="m-emp-outsource" required placeholder="Nama Vendor / Internal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <input type="text" id="m-emp-outsource" required placeholder="Nama Vendor / Internal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon *</label>
-            <input type="text" id="m-emp-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="text" id="m-emp-phone" required placeholder="08123456789" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email (Opsional)</label>
-            <input type="email" id="m-emp-email" placeholder="nama@email.com" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="email" id="m-emp-email" placeholder="nama@email.com" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
-          <input type="date" id="m-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <input type="date" id="m-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
@@ -2295,8 +2173,7 @@
   <div id="edit-emp-modal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto custom-scroll">
       <div class="flex items-center justify-between pb-3 border-b">
-        <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-          <i data-lucide="user-cog" class="w-5 h-5 text-teal-600"></i>
+        <h3 class="font-extrabold text-base text-slate-900">
           Edit Data Karyawan
         </h3>
         <button onclick="closeEditEmployeeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -2308,17 +2185,17 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
-          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <input type="text" id="edit-emp-name" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK Karyawan *</label>
-            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="text" id="edit-emp-nik" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Posisi Jabatan *</label>
-            <select id="edit-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <select id="edit-emp-position" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="staff">Staff</option>
               <option value="coordinator">Coordinator</option>
               <option value="supervisor">Supervisor</option>
@@ -2330,7 +2207,7 @@
         <div class="relative" id="edit-dept-container">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Departemen *</label>
           <input type="hidden" id="edit-emp-dept" value="picker">
-          <button type="button" id="edit-dept-btn" onclick="toggleDeptDropdown('edit')" class="w-full px-3 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <button type="button" id="edit-dept-btn" onclick="toggleDeptDropdown('edit')" class="w-full px-3 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-slate-900">
             <span id="edit-dept-label" class="truncate">Picker</span>
             <i data-lucide="chevron-down" id="edit-dept-chevron" class="w-4 h-4 text-slate-500 shrink-0 ml-2 transition-transform duration-200"></i>
           </button>
@@ -2341,28 +2218,28 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-          <input type="text" id="edit-emp-outsource" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+          <input type="text" id="edit-emp-outsource" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">No Telpon *</label>
-            <input type="text" id="edit-emp-phone" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="text" id="edit-emp-phone" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email</label>
-            <input type="email" id="edit-emp-email" placeholder="nama@email.com" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="email" id="edit-emp-email" placeholder="nama@email.com" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">JOIN DATE *</label>
-            <input type="date" id="edit-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="date" id="edit-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Reset Password Baru</label>
-            <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tdk ubah" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-teal-500">
+            <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tdk ubah" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
         </div>
 
@@ -2417,7 +2294,7 @@
           </select>
         </div>
 
-        <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-[11px] text-emerald-900 font-semibold">
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-800 font-semibold">
           ✓ Staf hanya bisa absen jika berada dalam jarak radius yang dipilih dari titik koordinat ini.
         </div>
 
@@ -2437,30 +2314,22 @@
       
       <!-- Modal Header -->
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0">
-            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-              <span>Sinkronisasi Otomatis Google Spreadsheet</span>
-              <span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-100 text-emerald-900">Real-Time Sync ⚡</span>
-            </h3>
-            <p class="text-xs text-slate-500">Data otomatis masuk seketika saat ada karyawan yang absen atau pengajuan baru</p>
-          </div>
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+            <span>Sinkronisasi Otomatis Google Spreadsheet</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-300">Real-Time Sync</span>
+          </h3>
+          <p class="text-xs text-slate-500">Data otomatis masuk seketika saat ada karyawan yang absen atau pengajuan baru</p>
         </div>
         <button onclick="closeGoogleSheetBackupModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       <!-- Realtime Auto-Sync Info Banner -->
-      <div class="p-3.5 bg-emerald-50/90 rounded-2xl border border-emerald-300 text-xs text-emerald-950 flex items-start gap-3">
-        <i data-lucide="zap" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i>
-        <div class="space-y-0.5">
-          <span class="font-bold text-emerald-900">⚡ Sinkronisasi Otomatis Berjalan Setiap Absensi:</span>
-          <p class="text-[11px] text-emerald-800 leading-relaxed">
-            Setiap kali karyawan melakukan scan absen masuk / absen pulang di HP atau ada persetujuan lembur & pengajuan sakit/cuti, sistem langsung menyinkronkan data ke Google Sheet target secara otomatis di latar belakang.
-          </p>
-        </div>
+      <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-800 space-y-0.5">
+        <span class="font-bold text-slate-900">Sinkronisasi Otomatis Berjalan Setiap Absensi:</span>
+        <p class="text-[11px] text-slate-600 leading-relaxed">
+          Setiap kali karyawan melakukan scan absen masuk / absen pulang di HP atau ada persetujuan lembur & pengajuan sakit/cuti, sistem langsung menyinkronkan data ke Google Sheet target secara otomatis di latar belakang.
+        </p>
       </div>
 
       <!-- Daftar 3 Sheet yang Disinkronkan Sesuai Kebutuhan User -->
@@ -2468,21 +2337,21 @@
         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">3 Tab Sheet yang Diperbarui:</label>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-teal-100 text-teal-800 font-black text-[10px] flex items-center justify-center shrink-0">1</div>
+            <div class="w-6 h-6 rounded-lg bg-slate-200 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0">1</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">RECORD ABSEN</div>
               <div class="text-[10px] text-slate-500">Log kehadiran in/out, durasi & status</div>
             </div>
           </div>
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-amber-100 text-amber-800 font-black text-[10px] flex items-center justify-center shrink-0">2</div>
+            <div class="w-6 h-6 rounded-lg bg-slate-200 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0">2</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">REKAP PENGAJUAN</div>
               <div class="text-[10px] text-slate-500">Izin, sakit, dan cuti karyawan</div>
             </div>
           </div>
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div class="w-6 h-6 rounded-lg bg-rose-100 text-rose-800 font-black text-[10px] flex items-center justify-center shrink-0">3</div>
+            <div class="w-6 h-6 rounded-lg bg-slate-200 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0">3</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">REKAP LEMBUR</div>
               <div class="text-[10px] text-slate-500">Log lembur & estimasi upah</div>
@@ -2510,8 +2379,7 @@
           </label>
           <div class="flex items-center gap-2">
             <input type="url" id="gsheet-webhook-url" value="https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec" placeholder="https://script.google.com/.../exec" class="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none">
-            <button type="button" onclick="testGoogleSheetWebhookConnection()" id="btn-test-gsheet" class="h-10 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs flex items-center gap-1.5" title="Uji apakah URL Apps Script aktif dan dapat diakses publik">
-              <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="testGoogleSheetWebhookConnection()" id="btn-test-gsheet" class="h-10 px-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs" title="Uji apakah URL Apps Script aktif dan dapat diakses publik">
               <span>Tes Koneksi</span>
             </button>
             <button type="button" onclick="saveGoogleSheetWebhookUrl()" class="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs">
@@ -2522,42 +2390,38 @@
         </div>
 
         <!-- Accordion Panduan Pasang Script -->
-        <div class="bg-amber-50/70 rounded-2xl border border-amber-200 overflow-hidden">
-          <button type="button" onclick="toggleGSheetGuide()" class="w-full px-4 py-2.5 flex items-center justify-between text-left text-xs font-bold text-amber-950 hover:bg-amber-100/60 transition">
-            <span class="flex items-center gap-2">
-              <i data-lucide="help-circle" class="w-4 h-4 text-amber-600"></i>
-              <span>Panduan Pasang / Update Script ke Google Sheet (Wajib Diikuti)</span>
-            </span>
-            <i id="gsheet-guide-chevron" data-lucide="chevron-down" class="w-4 h-4 text-amber-700 transition-transform"></i>
+        <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+          <button type="button" onclick="toggleGSheetGuide()" class="w-full px-4 py-2.5 flex items-center justify-between text-left text-xs font-bold text-slate-900 hover:bg-slate-100 transition">
+            <span>Panduan Pasang / Update Script ke Google Sheet (Wajib Diikuti)</span>
+            <i id="gsheet-guide-chevron" data-lucide="chevron-down" class="w-4 h-4 text-slate-600 transition-transform"></i>
           </button>
           
-          <div id="gsheet-guide-body" class="hidden p-4 pt-2 border-t border-amber-200/80 space-y-3 text-xs text-amber-900">
+          <div id="gsheet-guide-body" class="hidden p-4 pt-2 border-t border-slate-200 space-y-3 text-xs text-slate-700">
             <ol class="list-decimal list-inside space-y-2 font-medium leading-relaxed">
-              <li>Buka file <a href="https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing" target="_blank" class="font-bold underline text-emerald-800">Google Spreadsheet Target Baru</a> Anda.</li>
+              <li>Buka file <a href="https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing" target="_blank" class="font-bold underline text-slate-900">Google Spreadsheet Target Baru</a> Anda.</li>
               <li>Di menu atas Google Sheet, klik <b>Ekstensi (Extensions)</b> &rarr; <b>Apps Script</b>.</li>
-              <li>Hapus semua kode lama di editor, lalu klik tombol <b>"Salin Kode Apps Script"</b> di bawah dan <b>Paste (Ctrl + V)</b> ke Apps Script, lalu klik ikon <b>Simpan (Save)</b> 💾.</li>
-              <li class="bg-amber-100/70 p-2.5 rounded-xl border border-amber-300">
-                <b class="text-amber-950">PENTING: Otorisasi Izin Akses (1 Kali)</b><br>
+              <li>Hapus semua kode lama di editor, lalu klik tombol <b>"Salin Kode Apps Script"</b> di bawah dan <b>Paste (Ctrl + V)</b> ke Apps Script, lalu klik <b>Simpan</b>.</li>
+              <li class="bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                <b class="text-slate-900">PENTING: Otorisasi Izin Akses (1 Kali)</b><br>
                 Di atas editor Apps Script, pilih fungsi <b>testManualSync</b> dari dropdown lalu klik <b>Jalankan (Run)</b>.<br>
                 Akan muncul popup <i>"Otorisasi Diperlukan"</i> &rarr; Klik <b>Tinjau Izin</b> &rarr; Pilih akun Anda &rarr; Klik <b>Lanjutan (Advanced)</b> &rarr; Klik <b>Buka WFM Medika (tidak aman)</b> &rarr; Klik <b>Izinkan (Allow)</b>.
               </li>
               <li>Klik tombol biru <b>Terapkan (Deploy)</b> di pojok kanan atas:
-                <ul class="list-disc list-inside pl-4 mt-1 text-[11px] text-amber-900 space-y-1">
+                <ul class="list-disc list-inside pl-4 mt-1 text-[11px] text-slate-600 space-y-1">
                   <li>Jika baru pertama kali: Pilih <b>Deployment Baru (New Deployment)</b> &rarr; jenis <b>Aplikasi Web (Web App)</b>.</li>
                   <li>Jika sudah pernah pasang: Pilih <b>Kelola Penerapan (Manage Deployments)</b> &rarr; Klik ikon pensil <b>Edit</b> &rarr; Versi: pilih <b>"Versi Baru" (New Version)</b>.</li>
                   <li>Jalankan sebagai: <b>Saya (email Anda)</b>.</li>
-                  <li><b class="text-rose-700 underline">Yang memiliki akses (Who has access): WAJIB pilih "Siapa saja" (Anyone)</b>, jangan pilih "Hanya dalam mhealth.tech" agar webhook tidak dicegat login Google.</li>
+                  <li><b class="text-slate-900 underline">Yang memiliki akses (Who has access): WAJIB pilih "Siapa saja" (Anyone)</b>, jangan pilih "Hanya dalam mhealth.tech" agar webhook tidak dicegat login Google.</li>
                 </ul>
               </li>
-              <li>Klik <b>Terapkan (Deploy)</b>, salin URL Web App yang berakhiran <code class="bg-amber-100 px-1 rounded font-mono">/exec</code>, tempelkan ke kolom di atas, lalu klik <b>Tes Koneksi</b> & <b>Simpan & Aktifkan</b>.</li>
+              <li>Klik <b>Terapkan (Deploy)</b>, salin URL Web App yang berakhiran <code class="bg-slate-200 px-1 rounded font-mono">/exec</code>, tempelkan ke kolom di atas, lalu klik <b>Tes Koneksi</b> & <b>Simpan & Aktifkan</b>.</li>
             </ol>
 
             <div class="pt-2 flex items-center justify-between gap-2 flex-wrap">
-              <button type="button" onclick="copyGoogleAppsScriptCode()" class="h-9 px-4 bg-amber-900 hover:bg-amber-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs">
-                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <button type="button" onclick="copyGoogleAppsScriptCode()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
                 <span id="btn-copy-gas-text">Salin Kode Apps Script (Terbaru)</span>
               </button>
-              <span class="text-[11px] text-amber-700 italic">*Sudah otomatis menangani 38 kolom dan sheet kosong</span>
+              <span class="text-[11px] text-slate-500 italic">*Sudah otomatis menangani 38 kolom dan sheet kosong</span>
             </div>
           </div>
         </div>
@@ -2567,8 +2431,7 @@
 
       <!-- Modal Footer / Action Buttons -->
       <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-100 flex-wrap">
-        <button type="button" onclick="downloadMultiSheetExcelBackup()" class="h-10 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs inline-flex items-center gap-2" title="Unduh 1 file Excel (.xlsx) langsung berisi 3 sheet utama untuk import langsung">
-          <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+        <button type="button" onclick="downloadMultiSheetExcelBackup()" class="h-10 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-xs" title="Unduh 1 file Excel (.xlsx) langsung berisi 3 sheet utama untuk import langsung">
           <span>Download Excel 3-Sheet</span>
         </button>
 
@@ -2576,8 +2439,7 @@
           <button type="button" onclick="closeGoogleSheetBackupModal()" class="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
             Tutup
           </button>
-          <button type="button" id="btn-run-gsheet-backup" onclick="executeGoogleSheetBackup()" class="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-xs inline-flex items-center gap-2">
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <button type="button" id="btn-run-gsheet-backup" onclick="executeGoogleSheetBackup()" class="h-10 px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition shadow-xs">
             <span>Sinkronkan Sekarang</span>
           </button>
         </div>
@@ -2594,30 +2456,22 @@
       
       <!-- Modal Header -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 flex-shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center flex-shrink-0">
-            <i data-lucide="layers" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h3 class="font-black text-sm sm:text-base text-slate-900 flex items-center gap-2 flex-wrap">
-              <span>Download Semua ID Card Karyawan</span>
-              <span id="all-idcards-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-teal-100 text-teal-900">Gudang MBI</span>
-            </h3>
-            <p id="all-idcards-desc" class="text-xs text-slate-500">Standar Ukuran Kartu ID CR80 (54mm × 85.6mm) • Teks Nama, Departemen & Barcode Sangat Jelas</p>
-          </div>
+        <div>
+          <h3 class="font-black text-sm sm:text-base text-slate-900 flex items-center gap-2 flex-wrap">
+            <span>Download Semua ID Card Karyawan</span>
+            <span id="all-idcards-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-800 border border-slate-300">Gudang MBI</span>
+          </h3>
+          <p id="all-idcards-desc" class="text-xs text-slate-500">Standar Ukuran Kartu ID CR80 (54mm × 85.6mm) • Teks Nama, Departemen & Barcode Sangat Jelas</p>
         </div>
         
         <div class="flex items-center gap-2 flex-wrap justify-end">
-          <button id="btn-zip-all-idcards" type="button" onclick="downloadAllIndividualCardsZIP()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Download semua file PNG kartu ID karyawan dalam 1 file ZIP">
-            <i data-lucide="folder-archive" class="w-3.5 h-3.5"></i>
+          <button id="btn-zip-all-idcards" type="button" onclick="downloadAllIndividualCardsZIP()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-sm" title="Download semua file PNG kartu ID karyawan dalam 1 file ZIP">
             <span>Download ZIP Semua (PNG)</span>
           </button>
-          <button type="button" onclick="downloadAllIndividualCardsSequentially()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Download file PNG satu per satu ke browser">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <button type="button" onclick="downloadAllIndividualCardsSequentially()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition shadow-sm" title="Download file PNG satu per satu ke browser">
             <span>Download 1 per 1</span>
           </button>
-          <button type="button" onclick="printAllIDCardsA4()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Cetak atau Simpan PDF Lembar A4 (9 kartu per lembar)">
-            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <button type="button" onclick="printAllIDCardsA4()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition shadow-sm" title="Cetak atau Simpan PDF Lembar A4 (9 kartu per lembar)">
             <span>Cetak A4 (PDF)</span>
           </button>
           <button onclick="closeAllIDCardsA4Modal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -2627,19 +2481,16 @@
       <!-- Tab Switcher & Search Filter -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
         <div class="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200">
-          <button id="tab-btn-individual" onclick="switchAllCardsTab('individual')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs transition flex items-center gap-1.5">
-            <i data-lucide="user" class="w-3.5 h-3.5 text-teal-600"></i>
+          <button id="tab-btn-individual" onclick="switchAllCardsTab('individual')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-xs transition">
             <span>Per 1 Karyawan (File Individual)</span>
           </button>
-          <button id="tab-btn-a4" onclick="switchAllCardsTab('a4')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5">
-            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+          <button id="tab-btn-a4" onclick="switchAllCardsTab('a4')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition">
             <span>Lembar Kertas A4 (Siap Potong)</span>
           </button>
         </div>
 
         <div class="relative w-full sm:w-64">
-          <input type="text" id="all-idcards-search" oninput="filterAllIDCardsModal(this.value)" placeholder="Cari nama / NIK..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500 focus:outline-none">
-          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="all-idcards-search" oninput="filterAllIDCardsModal(this.value)" placeholder="Cari nama / NIK..." class="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
       </div>
 
@@ -2677,19 +2528,14 @@
       
       <!-- Modal Header -->
       <div class="flex items-center justify-between pb-4 border-b border-slate-100">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center shrink-0 shadow-2xs">
-            <i data-lucide="volume-2" class="w-5 h-5"></i>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="font-black text-base text-slate-900 tracking-tight">
+              Pengaturan Suara Notifikasi
+            </h3>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-300 uppercase">Khusus Admin</span>
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <h3 class="font-black text-base text-slate-900 tracking-tight">
-                Pengaturan Suara Notifikasi
-              </h3>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-teal-100 text-teal-900 border border-teal-200 uppercase">Khusus Admin</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-0.5">Kelola nada notifikasi resmi sistem untuk pemindaian presensi karyawan</p>
-          </div>
+          <p class="text-xs text-slate-500 mt-0.5">Kelola nada notifikasi resmi sistem untuk pemindaian presensi karyawan</p>
         </div>
         <button onclick="closeAudioSettingsModal()" class="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
@@ -2697,22 +2543,19 @@
       <!-- Info Box: Suara Bawaan Sistem Aktif -->
       <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200/90 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-black text-slate-900 flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-xs font-black text-slate-900">
             Suara Resmi Bawaan Sistem Aktif Langsung
           </span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">Siap Digunakan</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-300">Siap Digunakan</span>
         </div>
         <p class="text-[11px] text-slate-600 leading-relaxed">
           Sistem secara otomatis telah terhubung dengan file suara resmi di folder:
         </p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px] font-mono">
-          <div class="p-2.5 rounded-xl bg-white border border-slate-200 text-emerald-800 flex items-center gap-2">
-            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+          <div class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 flex items-center gap-2">
             <span class="truncate">suara absen-berhasil.mpeg</span>
           </div>
-          <div class="p-2.5 rounded-xl bg-white border border-slate-200 text-rose-800 flex items-center gap-2">
-            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0"></i>
+          <div class="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-800 flex items-center gap-2">
             <span class="truncate">suara absen-gagal.mpeg</span>
           </div>
         </div>
@@ -2722,65 +2565,57 @@
       <div class="space-y-3.5">
         
         <!-- 1. Suara Absen Berhasil (Masuk & Keluar) -->
-        <div class="p-4 bg-white rounded-2xl border-2 border-emerald-200/80 shadow-2xs space-y-3">
+        <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <span class="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span class="text-xs font-black text-slate-900 block">
                 Suara Absen Berhasil (Masuk &amp; Pulang)
               </span>
               <p class="text-[11px] text-slate-500 mt-0.5">Diputar saat scan absen masuk atau pulang berhasil tercatat</p>
             </div>
-            <span id="audio-in-status" class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300">Bawaan Folder</span>
+            <span id="audio-in-status" class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300">Bawaan Folder</span>
           </div>
 
           <div class="flex items-center gap-2 flex-wrap pt-1">
-            <button type="button" onclick="playTestAudio('in')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="playTestAudio('in')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-2xs">
               <span>Putar Suara Berhasil</span>
             </button>
-            <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
+            <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-2xs">
               <span>Ganti File Kustom</span>
               <input type="file" id="audio-file-in-input" accept="audio/*" onchange="handleCustomAudioUpload('in', event)" class="sr-only">
             </label>
-            <button type="button" onclick="resetAudioToDefault('in')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-2xs" title="Kembalikan ke file suara bawaan folder">
-              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="resetAudioToDefault('in')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition shadow-2xs" title="Kembalikan ke file suara bawaan folder">
               <span>Reset Bawaan</span>
             </button>
           </div>
-          <div id="audio-in-filename" class="text-[11px] font-mono text-emerald-800 font-semibold truncate pt-0.5"></div>
+          <div id="audio-in-filename" class="text-[11px] font-mono text-slate-800 font-semibold truncate pt-0.5"></div>
         </div>
 
         <!-- 2. Suara Absen Gagal & Di Luar Lokasi -->
-        <div class="p-4 bg-white rounded-2xl border-2 border-rose-200/80 shadow-2xs space-y-3">
+        <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <div>
-              <span class="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+              <span class="text-xs font-black text-slate-900 block">
                 Suara Absen Gagal &amp; Di Luar Radius Lokasi
               </span>
               <p class="text-[11px] text-slate-500 mt-0.5">Diputar saat staf di luar radius GPS, kartu belum terdaftar, atau dobel absen</p>
             </div>
-            <span id="audio-err-status" class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-300">Bawaan Folder</span>
+            <span id="audio-err-status" class="text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300">Bawaan Folder</span>
           </div>
 
           <div class="flex items-center gap-2 flex-wrap pt-1">
-            <button type="button" onclick="playTestAudio('err')" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="play" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="playTestAudio('err')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-2xs">
               <span>Putar Suara Gagal</span>
             </button>
-            <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs">
-              <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
+            <label class="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition shadow-2xs">
               <span>Ganti File Kustom</span>
               <input type="file" id="audio-file-err-input" accept="audio/*" onchange="handleCustomAudioUpload('err', event)" class="sr-only">
             </label>
-            <button type="button" onclick="resetAudioToDefault('err')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-2xs" title="Kembalikan ke file suara bawaan folder">
-              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="resetAudioToDefault('err')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition shadow-2xs" title="Kembalikan ke file suara bawaan folder">
               <span>Reset Bawaan</span>
             </button>
           </div>
-          <div id="audio-err-filename" class="text-[11px] font-mono text-rose-800 font-semibold truncate pt-0.5"></div>
+          <div id="audio-err-filename" class="text-[11px] font-mono text-slate-800 font-semibold truncate pt-0.5"></div>
         </div>
 
         <!-- 3. Suara Sebut Nama Karyawan (TTS Indonesia) -->
@@ -2791,29 +2626,26 @@
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="toggle-voice-tts" onchange="toggleVoiceTTS(this.checked)" checked class="sr-only peer">
-            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
           </label>
         </div>
 
         <!-- 4. Sinkronisasi Suara Cloud Firebase 24/7 -->
-        <div class="p-4 bg-gradient-to-br from-teal-50 to-sky-50 rounded-2xl border border-teal-200/90 space-y-2.5">
+        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-black text-teal-950 flex items-center gap-1.5">
-              <i data-lucide="cloud" class="w-4 h-4 text-teal-600"></i>
+            <span class="text-xs font-black text-slate-900 block">
               Sinkronisasi Suara ke Seluruh HP (Cloud Firebase 24/7)
             </span>
-            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">Online ⚡</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-800">Online</span>
           </div>
-          <p class="text-[11px] text-teal-900/80 leading-relaxed">
+          <p class="text-[11px] text-slate-600 leading-relaxed">
             Klik tombol di bawah jika Anda ingin membagikan file suara ini ke seluruh smartphone karyawan yang mengakses sistem.
           </p>
           <div class="grid grid-cols-2 gap-2 pt-1">
-            <button type="button" onclick="uploadAudioClipsToCloud()" class="py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-              <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+            <button type="button" onclick="uploadAudioClipsToCloud()" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
               <span>Kirim Suara ke Cloud</span>
             </button>
-            <button type="button" onclick="syncAudioClipsFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-              <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-teal-600"></i>
+            <button type="button" onclick="syncAudioClipsFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
               <span>Tarik Suara dari Cloud</span>
             </button>
           </div>
@@ -2823,8 +2655,7 @@
 
       <!-- Action Buttons -->
       <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-        <button type="button" onclick="closeAudioSettingsModal()" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition shadow-xs flex items-center gap-1.5">
-          <i data-lucide="check" class="w-4 h-4"></i>
+        <button type="button" onclick="closeAudioSettingsModal()" class="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition shadow-xs">
           <span>Selesai &amp; Terapkan</span>
         </button>
       </div>
@@ -4337,8 +4168,8 @@
       const isMBI = val === 'MBI';
       const mbiEl = document.getElementById('lbl-login-mbi');
       const maiEl = document.getElementById('lbl-login-mai');
-      if (mbiEl) mbiEl.className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-sky-500 bg-sky-50 text-sky-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
-      if (maiEl) maiEl.className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-purple-500 bg-purple-50 text-purple-900 flex items-center justify-center gap-1.5 font-bold text-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+      if (mbiEl) mbiEl.className = isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
+      if (maiEl) maiEl.className = !isMBI ? 'cursor-pointer p-2.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs' : 'cursor-pointer p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs';
 
       const loginLogo = document.getElementById('login-logo-container');
       if (loginLogo) {
@@ -5146,7 +4977,7 @@
       if (activeView) activeView.classList.remove('hidden');
 
       const activeNav = document.getElementById('nav-' + viewName);
-      if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 text-white shadow-sm transition flex items-center gap-2.5';
+      if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 text-white border border-slate-700 shadow-sm transition flex items-center gap-2.5';
 
       if (viewName === 'attendance') {
         setAttendanceType('check_in');
@@ -5355,9 +5186,9 @@
       const curRad = Number(curCoords.radius) > 0 ? Number(curCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
 
       if (statusMsg) statusMsg.innerText = `Arahkan kamera ke Barcode ID Card (Radius GPS: ${curRad}m)`;
-      if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-teal-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
+      if (boxBorder) boxBorder.className = 'w-48 h-48 border-2 border-slate-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center';
       if (boxTag) {
-        boxTag.className = 'text-[10px] text-teal-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
+        boxTag.className = 'text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold';
         boxTag.innerText = `SCAN ID CARD • ${curRad}M`;
       }
 
@@ -5849,12 +5680,12 @@
       if (inStatus && inFilename) {
         if (inName) {
           inStatus.innerText = 'Kustom: ' + inName;
-          inStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-300';
-          inFilename.innerText = '📁 File kustom aktif: ' + inName;
+          inStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300';
+          inFilename.innerText = 'File kustom aktif: ' + inName;
         } else {
           inStatus.innerText = 'Bawaan Folder';
-          inStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300';
-          inFilename.innerText = '⚡ File resmi sistem: suara absen-berhasil.mpeg';
+          inStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300';
+          inFilename.innerText = 'File resmi sistem: suara absen-berhasil.mpeg';
         }
       }
 
@@ -5863,12 +5694,12 @@
       if (errStatus && errFilename) {
         if (errName) {
           errStatus.innerText = 'Kustom: ' + errName;
-          errStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-300';
-          errFilename.innerText = '📁 File kustom aktif: ' + errName;
+          errStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300';
+          errFilename.innerText = 'File kustom aktif: ' + errName;
         } else {
           errStatus.innerText = 'Bawaan Folder';
-          errStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-300';
-          errFilename.innerText = '⚡ File resmi sistem: suara absen-gagal.mpeg';
+          errStatus.className = 'text-[10px] font-extrabold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-300';
+          errFilename.innerText = 'File resmi sistem: suara absen-gagal.mpeg';
         }
       }
 
@@ -6668,12 +6499,12 @@
       if (isHidden) {
         panel.classList.remove('hidden');
         if (icon) icon.classList.add('rotate-180');
-        if (label) label.innerHTML = '<i data-lucide="chevron-up" class="w-3.5 h-3.5"></i><span>Tutup Daftar</span>';
+        if (label) label.innerText = 'Tutup Daftar';
         renderScannerTodayRecords();
       } else {
         panel.classList.add('hidden');
         if (icon) icon.classList.remove('rotate-180');
-        if (label) label.innerHTML = '<i data-lucide="list" class="w-3.5 h-3.5"></i><span>Lihat Daftar Absen</span>';
+        if (label) label.innerText = 'Lihat Daftar Absen';
       }
       lucide.createIcons();
     }
@@ -6740,7 +6571,7 @@
             <td class="p-3.5 text-center font-bold text-slate-400 font-mono">${idx + 1}</td>
             <td class="p-3.5 font-extrabold text-slate-900 text-sm">
               <div class="flex items-center gap-2.5">
-                <div class="w-7 h-7 rounded-lg bg-teal-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+                <div class="w-7 h-7 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
                   ${(a.userName || 'K').charAt(0).toUpperCase()}
                 </div>
                 <span>${a.userName}</span>
@@ -6750,12 +6581,12 @@
             <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px]">${a.dept || 'STAFF'}</td>
             <td class="p-3.5 font-mono font-bold text-slate-800">${inTime}</td>
             <td class="p-3.5">
-              <span class="px-2.5 py-1 rounded-lg text-[10px] font-black ${isLate ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'}">
+              <span class="px-2.5 py-1 rounded-lg text-[10px] font-black ${isLate ? 'bg-slate-200 text-slate-900 border border-slate-300' : 'bg-slate-100 text-slate-800 border border-slate-200'}">
                 ${isLate ? 'Terlambat' : 'Tepat Waktu'}
               </span>
               ${(a.notes && a.notes !== 'Tepat Waktu' && a.notes !== 'Terlambat' && a.notes !== '-') ? `<div class="text-[10px] text-slate-500 font-medium mt-1 italic">${a.notes}</div>` : ''}
             </td>
-            <td class="p-3.5 font-mono font-bold ${a.checkOutTime ? 'text-rose-600' : 'text-slate-400 italic'}">
+            <td class="p-3.5 font-mono font-bold ${a.checkOutTime ? 'text-slate-900' : 'text-slate-400 italic'}">
               ${outTime !== '-' ? outTime : 'Belum Absen Pulang'}
             </td>
           </tr>
@@ -8020,7 +7851,7 @@
 
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 text-center">
-            <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+            <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
           </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${emp.name} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
@@ -8040,7 +7871,7 @@
               <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
                 ID Card
               </button>
-              <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+              <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold transition shadow-2xs">
                 Hapus
               </button>
             </div>
@@ -8154,11 +7985,8 @@
           const isSelected = (d.toLowerCase() === activeVal || d.replace(/\./g, '').replace(/\s+/g, ' ') === normActive);
           const formatted = d.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
           const item = document.createElement('div');
-          item.className = `px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition flex items-center justify-between ${isSelected ? 'bg-teal-50 text-teal-900 font-bold border border-teal-200 active-dept-item' : 'hover:bg-slate-100 text-slate-700'}`;
-          item.innerHTML = `
-            <span>${formatted}</span>
-            ${isSelected ? '<i data-lucide="check" class="w-3.5 h-3.5 text-teal-600"></i>' : ''}
-          `;
+          item.className = `px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer transition flex items-center justify-between ${isSelected ? 'bg-slate-900 text-white font-bold active-dept-item' : 'hover:bg-slate-100 text-slate-700'}`;
+          item.innerHTML = `<span>${formatted}</span>`;
           item.onclick = (e) => {
             e.stopPropagation();
             selectDeptItem(type, d, formatted);
@@ -9039,8 +8867,8 @@
         renderAccountLookupList();
 
         if (alertEl) {
-          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200';
-          alertEl.innerText = '✅ Perubahan akun & data karyawan berhasil disimpan! Data kata sandi terbaru otomatis diperbarui di sistem.';
+          alertEl.className = 'p-4 rounded-2xl text-xs font-bold bg-slate-100 text-slate-800 border border-slate-300';
+          alertEl.innerText = 'Perubahan akun & data karyawan berhasil disimpan! Data kata sandi terbaru otomatis diperbarui di sistem.';
           alertEl.classList.remove('hidden');
         }
         alert('Pengaturan akun berhasil disimpan!\nData profil dan kata sandi terbaru Anda telah tersinkronisasi.');
@@ -9067,29 +8895,29 @@
       if (tabOtEl) tabOtEl.classList.toggle('hidden', !isOvertime);
 
       document.getElementById('btn-tab-records').className = isRecord 
-        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
-        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
       
       document.getElementById('btn-tab-matrix').className = isMatrix 
-        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
-        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
 
       const btnWhEl = document.getElementById('btn-tab-workhours');
       if (btnWhEl) {
         btnWhEl.className = isWorkHours 
-          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
-          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
       }
 
       document.getElementById('btn-tab-report-leaves').className = isLeaves 
-        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
-        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
 
       const btnOtEl = document.getElementById('btn-tab-report-overtime');
       if (btnOtEl) {
         btnOtEl.className = isOvertime 
-          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center gap-1.5' 
-          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1.5';
+          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
       }
 
       if (isRecord) renderRecordsTable();
@@ -9300,7 +9128,7 @@
       const kpiAvg = document.getElementById('kpi-wh-avg-hours');
       const kpiAchieved = document.getElementById('kpi-wh-achieved-emp');
       if (kpiEmp) kpiEmp.innerText = `${totalActiveEmployees} Orang`;
-      if (kpiAvg) kpiAvg.innerHTML = `<span class="text-sm sm:text-base font-black text-sky-950">${formattedAvg}</span> <span class="text-[10px] font-bold text-sky-700 font-mono">(${avgHours} Jam)</span>`;
+      if (kpiAvg) kpiAvg.innerHTML = `<span class="text-sm sm:text-base font-black text-slate-900">${formattedAvg}</span> <span class="text-[10px] font-bold text-slate-500 font-mono">(${avgHours} Jam)</span>`;
       if (kpiAchieved) kpiAchieved.innerText = `${achievedTargetCount} Orang`;
 
       const tbody = document.getElementById('workhours-table-body');
@@ -9317,14 +9145,14 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
         const statusBadge = row.isTargetAchieved
-          ? `<span class="px-2 py-1 rounded-lg text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 whitespace-nowrap">Tercapai (${row.formattedDiff})</span>`
-          : `<span class="px-2 py-1 rounded-lg text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300 whitespace-nowrap">Kurang (${row.formattedDiff})</span>`;
+          ? `<span class="px-2 py-1 rounded-lg text-[10px] font-black bg-slate-900 text-white whitespace-nowrap">Tercapai (${row.formattedDiff})</span>`
+          : `<span class="px-2 py-1 rounded-lg text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-300 whitespace-nowrap">Kurang (${row.formattedDiff})</span>`;
 
         tr.innerHTML = `
           <td class="p-3.5 text-center font-mono text-slate-400 font-bold border-r border-slate-100">${idx + 1}</td>
           <td class="p-3.5 font-extrabold text-slate-900 border-r border-slate-100">
             <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-teal-600 text-white font-black text-xs flex items-center justify-center shrink-0">
+              <div class="w-7 h-7 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
                 ${(row.name || 'K').charAt(0).toUpperCase()}
               </div>
               <span class="truncate">${row.name}</span>
@@ -9333,14 +9161,14 @@
           <td class="p-3.5 font-mono font-bold text-slate-700 border-r border-slate-100">${row.nik}</td>
           <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px] border-r border-slate-100">${row.dept}</td>
           <td class="p-3.5 text-center font-bold text-slate-800 border-r border-slate-100 font-mono">${row.daysPresent} Hari</td>
-          <td class="p-3.5 text-center font-mono font-black text-teal-800 border-r border-slate-100 bg-teal-50/40">
-            <div class="text-xs font-black text-teal-950 font-mono">${row.formattedWorkHours}</div>
-            <div class="text-[10px] text-teal-700 font-bold font-mono">(${row.totalEffectiveHours} Jam)</div>
+          <td class="p-3.5 text-center font-mono font-black text-slate-900 border-r border-slate-100 bg-slate-50/50">
+            <div class="text-xs font-black text-slate-900 font-mono">${row.formattedWorkHours}</div>
+            <div class="text-[10px] text-slate-500 font-bold font-mono">(${row.totalEffectiveHours} Jam)</div>
           </td>
           <td class="p-3.5 text-center font-mono text-slate-500 border-r border-slate-100 font-bold">${row.targetHours} Jam</td>
-          <td class="p-3.5 text-center font-mono font-bold ${row.diffMinutes >= 0 ? 'text-emerald-700' : 'text-amber-700'} border-r border-slate-100">
+          <td class="p-3.5 text-center font-mono font-bold text-slate-800 border-r border-slate-100">
             <div class="text-xs font-bold font-mono">${row.formattedDiff}</div>
-            <div class="text-[10px] font-semibold font-mono ${row.diffMinutes >= 0 ? 'text-emerald-600' : 'text-amber-600'}">(${row.diffFromTarget >= 0 ? '+' : ''}${row.diffFromTarget} Jam)</div>
+            <div class="text-[10px] font-semibold font-mono text-slate-500">(${row.diffFromTarget >= 0 ? '+' : ''}${row.diffFromTarget} Jam)</div>
           </td>
           <td class="p-3.5 text-center">${statusBadge}</td>
         `;
@@ -9454,14 +9282,14 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
         let typeBadge = '';
-        if (lv.type === 'sakit') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 uppercase">Sakit</span>';
-        else if (lv.type === 'izin') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 uppercase">Izin</span>';
-        else typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 uppercase">Cuti</span>';
+        if (lv.type === 'sakit') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase">Sakit</span>';
+        else if (lv.type === 'izin') typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase">Izin</span>';
+        else typeBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase">Cuti</span>';
 
         let statusBadge = '';
-        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
-        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">PENDING</span>';
+        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-900 text-white">DISETUJUI</span>';
+        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">PENDING</span>';
 
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -9566,9 +9394,9 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
         let statusBadge = '';
-        if (ot.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
-        else if (ot.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">PENDING</span>';
+        if (ot.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white">DISETUJUI</span>';
+        else if (ot.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800 border border-slate-300">PENDING</span>';
 
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -9576,7 +9404,7 @@
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.userName}</td>
           <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
-          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-rose-700 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
+          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-slate-900 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
           <td class="p-3.5 border-r border-slate-100 font-mono font-bold text-slate-800">${ot.effectiveHours} Jam</td>
           <td class="p-3.5 border-r border-slate-100 font-mono font-black text-slate-900">Rp ${(ot.nominal || 0).toLocaleString('id-ID')}</td>
@@ -9847,15 +9675,15 @@
         const isLate = rec.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         
         const lateBadge = isLate 
-          ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Late In</span>' 
-          : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Normal</span>';
+          ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Late In</span>' 
+          : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>Normal</span>';
         
         const outBadge = rec.checkOutTime
-          ? '<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200 shadow-2xs whitespace-nowrap"><i data-lucide="check" class="w-3 h-3 text-slate-400"></i>Sudah Pulang</span>'
+          ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap">Sudah Pulang</span>'
           : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Miss Scan</span>';
 
         const notesHtml = (rec.notes && rec.notes !== 'Tepat Waktu' && rec.notes !== 'Terlambat' && rec.notes !== '-')
-          ? `<div class="text-[10px] text-slate-500 font-medium italic mt-1 flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3 text-slate-400 shrink-0"></i><span class="truncate max-w-[200px]">${rec.notes}</span></div>`
+          ? `<div class="text-[10px] text-slate-500 font-medium italic mt-1"><span class="truncate max-w-[200px]">${rec.notes}</span></div>`
           : '';
 
         rowsHTML.push(`
@@ -9878,7 +9706,7 @@
               </div>
             </td>
             <td class="p-3.5 text-right">
-              <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-[11px] font-semibold transition">
+              <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-300 rounded-lg text-[11px] font-semibold transition">
                 Hapus
               </button>
             </td>
@@ -10034,17 +9862,17 @@
 
       let headerHTML = `
         <tr class="border-b border-slate-300">
-          <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-amber-100">No</th>
-          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[160px] text-left bg-amber-100">Nama Karyawan</th>
+          <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
+          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[160px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
       `;
 
       monthGroups.forEach((g, gIdx) => {
-        const bgClass = gIdx % 2 === 0 ? 'bg-amber-200/90 text-amber-950' : 'bg-sky-200/90 text-sky-950';
+        const bgClass = gIdx % 2 === 0 ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-800';
         headerHTML += `<th colspan="${g.dates.length}" class="p-2 border-r border-slate-300 font-extrabold uppercase text-xs tracking-wider ${bgClass}">${g.name}</th>`;
       });
 
       headerHTML += `
-          <th rowspan="2" class="p-2 min-w-[90px] bg-amber-300/80 font-black">Total Hadir</th>
+          <th rowspan="2" class="p-2 min-w-[90px] bg-slate-200 text-slate-900 font-black">Total Hadir</th>
         </tr>
         <tr class="border-b border-slate-300 text-[10px]">
       `;
@@ -10102,24 +9930,24 @@
 
           if (isAtt) {
             totalHariKerja += 1;
-            rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-emerald-800 bg-emerald-50">1</td>`;
+            rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
           } else {
             const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
                               (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
                               (uId && leaveMap.get(`${uId}__${dStr}`));
             if (leaveType === 'sakit') {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-amber-800 bg-amber-50">S</td>`;
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
             } else if (leaveType === 'izin') {
               rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
             } else if (leaveType) {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-purple-800 bg-purple-50">AL</td>`;
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
             } else {
               rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
             }
           }
         });
 
-        rowHTML += `<td class="p-2 font-black text-slate-900 bg-amber-50/60">${totalHariKerja}</td></tr>`;
+        rowHTML += `<td class="p-2 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
         rowsHTML.push(rowHTML);
       });
 
@@ -10223,20 +10051,15 @@
 
       const notifySuccess = () => {
         const btnText = document.getElementById('btn-copy-matrix-text');
-        const btnIcon = document.getElementById('icon-copy-matrix');
         const btn = document.getElementById('btn-copy-matrix');
         if (btnText && btn) {
           const origText = btnText.innerText;
           btnText.innerText = 'Tersalin!';
-          btn.className = 'h-9 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5';
-          if (btnIcon) btnIcon.setAttribute('data-lucide', 'check');
-          lucide.createIcons();
+          btn.className = 'h-9 px-4 bg-slate-900 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center';
 
           setTimeout(() => {
             btnText.innerText = origText;
-            btn.className = 'h-9 px-4 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5';
-            if (btnIcon) btnIcon.setAttribute('data-lucide', 'copy');
-            lucide.createIcons();
+            btn.className = 'h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center';
           }, 2000);
         }
         alert('✅ Seluruh data matriks presensi berhasil disalin ke clipboard!\n\nAnda dapat langsung menempelkannya (Ctrl + V / Paste) ke Excel, Google Sheets, atau aplikasi chat.');
@@ -10431,14 +10254,14 @@
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         
         let typeBadge = '';
-        if (lv.type === 'sakit') typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 uppercase">Sakit</span>';
-        else if (lv.type === 'izin') typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-900 border border-sky-200 uppercase">Izin</span>';
-        else typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-900 border border-purple-200 uppercase">Cuti</span>';
+        if (lv.type === 'sakit') typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase">Sakit</span>';
+        else if (lv.type === 'izin') typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase">Izin</span>';
+        else typeBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200 uppercase">Cuti</span>';
 
         let statusBadge = '';
-        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
-        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">MENUNGGU APPROVAL</span>';
+        if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-900 text-white">DISETUJUI</span>';
+        else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU APPROVAL</span>';
 
         tr.innerHTML = `
           <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
@@ -10451,12 +10274,12 @@
               lv.status === 'pending' ? `
                 <div class="flex items-center justify-end gap-1.5">
                   <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui</button>
-                  <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
+                  <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
                 </div>
               ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
             ) : (
               isUserAdmin(currentUser) ? (
-                lv.status === 'pending' ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Menunggu SPV</span>` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
+                lv.status === 'pending' ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">Menunggu SPV</span>` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
               ) : `<span class="text-[10px] text-slate-400">-</span>`
             )}
           </td>
@@ -10541,16 +10364,16 @@
 
       filtered.forEach(u => {
         const div = document.createElement('label');
-        div.className = 'cursor-pointer p-2.5 rounded-xl border border-amber-200/80 bg-white hover:bg-amber-50/60 transition flex items-center justify-between gap-2 text-xs select-none shadow-xs';
+        div.className = 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center justify-between gap-2 text-xs select-none shadow-xs';
         div.innerHTML = `
           <div class="flex items-center gap-2 min-w-0">
-            <input type="checkbox" name="ot-emp-check" value="${u.nik}" onchange="updateSelectedOvertimeCount()" class="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-slate-300 cursor-pointer">
+            <input type="checkbox" name="ot-emp-check" value="${u.nik}" onchange="updateSelectedOvertimeCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
             <div class="min-w-0">
               <span class="font-extrabold text-slate-900 block truncate text-[11px]">${u.name}</span>
               <span class="text-[10px] font-mono text-slate-400 block">${u.nik} &bull; ${u.dept}</span>
             </div>
           </div>
-          <span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">${u.role}</span>
+          <span class="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">${u.role}</span>
         `;
         container.appendChild(div);
       });
@@ -10687,9 +10510,9 @@
         const isRejected = ot.status === 'rejected';
 
         let statusBadge = '';
-        if (isApproved) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">DISETUJUI</span>';
-        else if (isRejected) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300 animate-pulse">MENUNGGU APPROVAL</span>';
+        if (isApproved) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-900 text-white border border-slate-900">DISETUJUI</span>';
+        else if (isRejected) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU APPROVAL</span>';
 
         tr.innerHTML = `
           <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -10697,7 +10520,7 @@
           <td class="p-3 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
           <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${ot.userName}</td>
           <td class="p-3 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
-          <td class="p-3 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-rose-700 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
+          <td class="p-3 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-slate-900 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
           <td class="p-3 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
           <td class="p-3 border-r border-slate-100 font-mono font-bold text-slate-800">${ot.effectiveHours} Jam</td>
           <td class="p-3 border-r border-slate-100 font-mono font-black text-slate-900">Rp ${(ot.nominal || 0).toLocaleString('id-ID')}</td>
@@ -10710,14 +10533,14 @@
                   <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
                     Setujui
                   </button>
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-rose-200 hover:bg-rose-50 text-rose-700 rounded-lg text-[10px] font-bold shadow-xs transition">
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">
                     Tolak
                   </button>
                 </div>
               ` : `<span class="text-[10px] font-bold text-slate-400 italic">Terkunci (${ot.status.toUpperCase()})</span>`
             ) : (
               isUserAdmin(currentUser) ? (
-                isPending ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">Menunggu SPV</span>` : `<span class="text-[10px] font-bold text-slate-400 italic">Terkunci (${ot.status.toUpperCase()})</span>`
+                isPending ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">Menunggu SPV</span>` : `<span class="text-[10px] font-bold text-slate-400 italic">Terkunci (${ot.status.toUpperCase()})</span>`
               ) : `<span class="text-[10px] text-slate-400">-</span>`
             )}
           </td>
