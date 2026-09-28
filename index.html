@@ -4051,16 +4051,57 @@
     initAppFont();
 
     // =========================================================
-    // BRANDING & LOGO ENGINE (MBI: GAMBAR 2, MAI: GAMBAR 3)
+    // BRANDING & LOGO ENGINE (MBI: GAMBAR 2 / UPLOAD, MAI: GAMBAR 3)
     // =========================================================
-    function getMBIIconHTML(size = 32) {
+    const MBI_UPLOADED_IMG_PATHS = [
+      '../../brain/ae53b394-8a5f-42da-80ad-ae820aaaa4a6/.user_uploaded/media_1790591977381.png',
+      'media_1790591977381.png',
+      'logo-mbi.png',
+      'icon-mbi.png'
+    ];
+
+    if (!window.__mbiUploadedLogoImg) {
+      window.__mbiUploadedLogoImg = new Image();
+      window.__mbiUploadedLogoImg.crossOrigin = 'anonymous';
+      window.__mbiUploadedLogoImg.src = MBI_UPLOADED_IMG_PATHS[0];
+      window.__mbiUploadedLogoImg.onerror = function() {
+        if (!this.dataset.retry) {
+          this.dataset.retry = '1';
+          this.src = MBI_UPLOADED_IMG_PATHS[1];
+        } else if (this.dataset.retry === '1') {
+          this.dataset.retry = '2';
+          this.src = MBI_UPLOADED_IMG_PATHS[2];
+        }
+      };
+    }
+
+    function getMBIIconSVGFallback(size = 32) {
       return `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="width: ${size}px; height: ${size}px; display: block;" fill="none">
-          <!-- MBI Icon (Gambar 2): Yellow Head + Cyan Petal + Pink Petal overlapping -->
-          <circle cx="100" cy="40" r="32" fill="#F7B200"/>
-          <rect x="88" y="35.6" width="64" height="134.8" rx="32" fill="#24D3E3" transform="rotate(45 120 103)"/>
-          <rect x="48" y="35.6" width="64" height="134.8" rx="32" fill="#EE1D78" transform="rotate(-45 80 103)"/>
+          <!-- 1. Golden Yellow Head Circle (Floating clearly above petals) -->
+          <circle cx="100" cy="38" r="28" fill="#F7B200"/>
+          <!-- 2. Cyan Right Capsule (+45 deg around 128, 114) -->
+          <rect x="97" y="47" width="62" height="134" rx="31" fill="#24D3E3" transform="rotate(45 128 114)"/>
+          <!-- 3. Pink Left Capsule (-45 deg around 72, 114, overlapping on top) -->
+          <rect x="41" y="47" width="62" height="134" rx="31" fill="#EE1D78" transform="rotate(-45 72 114)"/>
         </svg>
+      `;
+    }
+
+    function getMBIIconHTML(size = 32) {
+      const p0 = MBI_UPLOADED_IMG_PATHS[0];
+      const p1 = MBI_UPLOADED_IMG_PATHS[1];
+      const p2 = MBI_UPLOADED_IMG_PATHS[2];
+      return `
+        <div style="width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+          <img src="${p0}" 
+               onerror="if(!this.dataset.retry){this.dataset.retry='1';this.src='${p1}';}else if(this.dataset.retry==='1'){this.dataset.retry='2';this.src='${p2}';}else{this.style.display='none';this.nextElementSibling.style.display='block';}" 
+               alt="Logo MBI" 
+               style="width: ${size}px; height: ${size}px; object-fit: contain; display: block;" />
+          <div style="display: none; width: ${size}px; height: ${size}px;">
+            ${getMBIIconSVGFallback(size)}
+          </div>
+        </div>
       `;
     }
 
@@ -6707,15 +6748,26 @@
     }
 
     function getMBILogoHTML(height = 20) {
+      const p0 = MBI_UPLOADED_IMG_PATHS[0];
+      const p1 = MBI_UPLOADED_IMG_PATHS[1];
+      const p2 = MBI_UPLOADED_IMG_PATHS[2];
+      const iconH = Math.max(16, height);
+      const fontSize = Math.max(10, Math.round(height * 0.62));
       return `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 66" style="height: ${height}px; width: auto; max-width: 180px; display: block;" fill="none">
-          <g transform="translate(6, 6) scale(0.27)">
-            <circle cx="100" cy="40" r="32" fill="#F7B200"/>
-            <rect x="88" y="35.6" width="64" height="134.8" rx="32" fill="#24D3E3" transform="rotate(45 120 103)"/>
-            <rect x="48" y="35.6" width="64" height="134.8" rx="32" fill="#EE1D78" transform="rotate(-45 80 103)"/>
-          </g>
-          <text x="70" y="44" font-family="'Plus Jakarta Sans', 'Segoe UI', Montserrat, Roboto, sans-serif" font-weight="800" font-size="31" fill="#0B4B8A" letter-spacing="-0.2px">Medika Bina Investama</text>
-        </svg>
+        <div style="display: flex; align-items: center; gap: 7px; height: ${height}px;">
+          <div style="width: ${iconH}px; height: ${iconH}px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <img src="${p0}" 
+                 onerror="if(!this.dataset.retry){this.dataset.retry='1';this.src='${p1}';}else if(this.dataset.retry==='1'){this.dataset.retry='2';this.src='${p2}';}else{this.style.display='none';this.nextElementSibling.style.display='block';}" 
+                 alt="Logo MBI" 
+                 style="width: ${iconH}px; height: ${iconH}px; object-fit: contain; display: block;" />
+            <div style="display: none; width: ${iconH}px; height: ${iconH}px;">
+              ${getMBIIconSVGFallback(iconH)}
+            </div>
+          </div>
+          <span style="font-family: 'Plus Jakarta Sans', 'Segoe UI', Montserrat, sans-serif; font-weight: 800; font-size: ${fontSize}px; color: #0B4B8A; white-space: nowrap; letter-spacing: -0.2px; line-height: 1;">
+            Medika Bina Investama
+          </span>
+        </div>
       `;
     }
 
@@ -6892,44 +6944,50 @@
       // Draw SVG Logo into White Pill via 2D Canvas Vectors (Zero CORS, 100% Crisp)
       ctx.save();
       if (isMBI) {
-        // Medika Bina Investama Logo (Icon Left: Yellow head, pink/cyan heart petals; Text Right: Navy)
+        // Medika Bina Investama Logo (Icon Left: uploaded image object or calibrated vector; Text Right: Navy)
         ctx.translate(logoPillX + 12, logoPillY + 5);
         ctx.scale(0.58, 0.58);
 
-        // MBI Emblem scaled from calibrated 200x200 space (scale: 0.27 to fit ~54x54 box)
-        ctx.save();
-        ctx.translate(6, 6);
-        ctx.scale(0.27, 0.27);
+        const logoImg = window.__mbiUploadedLogoImg;
+        if (logoImg && logoImg.complete && logoImg.naturalWidth > 0) {
+          // Draw authentic uploaded image file directly into the pill!
+          ctx.drawImage(logoImg, 6, 10, 54, 54);
+        } else {
+          // Fallback vector drawing matching media_1790591977381.png
+          ctx.save();
+          ctx.translate(6, 6);
+          ctx.scale(0.27, 0.27);
 
-        // 1. Golden Yellow Head
-        ctx.fillStyle = '#F7B200';
-        ctx.beginPath();
-        ctx.arc(100, 40, 32, 0, Math.PI * 2);
-        ctx.fill();
+          // 1. Golden Yellow Head (Floating clearly above petals)
+          ctx.fillStyle = '#F7B200';
+          ctx.beginPath();
+          ctx.arc(100, 38, 28, 0, Math.PI * 2);
+          ctx.fill();
 
-        // 2. Cyan Right Petal (rotated +45 deg around 120, 103)
-        ctx.save();
-        ctx.translate(120, 103);
-        ctx.rotate(45 * Math.PI / 180);
-        ctx.fillStyle = '#24D3E3';
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-32, -67.4, 64, 134.8, 32);
-        else ctx.rect(-32, -67.4, 64, 134.8);
-        ctx.fill();
-        ctx.restore();
+          // 2. Cyan Right Capsule (+45 deg around 128, 114)
+          ctx.save();
+          ctx.translate(128, 114);
+          ctx.rotate(45 * Math.PI / 180);
+          ctx.fillStyle = '#24D3E3';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(-31, -67, 62, 134, 31);
+          else ctx.rect(-31, -67, 62, 134);
+          ctx.fill();
+          ctx.restore();
 
-        // 3. Pink Left Petal (rotated -45 deg around 80, 103, layered on top of cyan)
-        ctx.save();
-        ctx.translate(80, 103);
-        ctx.rotate(-45 * Math.PI / 180);
-        ctx.fillStyle = '#EE1D78';
-        ctx.beginPath();
-        if (ctx.roundRect) ctx.roundRect(-32, -67.4, 64, 134.8, 32);
-        else ctx.rect(-32, -67.4, 64, 134.8);
-        ctx.fill();
-        ctx.restore();
+          // 3. Pink Left Capsule (-45 deg around 72, 114, on top of cyan)
+          ctx.save();
+          ctx.translate(72, 114);
+          ctx.rotate(-45 * Math.PI / 180);
+          ctx.fillStyle = '#EE1D78';
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(-31, -67, 62, 134, 31);
+          else ctx.rect(-31, -67, 62, 134);
+          ctx.fill();
+          ctx.restore();
 
-        ctx.restore();
+          ctx.restore();
+        }
 
         // Navy Brand Text
         ctx.fillStyle = '#0B4B8A';
