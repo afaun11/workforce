@@ -3419,6 +3419,73 @@
       return [];
     }
 
+    // =========================================================
+    // ATURAN TOLERANSI SHIFT & MISS SCAN RESMI: 16 JAM 25 MENIT (985 Menit = 59.100.000 ms)
+    // Jika lewat dari 16 jam 25 menit sejak absen masuk, sesi resmi jadi Miss Scan & terbaca 7 jam.
+    // Jika masih dalam rentang 16 jam 25 menit, karyawan masih bisa absen pulang (termasuk beda hari).
+    // =========================================================
+    const MAX_SHIFT_MS = (16 * 60 + 25) * 60 * 1000;
+
+    function getAttendanceDurationInfo(rec) {
+      if (!rec || !rec.checkInTime) {
+        return {
+          durationMinutes: 0,
+          durationStr: '-',
+          effectiveMinutes: 0,
+          effectiveHours: 0,
+          statusOut: 'Belum Masuk',
+          isMissScan: false,
+          isOngoing: false
+        };
+      }
+      if (rec.checkOutTime) {
+        const diffMs = new Date(rec.checkOutTime).getTime() - new Date(rec.checkInTime).getTime();
+        const grossMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+        const hrs = Math.floor(grossMins / 60);
+        const mins = grossMins % 60;
+        // Potongan 1 jam istirahat jika durasi kotor >= 5 jam (300 menit)
+        const effMins = grossMins >= 300 ? Math.max(0, grossMins - 60) : grossMins;
+        return {
+          durationMinutes: grossMins,
+          durationStr: `${hrs} Jam ${mins} Mnt`,
+          effectiveMinutes: effMins,
+          effectiveHours: Math.round((effMins / 60) * 10) / 10,
+          statusOut: 'Sudah Pulang',
+          isMissScan: false,
+          isOngoing: false
+        };
+      } else {
+        const elapsedMs = Date.now() - new Date(rec.checkInTime).getTime();
+        if (elapsedMs > MAX_SHIFT_MS) {
+          // Lewat dari 16 jam 25 menit -> RESMI MISS SCAN -> TERBACA 7 JAM DI CATATAN JAM KERJA
+          return {
+            durationMinutes: 7 * 60,
+            durationStr: '7 Jam (Miss Scan)',
+            effectiveMinutes: 7 * 60,
+            effectiveHours: 7.0,
+            statusOut: 'Miss Scan',
+            isMissScan: true,
+            isOngoing: false
+          };
+        } else {
+          // Masih dalam rentang toleransi 16 jam 25 menit -> Karyawan MASIH BISA ABSEN PULANG
+          const grossMins = Math.max(0, Math.floor(elapsedMs / (1000 * 60)));
+          const hrs = Math.floor(grossMins / 60);
+          const mins = grossMins % 60;
+          const effMins = grossMins >= 300 ? Math.max(0, grossMins - 60) : grossMins;
+          return {
+            durationMinutes: grossMins,
+            durationStr: `Sedang Shift (${hrs}j ${mins}m)`,
+            effectiveMinutes: effMins,
+            effectiveHours: Math.round((effMins / 60) * 10) / 10,
+            statusOut: 'Sedang Shift',
+            isMissScan: false,
+            isOngoing: true
+          };
+        }
+      }
+    }
+
     // 1. SMART MERGE ABSENSI (Kunci ID / NIK+Tanggal+JamMasuk)
     function mergeAttendanceArrays(localList, cloudList) {
       const map = new Map();
@@ -3827,6 +3894,10 @@
     }
 
     async function initializeAndUploadToFirebase() {
+      if (!isUserAdmin(currentUser)) {
+        alert('Akses Ditolak: Hanya Akun Administrator yang berwenang mengunggah Database Master ke Firebase Cloud.');
+        return;
+      }
       harmonizeAndResequenceAllNIKs();
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
@@ -3847,7 +3918,7 @@
       };
 
       try {
-        const endpoint = CLOUD_ENDPOINTS[0]; // Firebase endpoint
+        const endpoint = FIREBASE_ENDPOINT;
         const res = await fetch(endpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -3855,11 +3926,18 @@
         });
 
         if (res.ok) {
-          alert(`🚀 SUKSES MENGUNGGAH KE FIREBASE CLOUD!\n\n` +
+          try {
+            if (typeof BroadcastChannel !== 'undefined') {
+              new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
+            }
+          } catch (e) {}
+
+          alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE FIREBASE CLOUD!\n\n` +
                 `✓ Total Data Karyawan MBI: ${mbiUsers.length} orang\n` +
                 `✓ Total Data Karyawan MAI: ${maiUsers.length} orang\n` +
+                `✓ Riwayat Absensi: ${payload.mbi_attendance.length + payload.mai_attendance.length} data\n` +
                 `✓ Server Status: Online 24/7 di Google Firebase\n\n` +
-                `Sekarang seluruh sistem dan absensi di HP dapat dijalankan 24 jam nonstop walaupun laptop Admin dimatikan.`);
+                `Database Cloud 24/7 sekarang aktif dan tersinkron ke seluruh HP karyawan.`);
           renderAllLiveScreens();
         } else {
           alert('Gagal mengunggah ke Firebase: ' + res.statusText);
@@ -3870,25 +3948,75 @@
     }
 
     async function purgeAndReloadFromFirebase() {
-      if (!confirm('Apakah Anda ingin membersihkan seluruh cache lokal (localStorage) di HP/Laptop ini dan memuat ulang data murni dari Firebase Cloud?')) {
+      if (!confirm('Apakah Anda ingin menyinkronkan & memuat ulang database murni dari Google Firebase Cloud ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi dari Cloud akan dimuat ulang agar 100% sama.')) {
         return;
       }
 
-      // Bersihkan seluruh data karyawan & transaksi lama di memori perangkat ini
-      localStorage.removeItem('wfm_mbi_users');
-      localStorage.removeItem('wfm_mai_users');
-      localStorage.removeItem('wfm_mbi_users_backup');
-      localStorage.removeItem('wfm_mai_users_backup');
-      localStorage.removeItem('wfm_mbi_attendance');
-      localStorage.removeItem('wfm_mai_attendance');
-      localStorage.removeItem('wfm_mbi_overtime');
-      localStorage.removeItem('wfm_mai_overtime');
-      localStorage.removeItem('wfm_mbi_leaves');
-      localStorage.removeItem('wfm_mai_leaves');
+      updateCloudSyncStatusBadge('syncing');
+      try {
+        const res = await fetch(FIREBASE_ENDPOINT + '?t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) {
+          alert(`⚠️ Gagal terhubung ke Firebase Cloud (${res.status}). Data di perangkat ini tetap aman dan tidak dihapus.`);
+          updateCloudSyncStatusBadge('local');
+          return;
+        }
 
-      // Tarik data fresh dari Firebase
-      await fetchFullDatabaseFromCloud(true);
-      renderAllLiveScreens();
+        const db = await res.json();
+        if (!db || typeof db !== 'object' || Array.isArray(db)) {
+          alert('⚠️ Database di Firebase Cloud kosong atau belum terisi.\nData lokal Anda tetap dipertahankan agar tidak hilang.\n\nSilakan klik "Inisialisasi & Unggah Database Master" dari laptop Admin terlebih dahulu.');
+          updateCloudSyncStatusBadge('local');
+          return;
+        }
+
+        const cloudMbiUsers = normalizeFirebaseArray(db.mbi_users);
+        const cloudMaiUsers = normalizeFirebaseArray(db.mai_users);
+        const cloudMbiAtt = normalizeFirebaseArray(db.mbi_attendance);
+        const cloudMaiAtt = normalizeFirebaseArray(db.mai_attendance);
+        const cloudMbiOt = normalizeFirebaseArray(db.mbi_overtime);
+        const cloudMaiOt = normalizeFirebaseArray(db.mai_overtime);
+        const cloudMbiLeaves = normalizeFirebaseArray(db.mbi_leaves);
+        const cloudMaiLeaves = normalizeFirebaseArray(db.mai_leaves);
+
+        if (cloudMbiUsers.length === 0 && cloudMaiUsers.length === 0) {
+          alert('⚠️ Cloud Firebase belum memiliki data karyawan. Data lokal perangkat ini tetap dipertahankan.');
+          updateCloudSyncStatusBadge('local');
+          return;
+        }
+
+        // Terapkan data resmi Cloud ke penyimpanan perangkat ini secara aman
+        localStorage.setItem('wfm_mbi_users', JSON.stringify(cloudMbiUsers));
+        localStorage.setItem('wfm_mai_users', JSON.stringify(cloudMaiUsers));
+        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(cloudMbiAtt));
+        localStorage.setItem('wfm_mai_attendance', JSON.stringify(cloudMaiAtt));
+        localStorage.setItem('wfm_mbi_overtime', JSON.stringify(cloudMbiOt));
+        localStorage.setItem('wfm_mai_overtime', JSON.stringify(cloudMaiOt));
+        localStorage.setItem('wfm_mbi_leaves', JSON.stringify(cloudMbiLeaves));
+        localStorage.setItem('wfm_mai_leaves', JSON.stringify(cloudMaiLeaves));
+        if (db.mbi_coords) localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
+        if (db.mai_coords) localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
+        if (db.app_theme) {
+          localStorage.setItem('wfm_app_theme', db.app_theme);
+          applyAppTheme(db.app_theme, false);
+        }
+        if (db.updatedAt) localStorage.setItem('wfm_master_updated_at', db.updatedAt);
+        localStorage.removeItem('wfm_last_master_change_time');
+
+        // Render ulang seluruh layar aktif
+        renderAllLiveScreens();
+        updateCloudSyncStatusBadge('synced');
+
+        alert(`✅ SUKSES MEMUAT DATA DARI FIREBASE CLOUD!\n\n` +
+              `• Karyawan MBI: ${cloudMbiUsers.length} orang\n` +
+              `• Karyawan MAI: ${cloudMaiUsers.length} orang\n` +
+              `• Riwayat Absensi MBI: ${cloudMbiAtt.length} record\n` +
+              `• Riwayat Absensi MAI: ${cloudMaiAtt.length} record\n` +
+              `• Data Lemburan: ${cloudMbiOt.length + cloudMaiOt.length} data\n\n` +
+              `Semua data di perangkat ini sekarang 100% SINKRON & SAMA dengan Cloud Server.`);
+      } catch (err) {
+        console.error('Purge and reload error:', err);
+        alert('⚠️ Gagal terhubung ke Firebase Cloud: ' + err.message + '\nData di perangkat ini tetap aman dan tidak dihapus.');
+        updateCloudSyncStatusBadge('local');
+      }
     }
 
     function sanitizeEmployeesData() {
@@ -4153,8 +4281,6 @@
           if (navDept) navDept.innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
         }
       }
-
-      saveFullDatabaseToCloud();
     }
 
     function deduplicateAndFixNIKs() {
@@ -4240,63 +4366,6 @@
       }
     }
 
-    async function purgeAndReloadFromFirebase() {
-      if (!confirm('Bersihkan seluruh cache lokal di perangkat ini dan muat ulang data resmi dari Google Firebase Cloud?')) {
-        return;
-      }
-
-      // Bersihkan semua key wfm lokal
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('wfm_') && key !== 'wfm_active_session') {
-          localStorage.removeItem(key);
-        }
-      });
-
-      // Tarik fresh dari Firebase
-      await fetchFullDatabaseFromCloud(true);
-      renderAllLiveScreens();
-    }
-
-    async function initializeAndUploadToFirebase() {
-      harmonizeAndResequenceAllNIKs();
-      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-      
-      const payload = {
-        mbi_users: mbiUsers,
-        mbi_attendance: getWhDB('MBI', 'attendance', []),
-        mbi_leaves: getWhDB('MBI', 'leaves', []),
-        mbi_overtime: getWhDB('MBI', 'overtime', []),
-        mbi_coords: getWarehouseCoords('MBI'),
-        mai_users: maiUsers,
-        mai_attendance: getWhDB('MAI', 'attendance', []),
-        mai_leaves: getWhDB('MAI', 'leaves', []),
-        mai_overtime: getWhDB('MAI', 'overtime', []),
-        mai_coords: getWarehouseCoords('MAI'),
-        updatedAt: new Date().toISOString()
-      };
-
-      try {
-        const res = await fetch(FIREBASE_ENDPOINT, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-          alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE FIREBASE CLOUD!\n\n` +
-                `✓ Total Data Karyawan MBI: ${mbiUsers.length} orang\n` +
-                `✓ Total Data Karyawan MAI: ${maiUsers.length} orang\n` +
-                `✓ Titik Koordinat GPS Resmi: Terunggah\n\n` +
-                `Database Cloud 24/7 sekarang aktif dan siap digunakan secara permanen.`);
-        } else {
-          alert('Gagal mengunggah ke Firebase: ' + res.statusText);
-        }
-      } catch (err) {
-        alert('Gagal terhubung ke Firebase: ' + err.message);
-      }
-    }
-
     function setWhDB(warehouse, key, val) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       localStorage.setItem(storageKey, JSON.stringify(val));
@@ -4362,14 +4431,6 @@
       lucide.createIcons();
       if (typeof updateGSheetSyncBadge === 'function') {
         updateGSheetSyncBadge();
-      }
-
-      // Reset data absensi bersih untuk pengujian (sesuai instruksi)
-      const cleanTestDone = localStorage.getItem('wfm_att_clean_tested_v3');
-      if (!cleanTestDone) {
-        localStorage.setItem('wfm_mbi_attendance', JSON.stringify([]));
-        localStorage.setItem('wfm_mai_attendance', JSON.stringify([]));
-        localStorage.setItem('wfm_att_clean_tested_v3', 'true');
       }
 
       // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
@@ -6588,38 +6649,72 @@
       const targetWh = matchedUser.warehouse || activeWarehouse || 'MBI';
       const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       
-      // Cari presensi hari ini KHUSUS untuk matchedUser ini saja (berdasarkan nama lengkap atau NIK)
-      const existing = attendances.find(a => 
-        a.date === todayStr && (
-          (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
-          (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase()) ||
-          (a.userId && a.userId === matchedUser.id)
-        )
+      // Ambil seluruh presensi matchedUser (diurutkan kronologis terbaru lebih dulu)
+      const userAtts = attendances.filter(a => 
+        (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
+        (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase()) ||
+        (a.userId && a.userId === matchedUser.id)
       );
 
       const now = new Date();
       const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
 
+      // Cari sesi masuk terakhir yang BELUM check-out (open session)
+      const openSession = userAtts.find(a => a.checkInTime && !a.checkOutTime);
+      let isOpenSessionValid = false;
+      let sessionElapsedMs = 0;
+      if (openSession) {
+        sessionElapsedMs = now.getTime() - new Date(openSession.checkInTime).getTime();
+        // Masih dalam rentang toleransi 16 jam 25 menit
+        isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs <= MAX_SHIFT_MS);
+      }
+
+      // Cari presensi hari ini jika ada
+      const todaySession = userAtts.find(a => a.date === todayStr);
+
       if (selectedAttendanceType === 'check_in') {
-        if (existing) {
+        // Jika masih ada sesi terbuka yang valid (<= 16 jam 25 menit):
+        if (openSession && isOpenSessionValid) {
           const gunCard = document.getElementById('last-gun-success-card');
           if (gunCard) gunCard.classList.add('hidden');
+          const inTimeStr = new Date(openSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
           showProfessionalAttendanceToast({
             isWarning: true,
             title: 'Sudah Absen Masuk',
-            subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen masuk hari ini.`,
+            subtitle: `${matchedUser.name} masih dalam shift aktif (Masuk ${openSession.date} ${inTimeStr}). Silakan pilih Absen Pulang.`,
             name: matchedUser.name,
             nik: matchedUser.nik,
             dept: matchedUser.dept || 'Staff',
             warehouse: targetWh,
-            time: existing.checkInTime ? new Date(existing.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : nowFormatted,
-            statusText: 'Sudah Hadir'
+            time: inTimeStr,
+            statusText: 'Shift Sedang Berjalan'
           });
           playAttendanceErrorSound('Sudah absen masuk');
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
 
+        // Jika hari ini sudah pernah check-in dan sudah check-out:
+        if (todaySession && todaySession.checkOutTime && !openSession) {
+          const gunCard = document.getElementById('last-gun-success-card');
+          if (gunCard) gunCard.classList.add('hidden');
+          showProfessionalAttendanceToast({
+            isWarning: true,
+            title: 'Sudah Hadir Hari Ini',
+            subtitle: `${matchedUser.name} sudah selesai shift hari ini (Sudah Absen Pulang).`,
+            name: matchedUser.name,
+            nik: matchedUser.nik,
+            dept: matchedUser.dept || 'Staff',
+            warehouse: targetWh,
+            time: new Date(todaySession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+            statusText: 'Sudah Selesai'
+          });
+          playAttendanceErrorSound('Sudah absen masuk');
+          setTimeout(() => { isScanProcessing = false; }, 2500);
+          return;
+        }
+
+        // Karyawan membuat Absen Masuk Baru!
         const minute = now.getMinutes();
         const isLate = minute >= 1 && minute <= 30;
 
@@ -6640,11 +6735,10 @@
         const notesInput = document.getElementById('att-notes');
         if (notesInput) notesInput.value = '';
 
-        // 1. Simpan langsung ke database lokal & background cloud
+        // Simpan langsung ke database lokal & cloud
         setWhDB(targetWh, 'attendance', attendances);
         if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
-        // 2. Munculkan notifikasi mengambang profesional 5 detik
         showProfessionalAttendanceToast({
           type: 'check_in',
           title: 'Absen Masuk Berhasil!',
@@ -6658,72 +6752,96 @@
           isLate: isLate
         });
 
-        // 3. Mainkan audio chime & sebutkan nama karyawan
         playAttendanceSuccessSound('check_in', matchedUser.name);
       } else {
-        if (!existing) {
-          const gunCard = document.getElementById('last-gun-success-card');
-          if (gunCard) gunCard.classList.add('hidden');
+        // MODE ABSEN PULANG (CHECK_OUT)
+        // KASUS 1: Ada openSession yang masih dalam rentang <= 16 jam 25 menit!
+        // Mendukung masuk tgl 1 dan pulang tgl 2 (beda hari), tetap masuk ke record tgl 1!
+        if (openSession && isOpenSessionValid) {
+          openSession.checkOutTime = now.toISOString();
+          openSession.userNik = matchedUser.nik;
+          openSession.userName = matchedUser.name;
+          openSession.userId = matchedUser.id;
+          openSession.dept = matchedUser.dept;
+
+          // Simpan langsung ke database lokal & cloud
+          setWhDB(targetWh, 'attendance', attendances);
+          if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+
+          const diffMs = now.getTime() - new Date(openSession.checkInTime).getTime();
+          const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+          const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
           showProfessionalAttendanceToast({
-            isError: true,
-            title: 'Belum Absen Masuk',
-            subtitle: `${matchedUser.name} (${matchedUser.nik}) belum tercatat absen masuk hari ini.`,
+            type: 'check_out',
+            title: 'Absen Pulang Berhasil!',
+            subtitle: `Presensi pulang ${matchedUser.name} sukses tercatat (Shift ${openSession.date}, durasi ${hrs}j ${mins}m)`,
             name: matchedUser.name,
             nik: matchedUser.nik,
             dept: matchedUser.dept || 'Staff',
             warehouse: targetWh,
             time: nowFormatted,
-            statusText: 'Belum Masuk'
+            statusText: 'Shift Selesai',
+            isLate: false
           });
-          playAttendanceErrorSound('Belum absen masuk');
-          setTimeout(() => { isScanProcessing = false; }, 2500);
-          return;
-        }
-        if (existing.checkOutTime) {
+
+          playAttendanceSuccessSound('check_out', matchedUser.name);
+        } else if (openSession && !isOpenSessionValid) {
+          // KASUS 2: Ada openSession tapi SUDAH MELEBIHI 16 JAM 25 MENIT!
+          // Sesi lama dinyatakan Miss Scan, dan tidak bisa absen pulang lagi.
           const gunCard = document.getElementById('last-gun-success-card');
           if (gunCard) gunCard.classList.add('hidden');
           showProfessionalAttendanceToast({
-            isWarning: true,
-            title: 'Sudah Absen Pulang',
-            subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen pulang sebelumnya.`,
+            isError: true,
+            title: 'Lewat Batas Waktu Pulang',
+            subtitle: `Sudah lewat dari 16 jam 25 menit sejak absen masuk (${openSession.date}). Sesi tercatat Miss Scan (7 Jam).`,
             name: matchedUser.name,
             nik: matchedUser.nik,
             dept: matchedUser.dept || 'Staff',
             warehouse: targetWh,
-            time: new Date(existing.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB',
-            statusText: 'Sudah Pulang'
+            time: nowFormatted,
+            statusText: 'Miss Scan (7 Jam)'
           });
-          playAttendanceErrorSound('Sudah absen pulang');
+          playAttendanceErrorSound('Waktu absen pulang lewat');
+          setTimeout(() => { isScanProcessing = false; }, 2500);
+          return;
+        } else {
+          // KASUS 3: Tidak ada openSession sama sekali
+          const gunCard = document.getElementById('last-gun-success-card');
+          if (gunCard) gunCard.classList.add('hidden');
+          
+          // Cek apakah baru saja sudah checkout
+          const lastAtt = userAtts[0];
+          if (lastAtt && lastAtt.checkOutTime) {
+            showProfessionalAttendanceToast({
+              isWarning: true,
+              title: 'Sudah Absen Pulang',
+              subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen pulang sebelumnya.`,
+              name: matchedUser.name,
+              nik: matchedUser.nik,
+              dept: matchedUser.dept || 'Staff',
+              warehouse: targetWh,
+              time: new Date(lastAtt.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+              statusText: 'Sudah Pulang'
+            });
+            playAttendanceErrorSound('Sudah absen pulang');
+          } else {
+            showProfessionalAttendanceToast({
+              isError: true,
+              title: 'Belum Absen Masuk',
+              subtitle: `${matchedUser.name} (${matchedUser.nik}) belum tercatat absen masuk.`,
+              name: matchedUser.name,
+              nik: matchedUser.nik,
+              dept: matchedUser.dept || 'Staff',
+              warehouse: targetWh,
+              time: nowFormatted,
+              statusText: 'Belum Masuk'
+            });
+            playAttendanceErrorSound('Belum absen masuk');
+          }
           setTimeout(() => { isScanProcessing = false; }, 2500);
           return;
         }
-
-        existing.checkOutTime = now.toISOString();
-        existing.userNik = matchedUser.nik;
-        existing.userName = matchedUser.name;
-        existing.userId = matchedUser.id;
-        existing.dept = matchedUser.dept;
-
-        // 1. Simpan langsung ke database lokal & background cloud
-        setWhDB(targetWh, 'attendance', attendances);
-        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
-
-        // 2. Munculkan notifikasi mengambang profesional 5 detik
-        showProfessionalAttendanceToast({
-          type: 'check_out',
-          title: 'Absen Pulang Berhasil!',
-          subtitle: `Presensi pulang ${matchedUser.name} sukses tercatat & tersinkron ke Google Sheet`,
-          name: matchedUser.name,
-          nik: matchedUser.nik,
-          dept: matchedUser.dept || 'Staff',
-          warehouse: targetWh,
-          time: nowFormatted,
-          statusText: 'Shift Selesai',
-          isLate: false
-        });
-
-        // 3. Mainkan audio chime & sebutkan nama karyawan
-        playAttendanceSuccessSound('check_out', matchedUser.name);
       }
 
       // Tampilkan kartu bukti sukses di Standby Wrapper & Gun Wrapper
@@ -9933,29 +10051,8 @@
         let totalEffectiveMinutes = 0;
         uniqueDates.forEach(d => {
           const item = dateMap[d];
-          if (item.checkInTime && item.checkOutTime) {
-            const diffMs = new Date(item.checkOutTime).getTime() - new Date(item.checkInTime).getTime();
-            let grossMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
-            // Sehari shift 8 jam kerja (480 menit) terhitung 7 jam kerja efektif (420 menit) karena dipotong 1 jam (60 menit) istirahat.
-            // Potongan 1 jam istirahat otomatis berlaku jika durasi kehadiran kotor >= 5 jam (300 menit).
-            if (grossMinutes >= 300) {
-              grossMinutes = Math.max(0, grossMinutes - 60);
-            }
-            totalEffectiveMinutes += grossMinutes;
-          } else if (item.checkInTime) {
-            const todayStr = new Date().toISOString().split('T')[0];
-            if (d === todayStr) {
-              const diffMs = Date.now() - new Date(item.checkInTime).getTime();
-              let grossMinutes = Math.max(0, Math.floor(diffMs / (1000 * 60)));
-              if (grossMinutes >= 300) {
-                grossMinutes = Math.max(0, grossMinutes - 60);
-              }
-              totalEffectiveMinutes += grossMinutes;
-            } else {
-              // Jika lupa scan pulang pada hari sebelumnya: terhitung 7 jam kerja efektif (8 jam shift - 1 jam istirahat)
-              totalEffectiveMinutes += (7 * 60);
-            }
-          }
+          const durInfo = getAttendanceDurationInfo(item);
+          totalEffectiveMinutes += durInfo.effectiveMinutes;
         });
 
         // Hitung Jam & Menit Presisi
@@ -10416,9 +10513,10 @@
         const minute = checkInDate.getMinutes();
         const isLate = a.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         if (isLate) totalLate++;
-        else totalNormal++;
-
-        if (!a.checkOutTime) totalMissScan++;
+        if (!a.checkOutTime) {
+          const info = getAttendanceDurationInfo(a);
+          if (info.isMissScan) totalMissScan++;
+        }
       });
 
       const normalPct = totalHadir > 0 ? Math.round((totalNormal / totalHadir) * 100) : 0;
@@ -10561,20 +10659,11 @@
         const finalNik = emp ? emp.nik : (rec.userNik || '-');
         const finalDept = emp ? emp.dept : (rec.dept || '-');
         
-        // Hitung Durasi Jam Kerja
-        let durationStr = '-';
-        if (rec.checkInTime && rec.checkOutTime) {
-          const diffMs = new Date(rec.checkOutTime) - new Date(rec.checkInTime);
-          if (diffMs > 0) {
-            const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-            const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            durationStr = `${hrs} Jam ${mins} Mnt`;
-          }
-        } else if (rec.checkInTime && !rec.checkOutTime) {
-          durationStr = '<span class="text-slate-400 font-mono text-[11px]">-</span>';
-        }
+        // Hitung Durasi Jam Kerja & Status Miss Scan (16 jam 25 menit)
+        const durInfo = getAttendanceDurationInfo(rec);
+        const durationStr = durInfo.durationStr;
 
-        // Status Masuk (Normal / Late In) & Status Pulang (Sudah Pulang / Miss Scan)
+        // Status Masuk (Normal / Late In) & Status Pulang (Sudah Pulang / Miss Scan / Sedang Shift)
         const checkInDate = new Date(rec.checkInTime);
         const minute = checkInDate.getMinutes();
         const isLate = rec.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
@@ -10583,9 +10672,14 @@
           ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Late In</span>' 
           : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>Normal</span>';
         
-        const outBadge = rec.checkOutTime
-          ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap">Sudah Pulang</span>'
-          : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Miss Scan</span>';
+        let outBadge = '';
+        if (rec.checkOutTime) {
+          outBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap">Sudah Pulang</span>';
+        } else if (durInfo.isMissScan) {
+          outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Miss Scan</span>';
+        } else {
+          outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>Sedang Shift</span>';
+        }
 
         const notesHtml = (rec.notes && rec.notes !== 'Tepat Waktu' && rec.notes !== 'Terlambat' && rec.notes !== '-')
           ? `<div class="text-[10px] text-slate-500 font-medium italic mt-1"><span class="truncate max-w-[200px]">${rec.notes}</span></div>`
@@ -10599,7 +10693,7 @@
             <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${finalName}</td>
             <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : '<span class="text-slate-400 font-medium italic text-[11px]">Miss Scan</span>'}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : (durInfo.isMissScan ? '<span class="text-rose-600 font-semibold italic text-[11px]">Miss Scan</span>' : '<span class="text-amber-600 font-medium italic text-[11px]">Sedang Shift</span>')}</td>
             <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800">${durationStr}</td>
             <td class="p-3.5 border-r border-slate-100">
               <div class="flex flex-col gap-1 items-start">
@@ -10687,20 +10781,15 @@
         const finalNik = emp ? emp.nik : (r.userNik || '-');
         const finalDept = emp ? emp.dept : (r.dept || '');
 
-        let durationStr = '-';
-        if (r.checkInTime && r.checkOutTime) {
-          const diffMs = new Date(r.checkOutTime) - new Date(r.checkInTime);
-          if (diffMs > 0) {
-            const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-            const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            durationStr = `${hrs} Jam ${mins} Menit`;
-          }
-        }
+        const durInfo = getAttendanceDurationInfo(r);
         const checkInDate = new Date(r.checkInTime);
         const minute = checkInDate.getMinutes();
         const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         const statusMasuk = isLate ? 'Late In' : 'Normal';
-        const statusPulang = r.checkOutTime ? 'Sudah Pulang' : 'Miss Scan';
+        const statusPulang = durInfo.statusOut;
+        const jamPulangStr = r.checkOutTime 
+          ? new Date(r.checkOutTime).toLocaleTimeString('id-ID') 
+          : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan');
 
         return {
           "No": i + 1,
@@ -10708,9 +10797,9 @@
           "NIK": finalNik,
           "Nama Karyawan": finalName,
           "Departemen": finalDept,
-          "Jam Masuk": new Date(r.checkInTime).toLocaleTimeString('id-ID'),
-          "Jam Pulang": r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('id-ID') : 'Miss Scan',
-          "Durasi Kerja": durationStr,
+          "Jam Masuk": r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('id-ID') : '-',
+          "Jam Pulang": jamPulangStr,
+          "Durasi Kerja": durInfo.durationStr,
           "Status Kehadiran": statusMasuk,
           "Status Kepulangan": statusPulang,
           "Keterangan": `${statusMasuk} - ${statusPulang}${r.notes && r.notes !== '-' ? ` (${r.notes})` : ''}`,
@@ -12105,20 +12194,13 @@ function testManualSync() {
           const finalNik = emp ? emp.nik : (r.userNik || '-');
           const finalDept = emp ? emp.dept : (r.dept || '');
 
-          let durationStr = '-';
-          if (r.checkInTime && r.checkOutTime) {
-            const diffMs = new Date(r.checkOutTime) - new Date(r.checkInTime);
-            if (diffMs > 0) {
-              const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-              const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-              durationStr = `${hrs} Jam ${mins} Menit`;
-            }
-          }
+          const durInfo = getAttendanceDurationInfo(r);
+          const durationStr = durInfo.durationStr;
           const checkInDate = new Date(r.checkInTime);
           const minute = checkInDate.getMinutes();
           const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
           const statusMasuk = isLate ? 'Late In' : 'Normal';
-          const statusPulang = r.checkOutTime ? 'Sudah Pulang' : 'Miss Scan';
+          const statusPulang = durInfo.statusOut;
 
           rows.push([
             rowIdx++,
@@ -12127,7 +12209,7 @@ function testManualSync() {
             finalName,
             (finalDept || 'STAFF').toUpperCase(),
             r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('id-ID') : '-',
-            r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('id-ID') : 'Miss Scan',
+            r.checkOutTime ? new Date(r.checkOutTime).toLocaleTimeString('id-ID') : (durInfo.isMissScan ? 'Miss Scan' : 'Sedang Shift'),
             durationStr,
             statusMasuk,
             statusPulang,
