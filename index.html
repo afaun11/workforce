@@ -264,28 +264,81 @@
       --theme-badge-bg: #312e81;
     }
 
-    /* Sidebar Dynamic Colors */
+    /* ========================================================= */
+    /* MODERN ENTERPRISE SIDEBAR NAVIGATION (CLEAN & PROFESSIONAL) */
+    /* ========================================================= */
     #app-sidebar {
       background-color: var(--theme-sidebar-bg) !important;
       border-color: var(--theme-sidebar-border) !important;
     }
     #app-sidebar .sidebar-heading {
-      color: #94a3b8 !important;
+      color: #64748b !important;
+      font-size: 10px !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.08em !important;
+      text-transform: uppercase !important;
     }
     #app-sidebar .border-slate-800 {
       border-color: var(--theme-sidebar-border) !important;
     }
+
+    /* Menu Inaktif: Bersih, Transparan, Minimalis & Tenang */
+    #app-sidebar .sidebar-link {
+      background-color: transparent !important;
+      color: #94a3b8 !important;
+      border: 1px solid transparent !important;
+      position: relative !important;
+      font-weight: 500 !important;
+      box-shadow: none !important;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    #app-sidebar .sidebar-link i,
+    #app-sidebar .sidebar-link svg {
+      color: #64748b !important;
+      transition: color 0.15s ease !important;
+    }
+
+    /* Menu Saat Hover: Efek Halus & Elegan */
     #app-sidebar .sidebar-link:hover {
-      background-color: var(--theme-sidebar-hover) !important;
+      background-color: rgba(255, 255, 255, 0.05) !important;
       color: #ffffff !important;
+      border-color: rgba(255, 255, 255, 0.06) !important;
     }
-    #app-sidebar .sidebar-link[class*="bg-slate-800"] {
+    #app-sidebar .sidebar-link:hover i,
+    #app-sidebar .sidebar-link:hover svg {
+      color: #cbd5e1 !important;
+    }
+
+    /* Menu Aktif (.is-active): Tegas, Kontras, Bersih & Profesional */
+    #app-sidebar .sidebar-link.is-active {
       background-color: var(--theme-sidebar-active) !important;
-      border-color: var(--theme-sidebar-border) !important;
       color: #ffffff !important;
+      font-weight: 700 !important;
+      border: 1px solid rgba(255, 255, 255, 0.14) !important;
+      box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.35) !important;
     }
+    #app-sidebar .sidebar-link.is-active i,
+    #app-sidebar .sidebar-link.is-active svg {
+      color: var(--theme-accent, #38bdf8) !important;
+    }
+    #app-sidebar .sidebar-link.is-active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 20%;
+      bottom: 20%;
+      width: 3.5px;
+      border-radius: 0 4px 4px 0;
+      background-color: var(--theme-accent, #38bdf8);
+      box-shadow: 0 0 8px var(--theme-accent, #38bdf8);
+    }
+    #app-sidebar.is-collapsed .sidebar-link.is-active::before {
+      display: none !important;
+    }
+
     #btn-toggle-sidebar:hover {
-      background-color: var(--theme-sidebar-hover) !important;
+      background-color: rgba(255, 255, 255, 0.06) !important;
+      color: #ffffff !important;
     }
 
     /* Auth Screen Dynamic Gradient & Background */
@@ -592,11 +645,11 @@
           <!-- 1. Presensi & Operasional -->
           <div class="space-y-1">
             <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
-            <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+            <button onclick="switchView('dashboard')" id="nav-dashboard" title="Dashboard" class="sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5">
               <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Dashboard</span>
             </button>
-            <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-white border border-slate-700 shadow-sm transition flex items-center gap-2.5">
+            <button onclick="switchView('attendance')" id="nav-attendance" title="Absensi Barcode" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
               <i data-lucide="scan-line" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Absensi Barcode</span>
             </button>
@@ -608,11 +661,11 @@
             <!-- Kelompok: Pengajuan & Lembur -->
             <div class="space-y-1">
               <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Pengajuan & Lembur</p>
-              <button onclick="switchView('leaves')" id="nav-leaves" title="Form Pengajuan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <button onclick="switchView('leaves')" id="nav-leaves" title="Form Pengajuan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
                 <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i>
                 <span class="sidebar-text">Form Pengajuan</span>
               </button>
-              <button onclick="switchView('overtime')" id="nav-overtime" title="Input & Rekap Lembur" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <button onclick="switchView('overtime')" id="nav-overtime" title="Input & Rekap Lembur" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
                 <i data-lucide="clock" class="w-4 h-4 flex-shrink-0"></i>
                 <span class="sidebar-text">Input & Rekap Lembur</span>
               </button>
@@ -621,11 +674,11 @@
             <!-- Kelompok: Manajemen Karyawan -->
             <div class="space-y-1">
               <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Manajemen Karyawan</p>
-              <button onclick="switchView('employees')" id="nav-employees" title="Data Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <button onclick="switchView('employees')" id="nav-employees" title="Data Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
                 <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i>
                 <span class="sidebar-text">Data Karyawan</span>
               </button>
-              <button onclick="switchView('idcard')" id="nav-idcard" title="Kartu ID Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <button onclick="switchView('idcard')" id="nav-idcard" title="Kartu ID Karyawan" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
                 <i data-lucide="contact" class="w-4 h-4 flex-shrink-0"></i>
                 <span class="sidebar-text">Kartu ID Karyawan</span>
               </button>
@@ -634,7 +687,7 @@
             <!-- Kelompok: Laporan & Rekapitulasi -->
             <div class="space-y-1">
               <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan & Rekapitulasi</p>
-              <button onclick="switchView('reports-group')" id="nav-reports-group" title="Laporan & Rekap Absensi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+              <button onclick="switchView('reports-group')" id="nav-reports-group" title="Laporan & Rekap Absensi" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
                 <i data-lucide="bar-chart-3" class="w-4 h-4 flex-shrink-0"></i>
                 <span class="sidebar-text">Laporan & Rekap Absensi</span>
               </button>
@@ -644,15 +697,15 @@
           <!-- 3. Sistem & Pengaturan (Dikelompokkan Paling Bawah) -->
           <div id="system-settings-section" class="space-y-1 pt-2 border-t border-slate-800">
             <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
-            <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition items-center gap-2.5">
+            <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition items-center gap-2.5">
               <i data-lucide="cloud" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Database Cloud 24/7</span>
             </button>
-            <button onclick="openAudioSettingsModal()" id="nav-btn-audio-settings" title="Pengaturan Suara Notifikasi (Khusus Admin)" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition items-center gap-2.5">
-              <i data-lucide="volume-2" class="w-4 h-4 flex-shrink-0 text-slate-400"></i>
+            <button onclick="openAudioSettingsModal()" id="nav-btn-audio-settings" title="Pengaturan Suara Notifikasi (Khusus Admin)" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition items-center gap-2.5">
+              <i data-lucide="volume-2" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Suara Notifikasi</span>
             </button>
-            <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5">
+            <button onclick="switchView('settings')" id="nav-settings" title="Pengaturan Akun" class="sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5">
               <i data-lucide="user-cog" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Pengaturan Akun</span>
             </button>
@@ -1969,6 +2022,21 @@
                   <p class="text-[11px] text-slate-600 leading-relaxed">
                     Setiap ada karyawan yang melakukan scan absensi di HP, atau Admin menambah karyawan baru, data akan <b>otomatis masuk seketika ke Firebase</b> tanpa perlu tombol manual lagi.
                   </p>
+                </div>
+
+                <!-- Endpoint URL & Custom Firebase Config -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
+                  <div class="flex items-center justify-between text-xs font-bold text-slate-900">
+                    <span class="flex items-center gap-1.5"><i data-lucide="link" class="w-4 h-4 text-teal-600"></i> Endpoint URL Firebase Cloud</span>
+                    <button type="button" onclick="resetDefaultFirebaseUrl()" class="text-[11px] text-slate-500 hover:text-slate-900 underline font-semibold">Reset ke Bawaan</button>
+                  </div>
+                  <div class="flex gap-2">
+                    <input type="text" id="input-custom-firebase-url" placeholder="https://wfm-medika-default-rtdb.firebaseio.com/" class="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900">
+                    <button type="button" onclick="saveCustomFirebaseUrl()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0">
+                      Simpan URL
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-slate-500">Anda dapat mengubah atau menghubungkan ke project Firebase baru kapan saja cukup dengan menempelkan URL-nya di sini.</p>
                 </div>
 
                 <!-- Solusi Cepat: Aturan Keamanan Firebase Rules (Anti-Expired 401) -->
@@ -3475,8 +3543,45 @@
         }).catch(() => {
           prompt('Salin teks Rules Firebase berikut:', rules);
         });
-      } else {
-        prompt('Salin teks Rules Firebase berikut:', rules);
+      }
+    }
+
+    function updateFirebaseUrlUI() {
+      const currentUrl = getFirebaseEndpoint();
+      const lbl = document.getElementById('lbl-firebase-endpoint');
+      if (lbl) lbl.innerText = currentUrl;
+      const input = document.getElementById('input-custom-firebase-url');
+      if (input) input.value = currentUrl;
+    }
+
+    function saveCustomFirebaseUrl() {
+      const input = document.getElementById('input-custom-firebase-url');
+      if (!input) return;
+      const val = input.value.trim();
+      if (!val) {
+        alert('Silakan masukkan URL Firebase Realtime Database.');
+        return;
+      }
+      if (!val.startsWith('https://') || !val.includes('firebaseio.com')) {
+        alert('Format URL tidak valid!\nURL Firebase harus diawali dengan https:// dan berakhiran .firebaseio.com\n\nContoh:\nhttps://project-anda-default-rtdb.firebaseio.com/');
+        return;
+      }
+      let clean = val.replace(/\/$/, '');
+      if (!clean.endsWith('.json')) {
+        clean = clean + '/wfm_database.json';
+      }
+      localStorage.setItem('wfm_firebase_custom_url', clean);
+      updateFirebaseUrlUI();
+      alert('✅ URL Firebase Berhasil Disimpan!\n\nAplikasi sekarang terhubung ke database:\n' + clean);
+      testFirebaseConnection();
+    }
+
+    function resetDefaultFirebaseUrl() {
+      if (confirm('Kembalikan URL Firebase ke default resmi sistem?')) {
+        localStorage.removeItem('wfm_firebase_custom_url');
+        updateFirebaseUrlUI();
+        alert('URL Firebase telah dikembalikan ke default:\n' + DEFAULT_FIREBASE_RTDB_URL);
+        testFirebaseConnection();
       }
     }
 
@@ -4645,6 +4750,9 @@
       lucide.createIcons();
       if (typeof updateGSheetSyncBadge === 'function') {
         updateGSheetSyncBadge();
+      }
+      if (typeof updateFirebaseUrlUI === 'function') {
+        updateFirebaseUrlUI();
       }
 
       // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
@@ -5836,7 +5944,8 @@
 
       document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.sidebar-link').forEach(el => {
-        el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition flex items-center gap-2.5';
+        el.classList.remove('is-active');
+        el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5';
       });
 
       // Pastikan seluruh section menu dan tombol tersembunyi sesuai role
@@ -5846,7 +5955,10 @@
       if (activeView) activeView.classList.remove('hidden');
 
       const activeNav = document.getElementById('nav-' + viewName);
-      if (activeNav) activeNav.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 text-white border border-slate-700 shadow-sm transition flex items-center gap-2.5';
+      if (activeNav) {
+        activeNav.classList.add('is-active');
+        activeNav.className = 'sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5';
+      }
 
       if (viewName === 'attendance') {
         setAttendanceType('check_in');
