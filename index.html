@@ -1953,10 +1953,13 @@
                 <div class="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
                   <div>
                     <h3 class="font-extrabold text-sm text-slate-900">Google Firebase Realtime Database</h3>
-                    <p class="text-[11px] text-slate-500 font-mono">https://wfm-medika-default-rtdb.firebaseio.com/</p>
+                    <p id="lbl-firebase-endpoint" class="text-[11px] text-slate-500 font-mono">https://wfm-medika-default-rtdb.firebaseio.com/</p>
                   </div>
                   <span class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-200 uppercase tracking-wider">Cloud 24/7</span>
                 </div>
+
+                <!-- Hasil Diagnostik Koneksi Cloud -->
+                <div id="firebase-diag-status" class="hidden p-3.5 rounded-2xl text-xs font-bold shadow-xs"></div>
 
                 <!-- Info Box Fitur Otomatis -->
                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
@@ -1968,18 +1971,51 @@
                   </p>
                 </div>
 
+                <!-- Solusi Cepat: Aturan Keamanan Firebase Rules (Anti-Expired 401) -->
+                <div class="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2 text-xs">
+                  <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex items-center gap-2 text-amber-950 font-bold">
+                      <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600 shrink-0"></i>
+                      <span>Solusi Jika Muncul "Gagal Terhubung ke Firebase" (Rules Expired)</span>
+                    </div>
+                    <button type="button" onclick="copyFirebaseRules()" class="px-3 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold rounded-xl text-[10px] transition shadow-2xs">
+                      Salin Rules
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-amber-900 leading-relaxed">
+                    Jika Firebase menolak koneksi (HTTP 401: Permission Denied), aturan default 30 hari di <b>console.firebase.google.com</b> telah kedaluwarsa. Buka Realtime Database &rarr; Tab <b>Rules</b>, ganti menjadi:
+                  </p>
+                  <pre class="bg-slate-900 text-emerald-400 p-2.5 rounded-xl font-mono text-[10px] overflow-x-auto leading-relaxed">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre>
+                  <p class="text-[10px] text-amber-800 font-semibold italic">Lalu klik tombol <b>Publish (Publikasikan)</b> di kanan atas. Sinkronisasi antar-perangkat akan langsung normal seketika!</p>
+                </div>
+
                 <!-- Action Buttons Khusus & Rapih -->
                 <div class="space-y-3 pt-1">
-                  <button type="button" onclick="initializeAndUploadToFirebase()" class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-black transition flex items-center justify-center shadow-sm">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button type="button" onclick="testFirebaseConnection()" class="py-3 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                      <i data-lucide="activity" class="w-4 h-4 text-teal-600"></i>
+                      <span>Uji Respon & Koneksi Cloud</span>
+                    </button>
+                    <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="py-3 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                      <i data-lucide="refresh-cw" class="w-4 h-4 text-blue-600"></i>
+                      <span>Tarik Data Terbaru dari Cloud</span>
+                    </button>
+                  </div>
+
+                  <button type="button" onclick="initializeAndUploadToFirebase()" class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-sm">
+                    <i data-lucide="cloud-upload" class="w-4 h-4 text-teal-400"></i>
                     <span>Inisialisasi & Unggah Database Master ke Firebase Cloud</span>
                   </button>
 
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
-                      <span>Tarik Data Terbaru dari Cloud</span>
-                    </button>
-                    <button type="button" onclick="purgeAndReloadFromFirebase()" class="py-2.5 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
-                      <span>Bersihkan Cache HP & Laptop</span>
+                  <div class="pt-1">
+                    <button type="button" onclick="purgeAndReloadFromFirebase()" class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5 text-slate-500"></i>
+                      <span>Bersihkan Cache & Muat Ulang Murni dari Cloud</span>
                     </button>
                   </div>
                 </div>
@@ -3409,8 +3445,40 @@
     // PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE (MULTI-DEVICE BIDIRECTIONAL SYNC)
     // Mendukung Sinkronisasi Banyak HP Karyawan Bersamaan Tanpa Data Tertimpa / Hilang
     // =========================================================
-    const FIREBASE_ENDPOINT = 'https://wfm-medika-default-rtdb.firebaseio.com/wfm_database.json';
-    const CLOUD_ENDPOINTS = [FIREBASE_ENDPOINT];
+    const DEFAULT_FIREBASE_RTDB_URL = 'https://wfm-medika-default-rtdb.firebaseio.com/wfm_database.json';
+
+    function getFirebaseEndpoint() {
+      const custom = localStorage.getItem('wfm_firebase_custom_url');
+      if (custom && custom.trim().startsWith('https://')) {
+        let clean = custom.trim();
+        if (!clean.endsWith('.json')) {
+          clean = clean.replace(/\/$/, '') + '/wfm_database.json';
+        }
+        return clean;
+      }
+      return DEFAULT_FIREBASE_RTDB_URL;
+    }
+
+    function getFirebaseAudioEndpoint() {
+      const base = getFirebaseEndpoint();
+      return base.replace(/wfm_database\.json$/, 'wfm_audio.json');
+    }
+
+    const FIREBASE_ENDPOINT = getFirebaseEndpoint();
+    const CLOUD_ENDPOINTS = [getFirebaseEndpoint()];
+
+    function copyFirebaseRules() {
+      const rules = `{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(rules).then(() => {
+          alert('✅ Aturan (Rules) Firebase berhasil disalin!\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, tempelkan aturan ini, lalu klik Publish.');
+        }).catch(() => {
+          prompt('Salin teks Rules Firebase berikut:', rules);
+        });
+      } else {
+        prompt('Salin teks Rules Firebase berikut:', rules);
+      }
+    }
 
     function normalizeFirebaseArray(val) {
       if (!val) return [];
@@ -3766,6 +3834,11 @@
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
         if (navLabel) navLabel.innerText = 'Firebase: 24/7 ⚡';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+      } else if (status === 'permission_denied') {
+        if (authStatus) authStatus.innerText = 'Firebase: Rules 401 (Terkunci) ⚠️';
+        if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
+        if (navLabel) navLabel.innerText = 'Firebase: Rules 401 ⚠️';
+        if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-pulse';
       } else {
         if (authStatus) authStatus.innerText = 'Firebase: Standby';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-slate-400';
@@ -3779,6 +3852,10 @@
     let hasPendingCloudSave = false;
 
     async function saveFullDatabaseToCloud(forceAlert = false, immediate = false) {
+      // Pastikan forceAlert hanya aktif jika bernilai boolean true murni
+      const isManualAlert = (forceAlert === true);
+      const isImmediateCall = (immediate === true);
+
       const executeSave = async () => {
         if (isSavingToCloud) {
           hasPendingCloudSave = true;
@@ -3789,9 +3866,11 @@
 
         updateCloudSyncStatusBadge('uploading');
 
+        const endpoint = getFirebaseEndpoint();
+
         // Pre-Merge dengan data terkini di Firebase Cloud agar presensi/cuti dari HP lain tidak tertimpa
         try {
-          const fetchRes = await fetch(FIREBASE_ENDPOINT + '?t=' + Date.now(), { cache: 'no-store' });
+          const fetchRes = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
           if (fetchRes.ok) {
             const cloudDb = await fetchRes.json();
             if (cloudDb && typeof cloudDb === 'object' && !Array.isArray(cloudDb)) {
@@ -3840,12 +3919,17 @@
         }
 
         let success = false;
+        let saveStatusCode = 0;
+        let saveStatusText = '';
+
         try {
-          const res = await fetch(FIREBASE_ENDPOINT, {
+          const res = await fetch(endpoint, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
+          saveStatusCode = res.status;
+          saveStatusText = res.statusText;
           if (res.ok) {
             success = true;
             try {
@@ -3859,7 +3943,13 @@
         }
 
         isSavingToCloud = false;
-        updateCloudSyncStatusBadge(success ? 'synced' : 'local');
+        if (success) {
+          updateCloudSyncStatusBadge('synced');
+        } else if (saveStatusCode === 401) {
+          updateCloudSyncStatusBadge('permission_denied');
+        } else {
+          updateCloudSyncStatusBadge('local');
+        }
 
         // SINKRONISASI OTOMATIS KE GOOGLE SPREADSHEET (DATABASE BACKUP REAL-TIME)
         try {
@@ -3875,16 +3965,19 @@
           executeSave();
         }
 
-        if (forceAlert) {
+        // Hanya tampilkan alert jika dipanggil secara manual dan eksplisit
+        if (isManualAlert) {
           if (success) {
             alert(`✅ Sukses Tersimpan ke Firebase Cloud 24/7 & Google Spreadsheet Backup!\n\n• Karyawan MBI: ${payload.mbi_users.length} orang\n• Data Lemburan: ${payload.mbi_overtime.length} data\n• Riwayat Absensi: ${payload.mbi_attendance.length} record\n\nSemua perubahan data langsung tersimpan permanen di Cloud & Google Sheet.`);
+          } else if (saveStatusCode === 401) {
+            alert('⚠️ Gagal terhubung ke Firebase Cloud (HTTP 401: Permission Denied).\n\nAturan Keamanan (Rules) Firebase Realtime Database Anda telah kedaluwarsa (Expired) atau terkunci.\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
           } else {
-            alert('⚠️ Gagal terhubung ke Firebase Cloud. Periksa koneksi internet Anda.');
+            alert(`⚠️ Gagal terhubung ke Firebase Cloud (${saveStatusText || 'Offline'}). Data tersimpan aman di memori lokal.`);
           }
         }
       };
 
-      if (forceAlert || immediate) {
+      if (isManualAlert || isImmediateCall) {
         if (cloudSaveTimeout) clearTimeout(cloudSaveTimeout);
         return await executeSave();
       }
@@ -3918,7 +4011,7 @@
       };
 
       try {
-        const endpoint = FIREBASE_ENDPOINT;
+        const endpoint = getFirebaseEndpoint();
         const res = await fetch(endpoint, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -3932,6 +4025,7 @@
             }
           } catch (e) {}
 
+          updateCloudSyncStatusBadge('synced');
           alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE FIREBASE CLOUD!\n\n` +
                 `✓ Total Data Karyawan MBI: ${mbiUsers.length} orang\n` +
                 `✓ Total Data Karyawan MAI: ${maiUsers.length} orang\n` +
@@ -3940,9 +4034,17 @@
                 `Database Cloud 24/7 sekarang aktif dan tersinkron ke seluruh HP karyawan.`);
           renderAllLiveScreens();
         } else {
-          alert('Gagal mengunggah ke Firebase: ' + res.statusText);
+          let extraInfo = '';
+          if (res.status === 401) {
+            extraInfo = '\n\nPENYEBAB: Aturan Keamanan (Rules) Firebase telah kedaluwarsa (Expired) atau terkunci.\n\nSOLUSI CEPAT (1 Menit):\n1. Buka console.firebase.google.com\n2. Buka Realtime Database > tab Rules\n3. Ubah ".read": true dan ".write": true\n4. Klik "Publish" (Publikasikan).';
+            updateCloudSyncStatusBadge('permission_denied');
+          } else {
+            updateCloudSyncStatusBadge('local');
+          }
+          alert(`⚠️ Gagal mengunggah ke Firebase (HTTP ${res.status} ${res.statusText}).${extraInfo}`);
         }
       } catch (err) {
+        updateCloudSyncStatusBadge('local');
         alert('Gagal menghubungi Firebase: ' + err.message + '\nPastikan laptop terhubung ke internet.');
       }
     }
@@ -3954,10 +4056,17 @@
 
       updateCloudSyncStatusBadge('syncing');
       try {
-        const res = await fetch(FIREBASE_ENDPOINT + '?t=' + Date.now(), { cache: 'no-store' });
+        const endpoint = getFirebaseEndpoint();
+        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
         if (!res.ok) {
-          alert(`⚠️ Gagal terhubung ke Firebase Cloud (${res.status}). Data di perangkat ini tetap aman dan tidak dihapus.`);
-          updateCloudSyncStatusBadge('local');
+          let errDetail = `Status ${res.status} ${res.statusText}`;
+          if (res.status === 401) {
+            errDetail = 'HTTP 401 (Permission Denied). Aturan Firebase Rules di console.firebase.google.com terkunci atau kedaluwarsa';
+            updateCloudSyncStatusBadge('permission_denied');
+          } else {
+            updateCloudSyncStatusBadge('local');
+          }
+          alert(`⚠️ Gagal terhubung ke Firebase Cloud (${errDetail}).\n\nData di perangkat ini tetap aman dan TIDAK dihapus.`);
           return;
         }
 
@@ -4016,6 +4125,98 @@
         console.error('Purge and reload error:', err);
         alert('⚠️ Gagal terhubung ke Firebase Cloud: ' + err.message + '\nData di perangkat ini tetap aman dan tidak dihapus.');
         updateCloudSyncStatusBadge('local');
+      }
+    }
+
+    async function testFirebaseConnection() {
+      const statusEl = document.getElementById('firebase-diag-status');
+      if (statusEl) {
+        statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon koneksi ke Google Firebase Cloud...</span>`;
+        statusEl.classList.remove('hidden');
+        lucide.createIcons();
+      }
+
+      const endpoint = getFirebaseEndpoint();
+      try {
+        const tStart = Date.now();
+        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
+        const latency = Date.now() - tStart;
+
+        if (res.ok) {
+          const data = await res.json();
+          const mbiCount = data && data.mbi_users ? data.mbi_users.length : 0;
+          const maiCount = data && data.mai_users ? data.mai_users.length : 0;
+          const attCount = (data && data.mbi_attendance ? data.mbi_attendance.length : 0) + (data && data.mai_attendance ? data.mai_attendance.length : 0);
+
+          if (statusEl) {
+            statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 space-y-1.5';
+            statusEl.innerHTML = `
+              <div class="flex items-center gap-2">
+                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                <span>✅ <b>Firebase Cloud 24/7 Aktif & Normal!</b> (Respon: ${latency}ms)</span>
+              </div>
+              <p class="text-[11px] text-emerald-800 font-normal pl-6">
+                Database Cloud terhubung sempurna. Data di server: <b>${mbiCount} Karyawan MBI</b>, <b>${maiCount} Karyawan MAI</b>, <b>${attCount} Record Absensi</b>. Seluruh HP staf dan laptop dapat menyinkronkan data secara realtime.
+              </p>
+            `;
+            statusEl.classList.remove('hidden');
+            lucide.createIcons();
+          }
+          updateCloudSyncStatusBadge('synced');
+          alert(`✅ KONEKSI FIREBASE CLOUD BERHASIL!\n\nStatus: 200 OK (${latency}ms)\nServer: Google Firebase Realtime Database Online 24/7\nData Karyawan di Server: ${mbiCount + maiCount} orang\nRecord Absensi di Server: ${attCount} record\n\nSemua perangkat HP & laptop siap bertukar data otomatis.`);
+        } else {
+          let reason = `HTTP ${res.status} ${res.statusText}`;
+          let solutionHtml = '';
+          if (res.status === 401) {
+            reason = 'HTTP 401 (Permission Denied / Akses Ditolak)';
+            updateCloudSyncStatusBadge('permission_denied');
+            solutionHtml = `
+              <div class="mt-2 p-3 bg-rose-100/80 rounded-xl text-rose-950 font-normal space-y-2 text-[11px] border border-rose-200">
+                <b class="font-bold text-rose-900 block text-xs">Penyebab: Aturan Keamanan (Rules) Firebase Kedaluwarsa (Expired)</b>
+                <p>Secara default, Firebase mengunci akses setelah 30 hari test mode. Ini menyebabkan data tidak bisa mengalir antar-laptop/HP.</p>
+                <b class="font-bold text-rose-900 block">Cara Mengatasi (1 Menit):</b>
+                <ol class="list-decimal list-inside pl-1 space-y-1 font-medium">
+                  <li>Buka <a href="https://console.firebase.google.com" target="_blank" class="underline font-bold text-blue-700">console.firebase.google.com</a></li>
+                  <li>Pilih Realtime Database &rarr; Tab <b>Rules</b></li>
+                  <li>Ubah menjadi:
+                    <pre class="bg-slate-900 text-emerald-400 p-2 rounded-lg font-mono text-[10px] my-1">{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}</pre>
+                  </li>
+                  <li>Klik tombol <b>Publish (Publikasikan)</b> di kanan atas.</li>
+                </ol>
+              </div>
+            `;
+          } else {
+            updateCloudSyncStatusBadge('local');
+          }
+
+          if (statusEl) {
+            statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300 space-y-1.5';
+            statusEl.innerHTML = `
+              <div class="flex items-center gap-2">
+                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0"></i>
+                <span>⚠️ <b>Gagal Terhubung ke Firebase: ${reason}</b></span>
+              </div>
+              ${solutionHtml}
+            `;
+            statusEl.classList.remove('hidden');
+            lucide.createIcons();
+          }
+
+          if (res.status === 401) {
+            alert('⚠️ ATURAN FIREBASE KEDALUWARSA (HTTP 401):\n\nAturan keamanan Firebase Realtime Database Anda telah kedaluwarsa atau terkunci.\n\nSolusi Cepat:\n1. Buka console.firebase.google.com\n2. Buka Realtime Database > tab Rules\n3. Ubah ".read": true dan ".write": true\n4. Klik Publish.');
+          } else {
+            alert(`⚠️ Gagal terhubung ke Firebase: ${reason}\nPeriksa URL Firebase Database atau koneksi internet Anda.`);
+          }
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300';
+          statusEl.innerHTML = `<span>⚠️ Gagal menghubungi Firebase: ${err.message}. Pastikan koneksi internet laptop/HP aktif.</span>`;
+          statusEl.classList.remove('hidden');
+        }
+        updateCloudSyncStatusBadge('local');
+        alert(`⚠️ Gagal menghubungi Firebase: ${err.message}\nPastikan perangkat terhubung ke internet.`);
       }
     }
 
@@ -4292,42 +4493,55 @@
     }
 
 
+    let lastCloudFetchErrorStatus = null;
+
     async function fetchFullDatabaseFromCloud(forceAlert = false) {
+      const isManualAlert = (forceAlert === true);
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
       let syncSummary = '';
+      const endpoint = getFirebaseEndpoint();
 
-      for (const endpoint of CLOUD_ENDPOINTS) {
-        try {
-          const res = await fetch(endpoint + '?t=' + Date.now());
-          if (res.ok) {
-            const db = await res.json();
-            if (db && typeof db === 'object' && !Array.isArray(db)) {
-              applyIncomingDatabase(db);
-              loaded = true;
+      try {
+        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+          const db = await res.json();
+          if (db && typeof db === 'object' && !Array.isArray(db)) {
+            applyIncomingDatabase(db);
+            loaded = true;
+            lastCloudFetchErrorStatus = null;
 
-              const currentMBI = getWhDB('MBI', 'users', []);
-              const currentMAI = getWhDB('MAI', 'users', []);
-              const currentOt = getWhDB(activeWarehouse, 'overtime', []);
-              const currentAtt = getWhDB(activeWarehouse, 'attendance', []);
-              const totalUsers = currentMBI.length + currentMAI.length;
-              const totalOt = currentOt.length;
-              const totalAtt = currentAtt.length;
-              syncSummary = `\n• ${totalUsers} Akun Karyawan\n• ${totalOt} Data Lemburan\n• ${totalAtt} Data Riwayat Absensi`;
-              break;
-            }
+            const currentMBI = getWhDB('MBI', 'users', []);
+            const currentMAI = getWhDB('MAI', 'users', []);
+            const currentOt = getWhDB(activeWarehouse, 'overtime', []);
+            const currentAtt = getWhDB(activeWarehouse, 'attendance', []);
+            const totalUsers = currentMBI.length + currentMAI.length;
+            const totalOt = currentOt.length;
+            const totalAtt = currentAtt.length;
+            syncSummary = `\n• ${totalUsers} Akun Karyawan\n• ${totalOt} Data Lemburan\n• ${totalAtt} Data Riwayat Absensi`;
           }
-        } catch (e) {
-          console.warn('Cloud fetch failed on endpoint:', endpoint, e);
+        } else {
+          lastCloudFetchErrorStatus = res.status;
         }
+      } catch (e) {
+        console.warn('Cloud fetch failed on endpoint:', endpoint, e);
       }
 
-      updateCloudSyncStatusBadge(loaded ? 'synced' : 'local');
-      if (forceAlert) {
+      if (loaded) {
+        updateCloudSyncStatusBadge('synced');
+      } else if (lastCloudFetchErrorStatus === 401) {
+        updateCloudSyncStatusBadge('permission_denied');
+      } else {
+        updateCloudSyncStatusBadge('local');
+      }
+
+      if (isManualAlert) {
         if (loaded) {
           alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
+        } else if (lastCloudFetchErrorStatus === 401) {
+          alert('⚠️ Gagal terhubung ke Firebase Cloud (HTTP 401: Permission Denied).\n\nAturan Keamanan (Rules) Firebase Realtime Database Anda telah kedaluwarsa (Expired) atau terkunci.\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
         } else {
-          alert('Menggunakan database lokal aktif. Pastikan laptop admin sudah mengklik tombol "Kirim dari Laptop" ke cloud.');
+          alert('Menggunakan database lokal aktif. Pastikan laptop admin sudah mengklik tombol "Inisialisasi & Unggah Database Master ke Firebase Cloud" dan perangkat terhubung ke internet.');
         }
       }
     }
@@ -4340,7 +4554,7 @@
           firebaseEventSource.close();
         }
         // Firebase Realtime Database SSE Stream untuk update instan tanpa jeda
-        firebaseEventSource = new EventSource(FIREBASE_ENDPOINT);
+        firebaseEventSource = new EventSource(getFirebaseEndpoint());
         firebaseEventSource.addEventListener('put', (e) => {
           try {
             const parsed = JSON.parse(e.data);
@@ -6157,15 +6371,18 @@
       };
 
       try {
-        const res = await fetch('https://wfm-medika-default-rtdb.firebaseio.com/wfm_audio.json', {
+        const audioUrl = getFirebaseAudioEndpoint();
+        const res = await fetch(audioUrl, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         if (res.ok) {
           alert('✅ SUKSES MENGUNGGAH SUARA KE CLOUD!\n\nFile suara notifikasi resmi telah disimpan di Google Firebase Cloud 24/7.\nSemua HP karyawan yang membuka aplikasi akan otomatis mengunduh & memutar suara ini!');
+        } else if (res.status === 401) {
+          alert('⚠️ Akses Firebase Rules Terkunci (HTTP 401 Unauthorized).\n\nSilakan buka Firebase Console > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
         } else {
-          alert('⚠️ Gagal terhubung ke Cloud. Pastikan koneksi internet aktif.');
+          alert('⚠️ Gagal terhubung ke Cloud. Pastikan koneksi internet aktif (Status HTTP: ' + res.status + ').');
         }
       } catch (err) {
         alert('Gagal mengunggah suara ke Cloud: ' + err.message);
@@ -6174,7 +6391,8 @@
 
     async function syncAudioClipsFromCloud(showAlert = false) {
       try {
-        const res = await fetch('https://wfm-medika-default-rtdb.firebaseio.com/wfm_audio.json');
+        const audioUrl = getFirebaseAudioEndpoint();
+        const res = await fetch(audioUrl);
         if (res.ok) {
           const data = await res.json();
           if (data && typeof data === 'object') {
@@ -9700,7 +9918,7 @@
           localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
           localStorage.setItem('wfm_master_updated_at', nowIso);
           harmonizeAndResequenceAllNIKs();
-          await saveFullDatabaseToCloud(true, true);
+          await saveFullDatabaseToCloud(false, true);
           renderEmployeeTable();
           populateDropdownEmployees();
           renderOvertimeEmployeeGrid();
