@@ -5055,8 +5055,8 @@
     }
 
     async function setAppThemeByAdmin(themeKey) {
-      if (!isUserAdmin(currentUser)) {
-        alert('Akses Ditolak: Hanya Akun Administrator yang berwenang mengubah tema warna sistem.');
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Hanya Akun Administrator atau Manager yang berwenang mengubah tema warna sistem.');
         return;
       }
       applyAppTheme(themeKey, true);
@@ -5343,11 +5343,11 @@
         }
       }
 
-      // 2.5 Pengaturan Suara Notifikasi Presensi (KHUSUS ADMIN)
+      // 2.5 Pengaturan Suara Notifikasi Presensi (KHUSUS ADMIN & MANAGER)
       const navAudioBtn = document.getElementById('nav-btn-audio-settings');
       const navAudioAdmin = document.getElementById('nav-btn-audio-admin');
       const settingsAudioSection = document.getElementById('admin-audio-settings-card');
-      if (isAdmin) {
+      if (isAdmin || isManager) {
         if (navAudioBtn) { navAudioBtn.classList.remove('hidden'); navAudioBtn.classList.add('flex'); }
         if (navAudioAdmin) { navAudioAdmin.classList.remove('hidden'); navAudioAdmin.classList.add('inline-flex'); }
         if (settingsAudioSection) settingsAudioSection.classList.remove('hidden');
@@ -5357,9 +5357,9 @@
         if (settingsAudioSection) settingsAudioSection.classList.add('hidden');
       }
 
-      // 2.6 Pengaturan Tema Warna Tampilan Aplikasi (KHUSUS ADMIN)
+      // 2.6 Pengaturan Tema Warna Tampilan Aplikasi (KHUSUS ADMIN & MANAGER)
       const settingsThemeSection = document.getElementById('admin-theme-settings-card');
-      if (isAdmin) {
+      if (isAdmin || isManager) {
         if (settingsThemeSection) settingsThemeSection.classList.remove('hidden');
       } else {
         if (settingsThemeSection) settingsThemeSection.classList.add('hidden');
@@ -5451,10 +5451,10 @@
         }
       }
 
-      // 5. Tombol Reset Semua Data Karyawan (HANYA ADA DI AKUN ADMIN)
+      // 5. Tombol Reset Semua Data Karyawan (HANYA ADA DI AKUN ADMIN DAN MANAGER)
       const btnResetAllEmp = document.getElementById('btn-reset-all-emp');
       if (btnResetAllEmp) {
-        if (isAdmin) {
+        if (isAdmin || isManager) {
           btnResetAllEmp.classList.remove('hidden');
           btnResetAllEmp.classList.add('inline-flex');
         } else {
@@ -6031,8 +6031,9 @@
     function switchView(viewName) {
       const isScanner = isUserScanner(currentUser);
       const isAdmin = isUserAdmin(currentUser);
+      const isManager = isUserManager(currentUser);
       const userRole = (currentUser?.role || 'staff').toLowerCase();
-      const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
+      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager;
       
       if (isScanner) {
         // Akun Scanner Absensi (MAI & MBI) HANYA boleh membuka menu attendance
@@ -9472,8 +9473,8 @@
     }
 
     async function deleteAllEmployees() {
-      if (!isUserAdmin()) {
-        alert('Akses Ditolak: Fitur Reset Semua Data Karyawan hanya dapat dilakukan oleh Akun Admin Gudang.');
+      if (!isUserAdmin() && !isUserManager()) {
+        alert('Akses Ditolak: Fitur Reset Semua Data Karyawan hanya dapat dilakukan oleh Akun Admin atau Manager Gudang.');
         return;
       }
       const targetWh = activeWarehouse || 'MBI';
@@ -9505,8 +9506,8 @@
     }
 
     async function deleteAllAttendanceRecords() {
-      if (!isUserAdmin()) {
-        alert('Akses Ditolak: Fitur Reset Riwayat Absensi hanya dapat dilakukan oleh Akun Admin Gudang.');
+      if (!isUserAdmin() && !isUserManager()) {
+        alert('Akses Ditolak: Fitur Reset Riwayat Absensi hanya dapat dilakukan oleh Akun Admin atau Manager Gudang.');
         return;
       }
       const targetWh = activeWarehouse || 'MBI';
@@ -11720,12 +11721,12 @@
                 </div>
               ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase()}</span>`
             ) : isUserManager(currentUser) ? (
-              lv.status === 'pending_manager' ? `
+              (lv.status === 'pending_manager' || lv.status === 'pending') ? `
                 <div class="flex items-center justify-end gap-1.5">
-                  <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui Final</button>
+                  <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition" title="${lv.status === 'pending' ? 'Setujui Langsung oleh Manager' : 'Setujui Final'}">${lv.status === 'pending' ? 'Setujui Langsung' : 'Setujui Final'}</button>
                   <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
                 </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status === 'pending' ? 'Menunggu SPV' : lv.status.toUpperCase()}</span>`
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
             ) : isUserAdmin(currentUser) ? (
               `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'pending' ? 'bg-slate-100 text-slate-700 border border-slate-200' : (lv.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${lv.status === 'pending' ? 'Menunggu SPV' : (lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase())}</span>`
             ) : `<span class="text-[10px] text-slate-400">-</span>`}
@@ -11768,11 +11769,7 @@
           alert(`Pengajuan berhasil DITOLAK oleh Supervisor (${currentUser.name}).`);
         }
       } else if (isMgr) {
-        if (item.status !== 'pending_manager') {
-          if (item.status === 'pending') {
-            alert("Pengajuan ini belum disetujui oleh Supervisor. Menunggu persetujuan Supervisor terlebih dahulu.");
-            return;
-          }
+        if (item.status !== 'pending_manager' && item.status !== 'pending') {
           alert("Pengajuan ini sudah selesai diproses.");
           return;
         }
@@ -11780,7 +11777,11 @@
           item.status = 'approved';
           item.mgrApprovedBy = currentUser.name || 'Eko';
           item.mgrApprovedAt = new Date().toISOString();
-          item.approvedBy = `${item.spvApprovedBy || 'Supervisor'} & Manager ${currentUser.name || 'Eko'}`;
+          if (!item.spvApprovedBy) {
+            item.spvApprovedBy = 'Disetujui Langsung Manager';
+            item.spvApprovedAt = item.mgrApprovedAt;
+          }
+          item.approvedBy = `${item.spvApprovedBy} & Manager ${currentUser.name || 'Eko'}`;
           item.approvedAt = new Date().toISOString();
           alert(`✅ Pengajuan berhasil DISETUJUI FINAL oleh Manager Eko!\nStatus cuti/izin/sakit karyawan resmi aktif.`);
         } else if (action === 'rejected') {
@@ -12027,16 +12028,16 @@
                 </div>
               ` : `<span class="text-[10px] font-bold text-slate-400 italic">${ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
             ) : isUserManager(currentUser) ? (
-              ot.status === 'pending_manager' ? `
+              (ot.status === 'pending_manager' || isPending) ? `
                 <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
-                    Setujui Final
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition" title="${isPending ? 'Setujui Langsung oleh Manager' : 'Setujui Final'}">
+                    ${isPending ? 'Setujui Langsung' : 'Setujui Final'}
                   </button>
                   <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">
                     Tolak
                   </button>
                 </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${isPending ? 'Menunggu SPV' : 'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
             ) : isUserAdmin(currentUser) ? (
               `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPending ? 'bg-slate-100 text-slate-700 border border-slate-200' : (ot.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${isPending ? 'Menunggu SPV' : (ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')')}</span>`
             ) : `<span class="text-[10px] text-slate-400">-</span>`}
@@ -12079,11 +12080,7 @@
           alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh Supervisor (${currentUser.name}).`);
         }
       } else if (isMgr) {
-        if (item.status !== 'pending_manager') {
-          if (item.status === 'pending') {
-            alert("Pengajuan lembur ini belum disetujui oleh Supervisor. Menunggu persetujuan Supervisor terlebih dahulu.");
-            return;
-          }
+        if (item.status !== 'pending_manager' && item.status !== 'pending') {
           alert("Pengajuan lembur ini sudah selesai diproses.");
           return;
         }
@@ -12091,7 +12088,11 @@
           item.status = 'approved';
           item.mgrApprovedBy = currentUser.name || 'Eko';
           item.mgrApprovedAt = new Date().toISOString();
-          item.approvedBy = `${item.spvApprovedBy || 'Supervisor'} & Manager ${currentUser.name || 'Eko'}`;
+          if (!item.spvApprovedBy) {
+            item.spvApprovedBy = 'Disetujui Langsung Manager';
+            item.spvApprovedAt = item.mgrApprovedAt;
+          }
+          item.approvedBy = `${item.spvApprovedBy} & Manager ${currentUser.name || 'Eko'}`;
           item.approvedAt = new Date().toISOString();
           alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil DISETUJUI FINAL oleh Manager Eko!\nData lembur terkunci permanen.`);
         } else if (action === 'rejected') {
