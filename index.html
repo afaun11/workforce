@@ -1567,7 +1567,8 @@
                         <select id="report-leave-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                           <option value="">Semua Status</option>
                           <option value="approved">Disetujui</option>
-                          <option value="pending">Pending</option>
+                          <option value="pending_manager">Menunggu Manager</option>
+                          <option value="pending">Menunggu SPV</option>
                           <option value="rejected">Ditolak</option>
                         </select>
                       </div>
@@ -1641,7 +1642,8 @@
                         <select id="report-ot-status-filter" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                           <option value="">Semua Status</option>
                           <option value="approved">Disetujui</option>
-                          <option value="pending">Pending</option>
+                          <option value="pending_manager">Menunggu Manager</option>
+                          <option value="pending">Menunggu SPV</option>
                           <option value="rejected">Ditolak</option>
                         </select>
                       </div>
@@ -1837,7 +1839,7 @@
                       <th class="p-3.5 border-r border-slate-200">Upah Lembur</th>
                       <th class="p-3.5 border-r border-slate-200">Alasan</th>
                       <th class="p-3.5 border-r border-slate-200">Status</th>
-                      <th class="p-3.5 text-center min-w-[140px]">Aksi Supervisor</th>
+                      <th class="p-3.5 text-center min-w-[140px]">Aksi Persetujuan</th>
                     </tr>
                   </thead>
                   <tbody id="ot-table-body" class="divide-y divide-slate-100">
@@ -3263,6 +3265,22 @@
       { id: 'mai-scanner', name: 'Scanner Presensi Gudang', dept: 'presensi', outsource: 'Internal', phone: '-', email: 'absen.mai@medika.com', joinDate: '2023-01-01', nik: 'ABSEN-MAI', role: 'scanner', password: 'medika123', isFirstLogin: false, warehouse: 'MAI' }
     ];
 
+    const SEED_MANAGER_USER = {
+      id: 'mgr-eko',
+      name: 'Eko',
+      dept: 'Management',
+      outsource: 'Internal',
+      phone: '081200000001',
+      email: 'eko.manager@medika.com',
+      joinDate: '2023-01-01',
+      nik: 'MGR001',
+      role: 'manager',
+      password: 'medika123',
+      isFirstLogin: false,
+      hasAccount: true,
+      warehouse: 'MBI'
+    };
+
     const SEED_MBI_ATTENDANCE = [];
     const SEED_MAI_ATTENDANCE = [];
     const SEED_MBI_LEAVES = [];
@@ -3339,10 +3357,27 @@
         seenNames.add(cleanStr(scanner.name));
       }
 
+      // 2.5 Tempatkan Akun Dedicated Manager Eko (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
+      let manager = users.find(u => (u.role === 'manager' || u.nik === 'MGR001' || cleanStr(u.name) === 'eko' || u.id === 'mgr-eko'));
+      if (!manager) {
+        manager = { ...SEED_MANAGER_USER, warehouse };
+      } else {
+        manager.nik = 'MGR001';
+        manager.name = 'Eko';
+        manager.dept = 'Management';
+        manager.role = 'manager';
+        manager.hasAccount = true;
+        manager.barcodeValue = manager.nik;
+        if (!manager.password) manager.password = 'medika123';
+      }
+      cleanList.push(manager);
+      seenNames.add(cleanStr(manager.name));
+      seenNames.add('eko');
+
       // 3. Kumpulkan seluruh karyawan reguler tanpa duplikasi nama & buang yang telah dihapus
       const regularEmployees = [];
       users.forEach(u => {
-        if (!u || u.role === 'admin' || u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
+        if (!u || u.role === 'admin' || u.role === 'scanner' || u.role === 'manager' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.nik && u.nik.startsWith('MGR')) || cleanStr(u.name) === 'eko' || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
         const normName = cleanStr(u.name);
         if (!normName || seenNames.has(normName)) return;
         seenNames.add(normName);
@@ -3401,6 +3436,7 @@
 
       const assignedNiks = new Set([admin.nik.toUpperCase()]);
       if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
+      if (manager && manager.nik) assignedNiks.add(manager.nik.toUpperCase());
 
       let maxNum = 0;
       regularEmployees.forEach(u => {
@@ -3700,8 +3736,10 @@
           map.set(key, localItem);
         } else {
           const cloudItem = map.get(key);
-          // Status approval (approved/rejected) selalu diutamakan dibanding status pending
-          const status = (cloudItem.status === 'approved' || cloudItem.status === 'rejected') ? cloudItem.status : localItem.status;
+          const statusPriority = { approved: 3, rejected: 3, pending_manager: 2, pending: 1 };
+          const cloudPrio = statusPriority[cloudItem.status] || 0;
+          const localPrio = statusPriority[localItem.status] || 0;
+          const status = cloudPrio >= localPrio ? cloudItem.status : localItem.status;
           map.set(key, { ...cloudItem, ...localItem, status });
         }
       });
@@ -3723,7 +3761,10 @@
           map.set(key, localItem);
         } else {
           const cloudItem = map.get(key);
-          const status = (cloudItem.status === 'approved' || cloudItem.status === 'rejected') ? cloudItem.status : localItem.status;
+          const statusPriority = { approved: 3, rejected: 3, pending_manager: 2, pending: 1 };
+          const cloudPrio = statusPriority[cloudItem.status] || 0;
+          const localPrio = statusPriority[localItem.status] || 0;
+          const status = cloudPrio >= localPrio ? cloudItem.status : localItem.status;
           map.set(key, { ...cloudItem, ...localItem, status });
         }
       });
@@ -4836,11 +4877,13 @@
         try {
           const parsed = JSON.parse(savedUser);
           const role = (parsed?.role || '').toLowerCase();
-          const isAllowed = ['admin', 'superadmin', 'supervisor', 'coordinator', 'cordinator', 'scanner'].includes(role) || 
+          const isAllowed = ['admin', 'superadmin', 'supervisor', 'coordinator', 'cordinator', 'scanner', 'manager'].includes(role) || 
                             parsed?.nik?.startsWith('ADM') || 
                             parsed?.nik?.startsWith('ABSEN') || 
                             parsed?.nik?.startsWith('SPV') ||
+                            parsed?.nik?.startsWith('MGR') ||
                             isUserAdmin(parsed) ||
+                            isUserManager(parsed) ||
                             isUserScanner(parsed);
           if (isAllowed) {
             loginUserSession(parsed);
@@ -5159,7 +5202,20 @@
       const role = (user.role || '').toLowerCase();
       const nik = (user.nik || '').toUpperCase();
       const name = (user.name || '').toLowerCase();
-      return role === 'admin' || role === 'scanner' || nik.startsWith('ADM') || nik.startsWith('ABSEN') || name.includes('admin utama') || name.includes('scanner absen');
+      const clean = cleanStr(name);
+      return (
+        role === 'admin' ||
+        role === 'scanner' ||
+        role === 'manager' ||
+        nik.startsWith('ADM') ||
+        nik.startsWith('ABSEN') ||
+        nik.startsWith('MGR') ||
+        name.includes('admin utama') ||
+        name.includes('scanner absen') ||
+        name.includes('manager eko') ||
+        clean === 'eko' ||
+        clean.startsWith('eko')
+      );
     }
 
     function isUserAdmin(user = currentUser) {
@@ -5178,6 +5234,27 @@
         id === 'mai-admin' ||
         id.includes('admin') ||
         (name.includes('admin') && !name.includes('scanner'))
+      );
+    }
+
+    function isUserManager(user = currentUser) {
+      if (!user) return false;
+      if (isUserAdmin(user)) return false;
+      const role = (user.role || '').toLowerCase().trim();
+      const nik = (user.nik || '').toUpperCase().trim();
+      const id = (user.id || '').toLowerCase().trim();
+      const name = (user.name || '').toLowerCase().trim();
+      const clean = cleanStr(name);
+      return (
+        role === 'manager' ||
+        role.includes('manager') ||
+        nik === 'MGR001' ||
+        nik.startsWith('MGR') ||
+        id === 'mgr-eko' ||
+        id.includes('manager') ||
+        clean === 'eko' ||
+        clean.startsWith('eko') ||
+        name.includes('manager eko')
       );
     }
 
@@ -5203,6 +5280,7 @@
     function isUserSupervisor(user = currentUser) {
       if (!user) return false;
       if (isUserAdmin(user)) return false; // Akun Administrator TIDAK BISA approve
+      if (isUserManager(user)) return false; // Akun Manager adalah approver tahap 2 / final
       const role = (user.role || '').toLowerCase().trim();
       return role === 'supervisor' || role.includes('supervisor');
     }
@@ -5211,8 +5289,9 @@
       if (!currentUser) return;
       const isAdmin = isUserAdmin(currentUser);
       const isScanner = isUserScanner(currentUser);
+      const isManager = isUserManager(currentUser);
       const userRole = (currentUser.role || 'staff').toLowerCase().trim();
-      const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
+      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager;
 
       // 1. Tombol Backup Google Sheet (HANYA ADA DI AKUN ADMIN)
       const gsheetReportsBtn = document.getElementById('btn-reports-gsheet-backup');
@@ -5319,6 +5398,19 @@
           navDash.classList.remove('hidden');
           navDash.classList.add('flex');
         }
+      } else if (isManager) {
+        // Manager Eko: Bisa buka 2 gudang, kelola pengajuan, lembur, karyawan, laporan, dashboard, TAPI TANPA menu pengaturan database
+        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
+        if (navSettings) {
+          navSettings.classList.remove('hidden');
+          navSettings.classList.add('flex');
+        }
+        if (sysSettings) sysSettings.classList.remove('hidden');
+        if (adminSection) adminSection.classList.remove('hidden');
+        if (navDash) {
+          navDash.classList.remove('hidden');
+          navDash.classList.add('flex');
+        }
       } else if (isManagement) {
         // Supervisor / Coordinator: Pengaturan aktif, tapi Database Cloud 24/7 & Backup Google Sheet disembunyikan
         if (navBtnSettings) navBtnSettings.classList.remove('hidden');
@@ -5347,10 +5439,10 @@
         }
       }
 
-      // 4. Switcher Warehouse (Khusus Admin Utama / Super Admin MBI ADM001)
+      // 4. Switcher Warehouse (Bisa dibuka oleh Admin Utama dan Manager Eko)
       const whSwitcher = document.getElementById('wh-switcher-box');
       if (whSwitcher) {
-        if (isAdmin && (currentUser.nik === 'ADM001' || currentUser.role === 'superadmin' || currentUser.id === 'mbi-admin')) {
+        if (isAdmin || isManager) {
           whSwitcher.classList.remove('hidden');
           whSwitcher.classList.add('flex');
         } else {
@@ -5372,12 +5464,13 @@
       }
     }
 
-    // Role supervisor dan coordinator tidak dimasukkan ke dalam rekap matriks presensi
+    // Role supervisor, coordinator, manager dan akun manajemen sistem tidak dimasukkan ke dalam rekap matriks presensi
     function isMatrixEligibleUser(user) {
       if (!user) return false;
       if (isManagementSystemAccount(user)) return false;
+      if (isUserManager(user)) return false;
       const role = (user.role || '').toLowerCase().trim();
-      if (role === 'supervisor' || role === 'coordinator' || role === 'cordinator' || role.includes('supervisor') || role.includes('coordinator') || role.includes('cordinator')) {
+      if (role === 'supervisor' || role === 'coordinator' || role === 'cordinator' || role === 'manager' || role.includes('supervisor') || role.includes('coordinator') || role.includes('cordinator') || role.includes('manager')) {
         return false;
       }
       return true;
@@ -5450,6 +5543,11 @@
         user = (targetWh === 'MAI' ? maiUsers : mbiUsers).find(u => isUserAdmin(u)) || (targetWh === 'MAI' ? SEED_MAI_USERS[0] : SEED_MBI_USERS[0]);
       }
 
+      // 0.5 Keyword cepat Manager Eko (misal: 'eko', 'manager', 'mgr', 'managereko', 'mgr001')
+      if (!user && (cleanInput === 'eko' || cleanInput === 'manager' || cleanInput === 'mgr' || cleanInput === 'managereko' || cleanInput === 'mgr001' || cleanInput === 'mgreko')) {
+        user = (selectedWh === 'MAI' ? maiUsers : mbiUsers).find(u => isUserManager(u)) || SEED_MANAGER_USER;
+      }
+
       // 1. Exact match (NIK / Nama / Phone / ID / Email / Username)
       if (!user) {
         user = allUsers.find(u => 
@@ -5491,13 +5589,15 @@
         return;
       }
 
-      // HANYA AKUN ADMIN, SUPERVISOR, COORDINATOR, DAN SCANNER ABSEN YANG MEMILIKI AKUN LOGIN KE SISTEM
+      // HANYA AKUN ADMIN, MANAGER, SUPERVISOR, COORDINATOR, DAN SCANNER ABSEN YANG MEMILIKI AKUN LOGIN KE SISTEM
       const userRole = (user.role || 'staff').toLowerCase().trim();
-      const isAllowedRole = ['admin', 'superadmin', 'supervisor', 'coordinator', 'cordinator', 'scanner'].includes(userRole) || 
+      const isAllowedRole = ['admin', 'superadmin', 'supervisor', 'coordinator', 'cordinator', 'scanner', 'manager'].includes(userRole) || 
                             user.nik?.startsWith('ADM') || 
                             user.nik?.startsWith('ABSEN') || 
                             user.nik?.startsWith('SPV') ||
+                            user.nik?.startsWith('MGR') ||
                             isUserAdmin(user) ||
+                            isUserManager(user) ||
                             isUserScanner(user);
 
       if (!isAllowedRole) {
@@ -5782,6 +5882,9 @@
         currentUser.name = 'Scanner Presensi Gudang';
         document.getElementById('nav-user-name').innerText = 'Scanner Presensi Gudang';
         document.getElementById('nav-user-dept').innerText = 'POS SCANNER PRESENSI';
+      } else if (isUserManager(currentUser)) {
+        document.getElementById('nav-user-name').innerText = currentUser.name || 'Eko';
+        document.getElementById('nav-user-dept').innerText = 'GENERAL MANAGER';
       } else {
         document.getElementById('nav-user-name').innerText = currentUser.name || 'User';
         document.getElementById('nav-user-dept').innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
@@ -5795,7 +5898,7 @@
       roleBadge.innerText = (currentUser.role || 'STAFF').toUpperCase();
 
       const userRole = (user.role || 'staff').toLowerCase();
-      const isManagement = ['coordinator', 'supervisor', 'admin'].includes(userRole);
+      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isUserManager(currentUser);
 
       // Terapkan visibility & hak akses tombol / menu sesuai role
       applyRolePermissions();
@@ -5842,7 +5945,7 @@
     }
 
     function switchActiveWarehouse(wh) {
-      if (currentUser && !isUserAdmin(currentUser)) {
+      if (currentUser && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
         alert('Akses terkunci pada Gudang ' + currentUser.warehouse);
         return;
       }
@@ -10621,7 +10724,8 @@
         let statusBadge = '';
         if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-900 text-white">DISETUJUI</span>';
         else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">PENDING</span>';
+        else if (lv.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -10660,6 +10764,11 @@
 
       const rows = filtered.map((lv, i) => {
         const emp = users.find(u => u.nik === lv.userNik);
+        let statusLabel = 'Menunggu SPV';
+        if (lv.status === 'approved') statusLabel = 'Disetujui';
+        else if (lv.status === 'rejected') statusLabel = 'Ditolak';
+        else if (lv.status === 'pending_manager') statusLabel = 'Menunggu Manager';
+
         return {
           "No": i + 1,
           "Nama Karyawan": lv.userName,
@@ -10669,7 +10778,7 @@
           "Dari Tanggal": lv.startDate,
           "Sampai Tanggal": lv.endDate,
           "Alasan": lv.reason,
-          "Status": lv.status === 'approved' ? 'Disetujui' : (lv.status === 'rejected' ? 'Ditolak' : 'Pending'),
+          "Status": statusLabel,
           "Gudang": activeWarehouse
         };
       });
@@ -10728,7 +10837,8 @@
         let statusBadge = '';
         if (ot.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white">DISETUJUI</span>';
         else if (ot.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800 border border-slate-300">PENDING</span>';
+        else if (ot.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -10772,22 +10882,29 @@
         return (a.startTime || '').localeCompare(b.startTime || '');
       });
 
-      const rows = filtered.map((r, i) => ({
-        "No": i + 1,
-        "Tanggal": r.date,
-        "NIK": r.userNik,
-        "Nama Karyawan": r.userName,
-        "Departemen": r.dept || '',
-        "Kategori Hari": r.dayType === 'hari_libur' ? 'Hari Libur' : 'Hari Kerja',
-        "Jam Mulai": r.startTime,
-        "Jam Selesai": r.endTime,
-        "Total Jam": r.totalHours,
-        "Jam Kerja Efektif": r.effectiveHours,
-        "Upah Lembur (Rp)": r.nominal || 0,
-        "Alasan Lembur": r.reason || '',
-        "Status Approval": r.status === 'approved' ? 'Disetujui' : (r.status === 'rejected' ? 'Ditolak' : 'Pending'),
-        "Gudang": activeWarehouse
-      }));
+      const rows = filtered.map((r, i) => {
+        let statusLabel = 'Menunggu SPV';
+        if (r.status === 'approved') statusLabel = 'Disetujui';
+        else if (r.status === 'rejected') statusLabel = 'Ditolak';
+        else if (r.status === 'pending_manager') statusLabel = 'Menunggu Manager';
+
+        return {
+          "No": i + 1,
+          "Tanggal": r.date,
+          "NIK": r.userNik,
+          "Nama Karyawan": r.userName,
+          "Departemen": r.dept || '',
+          "Kategori Hari": r.dayType === 'hari_libur' ? 'Hari Libur' : 'Hari Kerja',
+          "Jam Mulai": r.startTime,
+          "Jam Selesai": r.endTime,
+          "Total Jam": r.totalHours,
+          "Jam Kerja Efektif": r.effectiveHours,
+          "Upah Lembur (Rp)": r.nominal || 0,
+          "Alasan Lembur": r.reason || '',
+          "Status Approval": statusLabel,
+          "Gudang": activeWarehouse
+        };
+      });
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -11585,7 +11702,8 @@
         let statusBadge = '';
         if (lv.status === 'approved') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-900 text-white">DISETUJUI</span>';
         else if (lv.status === 'rejected') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU APPROVAL</span>';
+        else if (lv.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
+        else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
         tr.innerHTML = `
           <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
@@ -11597,44 +11715,89 @@
             ${isUserSupervisor(currentUser) ? (
               lv.status === 'pending' ? `
                 <div class="flex items-center justify-end gap-1.5">
-                  <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui</button>
+                  <button onclick="updateLeaveStatus('${lv.id}', 'approve_spv')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui (ke Manager)</button>
                   <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
                 </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
-            ) : (
-              isUserAdmin(currentUser) ? (
-                lv.status === 'pending' ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">Menunggu SPV</span>` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
-              ) : `<span class="text-[10px] text-slate-400">-</span>`
-            )}
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase()}</span>`
+            ) : isUserManager(currentUser) ? (
+              lv.status === 'pending_manager' ? `
+                <div class="flex items-center justify-end gap-1.5">
+                  <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui Final</button>
+                  <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
+                </div>
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status === 'pending' ? 'Menunggu SPV' : lv.status.toUpperCase()}</span>`
+            ) : isUserAdmin(currentUser) ? (
+              `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'pending' ? 'bg-slate-100 text-slate-700 border border-slate-200' : (lv.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${lv.status === 'pending' ? 'Menunggu SPV' : (lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase())}</span>`
+            ) : `<span class="text-[10px] text-slate-400">-</span>`}
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    function updateLeaveStatus(id, newStatus) {
+    function updateLeaveStatus(id, action) {
       if (isUserAdmin(currentUser)) {
-        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Persetujuan izin dan cuti hanya dapat dilakukan oleh akun Supervisor.");
+        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Alur persetujuan: Supervisor -> Manager Eko.");
         return;
       }
-      if (!isUserSupervisor(currentUser)) {
-        alert("Akses Ditolak: Hanya akun Supervisor yang berhak menyetujui atau menolak pengajuan izin.");
+      const isSpv = isUserSupervisor(currentUser);
+      const isMgr = isUserManager(currentUser);
+
+      if (!isSpv && !isMgr) {
+        alert("Akses Ditolak: Hanya akun Supervisor dan Manager Eko yang berhak melakukan persetujuan izin/sakit/cuti.");
         return;
       }
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
       const item = leaves.find(l => l.id === id);
-      if (item) {
-        item.status = newStatus;
-        item.approvedBy = currentUser.name || 'Supervisor';
-        item.approvedAt = new Date().toISOString();
-        setWhDB(activeWarehouse, 'leaves', leaves);
-        saveFullDatabaseToCloud();
-        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
-        renderLeavesTable();
-        refreshAllDashboardData();
-        renderMatrixTable();
-        alert(`Pengajuan berhasil di-${newStatus === 'approved' ? 'SETUJUI' : 'TOLAK'} oleh Supervisor!`);
+      if (!item) return;
+
+      if (isSpv) {
+        if (item.status !== 'pending') {
+          alert("Pengajuan ini sudah diproses dan tidak berstatus Menunggu SPV.");
+          return;
+        }
+        if (action === 'approve_spv' || action === 'approved') {
+          item.status = 'pending_manager';
+          item.spvApprovedBy = currentUser.name || 'Supervisor';
+          item.spvApprovedAt = new Date().toISOString();
+          alert(`✅ Pengajuan berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager Eko untuk persetujuan akhir (Final Approval).`);
+        } else if (action === 'rejected') {
+          item.status = 'rejected';
+          item.rejectedBy = `${currentUser.name || 'Supervisor'} (SPV)`;
+          item.rejectedAt = new Date().toISOString();
+          alert(`Pengajuan berhasil DITOLAK oleh Supervisor (${currentUser.name}).`);
+        }
+      } else if (isMgr) {
+        if (item.status !== 'pending_manager') {
+          if (item.status === 'pending') {
+            alert("Pengajuan ini belum disetujui oleh Supervisor. Menunggu persetujuan Supervisor terlebih dahulu.");
+            return;
+          }
+          alert("Pengajuan ini sudah selesai diproses.");
+          return;
+        }
+        if (action === 'approved') {
+          item.status = 'approved';
+          item.mgrApprovedBy = currentUser.name || 'Eko';
+          item.mgrApprovedAt = new Date().toISOString();
+          item.approvedBy = `${item.spvApprovedBy || 'Supervisor'} & Manager ${currentUser.name || 'Eko'}`;
+          item.approvedAt = new Date().toISOString();
+          alert(`✅ Pengajuan berhasil DISETUJUI FINAL oleh Manager Eko!\nStatus cuti/izin/sakit karyawan resmi aktif.`);
+        } else if (action === 'rejected') {
+          item.status = 'rejected';
+          item.rejectedBy = `Manager ${currentUser.name || 'Eko'}`;
+          item.rejectedAt = new Date().toISOString();
+          alert(`Pengajuan berhasil DITOLAK oleh Manager Eko.`);
+        }
       }
+
+      setWhDB(activeWarehouse, 'leaves', leaves);
+      saveFullDatabaseToCloud();
+      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      renderLeavesTable();
+      renderReportLeavesTable();
+      refreshAllDashboardData();
+      renderMatrixTable();
     }
 
     // =========================================================
@@ -11836,7 +11999,8 @@
         let statusBadge = '';
         if (isApproved) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-900 text-white border border-slate-900">DISETUJUI</span>';
         else if (isRejected) statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-100 text-slate-700 border border-slate-300">DITOLAK</span>';
-        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU APPROVAL</span>';
+        else if (ot.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
+        else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
         tr.innerHTML = `
           <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
@@ -11854,47 +12018,96 @@
             ${isUserSupervisor(currentUser) ? (
               isPending ? `
                 <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
-                    Setujui
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approve_spv')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                    Setujui (ke Manager)
                   </button>
                   <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">
                     Tolak
                   </button>
                 </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">Terkunci (${ot.status.toUpperCase()})</span>`
-            ) : (
-              isUserAdmin(currentUser) ? (
-                isPending ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">Menunggu SPV</span>` : `<span class="text-[10px] font-bold text-slate-400 italic">Terkunci (${ot.status.toUpperCase()})</span>`
-              ) : `<span class="text-[10px] text-slate-400">-</span>`
-            )}
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
+            ) : isUserManager(currentUser) ? (
+              ot.status === 'pending_manager' ? `
+                <div class="flex items-center justify-center gap-1.5">
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                    Setujui Final
+                  </button>
+                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">
+                    Tolak
+                  </button>
+                </div>
+              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${isPending ? 'Menunggu SPV' : 'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
+            ) : isUserAdmin(currentUser) ? (
+              `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPending ? 'bg-slate-100 text-slate-700 border border-slate-200' : (ot.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${isPending ? 'Menunggu SPV' : (ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')')}</span>`
+            ) : `<span class="text-[10px] text-slate-400">-</span>`}
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    function updateOvertimeStatusAndLock(id, newStatus) {
+    function updateOvertimeStatusAndLock(id, action) {
       if (isUserAdmin(currentUser)) {
-        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Persetujuan lembur hanya dapat dilakukan oleh akun Supervisor.");
+        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Alur persetujuan lembur: Supervisor -> Manager Eko.");
         return;
       }
-      if (!isUserSupervisor(currentUser)) {
-        alert("Akses Ditolak: Hanya akun Supervisor yang berhak menyetujui atau menolak permohonan lembur.");
+      const isSpv = isUserSupervisor(currentUser);
+      const isMgr = isUserManager(currentUser);
+
+      if (!isSpv && !isMgr) {
+        alert("Akses Ditolak: Hanya akun Supervisor dan Manager Eko yang berhak melakukan persetujuan lembur.");
         return;
       }
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const item = overtimes.find(o => o.id === id);
-      if (item) {
-        item.status = newStatus;
-        item.approvedBy = currentUser.name || 'Supervisor';
-        item.approvedAt = new Date().toISOString();
-        setWhDB(activeWarehouse, 'overtime', overtimes);
-        saveFullDatabaseToCloud();
-        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
-        renderOvertimeTable();
-        refreshAllDashboardData();
-        alert(`Pengajuan lembur berhasil di-${newStatus === 'approved' ? 'SETUJUI' : 'TOLAK'} oleh Supervisor dan status terkunci permanen!`);
+      if (!item) return;
+
+      if (isSpv) {
+        if (item.status !== 'pending') {
+          alert("Pengajuan lembur ini sudah diproses dan tidak berstatus Menunggu SPV.");
+          return;
+        }
+        if (action === 'approve_spv' || action === 'approved') {
+          item.status = 'pending_manager';
+          item.spvApprovedBy = currentUser.name || 'Supervisor';
+          item.spvApprovedAt = new Date().toISOString();
+          alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager Eko untuk persetujuan akhir (Final Approval).`);
+        } else if (action === 'rejected') {
+          item.status = 'rejected';
+          item.rejectedBy = `${currentUser.name || 'Supervisor'} (SPV)`;
+          item.rejectedAt = new Date().toISOString();
+          alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh Supervisor (${currentUser.name}).`);
+        }
+      } else if (isMgr) {
+        if (item.status !== 'pending_manager') {
+          if (item.status === 'pending') {
+            alert("Pengajuan lembur ini belum disetujui oleh Supervisor. Menunggu persetujuan Supervisor terlebih dahulu.");
+            return;
+          }
+          alert("Pengajuan lembur ini sudah selesai diproses.");
+          return;
+        }
+        if (action === 'approved') {
+          item.status = 'approved';
+          item.mgrApprovedBy = currentUser.name || 'Eko';
+          item.mgrApprovedAt = new Date().toISOString();
+          item.approvedBy = `${item.spvApprovedBy || 'Supervisor'} & Manager ${currentUser.name || 'Eko'}`;
+          item.approvedAt = new Date().toISOString();
+          alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil DISETUJUI FINAL oleh Manager Eko!\nData lembur terkunci permanen.`);
+        } else if (action === 'rejected') {
+          item.status = 'rejected';
+          item.rejectedBy = `Manager ${currentUser.name || 'Eko'}`;
+          item.rejectedAt = new Date().toISOString();
+          alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh Manager Eko.`);
+        }
       }
+
+      setWhDB(activeWarehouse, 'overtime', overtimes);
+      saveFullDatabaseToCloud();
+      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      renderOvertimeTable();
+      renderReportOvertimeTable();
+      refreshAllDashboardData();
     }
 
     function exportOvertimeToExcel() {
