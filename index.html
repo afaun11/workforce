@@ -375,6 +375,38 @@
       background-color: var(--theme-primary) !important;
       color: #ffffff !important;
     }
+
+    /* ========================================================= */
+    /* RESPONSIVITAS LAYAR HP & POS SCANNER PRESENSI TANPA SIDEBAR */
+    /* Bebas digunakan di semua tipe HP Android & iPhone tanpa Desktop Mode */
+    /* ========================================================= */
+    body.is-scanner-mode #app-sidebar,
+    body.role-scanner #app-sidebar,
+    .is-scanner-mode #app-sidebar {
+      display: none !important;
+      width: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    @media (max-width: 1023px) {
+      #app-sidebar {
+        display: none !important;
+      }
+    }
+    #qr-reader {
+      width: 100% !important;
+      border: none !important;
+      background: transparent !important;
+    }
+    #qr-reader video {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      border-radius: 1.25rem !important;
+    }
+    #qr-reader__scan_region {
+      background: transparent !important;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
@@ -1101,12 +1133,12 @@
                     </div>
 
                     <!-- Video Stream Element -->
-                    <div class="relative w-full max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-700">
+                    <div class="relative w-full max-w-[320px] sm:max-w-sm aspect-square bg-slate-950 rounded-3xl overflow-hidden shadow-inner flex items-center justify-center border-4 border-slate-700">
                       <div id="qr-reader" class="w-full h-full"></div>
                       
                       <!-- Kotak Target Overlay -->
                       <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div id="scanner-box-border" class="w-48 h-48 border-2 border-slate-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
+                        <div id="scanner-box-border" class="w-40 h-40 sm:w-48 sm:h-48 border-2 border-slate-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
                           <span id="scanner-box-tag" class="text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN BARCODE</span>
                         </div>
                       </div>
@@ -3684,12 +3716,29 @@
         let hasChanges = false;
         attendances.forEach(a => {
           if (!a) return;
-          // 1. Perbaikan otomatis tanggal absensi (Gunakan tanggal lokal dari checkInTime jika berbeda)
+          // 1. Perbaikan otomatis tanggal absensi (Gunakan tanggal operasional cut-off 07:00 WIB dari checkInTime)
           if (a.checkInTime) {
-            const correctLocalDate = getLocalDateString(new Date(a.checkInTime));
-            if (correctLocalDate && a.date !== correctLocalDate) {
-              a.date = correctLocalDate;
+            const correctOpDate = getOperationalDateString(new Date(a.checkInTime));
+            if (correctOpDate && a.date !== correctOpDate) {
+              a.date = correctOpDate;
               hasChanges = true;
+            }
+          }
+
+          // 1.5 Auto-close sesi terlantar lama (> 20 jam lalu) yang lupa absen pulang agar tidak menjadi penghalang absensi baru
+          if (a.checkInTime && !a.checkOutTime) {
+            const inDate = new Date(a.checkInTime);
+            if (!isNaN(inDate.getTime())) {
+              const elapsedHours = (Date.now() - inDate.getTime()) / (1000 * 60 * 60);
+              if (elapsedHours > 20) {
+                a.checkOutTime = new Date(inDate.getTime() + 7 * 60 * 60 * 1000).toISOString();
+                if (!a.notes || a.notes === 'Tepat Waktu' || a.notes === 'Terlambat' || a.notes === '-') {
+                  a.notes = 'Selesai Otomatis (Miss Scan Pulang)';
+                } else if (!a.notes.includes('Miss Scan')) {
+                  a.notes += ' • Auto-Close Miss Scan';
+                }
+                hasChanges = true;
+              }
             }
           }
 
@@ -5584,8 +5633,14 @@
       const adminSection = document.getElementById('admin-menu-section');
       const navDash = document.getElementById('nav-dashboard');
 
+      const appSidebar = document.getElementById('app-sidebar');
       if (isScanner) {
-        // Akun Absen MAI / Scanner: JANGAN ADA FITUR PENGATURAN AKUN DI ATAS MAUPUN DI BAWAH
+        // Akun Absen MAI & MBI / Scanner: TANPA NAVIGATOR SIDEBAR (LAYAR PENUH 100% UNTUK SCANNER)
+        document.body.classList.add('is-scanner-mode');
+        if (appSidebar) {
+          appSidebar.classList.add('hidden');
+          appSidebar.style.display = 'none';
+        }
         if (navBtnSettings) navBtnSettings.classList.add('hidden');
         if (navSettings) {
           navSettings.classList.add('hidden');
@@ -5597,7 +5652,13 @@
           navDash.classList.add('hidden');
           navDash.classList.remove('flex');
         }
-      } else if (isAdmin) {
+      } else {
+        document.body.classList.remove('is-scanner-mode');
+        if (appSidebar) {
+          appSidebar.classList.remove('hidden');
+          appSidebar.style.display = '';
+        }
+        if (isAdmin) {
         // Admin: Semua fitur aktif
         if (navBtnSettings) navBtnSettings.classList.remove('hidden');
         if (navSettings) {
@@ -7458,71 +7519,103 @@
       const targetWh = matchedUser.warehouse || activeWarehouse || 'MBI';
       const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       
-      // Ambil seluruh presensi matchedUser (diurutkan kronologis terbaru lebih dulu)
+      const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
+      // 1. FILTER & URUTKAN SELURUH RIWAYAT PRESENSI KARYAWAN SECARA KRONOLOGIS TERBARU (DESCENDING)
       const userAtts = attendances.filter(a => 
         (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
         (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase()) ||
         (a.userId && a.userId === matchedUser.id)
-      );
+      ).sort((a, b) => {
+        const tA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+        const tB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+        return tB - tA;
+      });
 
-      const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+      // 2. AUTO-CLEANUP SESI LAMA YANG TERLANTAR (> 20 JAM LALU)
+      // Mencegah sesi lama hari kemarin/minggu lalu memblokir absensi hari ini (seperti kasus 2026-09-28)
+      let hasAutoClosedStale = false;
+      userAtts.forEach(a => {
+        if (a.checkInTime && !a.checkOutTime) {
+          const inT = new Date(a.checkInTime).getTime();
+          if (!isNaN(inT)) {
+            const elapsedHours = (now.getTime() - inT) / (1000 * 60 * 60);
+            if (elapsedHours > 20) {
+              a.checkOutTime = new Date(inT + 7 * 60 * 60 * 1000).toISOString();
+              if (!a.notes || a.notes === 'Tepat Waktu' || a.notes === 'Terlambat' || a.notes === '-') {
+                a.notes = 'Selesai Otomatis (Miss Scan Pulang)';
+              } else if (!a.notes.includes('Miss Scan')) {
+                a.notes += ' • Auto-Close Miss Scan';
+              }
+              hasAutoClosedStale = true;
+            }
+          }
+        }
+      });
 
-      // Cari sesi masuk terakhir yang BELUM check-out (open session)
+      if (hasAutoClosedStale) {
+        setWhDB(targetWh, 'attendance', attendances);
+        saveFullDatabaseToCloud(false, true);
+      }
+
+      // 3. CARI SESI MASUK TERAKHIR YANG MASIH AKTIF (BELUM CHECK-OUT & DALAM BATAS 18 JAM)
+      // Mendukung seluruh jenis shift: Pagi (7-9 jam), Sore (8 jam), Lembur (10-15 jam), dan Shift Malam Lintas Hari (Masuk 21:00 kemarin, Pulang 05:00-07:00 hari ini)
       const openSession = userAtts.find(a => a.checkInTime && !a.checkOutTime);
       let isOpenSessionValid = false;
       let sessionElapsedMs = 0;
       if (openSession) {
         sessionElapsedMs = now.getTime() - new Date(openSession.checkInTime).getTime();
-        // Masih dalam rentang toleransi 16 jam 25 menit
-        isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs <= MAX_SHIFT_MS);
+        // Shift aktif sah: rentang 0 s.d 18 Jam
+        isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs <= 18 * 60 * 60 * 1000);
       }
 
       // Cari presensi hari ini jika ada
       const todaySession = userAtts.find(a => a.date === todayStr);
 
       if (selectedAttendanceType === 'check_in') {
-        // Jika masih ada sesi terbuka yang valid (<= 16 jam 25 menit):
+        // JIKA MASIH MEMILIKI SESI AKTIF YANG BELUM PULANG:
+        // TOLAK ABSEN MASUK GANDA AGAR TIDAK TERCATAT DUA KALI!
         if (openSession && isOpenSessionValid) {
-          const gunCard = document.getElementById('last-gun-success-card');
-          if (gunCard) gunCard.classList.add('hidden');
           const inTimeStr = new Date(openSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
           showProfessionalAttendanceToast({
             isWarning: true,
-            title: 'Sudah Absen Masuk',
-            subtitle: `${matchedUser.name} masih dalam shift aktif (Masuk ${openSession.date} ${inTimeStr}). Silakan pilih Absen Pulang.`,
+            title: 'Sudah Absen Masuk!',
+            subtitle: `${matchedUser.name} masih dalam shift aktif (Masuk ${openSession.date} jam ${inTimeStr}). Silakan pilih tombol [Absen Keluar / Pulang] saat selesai.`,
             name: matchedUser.name,
             nik: matchedUser.nik,
             dept: matchedUser.dept || 'Staff',
             warehouse: targetWh,
             time: inTimeStr,
-            statusText: 'Shift Sedang Berjalan'
+            statusText: 'Shift Masih Berjalan'
           });
           playAttendanceErrorSound('Sudah absen masuk');
-          setTimeout(() => { isScanProcessing = false; }, 2500);
+          stopScanner();
+          setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
 
-        // Jika hari ini sudah pernah check-in dan sudah check-out:
+        // JIKA HARI INI SUDAH PERNAH CHECK-IN DAN SUDAH CHECK-OUT (SELESAI SHIFT HARI INI):
         if (todaySession && todaySession.checkOutTime && !openSession) {
-          const gunCard = document.getElementById('last-gun-success-card');
-          if (gunCard) gunCard.classList.add('hidden');
+          const inTimeStr = new Date(todaySession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+          const outTimeStr = new Date(todaySession.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
           showProfessionalAttendanceToast({
             isWarning: true,
-            title: 'Sudah Hadir Hari Ini',
-            subtitle: `${matchedUser.name} sudah selesai shift hari ini (Sudah Absen Pulang).`,
+            title: 'Sudah Selesai Shift Hari Ini',
+            subtitle: `${matchedUser.name} sudah selesai shift hari ini (Masuk ${inTimeStr}, Pulang ${outTimeStr}).`,
             name: matchedUser.name,
             nik: matchedUser.nik,
             dept: matchedUser.dept || 'Staff',
             warehouse: targetWh,
-            time: new Date(todaySession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+            time: inTimeStr,
             statusText: 'Sudah Selesai'
           });
           playAttendanceErrorSound('Sudah absen masuk');
-          setTimeout(() => { isScanProcessing = false; }, 2500);
+          stopScanner();
+          setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
 
-        // Karyawan membuat Absen Masuk Baru!
+        // KARYAWAN MEMBUAT ABSEN MASUK BARU!
         const minute = now.getMinutes();
         const isLate = minute >= 1 && minute <= 30;
 
@@ -7562,10 +7655,14 @@
         });
 
         playAttendanceSuccessSound('check_in', matchedUser.name);
+        // TUTUP KAMERA LANGSUNG AGAR KARYAWAN PASTI TAHU SUDAH BERHASIL ABSEN
+        stopScanner();
       } else {
+        // ==========================================
         // MODE ABSEN PULANG (CHECK_OUT)
-        // KASUS 1: Ada openSession yang masih dalam rentang <= 16 jam 25 menit!
-        // Mendukung masuk tgl 1 dan pulang tgl 2 (beda hari), tetap masuk ke record tgl 1!
+        // ==========================================
+        // KASUS 1: Ada sesi terbuka yang sah (<= 18 jam)
+        // MENDUKUNG PENUH SHIFT MALAM LINTAS HARI (Masuk tgl 1 jam 21:00, Pulang tgl 2 jam 05:00 WIB)
         if (openSession && isOpenSessionValid) {
           openSession.checkOutTime = now.toISOString();
           openSession.userNik = matchedUser.nik;
@@ -7596,42 +7693,24 @@
           });
 
           playAttendanceSuccessSound('check_out', matchedUser.name);
-        } else if (openSession && !isOpenSessionValid) {
-          // KASUS 2: Ada openSession tapi SUDAH MELEBIHI 16 JAM 25 MENIT!
-          // Sesi lama dinyatakan Miss Scan, dan tidak bisa absen pulang lagi.
-          const gunCard = document.getElementById('last-gun-success-card');
-          if (gunCard) gunCard.classList.add('hidden');
-          showProfessionalAttendanceToast({
-            isError: true,
-            title: 'Lewat Batas Waktu Pulang',
-            subtitle: `Sudah lewat dari 16 jam 25 menit sejak absen masuk (${openSession.date}). Sesi tercatat Miss Scan (7 Jam).`,
-            name: matchedUser.name,
-            nik: matchedUser.nik,
-            dept: matchedUser.dept || 'Staff',
-            warehouse: targetWh,
-            time: nowFormatted,
-            statusText: 'Miss Scan (7 Jam)'
-          });
-          playAttendanceErrorSound('Waktu absen pulang lewat');
-          setTimeout(() => { isScanProcessing = false; }, 2500);
-          return;
+          // TUTUP KAMERA LANGSUNG AGAR KARYAWAN PASTI TAHU SUDAH BERHASIL ABSEN
+          stopScanner();
         } else {
-          // KASUS 3: Tidak ada openSession sama sekali
-          const gunCard = document.getElementById('last-gun-success-card');
-          if (gunCard) gunCard.classList.add('hidden');
-          
-          // Cek apakah baru saja sudah checkout
-          const lastAtt = userAtts[0];
-          if (lastAtt && lastAtt.checkOutTime) {
+          // KASUS 2: Tidak ada sesi terbuka (Sudah pulang sebelumnya ATAU Belum masuk)
+          const recentAtt = userAtts[0];
+          const hasRecentCheckout = recentAtt && recentAtt.checkOutTime && ((now.getTime() - new Date(recentAtt.checkOutTime).getTime()) < 14 * 60 * 60 * 1000);
+
+          if (hasRecentCheckout) {
+            const outTimeStr = new Date(recentAtt.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
             showProfessionalAttendanceToast({
               isWarning: true,
-              title: 'Sudah Absen Pulang',
-              subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen pulang sebelumnya.`,
+              title: 'Sudah Absen Pulang!',
+              subtitle: `${matchedUser.name} (${matchedUser.nik}) sudah tercatat absen pulang pada jam ${outTimeStr}.`,
               name: matchedUser.name,
               nik: matchedUser.nik,
               dept: matchedUser.dept || 'Staff',
               warehouse: targetWh,
-              time: new Date(lastAtt.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB',
+              time: outTimeStr,
               statusText: 'Sudah Pulang'
             });
             playAttendanceErrorSound('Sudah absen pulang');
@@ -7639,7 +7718,7 @@
             showProfessionalAttendanceToast({
               isError: true,
               title: 'Belum Absen Masuk',
-              subtitle: `${matchedUser.name} (${matchedUser.nik}) belum tercatat absen masuk.`,
+              subtitle: `${matchedUser.name} (${matchedUser.nik}) belum tercatat absen masuk untuk shift ini. Silakan pilih tombol [Absen Masuk] terlebih dahulu.`,
               name: matchedUser.name,
               nik: matchedUser.nik,
               dept: matchedUser.dept || 'Staff',
@@ -7649,7 +7728,8 @@
             });
             playAttendanceErrorSound('Belum absen masuk');
           }
-          setTimeout(() => { isScanProcessing = false; }, 2500);
+          stopScanner();
+          setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
       }
@@ -7681,8 +7761,8 @@
       if (timeEl) timeEl.innerText = nowFormatted;
       if (card) card.classList.remove('hidden');
       if (standbyIcon) standbyIcon.classList.add('hidden');
-      if (standbyTitle) standbyTitle.innerText = 'Absensi Berhasil Dicatat!';
-      if (standbySubtitle) standbySubtitle.innerText = 'Kamera otomatis ditutup agar tidak ter-scan dua kali. Tekan tombol di bawah untuk membuka kamera bagi karyawan berikutnya.';
+      if (standbyTitle) standbyTitle.innerText = selectedAttendanceType === 'check_in' ? 'Absen Masuk Berhasil Dicatat!' : 'Absen Pulang Berhasil Dicatat!';
+      if (standbySubtitle) standbySubtitle.innerText = 'Kamera ditutup agar kartu tidak ter-scan dua kali. Tekan tombol di bawah untuk membuka kamera bagi karyawan berikutnya.';
       if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Karyawan Berikutnya';
 
       if (gunNameEl) gunNameEl.innerText = matchedUser.name;
@@ -7694,21 +7774,8 @@
       if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
       if (gunCard) gunCard.classList.remove('hidden');
 
-      // Penanganan kamera scanner: Tutup jika mode manual, pertahankan jika Mode Antrean Massal
-      if (activeScanMethod === 'camera') {
-        if (!isContinuousScanMode) {
-          stopScanner();
-        } else {
-          // Efek visual sukses pada overlay kamera tanpa menutup kamera
-          const boxBorder = document.getElementById('scanner-box-border');
-          const boxTag = document.getElementById('scanner-box-tag');
-          if (boxBorder) boxBorder.className = 'w-48 h-48 border-4 border-emerald-400 rounded-2xl flex items-center justify-center bg-emerald-500/15 shadow-lg shadow-emerald-500/30 transition-all';
-          if (boxTag) {
-            boxTag.className = 'text-[10px] text-emerald-950 bg-emerald-300 px-2.5 py-0.5 rounded font-mono font-black';
-            boxTag.innerText = `✓ ${matchedUser.name.split(' ')[0]} TERCATAT`;
-          }
-        }
-      }
+      // Selalu tutup kamera setelah scan berhasil
+      stopScanner();
 
       // Render update data presensi hari ini secara instan
       renderScannerTodayRecords();
@@ -7901,6 +7968,11 @@
 
       if (rawText.length >= 4 && avgGap <= 90 && totalDuration <= (count * 95 + 200)) {
         return true; // 100% Alat Scanner Barcode Gun
+      }
+
+      // Skenario 3: Alat Scanner Bluetooth / Wireless PDA pada HP Android & iPhone
+      if (isKnownUserBarcode(rawText) && (count <= 4 || avgGap <= 180 || totalDuration < 800)) {
+        return true;
       }
 
       // Selain itu: Terdeteksi pengetikan manual oleh jari manusia
@@ -8137,7 +8209,7 @@
     }
 
     // =========================================================
-    // KAMERA SCANNER (BUKA & TUTUP)
+    // KAMERA SCANNER (BUKA & TUTUP) - MULTI-DEVICE IPHONE & ANDROID
     // =========================================================
     async function startScanner() {
       if (typeof fetchFullDatabaseFromCloud === 'function') {
@@ -8171,22 +8243,58 @@
             }
           });
           preloadGPSLocation();
-          await html5QrScanner.start(
-            { facingMode: "environment" },
-            { 
-              fps: 24, 
-              qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const w = Math.min(Math.floor(viewfinderWidth * 0.88), 320);
-                const h = Math.min(Math.floor(viewfinderHeight * 0.65), 220);
-                return { width: Math.max(w, 240), height: Math.max(h, 160) };
-              },
-              aspectRatio: 1.0 
-            },
-            (decodedText) => {
-              processScannedText(decodedText);
-            },
-            () => {}
-          );
+
+          // Konfigurasi QR Box responsif untuk semua tipe HP Android & iPhone
+          const scanConfig = {
+            fps: 22,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+              const w = Math.min(Math.floor(minDim * 0.88), 320);
+              const h = Math.min(Math.floor(minDim * 0.70), 220);
+              return { width: Math.max(w, 200), height: Math.max(h, 150) };
+            }
+          };
+
+          // Kompatibilitas iPhone (iOS Safari) & Android:
+          // Hindari aspectRatio kaku 1.0 yang sering memicu OverconstrainedError di iPhone
+          try {
+            await html5QrScanner.start(
+              { facingMode: "environment" },
+              scanConfig,
+              (decodedText) => { processScannedText(decodedText); },
+              () => {}
+            );
+          } catch (envErr) {
+            console.warn('FacingMode environment failed, trying device list enumeration fallback:', envErr);
+            // Fallback: periksa daftar kamera perangkat
+            const devices = await Html5Qrcode.getCameras();
+            if (devices && devices.length > 0) {
+              const backCam = devices.find(d => d.label && (
+                d.label.toLowerCase().includes('back') || 
+                d.label.toLowerCase().includes('rear') || 
+                d.label.toLowerCase().includes('environment') ||
+                d.label.toLowerCase().includes('belakang')
+              ));
+              const chosenId = backCam ? backCam.id : devices[devices.length - 1].id;
+              await html5QrScanner.start(
+                chosenId,
+                scanConfig,
+                (decodedText) => { processScannedText(decodedText); },
+                () => {}
+              );
+            } else {
+              throw envErr;
+            }
+          }
+
+          // Pasang atribut playsinline wajib untuk iOS Safari agar tidak membuka media player fullscreen
+          const vidEl = document.querySelector('#qr-reader video');
+          if (vidEl) {
+            vidEl.setAttribute('playsinline', 'true');
+            vidEl.setAttribute('webkit-playsinline', 'true');
+            vidEl.muted = true;
+          }
+
           const curCoords = getWarehouseCoords(activeWarehouse);
           const curRad = Number(curCoords.radius) > 0 ? Number(curCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
           if (statusMsg) statusMsg.innerText = `Kamera Aktif (Radius GPS: ${curRad}m). Silakan arahkan ke Barcode ID Card Karyawan.`;
@@ -8196,19 +8304,32 @@
       } catch (err) {
         console.error('Html5Qrcode error:', err);
         if (statusMsg) {
-          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum diizinkan.</span> Di laptop/HP, klik ikon gembok URL dan pilih "Allow Camera" (Izinkan Kamera).`;
+          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum diizinkan atau tidak dapat diakses.</span><br><span class="text-[11px] text-slate-600">Buka Izin Kamera di browser Anda (Ikon Gembok di bar alamat URL atau Pengaturan Safari di iPhone).</span>`;
         }
-        alert('Izin akses kamera diperlukan.\n\nKlik ikon Gembok / Izin di sebelah alamat URL browser Anda dan pilih "Allow Camera" (Izinkan Kamera).');
+        alert('Izin akses kamera diperlukan untuk absensi.\n\n• Di iPhone (iOS Safari): Buka Pengaturan HP > Safari > Kamera > Pilih "Izinkan" (Allow).\n• Di Android (Chrome): Klik ikon Gembok di sebelah alamat web > Izin > Kamera > Izinkan.');
       }
     }
 
     function stopScanner() {
       if (html5QrScanner) {
-        html5QrScanner.stop().catch(() => {}).then(() => {
-          html5QrScanner.clear();
+        try {
+          html5QrScanner.stop().catch(() => {}).then(() => {
+            try { html5QrScanner.clear(); } catch(e) {}
+            html5QrScanner = null;
+          });
+        } catch (e) {
           html5QrScanner = null;
-        });
+        }
       }
+
+      // Pastikan seluruh track kamera fisik dihentikan seketika di hardware HP
+      try {
+        const vidEl = document.querySelector('#qr-reader video');
+        if (vidEl && vidEl.srcObject && typeof vidEl.srcObject.getTracks === 'function') {
+          vidEl.srcObject.getTracks().forEach(t => t.stop());
+          vidEl.srcObject = null;
+        }
+      } catch (e) {}
 
       // 2. Sembunyikan video container dan tampilkan standby wrapper
       const videoWrapper = document.getElementById('camera-video-wrapper');
@@ -8227,13 +8348,13 @@
       const btnOut = document.getElementById('btn-type-out');
       if (btnIn) {
         btnIn.className = isIn 
-          ? 'py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center gap-1.5' 
-          : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5';
+          ? 'py-3 sm:py-2.5 rounded-2xl font-black text-xs sm:text-xs bg-emerald-600 text-white shadow-md shadow-emerald-600/30 transition flex items-center justify-center gap-1.5 ring-2 ring-emerald-500/50' 
+          : 'py-3 sm:py-2.5 rounded-2xl font-bold text-xs sm:text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5';
       }
       if (btnOut) {
         btnOut.className = !isIn 
-          ? 'py-2.5 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-md transition flex items-center justify-center gap-1.5' 
-          : 'py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5';
+          ? 'py-3 sm:py-2.5 rounded-2xl font-black text-xs sm:text-xs bg-rose-600 text-white shadow-md shadow-rose-600/30 transition flex items-center justify-center gap-1.5 ring-2 ring-rose-500/50' 
+          : 'py-3 sm:py-2.5 rounded-2xl font-bold text-xs sm:text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5';
       }
       if (activeScanMethod === 'gun') {
         const inputEl = document.getElementById('external-barcode-input');
