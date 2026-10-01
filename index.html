@@ -5641,6 +5641,16 @@
           appSidebar.classList.add('hidden');
           appSidebar.style.display = 'none';
         }
+      } else {
+        document.body.classList.remove('is-scanner-mode');
+        if (appSidebar) {
+          appSidebar.classList.remove('hidden');
+          appSidebar.style.display = '';
+        }
+      }
+
+      if (isScanner) {
+        // Akun Absen MAI / Scanner: JANGAN ADA FITUR PENGATURAN AKUN DI ATAS MAUPUN DI BAWAH
         if (navBtnSettings) navBtnSettings.classList.add('hidden');
         if (navSettings) {
           navSettings.classList.add('hidden');
@@ -5652,13 +5662,7 @@
           navDash.classList.add('hidden');
           navDash.classList.remove('flex');
         }
-      } else {
-        document.body.classList.remove('is-scanner-mode');
-        if (appSidebar) {
-          appSidebar.classList.remove('hidden');
-          appSidebar.style.display = '';
-        }
-        if (isAdmin) {
+      } else if (isAdmin) {
         // Admin: Semua fitur aktif
         if (navBtnSettings) navBtnSettings.classList.remove('hidden');
         if (navSettings) {
