@@ -741,7 +741,11 @@
                 <h2 class="text-2xl font-black mt-2 tracking-tight">Portal Manajemen Gudang <span id="dash-wh-label" class="text-white font-black">MBI</span></h2>
                 <p class="text-xs text-slate-400 mt-1">Data Karyawan, Presensi Barcode & GPS, Record Absen Harian & Rekap Matriks</p>
               </div>
-              <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <a href="BUKU_PANDUAN_SISTEM_WFM_MEDIKA.doc" download="BUKU_PANDUAN_SISTEM_WFM_MEDIKA.doc" class="px-3.5 py-2.5 rounded-2xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 backdrop-blur flex items-center gap-2 text-xs shadow-2xs font-bold text-white transition hover:scale-102" title="Unduh Buku Panduan Resmi Sistem format Microsoft Word (.doc)">
+                  <i data-lucide="file-text" class="w-4 h-4 text-sky-400"></i>
+                  <span>Buku Panduan (Word)</span>
+                </a>
                 <div class="px-4 py-2.5 rounded-2xl bg-slate-800/80 border border-slate-700 backdrop-blur flex items-center gap-2 text-xs shadow-2xs">
                   <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span class="font-bold text-slate-200">Sistem Operasional Aktif</span>
@@ -1358,10 +1362,19 @@
                   </div>
 
                   <div id="filter-body-records" class="p-4 space-y-3.5">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
                         <input type="text" id="record-search-input" oninput="renderRecordsTable(true)" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Pilih Gudang</label>
+                        <select id="record-filter-warehouse" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="CURRENT" selected>Gudang Aktif Saja</option>
+                          <option value="ALL">Semua Gudang (MBI & MAI)</option>
+                          <option value="MBI">Khusus Gudang MBI</option>
+                          <option value="MAI">Khusus Gudang MAI</option>
+                        </select>
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
@@ -1382,9 +1395,23 @@
                       </div>
                     </div>
 
+                    <!-- Quick Filter Buttons -->
+                    <div class="flex items-center gap-2 flex-wrap text-xs pt-1">
+                      <span class="text-[11px] font-bold text-slate-500">Filter Cepat:</span>
+                      <button type="button" onclick="setRecordFilterQuick('today')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                        Hari Ini
+                      </button>
+                      <button type="button" onclick="setRecordFilterQuick('month')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                        Bulan Ini
+                      </button>
+                      <button type="button" onclick="setRecordFilterQuick('all')" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                        Semua Data
+                      </button>
+                    </div>
+
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
                       <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Filter Record
+                        Terapkan Filter
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
@@ -1441,6 +1468,7 @@
                       <tr>
                         <th class="p-3.5 border-r border-slate-200">No</th>
                         <th class="p-3.5 border-r border-slate-200">Tanggal</th>
+                        <th class="p-3.5 border-r border-slate-200">Gudang</th>
                         <th class="p-3.5 border-r border-slate-200">NIK</th>
                         <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
                         <th class="p-3.5 border-r border-slate-200">Departemen</th>
@@ -3182,6 +3210,41 @@
   <!-- JAVASCRIPT ENGINE (BULLETPROOF EXCEL & FUZZY LOGIN) -->
   <!-- ========================================================= -->
   <script>
+    // FUNGSI STANDARISASI TANGGAL LOKAL (WIB / GMT+7 - BEBAS DARI BUG TIMEZONE UTC)
+    function getLocalDateString(d = new Date()) {
+      if (!d) return '';
+      const dt = (d instanceof Date) ? d : new Date(d);
+      if (isNaN(dt.getTime())) return '';
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseYMD(str) {
+      if (!str) return new Date();
+      if (str instanceof Date) return str;
+      const parts = String(str).split('-').map(Number);
+      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+        // Gunakan jam 12:00 siang lokal agar aman dari pergeseran jam & DST
+        return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+      }
+      return new Date(str);
+    }
+
+    // FUNGSI OPERASIONAL CUT-OFF SHIFT MALAM & PAGI (CUT OFF 07:00:00 WIB)
+    // - Jam 00:00:00 s.d 06:59:59 -> masuk ke tanggal operasional shift kemarin (cut off shift malam)
+    // - Jam 07:00:00 s.d 23:59:59 -> masuk ke hari ini (tanggal real saat absen untuk shift pagi & reguler)
+    function getOperationalDateString(d = new Date()) {
+      if (!d) return '';
+      const dt = (d instanceof Date) ? new Date(d.getTime()) : new Date(d);
+      if (isNaN(dt.getTime())) return '';
+      if (dt.getHours() < 7) {
+        dt.setDate(dt.getDate() - 1);
+      }
+      return getLocalDateString(dt);
+    }
+
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
     const DEFAULT_COORDS = {
@@ -3621,7 +3684,16 @@
         let hasChanges = false;
         attendances.forEach(a => {
           if (!a) return;
-          // Cari user master berdasarkan nama lengkap
+          // 1. Perbaikan otomatis tanggal absensi (Gunakan tanggal lokal dari checkInTime jika berbeda)
+          if (a.checkInTime) {
+            const correctLocalDate = getLocalDateString(new Date(a.checkInTime));
+            if (correctLocalDate && a.date !== correctLocalDate) {
+              a.date = correctLocalDate;
+              hasChanges = true;
+            }
+          }
+
+          // 2. Cari user master berdasarkan nama lengkap atau NIK
           let matchedUser = users.find(u => a.userName && cleanStr(u.name) === cleanStr(a.userName));
           if (!matchedUser && a.userNik) {
             matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
@@ -3648,6 +3720,12 @@
       } catch (e) {
         return [];
       }
+    }
+
+    function repairAndSanitizeAttendanceRecords() {
+      ['MBI', 'MAI'].forEach(wh => {
+        sanitizeAttendanceDatabase(wh);
+      });
     }
 
     function getWhDB(warehouse, key, defaultVal) {
@@ -4928,6 +5006,7 @@
 
       // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
       sanitizeEmployeesData();
+      repairAndSanitizeAttendanceRecords();
       getWhDB('MBI', 'users', SEED_MBI_USERS);
       getWhDB('MAI', 'users', SEED_MAI_USERS);
       getWhDB('MBI', 'attendance', []);
@@ -4936,27 +5015,30 @@
       migrateAllUsersNIK();
 
       const now = new Date();
+      const realToday = getLocalDateString(now);
+      const opToday = getOperationalDateString(now);
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
       
       const firstDayStr = `${year}-${month}-01`;
       const lastDayStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-      const todayStr = now.toISOString().split('T')[0];
+      const effectiveStartForRecords = opToday < firstDayStr ? opToday : firstDayStr;
+      const effectiveEndForRecords = realToday;
 
       document.getElementById('matrix-start-date').value = firstDayStr;
       document.getElementById('matrix-end-date').value = lastDayStr;
-      document.getElementById('record-start-date').value = firstDayStr;
-      document.getElementById('record-end-date').value = todayStr;
+      document.getElementById('record-start-date').value = effectiveStartForRecords;
+      document.getElementById('record-end-date').value = effectiveEndForRecords;
       if (document.getElementById('report-leave-start')) document.getElementById('report-leave-start').value = firstDayStr;
       if (document.getElementById('report-leave-end')) document.getElementById('report-leave-end').value = lastDayStr;
-      if (document.getElementById('report-ot-start')) document.getElementById('report-ot-start').value = firstDayStr;
-      if (document.getElementById('report-ot-end')) document.getElementById('report-ot-end').value = todayStr;
-      document.getElementById('ot-filter-start').value = firstDayStr;
-      document.getElementById('ot-filter-end').value = todayStr;
-      document.getElementById('ot-date').value = todayStr;
-      document.getElementById('leave-start-date').value = todayStr;
-      document.getElementById('leave-end-date').value = todayStr;
+      if (document.getElementById('report-ot-start')) document.getElementById('report-ot-start').value = effectiveStartForRecords;
+      if (document.getElementById('report-ot-end')) document.getElementById('report-ot-end').value = effectiveEndForRecords;
+      document.getElementById('ot-filter-start').value = effectiveStartForRecords;
+      document.getElementById('ot-filter-end').value = effectiveEndForRecords;
+      document.getElementById('ot-date').value = realToday;
+      document.getElementById('leave-start-date').value = realToday;
+      document.getElementById('leave-end-date').value = realToday;
 
       updateRealtimeDashboardDate();
       setInterval(() => {
@@ -5594,15 +5676,11 @@
       }
     }
 
-    // Role supervisor, coordinator, manager dan akun manajemen sistem tidak dimasukkan ke dalam rekap matriks presensi
+    // Akun manajemen sistem (Admin, Scanner Presensi, dan Manager Eko) tidak dimasukkan ke dalam matriks presensi staf
     function isMatrixEligibleUser(user) {
       if (!user) return false;
       if (isManagementSystemAccount(user)) return false;
-      if (isUserManager(user)) return false;
-      const role = (user.role || '').toLowerCase().trim();
-      if (role === 'supervisor' || role === 'coordinator' || role === 'cordinator' || role === 'manager' || role.includes('supervisor') || role.includes('coordinator') || role.includes('cordinator') || role.includes('manager')) {
-        return false;
-      }
+      if (isUserAdmin(user) || isUserScanner(user) || isUserManager(user)) return false;
       return true;
     }
 
@@ -6296,7 +6374,7 @@
     let lastRecordsRenderTime = 0;
     function refreshAllDashboardData() {
       updateRealtimeDashboardDate();
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateString(new Date());
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
@@ -7314,7 +7392,9 @@
     }
 
     function processAttendanceScan(nikCode) {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const todayStr = getOperationalDateString(now);
+      const realTodayStr = getLocalDateString(now);
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       const allUsers = [...mbiUsers, ...maiUsers];
@@ -7385,7 +7465,6 @@
         (a.userId && a.userId === matchedUser.id)
       );
 
-      const now = new Date();
       const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
 
       // Cari sesi masuk terakhir yang BELUM check-out (open session)
@@ -7464,14 +7543,15 @@
         const notesInput = document.getElementById('att-notes');
         if (notesInput) notesInput.value = '';
 
-        // Simpan langsung ke database lokal & cloud
+        // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
         setWhDB(targetWh, 'attendance', attendances);
+        saveFullDatabaseToCloud(false, true);
         if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         showProfessionalAttendanceToast({
           type: 'check_in',
           title: 'Absen Masuk Berhasil!',
-          subtitle: `Presensi ${matchedUser.name} sukses tercatat & tersinkron ke Google Sheet`,
+          subtitle: `Presensi ${matchedUser.name} sukses tercatat & tersinkron ke Google Sheet & Cloud`,
           name: matchedUser.name,
           nik: matchedUser.nik,
           dept: matchedUser.dept || 'Staff',
@@ -7493,8 +7573,9 @@
           openSession.userId = matchedUser.id;
           openSession.dept = matchedUser.dept;
 
-          // Simpan langsung ke database lokal & cloud
+          // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
           setWhDB(targetWh, 'attendance', attendances);
+          saveFullDatabaseToCloud(false, true);
           if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
           const diffMs = now.getTime() - new Date(openSession.checkInTime).getTime();
@@ -7635,11 +7716,10 @@
 
       // Tunda rendering tabel laporan & matrix besar di background agar UI pos scanner tetap super enteng & instan
       setTimeout(() => {
-        const repView = document.getElementById('view-reports-group');
-        if (repView && !repView.classList.contains('hidden')) {
+        try {
           renderRecordsTable();
           renderMatrixTable();
-        }
+        } catch (e) {}
       }, 350);
 
       setTimeout(() => {
@@ -7954,10 +8034,15 @@
       const container = document.getElementById('scanner-today-records-list');
       if (!container) return;
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const opTodayStr = getOperationalDateString(new Date());
+      const realTodayStr = getLocalDateString(new Date());
       const targetWh = activeWarehouse || 'MBI';
       const attendances = getWhDB(targetWh, 'attendance', []);
-      const todayAtt = attendances.filter(a => a.date === todayStr);
+      const todayAtt = attendances.filter(a => {
+        if (!a) return false;
+        const checkInLocal = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+        return a.date === opTodayStr || a.date === realTodayStr || checkInLocal === realTodayStr || checkInLocal === opTodayStr;
+      });
 
       const countBadge = document.getElementById('scanner-today-count-badge');
       if (countBadge) {
@@ -9880,7 +9965,7 @@
 
     function openAddEmployeeModal() {
       document.getElementById('modal-emp-wh').innerText = activeWarehouse;
-      document.getElementById('m-emp-joindate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('m-emp-joindate').value = getLocalDateString(new Date());
       document.getElementById('m-emp-nik').value = '';
       if (document.getElementById('m-emp-email')) document.getElementById('m-emp-email').value = '';
       syncDepartmentDropdownOptions('add', 'warehouse staff');
@@ -10686,19 +10771,30 @@
       const endInput = document.getElementById('workhours-end-date');
       const today = new Date();
       if (endInput && !endInput.value) {
-        endInput.value = today.toISOString().split('T')[0];
+        endInput.value = getLocalDateString(today);
       }
       if (startInput && !startInput.value) {
         const past7 = new Date();
         past7.setDate(past7.getDate() - 6);
-        startInput.value = past7.toISOString().split('T')[0];
+        startInput.value = getLocalDateString(past7);
       }
     }
 
     function calculateWorkHoursData() {
       initWorkHoursDateRange();
-      const startStr = document.getElementById('workhours-start-date')?.value || '';
-      const endStr = document.getElementById('workhours-end-date')?.value || '';
+      let startStr = document.getElementById('workhours-start-date')?.value || '';
+      let endStr = document.getElementById('workhours-end-date')?.value || '';
+      if (startStr && endStr && startStr > endStr) {
+        const tmp = startStr;
+        startStr = endStr;
+        endStr = tmp;
+        const sInput = document.getElementById('workhours-start-date');
+        const eInput = document.getElementById('workhours-end-date');
+        if (sInput && eInput) {
+          sInput.value = startStr;
+          eInput.value = endStr;
+        }
+      }
       const searchQ = (document.getElementById('workhours-search-input')?.value || '').toLowerCase().trim();
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -10708,8 +10804,8 @@
       // Standar Depnaker: 40 jam kerja per 7 hari (minggu)
       let targetHours = 40.0;
       if (startStr && endStr) {
-        const d1 = new Date(startStr);
-        const d2 = new Date(endStr);
+        const d1 = parseYMD(startStr);
+        const d2 = parseYMD(endStr);
         const diffDays = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1);
         const weeks = Math.max(1, diffDays / 7);
         targetHours = Math.round(weeks * 40 * 10) / 10;
@@ -11229,19 +11325,84 @@
       renderRecordsTable();
     }
 
+    function setRecordFilterQuick(mode) {
+      const sInput = document.getElementById('record-start-date');
+      const eInput = document.getElementById('record-end-date');
+      const now = new Date();
+      const realToday = getLocalDateString(now);
+      const opToday = getOperationalDateString(now);
+      if (!sInput || !eInput) return;
+
+      if (mode === 'today') {
+        sInput.value = opToday < realToday ? opToday : realToday;
+        eInput.value = realToday;
+      } else if (mode === 'month') {
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        sInput.value = `${y}-${m}-01`;
+        eInput.value = realToday;
+      } else if (mode === 'all') {
+        sInput.value = '';
+        eInput.value = '';
+      }
+      renderRecordsTable(true);
+    }
+
     function renderRecordsTable(resetPage = false) {
       lastRecordsRenderTime = Date.now();
       if (resetPage) recordsCurrentPage = 1;
-      const startStr = document.getElementById('record-start-date')?.value || '';
-      const endStr = document.getElementById('record-end-date')?.value || '';
+      let startStr = document.getElementById('record-start-date')?.value || '';
+      let endStr = document.getElementById('record-end-date')?.value || '';
+      
+      // Auto-swap jika tanggal terbalik (start > end) agar data TIDAK HILANG
+      if (startStr && endStr && startStr > endStr) {
+        const tmp = startStr;
+        startStr = endStr;
+        endStr = tmp;
+        const sInput = document.getElementById('record-start-date');
+        const eInput = document.getElementById('record-end-date');
+        if (sInput && eInput) {
+          sInput.value = startStr;
+          eInput.value = endStr;
+        }
+      }
+
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const whFilter = document.getElementById('record-filter-warehouse')?.value || 'CURRENT';
+
+      let users = [];
+      let attendances = [];
+
+      if (whFilter === 'ALL') {
+        const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        users = [...mbiUsers, ...maiUsers];
+        const mbiAtt = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
+        const maiAtt = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
+        attendances = [...mbiAtt, ...maiAtt];
+      } else if (whFilter === 'MBI') {
+        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MBI' }));
+      } else if (whFilter === 'MAI') {
+        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MAI' }));
+      } else {
+        const currentWh = activeWarehouse || 'MBI';
+        users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
+      }
 
       const filtered = attendances.filter(a => {
-        const inDate = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
-        const inSearch = !searchQ || (a.userName && a.userName.toLowerCase().includes(searchQ)) || (a.userNik && a.userNik.toLowerCase().includes(searchQ));
+        if (!a) return false;
+        const checkInLocalDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+        const inDate = (!startStr || a.date >= startStr || (checkInLocalDate && checkInLocalDate >= startStr)) && 
+                       (!endStr || a.date <= endStr || (checkInLocalDate && checkInLocalDate <= endStr));
+        const inSearch = !searchQ || 
+                         (a.userName && a.userName.toLowerCase().includes(searchQ)) || 
+                         (a.userNik && a.userNik.toLowerCase().includes(searchQ)) ||
+                         (a.dept && a.dept.toLowerCase().includes(searchQ)) ||
+                         (a.warehouse && a.warehouse.toLowerCase().includes(searchQ));
         return inDate && inSearch;
       });
 
@@ -11256,6 +11417,7 @@
         const minute = checkInDate.getMinutes();
         const isLate = a.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         if (isLate) totalLate++;
+        else totalNormal++;
         if (!a.checkOutTime) {
           const info = getAttendanceDurationInfo(a);
           if (info.isMissScan) totalMissScan++;
@@ -11291,7 +11453,7 @@
         } else if (endStr) {
           elMiniPeriod.innerText = `Hingga ${endStr}`;
         } else {
-          elMiniPeriod.innerText = `Semua rentang (${activeWarehouse})`;
+          elMiniPeriod.innerText = `Semua rentang (${whFilter === 'ALL' ? 'Semua Gudang' : whFilter})`;
         }
       }
 
@@ -11299,16 +11461,14 @@
       filtered.sort((a, b) => {
         // 1. Tanggal (Terbaru di atas)
         if (a.date !== b.date) {
-          return b.date.localeCompare(a.date);
+          return (b.date || '').localeCompare(a.date || '');
         }
         // 2. Di dalam tanggal yang sama, urutkan sesuai mode sort:
         if (sortOrder === 'time_asc') {
-          // Jam Masuk dari yang paling awal (kronologis: pagi -> siang -> sore)
           const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
           const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
           return timeA - timeB;
         } else if (sortOrder === 'time_desc') {
-          // Jam Masuk terbaru di atas
           const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
           const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
           return timeB - timeA;
@@ -11377,7 +11537,7 @@
 
       const tbody = document.getElementById('records-table-body');
       if (totalFiltered === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
         return;
       }
 
@@ -11401,6 +11561,7 @@
         const finalName = emp ? emp.name : (rec.userName || '-');
         const finalNik = emp ? emp.nik : (rec.userNik || '-');
         const finalDept = emp ? emp.dept : (rec.dept || '-');
+        const recWh = rec.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
         
         // Hitung Durasi Jam Kerja & Status Miss Scan (16 jam 25 menit)
         const durInfo = getAttendanceDurationInfo(rec);
@@ -11428,16 +11589,21 @@
           ? `<div class="text-[10px] text-slate-500 font-medium italic mt-1"><span class="truncate max-w-[200px]">${rec.notes}</span></div>`
           : '';
 
+        const whBadgeClass = recWh === 'MAI' ? 'bg-amber-50 text-amber-900 border-amber-200' : 'bg-sky-50 text-sky-900 border-sky-200';
+
         rowsHTML.push(`
           <tr class="hover:bg-slate-50 transition border-b border-slate-100">
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${globalIdx + 1}</td>
-            <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${rec.date}</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 font-bold">${finalNik}</td>
+            <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900 whitespace-nowrap">${rec.date}</td>
+            <td class="p-3.5 border-r border-slate-100 text-center whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${whBadgeClass} font-mono">${recWh}</span>
+            </td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 font-bold whitespace-nowrap">${finalNik}</td>
             <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${finalName}</td>
             <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : (durInfo.isMissScan ? '<span class="text-rose-600 font-semibold italic text-[11px]">Miss Scan</span>' : '<span class="text-amber-600 font-medium italic text-[11px]">Sedang Shift</span>')}</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800">${durationStr}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold whitespace-nowrap">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 whitespace-nowrap">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : (durInfo.isMissScan ? '<span class="text-rose-600 font-semibold italic text-[11px]">Miss Scan</span>' : '<span class="text-amber-600 font-medium italic text-[11px]">Sedang Shift</span>')}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800 whitespace-nowrap">${durationStr}</td>
             <td class="p-3.5 border-r border-slate-100">
               <div class="flex flex-col gap-1 items-start">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -11448,7 +11614,7 @@
               </div>
             </td>
             <td class="p-3.5 text-right">
-              <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-300 rounded-lg text-[11px] font-semibold transition">
+              <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}', '${recWh}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-300 rounded-lg text-[11px] font-semibold transition">
                 Hapus
               </button>
             </td>
@@ -11460,31 +11626,64 @@
       lucide.createIcons();
     }
 
-    function deleteSingleAttendanceRecord(id) {
+    function deleteSingleAttendanceRecord(id, targetWh = activeWarehouse) {
       if (!id) return;
-      if (!confirm('Apakah Anda yakin ingin menghapus catatan presensi ini? Perubahan akan otomatis diperbarui ke Google Sheet.')) return;
-      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      if (!confirm('Apakah Anda yakin ingin menghapus catatan presensi ini? Perubahan akan otomatis diperbarui ke Google Sheet & Firebase Cloud.')) return;
+      const wh = targetWh || activeWarehouse || 'MBI';
+      const attendances = getWhDB(wh, 'attendance', wh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const filtered = attendances.filter(a => a.id !== id);
-      setWhDB(activeWarehouse, 'attendance', filtered);
+      setWhDB(wh, 'attendance', filtered);
       saveFullDatabaseToCloud();
       if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
       renderRecordsTable();
       refreshAllDashboardData();
       renderMatrixTable();
-      alert('Catatan presensi berhasil dihapus dan disinkronkan ke Google Sheet.');
+      renderScannerTodayRecords();
+      alert('Catatan presensi berhasil dihapus dan disinkronkan ke Google Sheet & Cloud.');
     }
 
     function exportRecordsToExcel() {
-      const startStr = document.getElementById('record-start-date').value;
-      const endStr = document.getElementById('record-end-date').value;
+      let startStr = document.getElementById('record-start-date')?.value || '';
+      let endStr = document.getElementById('record-end-date')?.value || '';
+      if (startStr && endStr && startStr > endStr) {
+        const tmp = startStr;
+        startStr = endStr;
+        endStr = tmp;
+      }
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const whFilter = document.getElementById('record-filter-warehouse')?.value || 'CURRENT';
+
+      let users = [];
+      let attendances = [];
+
+      if (whFilter === 'ALL') {
+        users = [...getWhDB('MBI', 'users', SEED_MBI_USERS), ...getWhDB('MAI', 'users', SEED_MAI_USERS)];
+        attendances = [
+          ...getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' })),
+          ...getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }))
+        ];
+      } else if (whFilter === 'MBI') {
+        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MBI' }));
+      } else if (whFilter === 'MAI') {
+        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MAI' }));
+      } else {
+        const currentWh = activeWarehouse || 'MBI';
+        users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
+      }
 
       const filtered = attendances.filter(a => {
-        const inDate = (!startStr || a.date >= startStr) && (!endStr || a.date <= endStr);
-        const inSearch = !searchQ || (a.userName && a.userName.toLowerCase().includes(searchQ)) || (a.userNik && a.userNik.toLowerCase().includes(searchQ));
+        if (!a) return false;
+        const checkInLocalDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+        const inDate = (!startStr || a.date >= startStr || (checkInLocalDate && checkInLocalDate >= startStr)) && 
+                       (!endStr || a.date <= endStr || (checkInLocalDate && checkInLocalDate <= endStr));
+        const inSearch = !searchQ || 
+                         (a.userName && a.userName.toLowerCase().includes(searchQ)) || 
+                         (a.userNik && a.userNik.toLowerCase().includes(searchQ)) ||
+                         (a.dept && a.dept.toLowerCase().includes(searchQ));
         return inDate && inSearch;
       });
 
@@ -11496,7 +11695,7 @@
       // PENGURUTAN RAPI & KRONOLOGIS UNTUK FILE EXCEL:
       filtered.sort((a, b) => {
         if (a.date !== b.date) {
-          return b.date.localeCompare(a.date);
+          return (b.date || '').localeCompare(a.date || '');
         }
         if (sortOrder === 'time_asc') {
           const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
@@ -11523,6 +11722,7 @@
         const finalName = emp ? emp.name : (r.userName || '-');
         const finalNik = emp ? emp.nik : (r.userNik || '-');
         const finalDept = emp ? emp.dept : (r.dept || '');
+        const recWh = r.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
 
         const durInfo = getAttendanceDurationInfo(r);
         const checkInDate = new Date(r.checkInTime);
@@ -11537,6 +11737,7 @@
         return {
           "No": i + 1,
           "Tanggal": r.date,
+          "Gudang": recWh,
           "NIK": finalNik,
           "Nama Karyawan": finalName,
           "Departemen": finalDept,
@@ -11545,25 +11746,31 @@
           "Durasi Kerja": durInfo.durationStr,
           "Status Kehadiran": statusMasuk,
           "Status Kepulangan": statusPulang,
-          "Keterangan": `${statusMasuk} - ${statusPulang}${r.notes && r.notes !== '-' ? ` (${r.notes})` : ''}`,
-          "Gudang": activeWarehouse
+          "Keterangan": `${statusMasuk} - ${statusPulang}${r.notes && r.notes !== '-' ? ` (${r.notes})` : ''}`
         };
       });
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `Record_Absen_${activeWarehouse}`);
+      const sheetName = whFilter === 'ALL' ? 'Record_Absen_Semua' : `Record_Absen_${whFilter === 'CURRENT' ? activeWarehouse : whFilter}`;
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
       const searchTag = searchQ ? `_${searchQ.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
       const periodTag = (startStr || endStr) ? `_${startStr || 'awal'}_sd_${endStr || 'akhir'}` : '_semua';
-      XLSX.writeFile(wb, `Record_Absen_${activeWarehouse}${searchTag}${periodTag}.xlsx`);
+      XLSX.writeFile(wb, `${sheetName}${searchTag}${periodTag}.xlsx`);
     }
 
     function getDatesInRange(startDateStr, endDateStr) {
+      let dStart = parseYMD(startDateStr);
+      let dEnd = parseYMD(endDateStr);
+      if (dStart > dEnd) {
+        const tmp = dStart;
+        dStart = dEnd;
+        dEnd = tmp;
+      }
       const dates = [];
-      let cur = new Date(startDateStr);
-      const end = new Date(endDateStr);
-      while (cur <= end) {
-        dates.push(new Date(cur));
+      let cur = new Date(dStart.getTime());
+      while (cur <= dEnd) {
+        dates.push(new Date(cur.getTime()));
         cur.setDate(cur.getDate() + 1);
       }
       return dates;
@@ -11572,12 +11779,22 @@
     const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
     function renderMatrixTable() {
-      const startStr = document.getElementById('matrix-start-date').value;
-      const endStr = document.getElementById('matrix-end-date').value;
+      const sInput = document.getElementById('matrix-start-date');
+      const eInput = document.getElementById('matrix-end-date');
+      let startStr = sInput?.value;
+      let endStr = eInput?.value;
       if (!startStr || !endStr) return;
 
+      if (startStr > endStr) {
+        const tmp = startStr;
+        startStr = endStr;
+        endStr = tmp;
+        if (sInput) sInput.value = startStr;
+        if (eInput) eInput.value = endStr;
+      }
+
       const dateList = getDatesInRange(startStr, endStr);
-      const dateKeys = dateList.map(d => d.toISOString().split('T')[0]);
+      const dateKeys = dateList.map(d => getLocalDateString(d));
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
@@ -11622,13 +11839,21 @@
       headerHTML += `</tr>`;
       thead.innerHTML = headerHTML;
 
-      // Optimasi O(1): Indexing kehadiran ke dalam Set
+      // Optimasi O(1): Indexing kehadiran ke dalam Set (Mendukung tanggal operasional & tanggal checkIn lokal)
       const attSet = new Set();
       attendances.forEach(a => {
-        if (!a || !a.date) return;
-        if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${a.date}`);
-        if (a.userName) attSet.add(`${cleanStr(a.userName)}__${a.date}`);
-        if (a.userId) attSet.add(`${a.userId}__${a.date}`);
+        if (!a) return;
+        const opDate = a.date;
+        const localCheckInDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+        const datesToRegister = [opDate];
+        if (localCheckInDate && localCheckInDate !== opDate) datesToRegister.push(localCheckInDate);
+
+        datesToRegister.forEach(dVal => {
+          if (!dVal) return;
+          if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${dVal}`);
+          if (a.userName) attSet.add(`${cleanStr(a.userName)}__${dVal}`);
+          if (a.userId) attSet.add(`${a.userId}__${dVal}`);
+        });
       });
 
       // Optimasi O(1): Indexing cuti/sakit yang sudah disetujui ke dalam Map
@@ -11637,7 +11862,7 @@
         if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
         const lDates = getDatesInRange(l.startDate, l.endDate);
         lDates.forEach(ld => {
-          const ldStr = ld.toISOString().split('T')[0];
+          const ldStr = getLocalDateString(ld);
           const type = l.type;
           if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
           if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
@@ -11696,18 +11921,23 @@
     // FITUR COPY TABEL MATRIKS KE CLIPBOARD
     // =========================================================
     function copyMatrixTable() {
-      const startStr = document.getElementById('matrix-start-date')?.value;
-      const endStr = document.getElementById('matrix-end-date')?.value;
+      let startStr = document.getElementById('matrix-start-date')?.value;
+      let endStr = document.getElementById('matrix-end-date')?.value;
       if (!startStr || !endStr) {
         alert('Silakan tentukan rentang tanggal matriks terlebih dahulu.');
         return;
+      }
+      if (startStr > endStr) {
+        const tmp = startStr;
+        startStr = endStr;
+        endStr = tmp;
       }
 
       // Pastikan tabel sudah ter-render terbaru
       renderMatrixTable();
 
       const dateList = getDatesInRange(startStr, endStr);
-      const dateKeys = dateList.map(d => d.toISOString().split('T')[0]);
+      const dateKeys = dateList.map(d => getLocalDateString(d));
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => isMatrixEligibleUser(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
@@ -11715,10 +11945,18 @@
 
       const attSet = new Set();
       attendances.forEach(a => {
-        if (!a || !a.date) return;
-        if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${a.date}`);
-        if (a.userName) attSet.add(`${cleanStr(a.userName)}__${a.date}`);
-        if (a.userId) attSet.add(`${a.userId}__${a.date}`);
+        if (!a) return;
+        const opDate = a.date;
+        const localCheckInDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+        const datesToRegister = [opDate];
+        if (localCheckInDate && localCheckInDate !== opDate) datesToRegister.push(localCheckInDate);
+
+        datesToRegister.forEach(dVal => {
+          if (!dVal) return;
+          if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${dVal}`);
+          if (a.userName) attSet.add(`${cleanStr(a.userName)}__${dVal}`);
+          if (a.userId) attSet.add(`${a.userId}__${dVal}`);
+        });
       });
 
       const leaveMap = new Map();
@@ -11726,7 +11964,7 @@
         if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
         const lDates = getDatesInRange(l.startDate, l.endDate);
         lDates.forEach(ld => {
-          const ldStr = ld.toISOString().split('T')[0];
+          const ldStr = getLocalDateString(ld);
           const type = l.type;
           if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
           if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
@@ -11842,8 +12080,14 @@
     }
 
     function exportMatrixToExcel() {
-      const startStr = document.getElementById('matrix-start-date').value;
-      const endStr = document.getElementById('matrix-end-date').value;
+      let startStr = document.getElementById('matrix-start-date')?.value;
+      let endStr = document.getElementById('matrix-end-date')?.value;
+      if (!startStr || !endStr) return;
+      if (startStr > endStr) {
+        const tmp = startStr;
+        startStr = endStr;
+        endStr = tmp;
+      }
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => isMatrixEligibleUser(u));
@@ -11903,9 +12147,23 @@
 
         const row = [uIdx + 1, user.name, user.nik];
         dateList.forEach(d => {
-          const dStr = d.toISOString().split('T')[0];
-          const att = attendances.find(a => ((a.userName && cleanStr(a.userName) === cleanStr(user.name)) || (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || (a.userId && a.userId === user.id)) && a.date === dStr);
-          const approvedLeave = leaves.find(l => ((l.userName && cleanStr(l.userName) === cleanStr(user.name)) || (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || (l.userId && l.userId === user.id)) && l.status === 'approved' && l.startDate <= dStr && l.endDate >= dStr);
+          const dStr = getLocalDateString(d);
+          const att = attendances.find(a => {
+            if (!a) return false;
+            const isUser = (a.userName && cleanStr(a.userName) === cleanStr(user.name)) || 
+                           (a.userNik && a.userNik.toUpperCase() === user.nik.toUpperCase()) || 
+                           (a.userId && a.userId === user.id);
+            if (!isUser) return false;
+            const localCheckIn = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+            return a.date === dStr || localCheckIn === dStr;
+          });
+          const approvedLeave = leaves.find(l => {
+            if (!l || l.status !== 'approved') return false;
+            const isUser = (l.userName && cleanStr(l.userName) === cleanStr(user.name)) || 
+                           (l.userNik && l.userNik.toUpperCase() === user.nik.toUpperCase()) || 
+                           (l.userId && l.userId === user.id);
+            return isUser && l.startDate <= dStr && l.endDate >= dStr;
+          });
 
           if (att) {
             totalHadir += 1;
@@ -13284,7 +13542,7 @@ function testManualSync() {
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
       }
 
-      const dateTag = new Date().toISOString().split('T')[0];
+      const dateTag = getLocalDateString(new Date());
       XLSX.writeFile(wb, `BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx`);
       alert(`✅ Berkas Excel 3-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 3 sheet persis:\n1. RECORD ABSEN\n2. REKAP PENGAJUAN\n3. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
     }
