@@ -1073,13 +1073,21 @@
                 <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2 font-bold text-xs text-slate-900">
-                      <span id="att-gps-radius-label">Radius GPS: 30 Meter</span>
+                      <span id="att-gps-radius-label">Radius GPS: 100 Meter</span>
                     </div>
                     <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800">AKTIF</span>
                   </div>
                   <p id="att-gps-desc-label" class="text-[11px] text-slate-600 leading-relaxed">
                     Sistem otomatis memverifikasi koordinat GPS HP saat kartu di-scan. Staf di luar radius yang ditentukan tidak dapat melakukan absensi.
                   </p>
+                  <div class="pt-1 flex items-center gap-2">
+                    <button type="button" onclick="checkLiveGPSDistance()" class="flex-1 py-1.5 px-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-300 transition text-center shadow-2xs">
+                      🔍 Cek Jarak GPS
+                    </button>
+                    <button type="button" onclick="calibrateCurrentWarehouseGPS()" class="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg transition text-center shadow-xs">
+                      📍 Daftarkan Titik HP Ini
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -2143,7 +2151,7 @@
                 <p class="text-xs text-slate-500">
                   Gudang Aktif: <span id="lbl-registered-wh" class="font-bold text-slate-800">Gudang MBI</span>
                   • Titik: <span id="lbl-registered-coords" class="font-mono font-bold text-slate-800">-6.208800, 106.845600</span> 
-                  • Radius Aktif: <span id="lbl-registered-radius" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-extrabold text-xs">30 METER</span>
+                  • Radius Aktif: <span id="lbl-registered-radius" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-extrabold text-xs">100 METER</span>
                 </p>
               </div>
 
@@ -2151,12 +2159,15 @@
                 <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
                   <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih Radius:</label>
                   <select id="select-gps-radius" onchange="changeWarehouseGPSRadius(this.value)" class="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-800 focus:outline-none cursor-pointer">
-                    <option value="10">10 Meter</option>
-                    <option value="15">15 Meter</option>
-                    <option value="20">20 Meter</option>
-                    <option value="25">25 Meter</option>
-                    <option value="30">30 Meter</option>
-                    <option value="50">50 Meter</option>
+                    <option value="15">15 Meter (Ultra Ketat)</option>
+                    <option value="30">30 Meter (Ketat)</option>
+                    <option value="50">50 Meter (Sedang)</option>
+                    <option value="75">75 Meter (Luas)</option>
+                    <option value="100" selected>100 Meter (Rekomendasi Pabrik)</option>
+                    <option value="150">150 Meter (Area Kompleks)</option>
+                    <option value="200">200 Meter (Area Sangat Luas)</option>
+                    <option value="300">300 Meter (Kawasan Industri)</option>
+                    <option value="500">500 Meter (Bebas Halangan)</option>
                   </select>
                 </div>
                 <button type="button" onclick="checkLiveGPSDistance()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center border border-slate-300 shadow-2xs">
@@ -2806,12 +2817,15 @@
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Radius Validasi GPS *</label>
           <select id="gps-input-radius" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-            <option value="10">10 Meter (Ultra Ketat)</option>
-            <option value="15">15 Meter (Sangat Ketat)</option>
-            <option value="20">20 Meter (Ketat)</option>
-            <option value="25">25 Meter (Sedang)</option>
-            <option value="30">30 Meter (Standar Luas)</option>
-            <option value="50">50 Meter (Area Sangat Luas)</option>
+            <option value="15">15 Meter (Ultra Ketat)</option>
+            <option value="30">30 Meter (Ketat)</option>
+            <option value="50">50 Meter (Sedang)</option>
+            <option value="75">75 Meter (Luas)</option>
+            <option value="100" selected>100 Meter (Rekomendasi Pabrik / Gudang)</option>
+            <option value="150">150 Meter (Area Kompleks)</option>
+            <option value="200">200 Meter (Area Sangat Luas)</option>
+            <option value="300">300 Meter (Kawasan Industri)</option>
+            <option value="500">500 Meter (Bebas Halangan)</option>
           </select>
         </div>
 
@@ -3284,44 +3298,58 @@
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
     const DEFAULT_COORDS = {
-      MBI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MBI' },
-      MAI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MAI' }
+      MBI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MBI' },
+      MAI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MAI' }
     };
 
+    function isDummyWarehouseCoords(coords) {
+      if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') return true;
+      return Math.abs(coords.lat - (-6.2088)) < 0.001 && Math.abs(coords.lng - 106.8456) < 0.001;
+    }
+
     function getWarehouseCoords(wh = activeWarehouse) {
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+      let ownCoords = null;
+
       try {
-        const saved = localStorage.getItem(`wfm_${(wh || 'MBI').toLowerCase()}_coords`);
+        const saved = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_coords`);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
             const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : globalRad;
-            return { lat: parsed.lat, lng: parsed.lng, radius: r, name: `Gudang ${wh}` };
+            ownCoords = { lat: parsed.lat, lng: parsed.lng, radius: r, name: `Gudang ${targetWh}` };
           }
         }
       } catch(e) {}
 
-      // Jika Gudang MAI belum punya titik koordinat tersendiri, sementara gunakan punya MBI (fallback)
-      if (wh === 'MAI') {
-        try {
-          const mbiSaved = localStorage.getItem('wfm_mbi_coords');
-          if (mbiSaved) {
-            const parsed = JSON.parse(mbiSaved);
-            if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-              const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : globalRad;
-              return { lat: parsed.lat, lng: parsed.lng, radius: r, name: 'Gudang MAI (Mengikuti MBI)' };
-            }
-          }
-        } catch(e) {}
+      // Jika koordinat gudang ini valid dan BUKAN dummy, langsung gunakan
+      if (ownCoords && !isDummyWarehouseCoords(ownCoords)) {
+        return ownCoords;
       }
 
-      const def = DEFAULT_COORDS[wh] || { lat: -6.2088, lng: 106.8456, radius: 30, name: `Gudang ${wh}` };
-      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 30, name: def.name };
+      // Jika koordinat gudang ini masih dummy atau belum ada, cek apakah gudang saudaranya sudah terkalibrasi
+      const otherWh = (targetWh === 'MBI') ? 'MAI' : 'MBI';
+      try {
+        const otherSaved = localStorage.getItem(`wfm_${otherWh.toLowerCase()}_coords`);
+        if (otherSaved) {
+          const parsed = JSON.parse(otherSaved);
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number' && !isDummyWarehouseCoords(parsed)) {
+            const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : globalRad;
+            return { lat: parsed.lat, lng: parsed.lng, radius: r, name: `Gudang ${targetWh} (Mengikuti ${otherWh})` };
+          }
+        }
+      } catch(e) {}
+
+      // Jika kedua-duanya belum terkalibrasi, kembalikan ownCoords atau default
+      if (ownCoords) return ownCoords;
+      const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 100, name: `Gudang ${targetWh}` };
+      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 100, name: def.name };
     }
 
     function setWarehouseCoords(wh, lat, lng, radius = null) {
       const current = getWarehouseCoords(wh);
-      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || defaultRad);
       const validRadius = Number(rad) > 0 ? Number(rad) : defaultRad;
       const coords = { 
@@ -3343,7 +3371,7 @@
       if (isNaN(r) || r <= 0) return;
       localStorage.setItem('wfm_gps_radius', String(r));
 
-      // Update Gudang MBI & MAI secara seragam agar validasi ketat berlaku konsisten
+      // Update Gudang MBI & MAI secara seragam agar validasi berlaku konsisten
       const currentWh = activeWarehouse || 'MBI';
       const c = getWarehouseCoords(currentWh);
       setWarehouseCoords(currentWh, c.lat, c.lng, r);
@@ -3357,12 +3385,12 @@
       // Kirim LANGSUNG ke Cloud tanpa jeda debounce agar Firebase ter-update instan ke seluruh HP
       await saveFullDatabaseToCloud(false, true);
 
-      alert(`✅ Jarak radius validasi GPS Gudang diubah menjadi ${r} Meter (Fix & Ketat).\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Pesan di seluruh HP akun scanner otomatis berubah seketika.\n• Staf di luar radius ${r}m ditolak secara otomatis.`);
+      alert(`✅ Jarak radius validasi GPS Gudang diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Pesan di seluruh HP akun scanner otomatis sinkron seketika.`);
     }
 
     function updateRegisteredCoordsDisplay() {
       const c = getWarehouseCoords(activeWarehouse);
-      const curRadius = Number(c.radius) > 0 ? Number(c.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
+      const curRadius = Number(c.radius) > 0 ? Number(c.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
 
       const lblCoords = document.getElementById('lbl-registered-coords');
       const lblWh = document.getElementById('lbl-registered-wh');
@@ -3397,29 +3425,51 @@
         return;
       }
       const targetCoords = getWarehouseCoords(activeWarehouse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const activeRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
+      const isTargetDummy = isDummyWarehouseCoords(targetCoords);
+
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const userLat = pos.coords.latitude;
           const userLng = pos.coords.longitude;
           const accuracy = Math.round(pos.coords.accuracy || 0);
           const dist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-          const isValid = dist <= activeRadius;
+          const accuracyBuffer = Math.min(accuracy, 100);
+          const effectiveRadius = activeRadius + accuracyBuffer;
+          const isValid = isTargetDummy || (dist <= effectiveRadius);
 
           let msg = `📍 STATUS PENGECEKAN GPS ANDA:\n\n`;
-          msg += `• Titik Lokasi Anda: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}\n`;
-          msg += `• Titik Gudang ${activeWarehouse}: ${targetCoords.lat.toFixed(6)}, ${targetCoords.lng.toFixed(6)}\n`;
-          msg += `• Radius Toleransi Aktif: ${activeRadius} METER (FIX / KETAT)\n`;
-          msg += `• Akurasi Sinyal HP: ±${accuracy} meter\n`;
-          msg += `• Jarak Fisik ke Gudang: ${dist} meter\n`;
-          msg += `• Status Validasi: ${isValid ? `✅ DALAM RADIUS (BISA SCAN ABSEN)` : `❌ DI LUAR RADIUS (LEBIH ${dist - activeRadius} METER)`}\n\n`;
+          msg += `• Titik Lokasi HP Anda: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}\n`;
+          if (isTargetDummy) {
+            msg += `• Titik Gudang ${activeWarehouse}: [BELUM DIDAFTARKAN / MASIH DEFAULT]\n`;
+          } else {
+            msg += `• Titik Gudang ${activeWarehouse}: ${targetCoords.lat.toFixed(6)}, ${targetCoords.lng.toFixed(6)}\n`;
+          }
+          msg += `• Radius Resmi Gudang: ${activeRadius} Meter\n`;
+          msg += `• Akurasi Sinyal HP: ±${accuracy} meter (Toleransi Efektif: ${effectiveRadius}m)\n`;
+          msg += `• Jarak Fisik ke Gudang: ${isTargetDummy ? '0 (Auto-Calibrate)' : `${dist} meter`}\n`;
+          msg += `• Status Validasi: ${isValid ? `✅ DALAM RADIUS (BISA SCAN ABSEN)` : `❌ DI LUAR RADIUS (LEBIH ${dist - effectiveRadius} METER)`}\n\n`;
+
+          if (isTargetDummy) {
+            msg += `⚠️ Titik koordinat gudang belum didaftarkan!\n\nKlik [OK] untuk langsung mendaftarkan titik lokasi HP Anda saat ini sebagai titik resmi Gudang ${activeWarehouse}.`;
+            if (confirm(msg)) {
+              setWarehouseCoords(activeWarehouse, userLat, userLng, activeRadius);
+              alert(`✅ Berhasil mendaftarkan lokasi HP Anda sebagai titik resmi Gudang ${activeWarehouse} (Radius ${activeRadius}m)!`);
+            }
+            return;
+          }
+
           if (!isValid) {
-            msg += `⛔ AKSES DITOLAK:\nJarak Anda (${dist}m) melebihi batas radius ${activeRadius} meter dari titik gudang.\nAnda harus berada dalam jarak maksimal ${activeRadius} meter untuk dapat melakukan absensi.`;
+            msg += `⛔ Jarak Anda (${dist}m) melebihi batas toleransi ${effectiveRadius}m dari titik gudang.\n\nApakah Anda sedang berada di area Gudang ${activeWarehouse} dan ingin memperbarui titik koordinat resmi ke posisi Anda saat ini?`;
+            if (confirm(msg)) {
+              setWarehouseCoords(activeWarehouse, userLat, userLng, activeRadius);
+              alert(`✅ Berhasil memperbarui titik koordinat resmi Gudang ${activeWarehouse} ke posisi Anda saat ini!`);
+            }
           } else {
             msg += `✓ Posisi valid berada di dalam batas radius ${activeRadius} meter dari titik gudang. Anda dapat melakukan scan presensi.`;
+            alert(msg);
           }
-          alert(msg);
         },
         (err) => {
           alert('Gagal membaca GPS: ' + err.message + '\nPastikan izin lokasi aktif di pengaturan browser HP.');
@@ -3434,9 +3484,9 @@
         return;
       }
       const current = getWarehouseCoords(activeWarehouse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const curRadius = Number(current.radius) > 0 ? Number(current.radius) : globalRad;
-      if (!confirm(`Daftarkan lokasi GPS HP/Laptop Anda saat ini sebagai titik resmi Gudang ${activeWarehouse} (Radius ${curRadius} Meter)?`)) {
+      if (!confirm(`Daftarkan posisi GPS HP/perangkat Anda saat ini sebagai titik lokasi resmi Gudang ${activeWarehouse} (Radius ${curRadius} Meter)?\n\nPastikan Anda sedang berada di area gudang.`)) {
         return;
       }
 
@@ -3444,13 +3494,21 @@
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
+          const accuracy = Math.round(pos.coords.accuracy || 0);
           setWarehouseCoords(activeWarehouse, lat, lng, curRadius);
-          alert(`✅ Sukses Mendaftarkan Titik Koordinat Gudang ${activeWarehouse}!\n\nLatitude: ${lat.toFixed(6)}\nLongitude: ${lng.toFixed(6)}\nRadius Validasi: ${curRadius} Meter\n\nKoordinat telah tersimpan & otomatis tersinkronisasi ke seluruh HP staf.`);
+
+          const otherWh = activeWarehouse === 'MBI' ? 'MAI' : 'MBI';
+          const otherC = getWarehouseCoords(otherWh);
+          if (isDummyWarehouseCoords(otherC)) {
+            setWarehouseCoords(otherWh, lat, lng, curRadius);
+          }
+
+          alert(`✅ SUKSES MENDAFTARKAN TITIK GUDANG ${activeWarehouse}!\n\n• Latitude: ${lat.toFixed(6)}\n• Longitude: ${lng.toFixed(6)}\n• Radius Validasi: ${curRadius} Meter\n• Akurasi HP: ±${accuracy} meter\n\nTitik lokasi ini telah disimpan dan otomatis tersinkron ke Cloud & seluruh HP staf. Semua staf di area ini sekarang dapat absen dengan lancar!`);
         },
         (err) => {
-          alert('Gagal mengambil titik GPS: ' + err.message + '\nPastikan izin lokasi diaktifkan di browser.');
+          alert('Gagal membaca GPS: ' + err.message + '\nPastikan izin lokasi browser HP aktif.');
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
       );
     }
 
@@ -3460,7 +3518,7 @@
       document.getElementById('gps-input-lat').value = c.lat;
       document.getElementById('gps-input-lng').value = c.lng;
       const radSelect = document.getElementById('gps-input-radius');
-      if (radSelect) radSelect.value = String(c.radius || 30);
+      if (radSelect) radSelect.value = String(c.radius || 100);
       document.getElementById('manual-gps-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -3473,7 +3531,7 @@
       e.preventDefault();
       const lat = parseFloat(document.getElementById('gps-input-lat').value);
       const lng = parseFloat(document.getElementById('gps-input-lng').value);
-      const radiusVal = parseInt(document.getElementById('gps-input-radius')?.value || '30', 10);
+      const radiusVal = parseInt(document.getElementById('gps-input-radius')?.value || '100', 10);
       if (isNaN(lat) || isNaN(lng)) {
         alert('Format koordinat tidak valid.');
         return;
@@ -4161,26 +4219,35 @@
       let hasCoordsChanged = false;
       if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
         const localMbi = getWarehouseCoords('MBI');
-        const cloudMbiRad = Number(db.mbi_coords.radius) || 30;
-        const isDiff = (localMbi.radius !== cloudMbiRad) || 
-                       (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
-                       (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
-        if (isDiff) {
-          localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
-          localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
-          hasCoordsChanged = true;
+        const incomingIsDummy = isDummyWarehouseCoords(db.mbi_coords);
+        const localIsDummy = isDummyWarehouseCoords(localMbi);
+        // Jangan timpa koordinat lokal yang sudah terkalibrasi asli dengan koordinat dummy dari Cloud
+        if (!incomingIsDummy || localIsDummy) {
+          const cloudMbiRad = Math.max(Number(db.mbi_coords.radius) || 100, 30);
+          const isDiff = (localMbi.radius !== cloudMbiRad) || 
+                         (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
+                         (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
+          if (isDiff) {
+            localStorage.setItem('wfm_mbi_coords', JSON.stringify({ ...db.mbi_coords, radius: cloudMbiRad }));
+            localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
+            hasCoordsChanged = true;
+          }
         }
       }
       if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
         const localMai = getWarehouseCoords('MAI');
-        const cloudMaiRad = Number(db.mai_coords.radius) || 30;
-        const isDiff = (localMai.radius !== cloudMaiRad) || 
-                       (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
-                       (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
-        if (isDiff) {
-          localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
-          localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
-          hasCoordsChanged = true;
+        const incomingIsDummy = isDummyWarehouseCoords(db.mai_coords);
+        const localIsDummy = isDummyWarehouseCoords(localMai);
+        if (!incomingIsDummy || localIsDummy) {
+          const cloudMaiRad = Math.max(Number(db.mai_coords.radius) || 100, 30);
+          const isDiff = (localMai.radius !== cloudMaiRad) || 
+                         (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
+                         (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
+          if (isDiff) {
+            localStorage.setItem('wfm_mai_coords', JSON.stringify({ ...db.mai_coords, radius: cloudMaiRad }));
+            localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
+            hasCoordsChanged = true;
+          }
         }
       }
 
@@ -4319,12 +4386,13 @@
         updateCloudSyncStatusBadge('uploading');
 
         const endpoint = getFirebaseEndpoint();
+        let cloudDb = null;
 
         // Pre-Merge dengan data terkini di Firebase Cloud agar presensi/cuti/karyawan dari HP lain tidak tertimpa
         try {
           const fetchRes = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
           if (fetchRes.ok) {
-            const cloudDb = await fetchRes.json();
+            cloudDb = await fetchRes.json();
             if (cloudDb && typeof cloudDb === 'object' && !Array.isArray(cloudDb)) {
               const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudDb.mbi_attendance));
               const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudDb.mai_attendance));
@@ -4387,18 +4455,31 @@
           } catch(e) {}
         }
 
+        let mbiCoordsToSave = getWarehouseCoords('MBI');
+        let maiCoordsToSave = getWarehouseCoords('MAI');
+        if (cloudDb) {
+          if (isDummyWarehouseCoords(mbiCoordsToSave) && cloudDb.mbi_coords && !isDummyWarehouseCoords(cloudDb.mbi_coords)) {
+            mbiCoordsToSave = cloudDb.mbi_coords;
+            localStorage.setItem('wfm_mbi_coords', JSON.stringify(mbiCoordsToSave));
+          }
+          if (isDummyWarehouseCoords(maiCoordsToSave) && cloudDb.mai_coords && !isDummyWarehouseCoords(cloudDb.mai_coords)) {
+            maiCoordsToSave = cloudDb.mai_coords;
+            localStorage.setItem('wfm_mai_coords', JSON.stringify(maiCoordsToSave));
+          }
+        }
+
         const nowIso = new Date().toISOString();
         const payload = {
           mbi_users: finalMbiUsers,
           mbi_attendance: getWhDB('MBI', 'attendance', []),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
-          mbi_coords: getWarehouseCoords('MBI'),
+          mbi_coords: mbiCoordsToSave,
           mai_users: finalMaiUsers,
           mai_attendance: getWhDB('MAI', 'attendance', []),
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
-          mai_coords: getWarehouseCoords('MAI'),
+          mai_coords: maiCoordsToSave,
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
           updatedAt: nowIso
         };
@@ -6914,7 +6995,7 @@
       isGPSFetching = true;
       const whToUse = targetWh || activeWarehouse || 'MBI';
       const targetCoords = getWarehouseCoords(whToUse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const maxRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
 
       navigator.geolocation.getCurrentPosition(
@@ -6922,24 +7003,58 @@
           isGPSFetching = false;
           const userLat = pos.coords.latitude;
           const userLng = pos.coords.longitude;
-          const rawDist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-          const isValid = rawDist <= maxRadius;
-          latestCachedGPS = {
-            valid: isValid,
-            distance: rawDist,
-            maxRadius: maxRadius,
-            lat: userLat,
-            lng: userLng,
-            wh: whToUse,
-            timestamp: Date.now(),
-            error: isValid ? null : `Gagal Absen: Anda berada di luar radius resmi gudang! Jarak Anda: ${rawDist}m (Batas radius fix: ${maxRadius}m, melebihi ${rawDist - maxRadius}m). Anda wajib berada di area gudang.`
-          };
+          const accuracy = Math.round(pos.coords.accuracy || 0);
+          const accuracyBuffer = Math.min(accuracy, 100);
+
+          // Cek koordinat dummy
+          if (isDummyWarehouseCoords(targetCoords)) {
+            setWarehouseCoords(whToUse, userLat, userLng, maxRadius);
+            latestCachedGPS = {
+              valid: true,
+              distance: 0,
+              maxRadius: maxRadius,
+              accuracy: accuracy,
+              lat: userLat,
+              lng: userLng,
+              wh: whToUse,
+              timestamp: Date.now()
+            };
+            return;
+          }
+
+          const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
+          const otherWh = whToUse === 'MBI' ? 'MAI' : 'MBI';
+          const otherCoords = getWarehouseCoords(otherWh);
+          const isOtherDummy = isDummyWarehouseCoords(otherCoords);
+          const rawDistOther = isOtherDummy ? 999999 : getDistanceMeters(userLat, userLng, otherCoords.lat, otherCoords.lng);
+
+          const bestRawDist = Math.min(rawDistActive, rawDistOther);
+          const effectiveAllowedRadius = maxRadius + accuracyBuffer;
+          const effectiveDistance = Math.max(0, bestRawDist - accuracyBuffer);
+          const isValid = (bestRawDist <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
+
+          if (isValid) {
+            latestCachedGPS = {
+              valid: true,
+              distance: bestRawDist,
+              maxRadius: maxRadius,
+              effectiveAllowedRadius: effectiveAllowedRadius,
+              accuracy: accuracy,
+              lat: userLat,
+              lng: userLng,
+              wh: whToUse,
+              timestamp: Date.now(),
+              error: null
+            };
+          } else {
+            latestCachedGPS = null;
+          }
         },
         (err) => {
           isGPSFetching = false;
           console.warn('GPS preload error:', err);
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 25000 }
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
       );
     }
 
@@ -6948,8 +7063,8 @@
         const whToUse = targetWh || activeWarehouse || 'MBI';
         const now = Date.now();
 
-        // 1. Jika ada cache GPS yang masih hangat (< 25 detik) dan cocok gudangnya, gunakan seketika (0ms!)
-        if (latestCachedGPS && latestCachedGPS.wh === whToUse && (now - latestCachedGPS.timestamp < 25000)) {
+        // 1. Jika ada cache GPS yang VALID dan masih hangat (< 15 detik) untuk gudang ini, gunakan seketika (0ms!)
+        if (latestCachedGPS && latestCachedGPS.valid && latestCachedGPS.wh === whToUse && (now - latestCachedGPS.timestamp < 15000)) {
           // Lakukan background refresh agar cache berikutnya tetap segar
           setTimeout(() => preloadGPSLocation(whToUse), 50);
           resolve(latestCachedGPS);
@@ -6962,37 +7077,83 @@
         }
 
         const targetCoords = getWarehouseCoords(whToUse);
-        const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+        const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
         const maxRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
 
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const userLat = pos.coords.latitude;
             const userLng = pos.coords.longitude;
-            const rawDist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-            const isValid = rawDist <= maxRadius;
+            const accuracy = Math.round(pos.coords.accuracy || 0);
+            const accuracyBuffer = Math.min(accuracy, 100);
+
+            // Cek jika koordinat gudang masih default Monas / dummy
+            if (isDummyWarehouseCoords(targetCoords)) {
+              setWarehouseCoords(whToUse, userLat, userLng, maxRadius);
+              const otherWh = whToUse === 'MBI' ? 'MAI' : 'MBI';
+              const otherC = getWarehouseCoords(otherWh);
+              if (isDummyWarehouseCoords(otherC)) {
+                setWarehouseCoords(otherWh, userLat, userLng, maxRadius);
+              }
+              const autoRes = {
+                valid: true,
+                distance: 0,
+                maxRadius: maxRadius,
+                effectiveAllowedRadius: maxRadius + accuracyBuffer,
+                accuracy: accuracy,
+                lat: userLat,
+                lng: userLng,
+                wh: whToUse,
+                timestamp: Date.now(),
+                error: null
+              };
+              latestCachedGPS = autoRes;
+              resolve(autoRes);
+              return;
+            }
+
+            const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
+            const otherWh = whToUse === 'MBI' ? 'MAI' : 'MBI';
+            const otherCoords = getWarehouseCoords(otherWh);
+            const isOtherDummy = isDummyWarehouseCoords(otherCoords);
+            const rawDistOther = isOtherDummy ? 999999 : getDistanceMeters(userLat, userLng, otherCoords.lat, otherCoords.lng);
+
+            // Dual warehouse tolerance: jika lebih dekat ke gudang saudaranya yang sudah terkalibrasi
+            const bestRawDist = Math.min(rawDistActive, rawDistOther);
+            const effectiveAllowedRadius = maxRadius + accuracyBuffer;
+            const effectiveDistance = Math.max(0, bestRawDist - accuracyBuffer);
+            const isValid = (bestRawDist <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
+
             const res = {
               valid: isValid,
-              distance: rawDist,
+              distance: bestRawDist,
               maxRadius: maxRadius,
+              effectiveAllowedRadius: effectiveAllowedRadius,
+              accuracy: accuracy,
               lat: userLat,
               lng: userLng,
               wh: whToUse,
               timestamp: Date.now(),
-              error: isValid ? null : `Gagal Absen: Anda berada di luar radius resmi gudang! Jarak Anda: ${rawDist}m (Batas radius fix: ${maxRadius}m, melebihi ${rawDist - maxRadius}m). Anda wajib berada di area gudang.`
+              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi gudang! Jarak: ${bestRawDist}m (Batas toleransi: ${effectiveAllowedRadius}m termasuk akurasi HP ±${accuracy}m). Dekatkan HP ke area gudang atau daftarkan titik GPS HP ini di menu Pengaturan.`
             };
-            latestCachedGPS = res;
+
+            if (isValid) {
+              latestCachedGPS = res;
+            } else {
+              latestCachedGPS = null; // Jangan cache kegagalan!
+            }
             resolve(res);
           },
           (err) => {
             console.warn('GPS reading error:', err);
+            latestCachedGPS = null;
             let errMsg = 'GPS lokasi HP wajib diaktifkan saat ingin absen!';
             if (err.code === 1) errMsg = 'Izin GPS ditolak. Klik ikon gembok / setelan di URL browser dan Izinkan Akses Lokasi (GPS).';
             else if (err.code === 2) errMsg = 'Sinyal GPS tidak ditemukan. Pastikan Lokasi HP aktif dalam mode Akurasi Tinggi.';
             else if (err.code === 3) errMsg = 'Permintaan GPS timeout. Silakan coba scan kembali.';
             resolve({ valid: false, error: errMsg });
           },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 25000 }
+          { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
         );
       });
     }
@@ -7732,7 +7893,7 @@
 
       // VERIFIKASI GPS OTOMATIS DENGAN CACHE KILAT
       const targetWhCoords = getWarehouseCoords(activeWarehouse);
-      const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
+      const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
       if (statusMsg) statusMsg.innerText = `Memverifikasi radius GPS HP (maksimal ${curRad}m)...`;
 
       const gpsCheck = await verifyGPSLocation(activeWarehouse);
@@ -8345,7 +8506,7 @@
       // VERIFIKASI GPS KETAT UNTUK SCANNER EXTERNAL (Berlaku jika bukan mode uji coba Admin)
       if (!isAdminTestMode) {
         const targetWhCoords = getWarehouseCoords(activeWarehouse);
-        const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
+        const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
 
         const gpsCheck = await verifyGPSLocation(activeWarehouse);
         if (!gpsCheck.valid) {
@@ -8599,7 +8760,7 @@
           }
 
           const curCoords = getWarehouseCoords(activeWarehouse);
-          const curRad = Number(curCoords.radius) > 0 ? Number(curCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
+          const curRad = Number(curCoords.radius) > 0 ? Number(curCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
           if (statusMsg) statusMsg.innerText = `Kamera Aktif (Radius GPS: ${curRad}m). Silakan arahkan ke Barcode ID Card Karyawan.`;
           lucide.createIcons();
           return;
