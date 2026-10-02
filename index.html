@@ -1425,10 +1425,11 @@
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
                         <select id="record-sort-order" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                          <option value="time_asc">Jam Masuk (Paling Awal &rarr; Akhir)</option>
-                          <option value="time_desc">Jam Masuk (Terbaru &rarr; Awal)</option>
-                          <option value="name_asc">Nama Karyawan (A - Z)</option>
-                          <option value="nik_asc">NIK Karyawan</option>
+                          <option value="time_desc" selected>Waktu Terbaru (Paling Baru di Atas)</option>
+                          <option value="time_asc">Waktu Terlama (Paling Awal di Atas)</option>
+                          <option value="name_asc">Nama Karyawan (A &rarr; Z)</option>
+                          <option value="name_desc">Nama Karyawan (Z &rarr; A)</option>
+                          <option value="nik_asc">Nomor Urut NIK (Kecil &rarr; Besar)</option>
                         </select>
                       </div>
                       <div>
@@ -8798,6 +8799,22 @@
         return a.date === opTodayStr || a.date === realTodayStr || checkInLocal === realTodayStr || checkInLocal === opTodayStr;
       });
 
+      // URUTKAN ABSEN TERBARU DI PALING ATAS (SCAN TERAKHIR MUNCUL DI BARIS PERTAMA)
+      todayAtt.sort((a, b) => {
+        const timeA = Math.max(
+          a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0,
+          a.checkInTime ? new Date(a.checkInTime).getTime() : 0
+        );
+        const timeB = Math.max(
+          b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0,
+          b.checkInTime ? new Date(b.checkInTime).getTime() : 0
+        );
+        if (timeB !== timeA) return timeB - timeA;
+        const inA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+        const inB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+        return inB - inA;
+      });
+
       const countBadge = document.getElementById('scanner-today-count-badge');
       if (countBadge) {
         countBadge.innerText = `${todayAtt.length} Hadir`;
@@ -12903,7 +12920,7 @@
       }
 
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
-      const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
+      const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
       const whFilter = document.getElementById('record-filter-warehouse')?.value || 'CURRENT';
 
       let users = [];
@@ -12992,25 +13009,33 @@
         }
       }
 
-      // PENGURUTAN RAPI & KRONOLOGIS:
+      // PENGURUTAN RAPI & KRONOLOGIS (DEFAULT: WAKTU SCAN TERBARU DI PALING ATAS):
       filtered.sort((a, b) => {
-        // 1. Tanggal (Terbaru di atas)
-        if (a.date !== b.date) {
-          return (b.date || '').localeCompare(a.date || '');
-        }
-        // 2. Di dalam tanggal yang sama, urutkan sesuai mode sort:
-        if (sortOrder === 'time_asc') {
+        if (sortOrder === 'time_desc') {
+          if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+          const timeA = Math.max(a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0, a.checkInTime ? new Date(a.checkInTime).getTime() : 0);
+          const timeB = Math.max(b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0, b.checkInTime ? new Date(b.checkInTime).getTime() : 0);
+          if (timeB !== timeA) return timeB - timeA;
+          const inA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const inB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return inB - inA;
+        } else if (sortOrder === 'time_asc') {
+          if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '');
           const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
           const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
           return timeA - timeB;
-        } else if (sortOrder === 'time_desc') {
-          const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
-          const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
-          return timeB - timeA;
         } else if (sortOrder === 'name_asc') {
-          return (a.userName || '').localeCompare(b.userName || '');
+          const c = (a.userName || '').localeCompare(b.userName || '');
+          if (c !== 0) return c;
+          return (b.date || '').localeCompare(a.date || '');
+        } else if (sortOrder === 'name_desc') {
+          const c = (b.userName || '').localeCompare(a.userName || '');
+          if (c !== 0) return c;
+          return (b.date || '').localeCompare(a.date || '');
         } else if (sortOrder === 'nik_asc') {
-          return (a.userNik || '').localeCompare(b.userNik || '', undefined, { numeric: true });
+          const c = (a.userNik || '').localeCompare(b.userNik || '', undefined, { numeric: true });
+          if (c !== 0) return c;
+          return (b.date || '').localeCompare(a.date || '');
         }
         return 0;
       });
@@ -13187,7 +13212,7 @@
         endStr = tmp;
       }
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
-      const sortOrder = document.getElementById('record-sort-order')?.value || 'time_asc';
+      const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
       const whFilter = document.getElementById('record-filter-warehouse')?.value || 'CURRENT';
 
       let users = [];
@@ -13228,23 +13253,33 @@
         return;
       }
 
-      // PENGURUTAN RAPI & KRONOLOGIS UNTUK FILE EXCEL:
+      // PENGURUTAN RAPI & KRONOLOGIS UNTUK FILE EXCEL (DEFAULT: WAKTU SCAN TERBARU DI ATAS):
       filtered.sort((a, b) => {
-        if (a.date !== b.date) {
-          return (b.date || '').localeCompare(a.date || '');
-        }
-        if (sortOrder === 'time_asc') {
+        if (sortOrder === 'time_desc') {
+          if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
+          const timeA = Math.max(a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0, a.checkInTime ? new Date(a.checkInTime).getTime() : 0);
+          const timeB = Math.max(b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0, b.checkInTime ? new Date(b.checkInTime).getTime() : 0);
+          if (timeB !== timeA) return timeB - timeA;
+          const inA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const inB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return inB - inA;
+        } else if (sortOrder === 'time_asc') {
+          if (a.date !== b.date) return (a.date || '').localeCompare(b.date || '');
           const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
           const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
           return timeA - timeB;
-        } else if (sortOrder === 'time_desc') {
-          const timeA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
-          const timeB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
-          return timeB - timeA;
         } else if (sortOrder === 'name_asc') {
-          return (a.userName || '').localeCompare(b.userName || '');
+          const c = (a.userName || '').localeCompare(b.userName || '');
+          if (c !== 0) return c;
+          return (b.date || '').localeCompare(a.date || '');
+        } else if (sortOrder === 'name_desc') {
+          const c = (b.userName || '').localeCompare(a.userName || '');
+          if (c !== 0) return c;
+          return (b.date || '').localeCompare(a.date || '');
         } else if (sortOrder === 'nik_asc') {
-          return (a.userNik || '').localeCompare(b.userNik || '', undefined, { numeric: true });
+          const c = (a.userNik || '').localeCompare(b.userNik || '', undefined, { numeric: true });
+          if (c !== 0) return c;
+          return (b.date || '').localeCompare(a.date || '');
         }
         return 0;
       });
