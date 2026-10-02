@@ -2711,6 +2711,7 @@
         <input type="hidden" id="edit-emp-id">
         <input type="hidden" id="edit-emp-wh">
         <input type="hidden" id="edit-emp-old-nik">
+        <input type="hidden" id="edit-emp-old-name">
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Nama Lengkap Karyawan *</label>
@@ -3321,8 +3322,8 @@
       ];
       if (blacklistedTerms.includes(lower)) return false;
 
-      // Nama manusia hanya terdiri dari huruf alfabet, spasi, tanda petik, dan titik (e.g. M. Budi, S.T.)
-      if (!/^[a-zA-Z\s'.-]+$/.test(s)) return false;
+      // Nama manusia hanya terdiri dari huruf alfabet, spasi, tanda petik, koma, tanda kurung, dan titik (e.g. M. Budi, S.T., Siti (Staff))
+      if (!/^[a-zA-Z\s'.,()\/-]+$/.test(s)) return false;
 
       return true;
     }
@@ -3681,8 +3682,8 @@
     // =========================================================
     function getDeletedUserKeys() {
       const setKeys = new Set([
-        'agus setiawan', 'agussetiawan', 'mbi-cor-01', 'mbicor01', 'mbi-cor-001',
-        'budi santoso', 'budisantoso', 'mbi-stf-01', 'mbistf01', 'mbi-stf-001'
+        'agus setiawan', 'agussetiawan',
+        'budi santoso', 'budisantoso'
       ]);
       try {
         const raw = localStorage.getItem('wfm_deleted_user_keys');
@@ -3731,8 +3732,9 @@
     function unmarkDeletedUser(nameOrNik) {
       if (!nameOrNik) return;
       const keys = getDeletedUserKeys();
-      const c = cleanStr(nameOrNik);
-      const raw = String(nameOrNik).trim().toLowerCase();
+      const str = String(nameOrNik).trim();
+      const c = cleanStr(str);
+      const raw = str.toLowerCase();
       // Agus Setiawan dan Budi Santoso dilarang keras di-unmark agar tidak pernah bangkit kembali
       if (raw === 'agus setiawan' || c === 'agussetiawan' || raw === 'budi santoso' || c === 'budisantoso') return;
       keys.delete(c);
@@ -3740,24 +3742,54 @@
       saveDeletedUserKeys(keys);
     }
 
+    function sanitizeDeletedUserKeysWithActiveUsers() {
+      try {
+        const rawMbi = localStorage.getItem('wfm_mbi_users');
+        const rawMai = localStorage.getItem('wfm_mai_users');
+        const activeUsers = [
+          ...(rawMbi ? JSON.parse(rawMbi) : []),
+          ...(rawMai ? JSON.parse(rawMai) : [])
+        ];
+        if (activeUsers.length === 0) return;
+        const keys = getDeletedUserKeys();
+        let changed = false;
+        activeUsers.forEach(u => {
+          if (!u) return;
+          const rName = (u.name || '').trim().toLowerCase();
+          const cName = cleanStr(u.name);
+          const rId = (u.id || '').trim().toLowerCase();
+          const cId = cleanStr(u.id);
+          const rNik = (u.nik || '').trim().toLowerCase();
+          const cNik = cleanStr(u.nik);
+          if (rName !== 'agus setiawan' && cName !== 'agussetiawan' && rName !== 'budi santoso' && cName !== 'budisantoso') {
+            if (rName && keys.has(rName)) { keys.delete(rName); changed = true; }
+            if (cName && keys.has(cName)) { keys.delete(cName); changed = true; }
+            if (rId && keys.has(rId)) { keys.delete(rId); changed = true; }
+            if (cId && keys.has(cId)) { keys.delete(cId); changed = true; }
+            if (rNik && keys.has(rNik)) { keys.delete(rNik); changed = true; }
+            if (cNik && keys.has(cNik)) { keys.delete(cNik); changed = true; }
+          }
+        });
+        if (changed) {
+          saveDeletedUserKeys(keys);
+        }
+      } catch(e) {}
+    }
+
     function isUserMarkedDeleted(user, deletedKeys = null) {
       if (!user) return false;
-      const keys = deletedKeys || getDeletedUserKeys();
       const rawName = (user.name || '').trim().toLowerCase();
       const cName = cleanStr(user.name);
-      const rawNik = (user.nik || '').trim().toLowerCase();
-      const cNik = cleanStr(user.nik);
-      const rawId = (user.id || '').trim().toLowerCase();
-      const cId = cleanStr(user.id);
 
-      // KUNCI MATI PERMANEN: Agus Setiawan & Budi Santoso (dan NIK demo MBI-COR-01 / MBI-STF-01)
+      // KUNCI MATI PERMANEN: Agus Setiawan & Budi Santoso (Akun demo fiktif bawaan)
       if (rawName === 'agus setiawan' || cName === 'agussetiawan') return true;
       if (rawName === 'budi santoso' || cName === 'budisantoso') return true;
-      if (rawNik.startsWith('mbi-cor-') || rawNik.startsWith('mbi-stf-')) return true;
-      if (cNik.startsWith('mbicor') || cNik.startsWith('mbistf')) return true;
 
-      // Filter berdasarkan Nama atau ID Karyawan yang telah dihapus/resign
-      // NIK karyawan yang sudah resign dapat digunakan kembali oleh karyawan baru
+      // Filter nama atau ID Karyawan yang telah resmi dihapus/resign
+      // NIK/ID dari karyawan yang telah resign/dihapus BISA DIGUNAKAN KEMBALI oleh karyawan baru
+      const keys = deletedKeys || getDeletedUserKeys();
+      const rawId = (user.id || '').trim().toLowerCase();
+      const cId = cleanStr(user.id);
       if (rawName && keys.has(rawName)) return true;
       if (cName && keys.has(cName)) return true;
       if (rawId && keys.has(rawId)) return true;
@@ -3787,8 +3819,8 @@
       const seenNiks = new Set();
       const cleanList = [];
 
-      // 1. Tempatkan Admin di awal
-      const admin = users.find(u => u.role === 'admin') || (warehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
+      // 1. Tempatkan Admin Utama Sistem di awal
+      const admin = users.find(u => u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || cleanStr(u.name) === 'admingudangmbi' || cleanStr(u.name) === 'admingudangmai') || (warehouse === 'MBI' ? { ...SEED_MBI_USERS[0] } : { ...SEED_MAI_USERS[0] });
       admin.nik = warehouse === 'MBI' ? 'ADM001' : 'ADM-MAI';
       admin.dept = 'Administrator';
       admin.role = 'admin';
@@ -3800,7 +3832,7 @@
       seenNiks.add(admin.nik.toUpperCase());
 
       // 2. Tempatkan Akun Dedicated Scanner Absen
-      const scanner = users.find(u => u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) || (warehouse === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
+      const scanner = users.find(u => u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.role === 'scanner' && cleanStr(u.name).includes('scanner'))) || (warehouse === 'MBI' ? { ...SEED_MBI_USERS[1] } : { ...SEED_MAI_USERS[1] });
       if (scanner) {
         scanner.nik = `ABSEN-${warehouse}`;
         scanner.dept = 'presensi';
@@ -3815,7 +3847,7 @@
       }
 
       // 2.5 Tempatkan Akun Dedicated Manager Eko (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
-      let manager = users.find(u => (u.role === 'manager' || u.nik === 'MGR001' || cleanStr(u.name) === 'eko' || u.id === 'mgr-eko'));
+      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || (u.role === 'manager' && cleanStr(u.name) === 'eko')));
       if (!manager) {
         manager = { ...SEED_MANAGER_USER, warehouse };
       } else {
@@ -3833,50 +3865,45 @@
       if (manager.id) seenIds.add(manager.id);
       seenNiks.add(manager.nik.toUpperCase());
 
-      // 3. Filter calon karyawan reguler (bukan admin, scanner, manager, bukan tombstone terhapus)
+      // 3. Filter calon karyawan reguler (bukan akun khusus sistem bawaan di atas, bukan tombstone terhapus)
       const deletedKeys = getDeletedUserKeys();
       const regularCandidates = users.filter(u => {
         if (!u || typeof u !== 'object') return false;
         if (isUserMarkedDeleted(u, deletedKeys)) return false;
-        if (u.role === 'admin' || u.role === 'scanner' || u.role === 'manager') return false;
-        if (u.nik && (u.nik.startsWith('ABSEN-') || u.nik.startsWith('MGR') || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
-        if (cleanStr(u.name) === 'eko' || u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
+        if (u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI') return false;
+        if (u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) return false;
+        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || (cleanStr(u.name) === 'eko' && u.role === 'manager')) return false;
+        if (u.nik && (u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
+        if (u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
         return true;
       });
 
       // Cek apakah ada kandidat yang memiliki nama manusia sah
       const hasValidHumanCandidates = regularCandidates.some(u => isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name));
 
-      // Urutkan kandidat: Yang memiliki NAMA MANUSIA SAH ditaruh di depan, mempertahankan urutan asli
-      regularCandidates.sort((a, b) => {
-        const aIsHuman = (isLikelyHumanName(a.name) && !isLikelyIdNotName(a.name)) ? 1 : 0;
-        const bIsHuman = (isLikelyHumanName(b.name) && !isLikelyIdNotName(b.name)) ? 1 : 0;
-        return bIsHuman - aIsHuman;
-      });
+      // Urutan karyawan 100% DIPERTAHANKAN sesuai urutan asli baris Excel / input
+      // TANPA pengurutan berdasarkan join date atau NIK agar sistem mengikuti Excel asli
 
-      // Kumpulkan seluruh karyawan reguler tanpa duplikasi nama, NIK, maupun ID
+      // Kumpulkan seluruh karyawan reguler tanpa duplikasi NIK atau ID
       const regularEmployees = [];
       regularCandidates.forEach(u => {
-        // PERISAI GHOST: Jika dalam daftar sudah ada karyawan dengan nama manusia sah,
-        // MAKA DILARANG KERAS memasukkan data karyawan yang namanya berupa kode ID/angka!
-        if (hasValidHumanCandidates) {
-          if (isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name) || (u.nik && cleanStr(u.name) === cleanStr(u.nik))) {
-            return; // DROP GHOST RECORD!
-          }
+        // Lewati jika baris benar-benar kosong tanpa nama dan tanpa NIK
+        if ((!u.name || u.name.trim() === '') && (!u.nik || u.nik.trim() === '')) {
+          return;
         }
 
         const normName = cleanStr(u.name);
         const normNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
 
-        // Saring duplikasi nama manusia
-        if (normName && seenNames.has(normName)) {
+        // Saring duplikasi nama manusia HANYA jika NIK sama persis atau tidak ada NIK
+        if (normName && seenNames.has(normName) && (!normNik || seenNiks.has(normNik))) {
           const existing = regularEmployees.find(e => cleanStr(e.name) === normName);
           if (existing) {
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
           }
-          return; // DUPLIKAT NAMA -> MERGE & SKIP
+          return; // DUPLIKAT IDENTIK -> MERGE & SKIP
         }
 
         // Saring duplikasi NIK / ID Karyawan
@@ -3887,7 +3914,7 @@
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
           }
-          return; // DUPLIKAT NIK -> MERGE & SKIP (JANGAN PERNAH DIJADIKAN KARYAWAN GANDA!)
+          return; // DUPLIKAT NIK -> MERGE & SKIP
         }
 
         // Saring duplikasi ID System
@@ -3899,14 +3926,20 @@
         if (normNik) seenNiks.add(normNik);
         if (u.id) seenIds.add(u.id);
 
-        // Pilihan departemen diperkecil hanya 3: Warehouse Staff, Coordinator, Supervisor
+        // Penyesuaian peran dan departemen karyawan
         const uRole = (u.role || 'staff').toLowerCase().trim();
         const uDept = (u.dept || '').toLowerCase().trim();
 
+        const isAdmin = uRole === 'admin' || uDept.includes('admin') || uDept.includes('administrator');
         const isSpv = uRole.includes('supervisor') || uRole === 'spv' || uDept.includes('supervisor') || uDept === 'spv';
         const isCoord = uRole.includes('coordinator') || uRole.includes('koordinator') || uRole.includes('cordinator') || uDept.includes('coordinator') || uDept.includes('koordinator') || uDept.includes('cordinator');
 
-        if (isSpv) {
+        if (isAdmin) {
+          u.dept = 'Administrator';
+          u.role = 'admin';
+          u.hasAccount = true;
+          if (!u.password) u.password = 'medika123';
+        } else if (isSpv) {
           u.dept = 'Supervisor';
           u.role = 'supervisor';
           u.hasAccount = true;
@@ -3917,7 +3950,7 @@
           u.hasAccount = true;
           if (!u.password) u.password = 'medika123';
         } else {
-          u.dept = 'Warehouse Staff';
+          u.dept = u.dept || 'Warehouse Staff';
           u.role = 'staff';
           u.hasAccount = false;
           u.password = '';
@@ -3930,23 +3963,14 @@
         regularEmployees.push(u);
       });
 
-      // 4. Urutkan seluruh karyawan reguler:
-      // Diurutkan berdasarkan NIK (jika ada), TANPA mengurutkan berdasarkan join date
-      regularEmployees.sort((a, b) => {
-        if (a.nik && b.nik) {
-          const cmpNik = a.nik.localeCompare(b.nik, undefined, { numeric: true });
-          if (cmpNik !== 0) return cmpNik;
-        }
-        return 0; // Mempertahankan urutan asli baris Excel / input
-      });
-
-      // 5. Kunci & standarisasi NIK
+      // 4. Kunci & standarisasi NIK (NILAI MUTLAK UNTUK ID DARI EXCEL)
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${warehouse.toUpperCase()}${year}-`;
       const assignedNiks = new Set([admin.nik.toUpperCase()]);
       if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
       if (manager && manager.nik) assignedNiks.add(manager.nik.toUpperCase());
 
+      // Hitung nomor urut NIK tertinggi yang pernah ada
       let maxNum = 0;
       regularEmployees.forEach(u => {
         if (!u || !u.nik || typeof u.nik !== 'string' || u.nik.trim() === '') return;
@@ -3964,16 +3988,20 @@
         }
       });
 
+      // Tetapkan ID secara berurutan sesuai urutan dokumen Excel:
+      // Nilai ID dari Excel dijadikan NILAI MUTLAK milik karyawan tersebut!
       regularEmployees.forEach((u) => {
         let rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
         if (rawNik && /^\d+$/.test(rawNik)) {
           rawNik = `${prefix}${String(rawNik).padStart(3, '0')}`;
         }
         if (rawNik && !assignedNiks.has(rawNik)) {
+          // ID SUDAH ADA DARI EXCEL -> JADIKAN NILAI MUTLAK
           assignedNiks.add(rawNik);
           u.nik = rawNik;
           u.barcodeValue = rawNik;
-        } else if (!rawNik) {
+        } else {
+          // HANYA JIKA NIK KOSONG ATAU BENTROK -> buat ID otomatis berurutan dari nomor paling akhir (+1)
           maxNum++;
           let newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
           while (assignedNiks.has(newNik)) {
@@ -4008,7 +4036,7 @@
             localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
             localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
             if (typeof saveFullDatabaseToCloud === 'function') {
-              saveFullDatabaseToCloud(false, true);
+              saveFullDatabaseToCloud(false, true, true);
             }
           }
         });
@@ -4469,11 +4497,22 @@
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
 
-      // Sinkronkan daftar user yang dihapus dari Cloud agar konsisten di seluruh perangkat
+      // Sinkronkan daftar user yang dihapus dari Cloud dengan proteksi akun aktif
       if (Array.isArray(db.deleted_user_keys)) {
         const localKeys = getDeletedUserKeys();
+        const activeLocalUsers = [...getWhDB('MBI', 'users', []), ...getWhDB('MAI', 'users', [])];
+        const activeNameSet = new Set(activeLocalUsers.map(u => cleanStr(u.name)));
+        const activeIdSet = new Set(activeLocalUsers.map(u => cleanStr(u.id)));
+        const activeNikSet = new Set(activeLocalUsers.map(u => (u.nik || '').toUpperCase().trim()));
+
         db.deleted_user_keys.forEach(k => {
-          if (k) localKeys.add(String(k).trim().toLowerCase());
+          if (!k) return;
+          const cleanK = cleanStr(k);
+          // JANGAN PERNAH menandai user yang sedang aktif di sistem sebagai terhapus!
+          if (activeNameSet.has(cleanK) || activeIdSet.has(cleanK) || activeNikSet.has(String(k).toUpperCase().trim())) {
+            return;
+          }
+          localKeys.add(String(k).trim().toLowerCase());
         });
         saveDeletedUserKeys(localKeys);
       }
@@ -4582,7 +4621,7 @@
         return;
       }
 
-      if (hasUsersChanged) {
+      if (hasUsersChanged && !isRecentLocalChange) {
         localStorage.setItem('wfm_mbi_users', newMbiUsers);
         localStorage.setItem('wfm_mai_users', newMaiUsers);
       }
@@ -4684,8 +4723,12 @@
     let cloudSaveTimeout = null;
     let isSavingToCloud = false;
     let hasPendingCloudSave = false;
+    let pendingMasterForceUpload = false;
 
-    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false) {
+    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false) {
+      if (isMasterForceUpload === true) {
+        pendingMasterForceUpload = true;
+      }
       // Pastikan forceAlert hanya aktif jika bernilai boolean true murni
       const isManualAlert = (forceAlert === true);
       const isImmediateCall = (immediate === true);
@@ -4697,6 +4740,9 @@
         }
         isSavingToCloud = true;
         hasPendingCloudSave = false;
+
+        const effectiveForceMaster = (isMasterForceUpload === true) || (pendingMasterForceUpload === true);
+        pendingMasterForceUpload = false;
 
         updateCloudSyncStatusBadge('uploading');
 
@@ -4723,17 +4769,27 @@
               localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mergedMbiOt));
               localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
 
-              // PROTEKSI DATA MASTER: Pre-merge USERS agar HP baru tidak menghapus karyawan di Cloud
-              const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-              const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-              const cloudMbiUsers = normalizeFirebaseArray(cloudDb.mbi_users);
-              const cloudMaiUsers = normalizeFirebaseArray(cloudDb.mai_users);
+              // PROTEKSI DATA MASTER: Pre-merge USERS HANYA jika bukan force upload master & bukan perubahan lokal baru (agar perubahan Excel/Edit tidak tertimpa data lama Cloud)
+              const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
+              const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
+              const shouldProtectMaster = (effectiveForceMaster === true) || isRecentLocalMasterChange;
 
-              const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudDb.updatedAt);
-              const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudDb.updatedAt);
+              if (!shouldProtectMaster) {
+                const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+                const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+                const cloudMbiUsers = normalizeFirebaseArray(cloudDb.mbi_users);
+                const cloudMaiUsers = normalizeFirebaseArray(cloudDb.mai_users);
 
-              localStorage.setItem('wfm_mbi_users', JSON.stringify(mergedMbiUsers));
-              localStorage.setItem('wfm_mai_users', JSON.stringify(mergedMaiUsers));
+                const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudDb.updatedAt);
+                const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudDb.updatedAt);
+
+                localStorage.setItem('wfm_mbi_users', JSON.stringify(mergedMbiUsers));
+                localStorage.setItem('wfm_mai_users', JSON.stringify(mergedMaiUsers));
+              } else {
+                if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
+                  sanitizeDeletedUserKeysWithActiveUsers();
+                }
+              }
             }
           }
         } catch (eMerge) {
@@ -4789,19 +4845,21 @@
 
         const deletedKeys = getDeletedUserKeys();
         const nowIso = new Date().toISOString();
+        const lastChangeNow = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
+        const isProtectedMaster = (effectiveForceMaster === true) || (Date.now() - lastChangeNow < 600000);
         const payload = {
-          mbi_users: (finalMbiUsers || []).filter(u => !isUserMarkedDeleted(u, deletedKeys)),
+          mbi_users: finalMbiUsers || [],
           mbi_attendance: getWhDB('MBI', 'attendance', []),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: mbiCoordsToSave,
-          mai_users: (finalMaiUsers || []).filter(u => !isUserMarkedDeleted(u, deletedKeys)),
+          mai_users: finalMaiUsers || [],
           mai_attendance: getWhDB('MAI', 'attendance', []),
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: maiCoordsToSave,
           gps_radius: activeRadiusToSave,
-          deleted_user_keys: Array.from(deletedKeys),
+          deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
           updatedAt: nowIso
         };
@@ -4859,7 +4917,11 @@
 
         if (hasPendingCloudSave) {
           hasPendingCloudSave = false;
-          executeSave();
+          const forceNext = pendingMasterForceUpload;
+          pendingMasterForceUpload = false;
+          setTimeout(() => {
+            saveFullDatabaseToCloud(false, true, forceNext);
+          }, 50);
         }
 
         // Hanya tampilkan alert jika dipanggil secara manual dan eksplisit
@@ -4876,6 +4938,14 @@
 
       if (isManualAlert || isImmediateCall) {
         if (cloudSaveTimeout) clearTimeout(cloudSaveTimeout);
+        if (isSavingToCloud) {
+          hasPendingCloudSave = true;
+          let retries = 0;
+          while (isSavingToCloud && retries < 25) {
+            await new Promise(r => setTimeout(r, 100));
+            retries++;
+          }
+        }
         return await executeSave();
       }
 
@@ -5143,9 +5213,9 @@
 
             const userRole = (u.role || 'staff').toLowerCase().trim();
             const userDept = (u.dept || '').toLowerCase().trim();
-            const isSysAdmin = u.role === 'admin' || (u.nik && u.nik.startsWith('ADM'));
-            const isSysScanner = u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN'));
-            const isSysManager = u.role === 'manager' || (u.nik && u.nik.startsWith('MGR')) || u.id === 'mgr-eko' || cleanStr(u.name) === 'eko';
+            const isSysAdmin = u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || cleanStr(u.name) === 'admingudangmbi' || cleanStr(u.name) === 'admingudangmai';
+            const isSysScanner = u.id === 'mbi-scanner' || u.id === 'mai-scanner' || u.nik === 'ABSEN-MBI' || u.nik === 'ABSEN-MAI';
+            const isSysManager = u.id === 'mgr-eko' || u.nik === 'MGR001' || (cleanStr(u.name) === 'eko' && u.role === 'manager');
 
             if (isSysAdmin) {
               if (u.dept !== 'Administrator') { u.dept = 'Administrator'; hasChanges = true; }
@@ -5165,11 +5235,17 @@
               if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
               if (!u.password) { u.password = 'medika123'; hasChanges = true; }
             } else {
-              // Karyawan biasa: batasi hanya Supervisor, Coordinator, atau Warehouse Staff
+              // Karyawan biasa: mendukung Admin, Supervisor, Coordinator, atau Staff
+              const isAdmin = userRole === 'admin' || userDept.includes('administrator') || userDept.includes('admin');
               const isSpv = userRole.includes('supervisor') || userRole === 'spv' || userDept.includes('supervisor') || userDept === 'spv';
               const isCoord = userRole.includes('coordinator') || userRole.includes('koordinator') || userRole.includes('cordinator') || userDept.includes('coordinator') || userDept.includes('koordinator') || userDept.includes('cordinator');
 
-              if (isSpv) {
+              if (isAdmin) {
+                if (u.dept !== 'Administrator') { u.dept = 'Administrator'; hasChanges = true; }
+                if (u.role !== 'admin') { u.role = 'admin'; hasChanges = true; }
+                if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
+                if (!u.password) { u.password = 'medika123'; hasChanges = true; }
+              } else if (isSpv) {
                 if (u.dept !== 'Supervisor') { u.dept = 'Supervisor'; hasChanges = true; }
                 if (u.role !== 'supervisor') { u.role = 'supervisor'; hasChanges = true; }
                 if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
@@ -5180,8 +5256,7 @@
                 if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
                 if (!u.password) { u.password = 'medika123'; hasChanges = true; }
               } else {
-                // Semua staf biasa / yang tidak punya akun / selain SPV & Coordinator otomatis menjadi Warehouse Staff
-                if (u.dept !== 'Warehouse Staff') { u.dept = 'Warehouse Staff'; hasChanges = true; }
+                if (!u.dept) { u.dept = 'Warehouse Staff'; hasChanges = true; }
                 if (u.role !== 'staff') { u.role = 'staff'; hasChanges = true; }
                 if (u.hasAccount !== false) { u.hasAccount = false; hasChanges = true; }
                 if (u.password !== '') { u.password = ''; hasChanges = true; }
@@ -5194,223 +5269,6 @@
           }
         } catch (e) {}
       });
-    }
-
-    function harmonizeAndResequenceAllNIKs() {
-      sanitizeEmployeesData();
-      const deletedKeys = getDeletedUserKeys();
-
-      ['MBI', 'MAI'].forEach(wh => {
-        let rawUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-        if (!Array.isArray(rawUsers) || rawUsers.length === 0) return;
-
-        const year = new Date().getFullYear().toString().slice(-2);
-        const prefix = `${wh.toUpperCase()}${year}-`;
-
-        // 1. Ambil Admin, Dedicated Scanner, dan Manager Eko
-        const admin = rawUsers.find(u => u.role === 'admin') || (wh === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
-        admin.nik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
-        admin.dept = 'Administrator';
-        admin.role = 'admin';
-        admin.hasAccount = true;
-        admin.barcodeValue = admin.nik;
-
-        let scanner = rawUsers.find(u => u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) || (wh === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
-        scanner.nik = `ABSEN-${wh}`;
-        scanner.dept = 'presensi';
-        scanner.name = 'Scanner Presensi Gudang';
-        scanner.role = 'scanner';
-        scanner.hasAccount = true;
-        scanner.barcodeValue = scanner.nik;
-
-        let manager = rawUsers.find(u => (u.role === 'manager' || u.nik === 'MGR001' || cleanStr(u.name) === 'eko' || u.id === 'mgr-eko')) || { ...SEED_MANAGER_USER, warehouse: wh };
-        manager.nik = 'MGR001';
-        manager.name = 'Eko';
-        manager.dept = 'Management';
-        manager.role = 'manager';
-        manager.hasAccount = true;
-        manager.barcodeValue = manager.nik;
-        if (!manager.password) manager.password = 'medika123';
-
-        // 2. Kumpulkan seluruh karyawan reguler (bukan admin & bukan scanner & bukan manager & bukan yang terhapus)
-        const sortedUsers = [...rawUsers].sort((a, b) => {
-          const timeA = new Date(a?.updatedAt || 0).getTime() || 0;
-          const timeB = new Date(b?.updatedAt || 0).getTime() || 0;
-          return timeB - timeA;
-        });
-        const seenNames = new Set([cleanStr(admin.name), cleanStr(scanner.name), cleanStr(manager.name), 'eko']);
-        const seenIds = new Set();
-        if (admin.id) seenIds.add(admin.id);
-        if (scanner && scanner.id) seenIds.add(scanner.id);
-        if (manager && manager.id) seenIds.add(manager.id);
-        const regularEmployees = [];
-
-        sortedUsers.forEach(u => {
-          if (!u || isManagementSystemAccount(u) || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
-          const normName = cleanStr(u.name);
-          if (!normName || seenNames.has(normName)) return;
-          if (u.id && seenIds.has(u.id)) return;
-          seenNames.add(normName);
-          if (u.id) seenIds.add(u.id);
-
-          const uRole = (u.role || 'staff').toLowerCase().trim();
-          const uDept = (u.dept || '').toLowerCase().trim();
-
-          const isSpv = uRole.includes('supervisor') || uRole === 'spv' || uDept.includes('supervisor') || uDept === 'spv';
-          const isCoord = uRole.includes('coordinator') || uRole.includes('koordinator') || uRole.includes('cordinator') || uDept.includes('coordinator') || uDept.includes('koordinator') || uDept.includes('cordinator');
-
-          if (isSpv) {
-            u.dept = 'Supervisor';
-            u.role = 'supervisor';
-            u.hasAccount = true;
-            if (!u.password) u.password = 'medika123';
-          } else if (isCoord) {
-            u.dept = 'Coordinator';
-            u.role = 'coordinator';
-            u.hasAccount = true;
-            if (!u.password) u.password = 'medika123';
-          } else {
-            u.dept = 'Warehouse Staff';
-            u.role = 'staff';
-            u.hasAccount = false;
-            u.password = '';
-          }
-
-          if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
-            u.joinDate = typeof formatExcelDate === 'function' ? formatExcelDate(u.joinDate) : u.joinDate;
-          }
-
-          regularEmployees.push(u);
-        });
-
-        // 3. Urutkan seluruh karyawan reguler:
-        // Diurutkan berdasarkan NIK (jika ada), TANPA mengurutkan berdasarkan join date
-        regularEmployees.sort((a, b) => {
-          if (a.nik && b.nik) {
-            const cmpNik = a.nik.localeCompare(b.nik, undefined, { numeric: true });
-            if (cmpNik !== 0) return cmpNik;
-          }
-          return 0; // Mempertahankan urutan asli baris Excel / database
-        });
-
-        // 4. FIX & KUNCI ID KARYAWAN (NIK PERMANEN & MUTLAK):
-        // NIK yang sudah ada TIDAK BOLEH BERUBAH ATAU DIGESER saat ada karyawan keluar/resign/dihapus!
-        const assignedNiks = new Set([admin.nik.toUpperCase()]);
-        if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
-        if (manager && manager.nik) assignedNiks.add(manager.nik.toUpperCase());
-
-        let maxNum = 0;
-        regularEmployees.forEach(u => {
-          if (!u || !u.nik || typeof u.nik !== 'string' || u.nik.trim() === '') return;
-          const cleanU = u.nik.trim().toUpperCase();
-          if (cleanU.startsWith(prefix)) {
-            const numPart = parseInt(cleanU.replace(prefix, ''), 10);
-            if (!isNaN(numPart) && numPart > maxNum) {
-              maxNum = numPart;
-            }
-          } else if (/^\d+$/.test(cleanU)) {
-            const numPart = parseInt(cleanU, 10);
-            if (!isNaN(numPart) && numPart > maxNum) {
-              maxNum = numPart;
-            }
-          }
-        });
-
-        const nikMap = {}; // oldNik -> newNik (jika ada perbaikan NIK kosong)
-        regularEmployees.forEach((u) => {
-          let rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
-          if (rawNik && /^\d+$/.test(rawNik)) {
-            rawNik = `${prefix}${String(rawNik).padStart(3, '0')}`;
-          }
-          if (rawNik && !assignedNiks.has(rawNik)) {
-            // FIX: NIK SUDAH ADA & UNIK -> 100% DIKUNCI PERMANEN & MUTLAK
-            assignedNiks.add(rawNik);
-            u.nik = rawNik;
-            u.barcodeValue = rawNik;
-          } else if (!rawNik) {
-            // HANYA jika NIK kosong -> alokasikan nomor urut unik baru dari nilai ID paling akhir (+1)
-            maxNum++;
-            let newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
-            while (assignedNiks.has(newNik)) {
-              maxNum++;
-              newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
-            }
-            assignedNiks.add(newNik);
-            u.nik = newNik;
-            u.barcodeValue = newNik;
-          }
-        });
-
-        const updatedUsersList = [admin, scanner, manager, ...regularEmployees];
-        const storageKey = `wfm_${wh.toLowerCase()}_users`;
-        localStorage.setItem(storageKey, JSON.stringify(updatedUsersList));
-        localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsersList));
-
-        // 5. Sinkronkan seluruh riwayat absensi Masuk & Pulang
-        let att = getWhDB(wh, 'attendance', []);
-        let attChanged = false;
-        att.forEach(a => {
-          let user = updatedUsersList.find(u => (a.userId && u.id === a.userId) || (a.userName && cleanStr(u.name) === cleanStr(a.userName)) || (a.userNik && u.nik === a.userNik) || (a.userNik && nikMap[a.userNik.toUpperCase()] === u.nik));
-          if (user) {
-            if (a.userNik !== user.nik || a.userName !== user.name || a.dept !== user.dept || a.userId !== user.id) {
-              a.userNik = user.nik;
-              a.userName = user.name;
-              a.dept = user.dept;
-              a.userId = user.id;
-              attChanged = true;
-            }
-          }
-        });
-        if (attChanged) setWhDB(wh, 'attendance', att);
-
-        // 6. Sinkronkan data lembur
-        let ots = getWhDB(wh, 'overtime', []);
-        let otsChanged = false;
-        ots.forEach(o => {
-          let user = updatedUsersList.find(u => (o.userId && u.id === o.userId) || (o.userName && cleanStr(u.name) === cleanStr(o.userName)) || (o.userNik && u.nik === o.userNik) || (o.userNik && nikMap[o.userNik.toUpperCase()] === u.nik));
-          if (user) {
-            if (o.userNik !== user.nik || o.userName !== user.name || o.dept !== user.dept || o.userId !== user.id) {
-              o.userNik = user.nik;
-              o.userName = user.name;
-              o.dept = user.dept;
-              o.userId = user.id;
-              otsChanged = true;
-            }
-          }
-        });
-        if (otsChanged) setWhDB(wh, 'overtime', ots);
-
-        // 7. Sinkronkan pengajuan izin / cuti
-        let lvs = getWhDB(wh, 'leaves', []);
-        let lvsChanged = false;
-        lvs.forEach(l => {
-          let user = updatedUsersList.find(u => (l.userName && cleanStr(u.name) === cleanStr(l.userName)) || (l.userNik && u.nik === l.userNik) || (l.userNik && nikMap[l.userNik.toUpperCase()] === u.nik));
-          if (user) {
-            if (l.userNik !== user.nik || l.userName !== user.name) {
-              l.userNik = user.nik;
-              l.userName = user.name;
-              lvsChanged = true;
-            }
-          }
-        });
-        if (lvsChanged) setWhDB(wh, 'leaves', lvs);
-      });
-
-      // Update sesi login jika currentUser adalah staf yang NIK-nya ikut diperbarui
-      if (currentUser && !isManagementSystemAccount(currentUser)) {
-        const currentWh = currentUser.warehouse || activeWarehouse;
-        const freshUsers = getWhDB(currentWh, 'users', []);
-        const freshUser = freshUsers.find(u => (currentUser.id && u.id === currentUser.id) || cleanStr(u.name) === cleanStr(currentUser.name));
-        if (freshUser) {
-          currentUser = { ...freshUser };
-          localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
-          updateNavbarBrand(currentWh);
-          const navName = document.getElementById('nav-user-name');
-          if (navName) navName.innerText = currentUser.name;
-          const navDept = document.getElementById('nav-user-dept');
-          if (navDept) navDept.innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
-        }
-      }
     }
 
     // =========================================================
@@ -5705,28 +5563,49 @@
     function setWhDB(warehouse, key, val) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
       localStorage.setItem(storageKey, JSON.stringify(val));
-      saveFullDatabaseToCloud();
+      if (key === 'users') {
+        localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+        if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
+          sanitizeDeletedUserKeysWithActiveUsers();
+        }
+        saveFullDatabaseToCloud(false, false, true);
+      } else {
+        saveFullDatabaseToCloud();
+      }
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync();
       }
     }
 
-    function generateUniqueNIK(warehouse, name = '', existingUsersArray = null) {
+    function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
+      const wh = warehouse || activeWarehouse || 'MBI';
       const year = new Date().getFullYear().toString().slice(-2); // "26"
-      const prefix = `${warehouse.toUpperCase()}${year}-`;
-      const users = existingUsersArray || getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const existingNiks = new Set(users.map(u => (u.nik || '').toUpperCase()));
-
-      // Nomor urut rapi Enterprise Matrix: MBI26-001, MBI26-002, ..., MBI26-999
-      for (let num = 1; num <= 9999; num++) {
-        const paddedNum = String(num).padStart(3, '0');
-        const candidate = `${prefix}${paddedNum}`;
-        if (!existingNiks.has(candidate)) {
-          return candidate;
+      const prefix = `${wh.toUpperCase()}${year}-`;
+      const users = existingUsersArray || getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const assignedNiks = new Set(users.map(u => (u.nik || '').trim().toUpperCase()));
+      let maxNum = 0;
+      users.forEach(u => {
+        if (!u || !u.nik || typeof u.nik !== 'string') return;
+        const cleanNik = u.nik.toUpperCase().trim();
+        if (cleanNik.startsWith(prefix)) {
+          const numPart = parseInt(cleanNik.replace(prefix, ''), 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
+        } else if (/^\d+$/.test(cleanNik)) {
+          const numPart = parseInt(cleanNik, 10);
+          if (!isNaN(numPart) && numPart > maxNum) {
+            maxNum = numPart;
+          }
         }
+      });
+      let nextNum = maxNum + 1;
+      let candidate = `${prefix}${String(nextNum).padStart(3, '0')}`;
+      while (assignedNiks.has(candidate)) {
+        nextNum++;
+        candidate = `${prefix}${String(nextNum).padStart(3, '0')}`;
       }
-
-      return `${prefix}${Date.now().toString().slice(-4)}`;
+      return candidate;
     }
 
     async function syncWhToGitHub(warehouse, key, data) {
@@ -5772,7 +5651,8 @@
         updateFirebaseUrlUI();
       }
 
-      // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
+      // Ensure DB initialized & clean active users from tombstone list
+      if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       sanitizeEmployeesData();
       repairAndSanitizeAttendanceRecords();
@@ -6181,23 +6061,17 @@
 
     function isManagementSystemAccount(user) {
       if (!user) return false;
-      const role = (user.role || '').toLowerCase();
-      const nik = (user.nik || '').toUpperCase();
-      const name = (user.name || '').toLowerCase();
+      const id = (user.id || '').toLowerCase().trim();
+      const nik = (user.nik || '').toUpperCase().trim();
+      const name = (user.name || '').toLowerCase().trim();
       const clean = cleanStr(name);
-      return (
-        role === 'admin' ||
-        role === 'scanner' ||
-        role === 'manager' ||
-        nik.startsWith('ADM') ||
-        nik.startsWith('ABSEN') ||
-        nik.startsWith('MGR') ||
-        name.includes('admin utama') ||
-        name.includes('scanner absen') ||
-        name.includes('manager eko') ||
-        clean === 'eko' ||
-        clean.startsWith('eko')
-      );
+
+      // Khusus akun sistem bawaan (Admin Utama, Scanner Presensi, dan Manager Utama)
+      if (id === 'mbi-admin' || id === 'mai-admin' || id === 'mbi-scanner' || id === 'mai-scanner' || id === 'mgr-eko') return true;
+      if (nik === 'ADM001' || nik === 'ADM-MAI' || nik === 'ABSEN-MBI' || nik === 'ABSEN-MAI' || nik === 'MGR001') return true;
+      if (clean === 'admingudangmbi' || clean === 'admingudangmai' || clean === 'scannerpresensigudang') return true;
+      if ((clean === 'eko' || clean === 'managereko') && (id === 'mgr-eko' || nik === 'MGR001' || (user.role || '').toLowerCase() === 'manager')) return true;
+      return false;
     }
 
     function isUserAdmin(user = currentUser) {
@@ -6211,11 +6085,10 @@
         role === 'superadmin' ||
         nik === 'ADM001' ||
         nik === 'ADM-MAI' ||
-        nik.startsWith('ADM') ||
         id === 'mbi-admin' ||
         id === 'mai-admin' ||
-        id.includes('admin') ||
-        (name.includes('admin') && !name.includes('scanner'))
+        (id.includes('admin') && !id.includes('user')) ||
+        (name.includes('admin') && !name.includes('scanner') && (id.includes('admin') || nik === 'ADM001' || nik === 'ADM-MAI' || role === 'admin'))
       );
     }
 
@@ -6229,14 +6102,10 @@
       const clean = cleanStr(name);
       return (
         role === 'manager' ||
-        role.includes('manager') ||
         nik === 'MGR001' ||
-        nik.startsWith('MGR') ||
         id === 'mgr-eko' ||
-        id.includes('manager') ||
-        clean === 'eko' ||
-        clean.startsWith('eko') ||
-        name.includes('manager eko')
+        name === 'manager eko' ||
+        (clean === 'eko' && (id === 'mgr-eko' || nik === 'MGR001' || role === 'manager'))
       );
     }
 
@@ -10486,17 +10355,38 @@
 
     function openEditEmployeeModal(nik) {
       const cleanNik = (nik || '').trim().toUpperCase();
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
-      if (!user) return;
-
-      if (!user.id) {
-        user.id = `${(user.warehouse || activeWarehouse).toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik || u.id === nik || cleanStr(u.name) === cleanStr(nik));
+      if (!user) {
+        const otherWh = activeWarehouse === 'MBI' ? 'MAI' : 'MBI';
+        const otherUsers = getWhDB(otherWh, 'users', []);
+        user = otherUsers.find(u => (u.nik || '').trim().toUpperCase() === cleanNik || u.id === nik || cleanStr(u.name) === cleanStr(nik));
       }
+      if (!user) {
+        alert('Karyawan tidak ditemukan.');
+        return;
+      }
+
+      const userWh = user.warehouse || activeWarehouse;
+      if (!user.id) {
+        user.id = `${userWh.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        try {
+          const targetList = (userWh === activeWarehouse) ? users : getWhDB(userWh, 'users', []);
+          const uIdx = targetList.findIndex(u => (u.nik && u.nik === user.nik) || (u.name && cleanStr(u.name) === cleanStr(user.name)));
+          if (uIdx !== -1) {
+            targetList[uIdx].id = user.id;
+            localStorage.setItem(`wfm_${userWh.toLowerCase()}_users`, JSON.stringify(targetList));
+            localStorage.setItem(`wfm_${userWh.toLowerCase()}_users_backup`, JSON.stringify(targetList));
+          }
+        } catch(e) {}
+      }
+
       document.getElementById('edit-emp-id').value = user.id || '';
       const oldNikInput = document.getElementById('edit-emp-old-nik');
       if (oldNikInput) oldNikInput.value = user.nik || '';
-      document.getElementById('edit-emp-wh').value = user.warehouse || activeWarehouse;
+      const oldNameInput = document.getElementById('edit-emp-old-name');
+      if (oldNameInput) oldNameInput.value = user.name || '';
+      document.getElementById('edit-emp-wh').value = userWh;
       document.getElementById('edit-emp-name').value = user.name || '';
       document.getElementById('edit-emp-nik').value = user.nik || '';
       document.getElementById('edit-emp-position').value = user.role || 'staff';
@@ -10544,13 +10434,15 @@
 
     async function handleSaveEditEmployee(e) {
       e.preventDefault();
-      const id = document.getElementById('edit-emp-id').value;
+      const id = (document.getElementById('edit-emp-id')?.value || '').trim();
       const oldNikVal = (document.getElementById('edit-emp-old-nik')?.value || '').trim().toUpperCase();
+      const oldNameVal = (document.getElementById('edit-emp-old-name')?.value || '').trim();
       const name = document.getElementById('edit-emp-name').value.trim();
       const nik = document.getElementById('edit-emp-nik').value.trim().toUpperCase();
       const role = document.getElementById('edit-emp-position').value;
       const deptInput = document.getElementById('edit-emp-dept');
       const rawDept = ((deptInput ? deptInput.value : '') || document.getElementById('edit-dept-label')?.innerText || 'warehouse staff').trim().toLowerCase();
+      const targetWh = (document.getElementById('edit-emp-wh')?.value || activeWarehouse || 'MBI').toUpperCase();
       
       let finalDept = 'Warehouse Staff';
       let finalRole = role;
@@ -10564,7 +10456,10 @@
         finalDept = 'Administrator';
         finalRole = 'admin';
       } else {
-        finalDept = 'Warehouse Staff';
+        const rawDeptVal = (deptInput ? deptInput.value : '') || '';
+        finalDept = (rawDeptVal && rawDeptVal.toLowerCase() !== 'warehouse staff') 
+          ? rawDeptVal.trim() 
+          : 'Warehouse Staff';
         finalRole = 'staff';
       }
 
@@ -10575,30 +10470,63 @@
       const customPass = document.getElementById('edit-emp-pass').value.trim();
 
       unmarkDeletedUser(name);
+      if (oldNameVal) unmarkDeletedUser(oldNameVal);
       if (oldNikVal) unmarkDeletedUser(oldNikVal);
       if (nik) unmarkDeletedUser(nik);
+      if (id) unmarkDeletedUser(id);
 
       const nowIso = new Date().toISOString();
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
 
-      let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let idx = users.findIndex(u => (id && u.id === id) || (oldNikVal && (u.nik || '').toUpperCase() === oldNikVal) || (nik && (u.nik || '').toUpperCase() === nik));
+      let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let idx = users.findIndex(u => 
+        (id && u.id && u.id === id) || 
+        (oldNikVal && (u.nik || '').toUpperCase() === oldNikVal) || 
+        (oldNameVal && cleanStr(u.name) === cleanStr(oldNameVal)) ||
+        (name && cleanStr(u.name) === cleanStr(name)) ||
+        (nik && (u.nik || '').toUpperCase() === nik)
+      );
+
+      let currentWh = targetWh;
+      if (idx === -1) {
+        const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
+        const otherUsers = getWhDB(otherWh, 'users', []);
+        const otherIdx = otherUsers.findIndex(u => 
+          (id && u.id && u.id === id) || 
+          (oldNikVal && (u.nik || '').toUpperCase() === oldNikVal) || 
+          (oldNameVal && cleanStr(u.name) === cleanStr(oldNameVal)) ||
+          (name && cleanStr(u.name) === cleanStr(name)) ||
+          (nik && (u.nik || '').toUpperCase() === nik)
+        );
+        if (otherIdx !== -1) {
+          users = otherUsers;
+          idx = otherIdx;
+          currentWh = otherWh;
+        }
+      }
 
       if (idx !== -1) {
         // Cek apakah NIK baru sudah dipakai karyawan lain di gudang ini
-        const duplicateUser = users.find((u, i) => i !== idx && (u.nik || '').toUpperCase() === nik);
+        const duplicateUser = users.find((u, i) => i !== idx && !isManagementSystemAccount(u) && (u.nik || '').toUpperCase() === nik);
         if (duplicateUser) {
           alert(`⚠️ NIK "${nik}" sudah digunakan oleh karyawan: ${duplicateUser.name}.\nSilakan gunakan NIK yang berbeda agar tidak terjadi duplikasi NIK.`);
           return;
         }
 
         const oldNik = users[idx].nik || oldNikVal;
-        const oldName = users[idx].name;
+        const oldName = users[idx].name || oldNameVal;
         const oldDept = users[idx].dept;
+        const finalId = users[idx].id || id || `${currentWh.toLowerCase()}-${Date.now()}`;
+
+        unmarkDeletedUser(name);
+        if (oldName) unmarkDeletedUser(oldName);
+        if (nik) unmarkDeletedUser(nik);
+        if (oldNik) unmarkDeletedUser(oldNik);
+        if (finalId) unmarkDeletedUser(finalId);
 
         const isManagementRole = (finalRole === 'supervisor' || finalRole === 'coordinator' || finalRole === 'admin');
-        users[idx].id = users[idx].id || id || `${activeWarehouse.toLowerCase()}-${Date.now()}`;
+        users[idx].id = finalId;
         users[idx].name = name;
         users[idx].nik = nik;
         users[idx].barcodeValue = nik;
@@ -10608,7 +10536,7 @@
         users[idx].phone = phone;
         users[idx].email = email;
         users[idx].joinDate = joinDate;
-        users[idx].warehouse = activeWarehouse;
+        users[idx].warehouse = currentWh;
         users[idx].updatedAt = nowIso;
         
         if (isManagementRole) {
@@ -10626,56 +10554,64 @@
         }
 
         // SIMPAN KE DATABASE LOKAL & CADANGAN BACKUP
-        setWhDB(activeWarehouse, 'users', users);
-        localStorage.setItem(`wfm_${activeWarehouse.toLowerCase()}_users_backup`, JSON.stringify(users));
+        const storageKey = `wfm_${currentWh.toLowerCase()}_users`;
+        localStorage.setItem(storageKey, JSON.stringify(users));
+        localStorage.setItem(`wfm_${currentWh.toLowerCase()}_users_backup`, JSON.stringify(users));
+
+        if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
+          sanitizeDeletedUserKeysWithActiveUsers();
+        }
 
         // Update riwayat absensi, cuti & lembur jika NIK, Nama, atau Departemen berubah
         if (oldNik !== nik || oldName !== name || oldDept !== finalDept) {
-          let att = getWhDB(activeWarehouse, 'attendance', []);
+          let att = getWhDB(currentWh, 'attendance', []);
           let attChanged = false;
           att.forEach(a => {
-            if (a.userNik === oldNik || a.userNik === nik || (id && a.userId === id)) {
+            if (a.userNik === oldNik || a.userNik === nik || (finalId && a.userId === finalId) || (oldName && cleanStr(a.userName) === cleanStr(oldName))) {
               a.userNik = nik;
               a.userName = name;
+              a.userId = finalId;
               a.dept = finalDept;
               attChanged = true;
             }
           });
-          if (attChanged) setWhDB(activeWarehouse, 'attendance', att);
+          if (attChanged) localStorage.setItem(`wfm_${currentWh.toLowerCase()}_attendance`, JSON.stringify(att));
 
-          let lvs = getWhDB(activeWarehouse, 'leaves', []);
+          let lvs = getWhDB(currentWh, 'leaves', []);
           let lvsChanged = false;
           lvs.forEach(l => {
-            if (l.userNik === oldNik || l.userNik === nik || (id && l.userId === id)) {
+            if (l.userNik === oldNik || l.userNik === nik || (finalId && l.userId === finalId) || (oldName && cleanStr(l.userName) === cleanStr(oldName))) {
               l.userNik = nik;
               l.userName = name;
+              l.userId = finalId;
               lvsChanged = true;
             }
           });
-          if (lvsChanged) setWhDB(activeWarehouse, 'leaves', lvs);
+          if (lvsChanged) localStorage.setItem(`wfm_${currentWh.toLowerCase()}_leaves`, JSON.stringify(lvs));
 
-          let ots = getWhDB(activeWarehouse, 'overtime', []);
+          let ots = getWhDB(currentWh, 'overtime', []);
           let otsChanged = false;
           ots.forEach(o => {
-            if (o.userNik === oldNik || o.userNik === nik || (id && o.userId === id)) {
+            if (o.userNik === oldNik || o.userNik === nik || (finalId && o.userId === finalId) || (oldName && cleanStr(o.userName) === cleanStr(oldName))) {
               o.userNik = nik;
               o.userName = name;
+              o.userId = finalId;
               o.dept = finalDept;
               otsChanged = true;
             }
           });
-          if (otsChanged) setWhDB(activeWarehouse, 'overtime', ots);
+          if (otsChanged) localStorage.setItem(`wfm_${currentWh.toLowerCase()}_overtime`, JSON.stringify(ots));
         }
 
-        // Simpan langsung ke Firebase Cloud 24/7 seketika
-        await saveFullDatabaseToCloud(false, true);
+        // Simpan langsung ke Firebase Cloud 24/7 seketika (Master Force Upload tanpa tertimpa data lama)
+        await saveFullDatabaseToCloud(false, true, true);
 
         // Jika user yang diedit adalah akun yang sedang aktif/login, update sesi dan navbar seketika!
         const isEditingCurrent = currentUser && (
-          currentUser.id === id || 
+          currentUser.id === finalId || 
           currentUser.nik === oldNik || 
           currentUser.nik === nik ||
-          (currentUser.role === 'admin' && (users[idx].role === 'admin' || users[idx].nik === 'ADM001'))
+          (currentUser.role === 'admin' && (users[idx].role === 'admin' && users[idx].id === currentUser.id))
         );
 
         if (isEditingCurrent) {
@@ -10700,14 +10636,25 @@
           if (roleBadge) roleBadge.innerText = finalRole.toUpperCase();
         }
 
+        if (activeWarehouse !== currentWh) {
+          activeWarehouse = currentWh;
+          if (typeof updateNavbarBrand === 'function') updateNavbarBrand(currentWh);
+          const mbiRadio = document.getElementById('radio-mbi');
+          const maiRadio = document.getElementById('radio-mai');
+          if (currentWh === 'MBI' && mbiRadio) mbiRadio.checked = true;
+          if (currentWh === 'MAI' && maiRadio) maiRadio.checked = true;
+        }
+
         closeEditEmployeeModal();
-        renderEmployeeTable();
-        populateDropdownEmployees(nik);
-        renderSelectedIDCard(nik);
-        renderOvertimeEmployeeGrid();
-        refreshAllDashboardData();
-        renderAccountLookupList();
-        alert(`✅ Perubahan Data Berhasil Disimpan!\n\n• Nama: ${name}\n• NIK: ${nik}\n• Departemen (Bagian): ${finalDept.toUpperCase()}\n\nKartu ID Card Karyawan telah otomatis diperbarui dan data lama telah diganti secara permanen.`);
+        try { renderEmployeeTable(); } catch (e) {}
+        try { populateDropdownEmployees(nik); } catch (e) {}
+        try { renderSelectedIDCard(nik); } catch (e) {}
+        try { renderOvertimeEmployeeGrid(); } catch (e) {}
+        try { refreshAllDashboardData(); } catch (e) {}
+        try { renderAccountLookupList(); } catch (e) {}
+        alert(`✅ Perubahan Data Berhasil Disimpan!\n\n• Nama: ${name}\n• NIK: ${nik}\n• Departemen (Bagian): ${finalDept.toUpperCase()}\n\nData karyawan telah otomatis diperbarui dan tersimpan permanen di sistem & Cloud.`);
+      } else {
+        alert('⚠️ Karyawan tidak ditemukan di database. Pastikan data karyawan sudah terdaftar.');
       }
     }
 
@@ -10733,7 +10680,7 @@
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
-      await saveFullDatabaseToCloud(false, true);
+      await saveFullDatabaseToCloud(false, true, true);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -10787,7 +10734,7 @@
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
-      await saveFullDatabaseToCloud(false, true);
+      await saveFullDatabaseToCloud(false, true, true);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -10820,7 +10767,7 @@
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
-      await saveFullDatabaseToCloud(false, true);
+      await saveFullDatabaseToCloud(false, true, true);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -10999,6 +10946,10 @@
       const autoNik = customNik ? customNik.toUpperCase() : generateUniqueNIK(activeWarehouse, name);
 
       unmarkDeletedUser(name);
+      if (autoNik) unmarkDeletedUser(autoNik);
+      if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
+        sanitizeDeletedUserKeysWithActiveUsers();
+      }
       const nowIso = new Date().toISOString();
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
@@ -11026,9 +10977,9 @@
       setWhDB(activeWarehouse, 'users', users);
       localStorage.setItem(`wfm_${activeWarehouse.toLowerCase()}_users_backup`, JSON.stringify(users));
       harmonizeAndResequenceAllNIKs();
-      await saveFullDatabaseToCloud(false, true);
+      await saveFullDatabaseToCloud(false, true, true);
 
-      // Cari NIK aktual karyawan setelah harmonisasi resequencing berdasarkan join date
+      // Cari NIK aktual karyawan setelah pendaftaran
       const updatedUsers = getWhDB(activeWarehouse, 'users', []);
       const matchedUser = updatedUsers.find(u => u.name === name) || newEmp;
       const finalEffectiveNik = matchedUser.nik;
@@ -11252,8 +11203,8 @@
       ];
       if (blacklistedTerms.includes(lower)) return false;
 
-      // Nama manusia hanya terdiri dari huruf alfabet, spasi, tanda petik, dan titik (e.g. M. Budi, S.T.)
-      if (!/^[a-zA-Z\s'.-]+$/.test(s)) return false;
+      // Nama manusia hanya terdiri dari huruf alfabet, spasi, tanda petik, koma, tanda kurung, dan titik (e.g. M. Budi, S.T., Siti (Staff))
+      if (!/^[a-zA-Z\s'.,()\/-]+$/.test(s)) return false;
 
       return true;
     }
@@ -11281,13 +11232,23 @@
             if (bRaw) backupUsers = JSON.parse(bRaw);
           } catch(e) {}
 
-          const deletedKeys = getDeletedUserKeys();
+          // Hanya saring akun demo fiktif bawaan (Agus Setiawan & Budi Santoso), jangan membuang karyawan aktif!
           const origLen = users.length;
-          users = users.filter(u => !isUserMarkedDeleted(u, deletedKeys));
+          users = users.filter(u => {
+            if (!u) return false;
+            const rName = (u.name || '').trim().toLowerCase();
+            const cName = cleanStr(u.name);
+            if (rName === 'agus setiawan' || cName === 'agussetiawan') return false;
+            if (rName === 'budi santoso' || cName === 'budisantoso') return false;
+            return true;
+          });
           let changed = (users.length !== origLen);
           users.forEach(u => {
-            if (!u || isManagementSystemAccount(u) || isUserMarkedDeleted(u, deletedKeys)) return;
-            const isCorrupt = isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name) || (u.nik && cleanStr(u.name) === cleanStr(u.nik));
+            if (!u || isManagementSystemAccount(u)) return;
+            const rName = (u.name || '').trim().toLowerCase();
+            const cName = cleanStr(u.name);
+            if (rName === 'agus setiawan' || cName === 'agussetiawan' || rName === 'budi santoso' || cName === 'budisantoso') return;
+            const isCorrupt = isLikelyIdNotName(u.name) || (u.nik && cleanStr(u.name) === cleanStr(u.nik));
             if (isCorrupt) {
               let realName = '';
 
@@ -11336,7 +11297,7 @@
                     attFix = true;
                   }
                 });
-                if (attFix) setWhDB(wh, 'attendance', att);
+                if (attFix) localStorage.setItem(`wfm_${wh.toLowerCase()}_attendance`, JSON.stringify(att));
 
                 let otsFix = false;
                 ots.forEach(o => {
@@ -11345,7 +11306,7 @@
                     otsFix = true;
                   }
                 });
-                if (otsFix) setWhDB(wh, 'overtime', ots);
+                if (otsFix) localStorage.setItem(`wfm_${wh.toLowerCase()}_overtime`, JSON.stringify(ots));
 
                 let lvsFix = false;
                 lvs.forEach(l => {
@@ -11354,7 +11315,7 @@
                     lvsFix = true;
                   }
                 });
-                if (lvsFix) setWhDB(wh, 'leaves', lvs);
+                if (lvsFix) localStorage.setItem(`wfm_${wh.toLowerCase()}_leaves`, JSON.stringify(lvs));
               }
             }
           });
@@ -11366,7 +11327,7 @@
             localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
             localStorage.setItem('wfm_master_updated_at', nowIso);
             if (typeof saveFullDatabaseToCloud === 'function') {
-              saveFullDatabaseToCloud(false, true);
+              saveFullDatabaseToCloud(false, true, true);
             }
           }
         } catch(e) {}
@@ -11432,47 +11393,86 @@
         try {
           const data = new Uint8Array(event.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          
-          // Baca seluruh sheet sebagai raw array baris
-          const rawSheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+          if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+            alert('File Excel kosong atau tidak terbaca.');
+            return;
+          }
+
+          // SMART MULTI-SHEET DETECTION:
+          // Cari sheet terbaik yang berisi data karyawan (prioritas kecocokan gudang aktif)
+          let bestSheetName = workbook.SheetNames[0];
+          let bestSheetData = null;
+          let bestHeaderScore = -1;
+          let bestHeaderRowIdx = -1;
+
+          for (const sName of workbook.SheetNames) {
+            const sheet = workbook.Sheets[sName];
+            if (!sheet) continue;
+            const sData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            if (!sData || !Array.isArray(sData) || sData.length === 0) continue;
+
+            let hRowIdx = -1;
+            let maxScore = -1;
+            for (let i = 0; i < Math.min(sData.length, 20); i++) {
+              const rowArr = sData[i];
+              if (!Array.isArray(rowArr)) continue;
+              const nonBlankCells = rowArr.filter(c => c !== undefined && c !== null && String(c).trim() !== '');
+              if (nonBlankCells.length < 2) continue;
+
+              let score = 0;
+              const rowStr = rowArr.map(c => String(c).toLowerCase().trim()).join(' ');
+              if (rowStr.includes('nama') || rowStr.includes('name')) score += 12;
+              if (rowStr.includes('nik') || rowStr.includes('id karyawan') || rowStr.includes('nomor induk') || rowStr.includes('no induk') || rowStr.includes('nip') || rowStr.includes('id system')) score += 10;
+              if (rowStr.includes('dept') || rowStr.includes('departemen') || rowStr.includes('bagian')) score += 5;
+              if (rowStr.includes('outsource') || rowStr.includes('vendor')) score += 4;
+              if (rowStr.includes('posisi') || rowStr.includes('jabatan') || rowStr.includes('role')) score += 4;
+              if (rowStr.includes('telepon') || rowStr.includes('phone') || rowStr.includes('telp') || rowStr.includes('hp')) score += 4;
+              if (rowStr.includes('email') || rowStr.includes('surel')) score += 4;
+              if (rowStr.includes('join') || rowStr.includes('masuk')) score += 4;
+              if (rowStr.includes('gudang') || rowStr.includes('warehouse')) score += 4;
+
+              if (score > maxScore) {
+                maxScore = score;
+                hRowIdx = i;
+              }
+            }
+
+            let sheetScore = maxScore;
+            const sLower = sName.toLowerCase();
+            const curWh = (activeWarehouse || 'MBI').toLowerCase();
+            if (sLower.includes(curWh)) sheetScore += 20;
+            if (sLower.includes('karyawan') || sLower.includes('employee')) sheetScore += 10;
+
+            if (sheetScore > bestHeaderScore && maxScore >= 5) {
+              bestHeaderScore = sheetScore;
+              bestSheetName = sName;
+              bestSheetData = sData;
+              bestHeaderRowIdx = hRowIdx;
+            }
+          }
+
+          if (!bestSheetData || bestSheetData.length === 0) {
+            bestSheetName = workbook.SheetNames[0];
+            bestSheetData = XLSX.utils.sheet_to_json(workbook.Sheets[bestSheetName], { header: 1, defval: '' });
+          }
+
+          const rawSheetData = bestSheetData;
           if (!rawSheetData || rawSheetData.length === 0) {
             alert('File Excel kosong atau tidak terbaca.');
             return;
           }
 
-          // Cari baris header yang sebenarnya (baris yang memiliki kata kunci kolom data)
-          let headerRowIdx = 0;
-          let maxHeaderScore = -1;
-
-          for (let i = 0; i < Math.min(rawSheetData.length, 15); i++) {
-            const rowArr = rawSheetData[i];
-            if (!Array.isArray(rowArr)) continue;
-            const nonBlankCells = rowArr.filter(c => c !== undefined && c !== null && String(c).trim() !== '');
-            if (nonBlankCells.length < 2) continue; // Lewati judul banner 1 sel
-
-            let score = 0;
-            const rowStr = rowArr.map(c => String(c).toLowerCase().trim()).join(' ');
-
-            if (rowStr.includes('nama') || rowStr.includes('name')) score += 10;
-            if (rowStr.includes('nik') || rowStr.includes('id karyawan') || rowStr.includes('nomor induk') || rowStr.includes('no induk') || rowStr.includes('nip')) score += 8;
-            if (rowStr.includes('dept') || rowStr.includes('departemen') || rowStr.includes('bagian')) score += 5;
-            if (rowStr.includes('outsource') || rowStr.includes('vendor')) score += 4;
-            if (rowStr.includes('posisi') || rowStr.includes('jabatan') || rowStr.includes('role')) score += 4;
-            if (rowStr.includes('telepon') || rowStr.includes('phone') || rowStr.includes('telp') || rowStr.includes('hp')) score += 4;
-            if (rowStr.includes('email') || rowStr.includes('surel')) score += 4;
-            if (rowStr.includes('join') || rowStr.includes('masuk')) score += 4;
-            if (rowStr.includes('gudang') || rowStr.includes('warehouse')) score += 4;
-
-            if (score > maxHeaderScore) {
-              maxHeaderScore = score;
-              headerRowIdx = i;
+          let headerRowIdx = bestHeaderRowIdx;
+          if (headerRowIdx < 0) {
+            for (let i = 0; i < Math.min(rawSheetData.length, 15); i++) {
+              const rowArr = rawSheetData[i];
+              if (!Array.isArray(rowArr)) continue;
+              const rowStr = rowArr.map(c => String(c).toLowerCase().trim()).join(' ');
+              if ((rowStr.includes('nama') || rowStr.includes('name')) && (rowStr.includes('nik') || rowStr.includes('id') || rowStr.includes('dept'))) {
+                headerRowIdx = i;
+                break;
+              }
             }
-          }
-
-          // Jika tidak ada baris yang tampak seperti header sama sekali, data mulai dari baris 0
-          if (maxHeaderScore < 5) {
-            headerRowIdx = -1;
           }
 
           const rawHeaders = headerRowIdx >= 0 ? (rawSheetData[headerRowIdx] || []) : [];
@@ -11601,7 +11601,10 @@
           const dataStartIdx = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
           const parsedRows = [];
           const seenInExcel = new Set();
-          const targetWh = activeWarehouse || 'MBI';
+          let targetWh = activeWarehouse || 'MBI';
+          const sLower = (bestSheetName || '').toLowerCase();
+          if (sLower.includes('mai') && !sLower.includes('mbi')) targetWh = 'MAI';
+          else if (sLower.includes('mbi') && !sLower.includes('mai')) targetWh = 'MBI';
           let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
 
           for (let i = dataStartIdx; i < rawSheetData.length; i++) {
@@ -11868,6 +11871,11 @@
             // 3. JIKA MATCH KARYAWAN DITEMUKAN: UPDATE DATA KARYAWAN LAMA
             if (match) {
               matchedExistingIds.add(match.id);
+              unmarkDeletedUser(match.name);
+              if (match.nik) unmarkDeletedUser(match.nik);
+              if (match.id) unmarkDeletedUser(match.id);
+              if (item.name) unmarkDeletedUser(item.name);
+              if (finalNik) unmarkDeletedUser(finalNik);
               const oldNik = (match.nik || '').toUpperCase();
               const oldName = cleanStr(match.name);
 
@@ -11970,7 +11978,7 @@
                 attChanged = true;
               }
             });
-            if (attChanged) setWhDB(targetWh, 'attendance', att);
+            if (attChanged) localStorage.setItem(`wfm_${targetWh.toLowerCase()}_attendance`, JSON.stringify(att));
 
             let lvs = getWhDB(targetWh, 'leaves', []);
             let lvsChanged = false;
@@ -11986,7 +11994,7 @@
                 lvsChanged = true;
               }
             });
-            if (lvsChanged) setWhDB(targetWh, 'leaves', lvs);
+            if (lvsChanged) localStorage.setItem(`wfm_${targetWh.toLowerCase()}_leaves`, JSON.stringify(lvs));
 
             let ots = getWhDB(targetWh, 'overtime', []);
             let otsChanged = false;
@@ -12002,18 +12010,23 @@
                 otsChanged = true;
               }
             });
-            if (otsChanged) setWhDB(targetWh, 'overtime', ots);
+            if (otsChanged) localStorage.setItem(`wfm_${targetWh.toLowerCase()}_overtime`, JSON.stringify(ots));
           }
 
           // Susun daftar user akhir dan bersihkan duplikat
           const finalCleanUsers = deduplicateUserList([...managementAccounts, ...updatedRegularUsers], targetWh);
-          setWhDB(targetWh, 'users', finalCleanUsers);
+          const storageKey = `wfm_${targetWh.toLowerCase()}_users`;
+          localStorage.setItem(storageKey, JSON.stringify(finalCleanUsers));
           localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(finalCleanUsers));
           localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
           localStorage.setItem('wfm_master_updated_at', nowIso);
 
-          // Unggah seketika ke Cloud Firebase
-          await saveFullDatabaseToCloud(false, true);
+          if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
+            sanitizeDeletedUserKeysWithActiveUsers();
+          }
+
+          // Unggah seketika ke Cloud Firebase dengan FORCE MASTER UPLOAD (tanpa pre-merge dengan data lama Cloud)
+          await saveFullDatabaseToCloud(false, true, true);
 
           try { renderEmployeeTable(); } catch (e) { console.warn('renderEmployeeTable err:', e); }
           try { populateDropdownEmployees(); } catch (e) { console.warn('populateDropdownEmployees err:', e); }
