@@ -1579,6 +1579,12 @@
                         <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
                         <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                       </div>
+                      <div class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih OS / Vendor:</label>
+                        <select id="matrix-filter-os" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 min-w-[170px]">
+                          <option value="ALL">Semua OS / Vendor</option>
+                        </select>
+                      </div>
                       <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                         Tarik Matriks
                       </button>
@@ -6337,11 +6343,19 @@
       }
     }
 
-    // Akun manajemen sistem (Admin, Scanner Presensi, dan Manager Eko) tidak dimasukkan ke dalam matriks presensi staf
+    // Akun manajemen sistem (Admin, Scanner, Manager, Supervisor, Coordinator) tidak dimasukkan ke dalam matriks presensi staf
     function isMatrixEligibleUser(user) {
       if (!user) return false;
       if (isManagementSystemAccount(user)) return false;
       if (isUserAdmin(user) || isUserScanner(user) || isUserManager(user)) return false;
+
+      // Akun Supervisor dan Coordinator tidak dimasukkan ke dalam matriks presensi
+      const role = (user.role || '').toLowerCase().trim();
+      const dept = (user.dept || '').toLowerCase().trim();
+      const nik = (user.nik || '').toUpperCase().trim();
+      if (role === 'supervisor' || role.includes('supervisor') || dept.includes('supervisor') || nik.startsWith('SPV')) return false;
+      if (role === 'coordinator' || role === 'cordinator' || role.includes('coord') || dept.includes('coordinator') || dept.includes('cordinator') || nik.startsWith('CRD')) return false;
+
       return true;
     }
 
@@ -6822,6 +6836,7 @@
       refreshAllDashboardData();
       renderEmployeeTable();
       renderRecordsTable();
+      populateMatrixOSDropdown(false);
       renderMatrixTable();
       renderLeavesTable();
       renderOvertimeTable();
@@ -8799,19 +8814,40 @@
         return a.date === opTodayStr || a.date === realTodayStr || checkInLocal === realTodayStr || checkInLocal === opTodayStr;
       });
 
-      // URUTKAN ABSEN TERBARU DI PALING ATAS (SCAN TERAKHIR MUNCUL DI BARIS PERTAMA)
+      // Helper parsing timestamp presisi untuk semua format waktu (ISO string, unix ms, HH:mm:ss, HH.mm.ss WIB)
+      const parseScanTimestamp = (timeVal, dateVal) => {
+        if (!timeVal) return 0;
+        if (typeof timeVal === 'number') return timeVal;
+        const d = new Date(timeVal);
+        if (!isNaN(d.getTime())) return d.getTime();
+        if (typeof timeVal === 'string') {
+          const clean = timeVal.replace(/\s*WIB/i, '').trim().replace(/\./g, ':');
+          const parts = clean.split(':');
+          if (parts.length >= 2) {
+            const hh = parseInt(parts[0], 10) || 0;
+            const mm = parseInt(parts[1], 10) || 0;
+            const ss = parseInt(parts[2], 10) || 0;
+            const baseDate = dateVal ? parseYMD(dateVal) : new Date();
+            baseDate.setHours(hh, mm, ss, 0);
+            return baseDate.getTime();
+          }
+        }
+        return 0;
+      };
+
+      // URUTKAN ABSEN TERBARU DI PALING ATAS (Karyawan yang baru saja absen masuk atau pulang muncul di baris teratas)
       todayAtt.sort((a, b) => {
         const timeA = Math.max(
-          a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0,
-          a.checkInTime ? new Date(a.checkInTime).getTime() : 0
+          parseScanTimestamp(a.checkOutTime, a.date),
+          parseScanTimestamp(a.checkInTime, a.date)
         );
         const timeB = Math.max(
-          b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0,
-          b.checkInTime ? new Date(b.checkInTime).getTime() : 0
+          parseScanTimestamp(b.checkOutTime, b.date),
+          parseScanTimestamp(b.checkInTime, b.date)
         );
         if (timeB !== timeA) return timeB - timeA;
-        const inA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
-        const inB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+        const inA = parseScanTimestamp(a.checkInTime, a.date);
+        const inB = parseScanTimestamp(b.checkInTime, b.date);
         return inB - inA;
       });
 
@@ -12310,7 +12346,10 @@
       }
 
       if (isRecord) renderRecordsTable();
-      else if (isMatrix) renderMatrixTable();
+      else if (isMatrix) {
+        populateMatrixOSDropdown(true);
+        renderMatrixTable();
+      }
       else if (isWorkHours) renderWorkHoursReport();
       else if (isLeaves) renderReportLeavesTable();
       else if (isOvertime) renderReportOvertimeTable();
@@ -13349,6 +13388,34 @@
 
     const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
+    function populateMatrixOSDropdown(preserveSelection = true) {
+      const select = document.getElementById('matrix-filter-os');
+      if (!select) return;
+      const currentVal = preserveSelection ? select.value : 'ALL';
+      const targetWh = activeWarehouse || 'MBI';
+      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const eligibleUsers = users.filter(u => isMatrixEligibleUser(u));
+
+      const osSet = new Set();
+      eligibleUsers.forEach(u => {
+        const os = (u.outsource || 'Internal').trim();
+        if (os) osSet.add(os);
+      });
+
+      const osList = Array.from(osSet).sort((a, b) => a.localeCompare(b));
+      let optionsHtml = `<option value="ALL">Semua OS / Vendor (${eligibleUsers.length} Karyawan)</option>`;
+      osList.forEach(os => {
+        const count = eligibleUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === os.toLowerCase())).length;
+        optionsHtml += `<option value="${escapeHTML(os)}">${escapeHTML(os)} (${count} Karyawan)</option>`;
+      });
+      select.innerHTML = optionsHtml;
+      if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+        select.value = currentVal;
+      } else {
+        select.value = 'ALL';
+      }
+    }
+
     function renderMatrixTable() {
       const sInput = document.getElementById('matrix-start-date');
       const eInput = document.getElementById('matrix-end-date');
@@ -13363,6 +13430,13 @@
         if (sInput) sInput.value = startStr;
         if (eInput) eInput.value = endStr;
       }
+
+      // Pastikan pilihan OS selalu sinkron dengan data gudang aktif
+      const selectOS = document.getElementById('matrix-filter-os');
+      if (selectOS && selectOS.options.length <= 1) {
+        populateMatrixOSDropdown(true);
+      }
+      const selectedOS = (selectOS?.value || 'ALL').trim();
 
       const dateList = getDatesInRange(startStr, endStr);
       const dateKeys = dateList.map(d => getLocalDateString(d));
@@ -13389,7 +13463,8 @@
       let headerHTML = `
         <tr class="border-b border-slate-300">
           <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
-          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[160px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
+          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[180px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
+          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[110px] bg-slate-100 text-slate-800 font-black">Outsourcing</th>
       `;
 
       monthGroups.forEach((g, gIdx) => {
@@ -13442,48 +13517,59 @@
         });
       });
 
-      const regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      // Filter karyawan: hanya staf biasa (Supervisor & Coordinator dikecualikan) dan filter sesuai OS yang dipilih
+      let regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      if (selectedOS !== 'ALL') {
+        regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
+      }
+
       const rowsHTML = [];
 
-      regularUsers.forEach((user, uIdx) => {
-        let totalHariKerja = 0;
-        let rowHTML = `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-200">
-            <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
-            <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${user.name} <span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span></td>
-        `;
+      if (regularUsers.length === 0) {
+        const totalCols = 4 + dateList.length;
+        rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-400 font-medium">Tidak ada data karyawan untuk filter OS / Vendor "${escapeHTML(selectedOS)}" pada rentang tanggal ini.</td></tr>`);
+      } else {
+        regularUsers.forEach((user, uIdx) => {
+          let totalHariKerja = 0;
+          let rowHTML = `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-200">
+              <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
+              <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${escapeHTML(user.name)} <span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span></td>
+              <td class="p-2 border-r border-slate-200 text-center font-semibold text-slate-700 text-[11px]">${escapeHTML(user.outsource || 'Internal')}</td>
+          `;
 
-        const uNik = user.nik ? user.nik.toUpperCase() : '';
-        const uCleanName = user.name ? cleanStr(user.name) : '';
-        const uId = user.id || '';
+          const uNik = user.nik ? user.nik.toUpperCase() : '';
+          const uCleanName = user.name ? cleanStr(user.name) : '';
+          const uId = user.id || '';
 
-        dateKeys.forEach(dStr => {
-          const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
-                        (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
-                        (uId && attSet.has(`${uId}__${dStr}`));
+          dateKeys.forEach(dStr => {
+            const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
+                          (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
+                          (uId && attSet.has(`${uId}__${dStr}`));
 
-          if (isAtt) {
-            totalHariKerja += 1;
-            rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
-          } else {
-            const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
-                              (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
-                              (uId && leaveMap.get(`${uId}__${dStr}`));
-            if (leaveType === 'sakit') {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
-            } else if (leaveType === 'izin') {
-              rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
-            } else if (leaveType) {
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
+            if (isAtt) {
+              totalHariKerja += 1;
+              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
             } else {
-              rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
+              const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
+                                (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
+                                (uId && leaveMap.get(`${uId}__${dStr}`));
+              if (leaveType === 'sakit') {
+                rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
+              } else if (leaveType === 'izin') {
+                rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
+              } else if (leaveType) {
+                rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
+              } else {
+                rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
+              }
             }
-          }
-        });
+          });
 
-        rowHTML += `<td class="p-2 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
-        rowsHTML.push(rowHTML);
-      });
+          rowHTML += `<td class="p-2 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
+          rowsHTML.push(rowHTML);
+        });
+      }
 
       // Update DOM sekali saja (batch)
       tbody.innerHTML = rowsHTML.join('');
@@ -13508,10 +13594,14 @@
       // Pastikan tabel sudah ter-render terbaru
       renderMatrixTable();
 
+      const selectedOS = (document.getElementById('matrix-filter-os')?.value || 'ALL').trim();
       const dateList = getDatesInRange(startStr, endStr);
       const dateKeys = dateList.map(d => getLocalDateString(d));
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      let regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      if (selectedOS !== 'ALL') {
+        regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
+      }
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
@@ -13545,7 +13635,7 @@
       });
 
       // 1. Format TSV (Tab-Separated Values) - Sangat rapi untuk langsung di-paste ke Excel atau Google Sheets
-      const headerRow = ['No', 'Nama Karyawan', 'NIK'];
+      const headerRow = ['No', 'Nama Karyawan', 'NIK', 'Outsourcing'];
       dateList.forEach(d => {
         const dayNum = d.getDate();
         const dayName = DAY_NAMES[d.getDay()];
@@ -13557,7 +13647,7 @@
 
       regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
-        const row = [uIdx + 1, user.name, user.nik];
+        const row = [uIdx + 1, user.name, user.nik, user.outsource || 'Internal'];
         const uNik = user.nik ? user.nik.toUpperCase() : '';
         const uCleanName = user.name ? cleanStr(user.name) : '';
         const uId = user.id || '';
@@ -13660,9 +13750,13 @@
         startStr = endStr;
         endStr = tmp;
       }
+      const selectedOS = (document.getElementById('matrix-filter-os')?.value || 'ALL').trim();
       const dateList = getDatesInRange(startStr, endStr);
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      let regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      if (selectedOS !== 'ALL') {
+        regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
+      }
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
@@ -13679,14 +13773,15 @@
       });
 
       // Row 1: Header Bulan
-      const row1 = ["No", "Nama Karyawan", "NIK"];
+      const row1 = ["No", "Nama Karyawan", "NIK", "Outsourcing"];
       const merges = [
         { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // No
         { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Nama Karyawan
-        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }  // NIK
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // NIK
+        { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }  // Outsourcing
       ];
 
-      let currentCol = 3;
+      let currentCol = 4;
       monthGroups.forEach(g => {
         row1.push(g.name.toUpperCase());
         for (let i = 1; i < g.dates.length; i++) {
@@ -13704,7 +13799,7 @@
       }
 
       // Row 2: Header Tanggal & Hari
-      const row2 = ["", "", ""];
+      const row2 = ["", "", "", ""];
       dateList.forEach(d => {
         row2.push(`${d.getDate()} (${DAY_NAMES[d.getDay()]})`);
       });
@@ -13717,7 +13812,7 @@
         let totalSakit = 0;
         let totalCuti = 0;
 
-        const row = [uIdx + 1, user.name, user.nik];
+        const row = [uIdx + 1, user.name, user.nik, user.outsource || 'Internal'];
         dateList.forEach(d => {
           const dStr = getLocalDateString(d);
           const att = attendances.find(a => {
@@ -13763,8 +13858,9 @@
       ws['!merges'] = merges;
 
       const wb = XLSX.utils.book_new();
+      const osTag = selectedOS && selectedOS !== 'ALL' ? `_${selectedOS.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
       XLSX.utils.book_append_sheet(wb, ws, `Matriks_${activeWarehouse}`);
-      XLSX.writeFile(wb, `Rekap_Absen_Matriks_${activeWarehouse}_${startStr}_sd_${endStr}.xlsx`);
+      XLSX.writeFile(wb, `Rekap_Absen_Matriks_${activeWarehouse}${osTag}_${startStr}_sd_${endStr}.xlsx`);
     }
 
     // =========================================================
