@@ -10720,6 +10720,8 @@
         try { renderOvertimeEmployeeGrid(); } catch (e) {}
         try { refreshAllDashboardData(); } catch (e) {}
         try { renderAccountLookupList(); } catch (e) {}
+        try { renderRecordsTable(); } catch (e) {}
+        try { populateMatrixOSDropdown(true); renderMatrixTable(); } catch (e) {}
         alert(`✅ Perubahan Data Berhasil Disimpan!\n\n• Nama: ${name}\n• NIK: ${nik}\n• Departemen (Bagian): ${finalDept.toUpperCase()}\n\nData karyawan telah otomatis diperbarui dan tersimpan permanen di sistem & Cloud.`);
       } else {
         alert('⚠️ Karyawan tidak ditemukan di database. Pastikan data karyawan sudah terdaftar.');
@@ -11058,6 +11060,8 @@
       renderSelectedIDCard(finalEffectiveNik);
       renderOvertimeEmployeeGrid();
       refreshAllDashboardData();
+      try { renderRecordsTable(); } catch (e) {}
+      try { populateMatrixOSDropdown(true); renderMatrixTable(); } catch (e) {}
       
       if (isManagementRole) {
         alert(`✅ Karyawan ${name} (${finalEffectiveNik}) berhasil ditambahkan dengan jabatan ${finalRole.toUpperCase()}!\nAkun login sistem telah dibuat otomatis (Password: medika123).`);
@@ -13427,9 +13431,9 @@
     function normalizeOSName(os) {
       if (!os || typeof os !== 'string') return 'Internal';
       const clean = cleanStr(os);
-      if (!clean || clean === 'internal' || clean === 'medika' || clean === '-' || clean === 'nonos') return 'Internal';
+      if (!clean || clean === 'internal' || clean === 'medika' || clean === '-' || clean === 'nonos' || clean === 'null' || clean === 'undefined') return 'Internal';
       if (clean.includes('adp')) return 'ADP';
-      if (clean.includes('staffinc') || clean.includes('staffing') || clean.includes('staff')) return 'Staffinc';
+      if (clean.includes('staffinc') || clean.includes('staffing')) return 'Staffinc';
       if (clean.includes('sos')) return 'SOS';
       if (clean.includes('valdo')) return 'Valdo';
       if (clean.includes('persona')) return 'Persona';
@@ -13449,6 +13453,21 @@
       if (uClean.includes(selClean) || selClean.includes(uClean)) return true;
 
       return false;
+    }
+
+    function initMatrixDateRange() {
+      const sInput = document.getElementById('matrix-start-date');
+      const eInput = document.getElementById('matrix-end-date');
+      if (!sInput || !eInput) return;
+      const now = new Date();
+      if (!eInput.value) {
+        eInput.value = getLocalDateString(now);
+      }
+      if (!sInput.value) {
+        const past = new Date(now);
+        past.setDate(1); // Default mulai tanggal 1 bulan berjalan
+        sInput.value = getLocalDateString(past);
+      }
     }
 
     function populateMatrixOSDropdown(preserveSelection = true) {
@@ -13489,30 +13508,26 @@
 
       let optionsHtml = `<option value="ALL">Semua OS / Vendor (${eligibleUsers.length} Karyawan)</option>`;
       osList.forEach(item => {
-        const countText = item.count > 0 ? ` (${item.count} Karyawan)` : '';
+        const countText = ` (${item.count} Karyawan)`;
         optionsHtml += `<option value="${escapeHTML(item.name)}">${escapeHTML(item.name)}${countText}</option>`;
       });
 
-      if (select.dataset.lastHtml !== optionsHtml) {
-        select.innerHTML = optionsHtml;
-        select.dataset.lastHtml = optionsHtml;
-        if (preserveSelection && currentVal) {
-          const match = Array.from(select.options).find(o => 
-            o.value.toLowerCase() === currentVal.toLowerCase() || 
-            normalizeOSName(o.value).toLowerCase() === normalizeOSName(currentVal).toLowerCase()
-          );
-          if (match) {
-            select.value = match.value;
-          } else {
-            select.value = 'ALL';
-          }
-        } else {
-          select.value = 'ALL';
-        }
+      const targetSelectVal = preserveSelection ? currentVal : 'ALL';
+      select.innerHTML = optionsHtml;
+      
+      const match = Array.from(select.options).find(o => 
+        o.value.toLowerCase() === targetSelectVal.toLowerCase() || 
+        normalizeOSName(o.value).toLowerCase() === normalizeOSName(targetSelectVal).toLowerCase()
+      );
+      if (match) {
+        select.value = match.value;
+      } else {
+        select.value = 'ALL';
       }
     }
 
     function renderMatrixTable() {
+      initMatrixDateRange();
       const sInput = document.getElementById('matrix-start-date');
       const eInput = document.getElementById('matrix-end-date');
       let startStr = sInput?.value;
@@ -13527,8 +13542,6 @@
         if (eInput) eInput.value = endStr;
       }
 
-      // Pastikan pilihan OS selalu sinkron dengan data gudang aktif
-      populateMatrixOSDropdown(true);
       const selectOS = document.getElementById('matrix-filter-os');
       const selectedOS = (selectOS?.value || 'ALL').trim();
 
