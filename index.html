@@ -969,6 +969,10 @@
                 <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                   Template
                 </button>
+                <button onclick="recoverLostEmployees(false)" class="h-9 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Pulihkan data karyawan yang hilang dari cadangan backup & riwayat presensi">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                  <span>Pulihkan Data Backup</span>
+                </button>
                 <button id="btn-delete-selected-emp" onclick="deleteSelectedEmployees()" class="h-9 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs opacity-50 inline-flex items-center">
                   Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)
                 </button>
@@ -4028,32 +4032,77 @@
       return Array.from(map.values());
     }
 
-    // 4. SMART MERGE MASTER KARYAWAN (Bebas Zombie Data & Tidak Mengembalikan Karyawan Terhapus)
+    // 4. SMART MERGE MASTER KARYAWAN & DATA SHIELD ANTI-HILANG
     function mergeUserArrays(localList, cloudList, wh, cloudUpdatedAt = '') {
+      localList = Array.isArray(localList) ? localList : [];
+      cloudList = Array.isArray(cloudList) ? cloudList : [];
+
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-      const isRecentLocalChange = (Date.now() - lastMasterChange < 600000); // 10 menit proteksi master lokal
+      const isRecentLocalChange = (Date.now() - lastMasterChange < 600000); // 10 menit proteksi master lokal setelah upload/edit
       const localMasterUpdatedAt = localStorage.getItem('wfm_master_updated_at') || '';
 
-      // 1. Jika baru saja ada perubahan master lokal (upload excel, tambah, edit, hapus),
-      // data lokal adalah 100% otoritatif dan Cloud DILARANG menambahkan data lama.
-      if (isRecentLocalChange && Array.isArray(localList) && localList.length > 0) {
+      const countRegular = (list) => list.filter(u => u && !isManagementSystemAccount(u)).length;
+      let localRegCount = countRegular(localList);
+      const cloudRegCount = countRegular(cloudList);
+
+      // Cek apakah lokal punya cadangan backup Excel jika data aktif saat ini sempat kosong
+      if (localRegCount === 0) {
+        try {
+          const rawBackup = localStorage.getItem(`wfm_${wh.toLowerCase()}_users_backup`);
+          if (rawBackup) {
+            const backupUsers = JSON.parse(rawBackup);
+            if (Array.isArray(backupUsers) && countRegular(backupUsers) > 0) {
+              localList = backupUsers;
+              localRegCount = countRegular(localList);
+            }
+          }
+        } catch(e) {}
+      }
+
+      // PERISAI 1: Jika Lokal memiliki karyawan reguler tapi Cloud KOSONG / HANYA SEED (0 karyawan reguler):
+      // DILARANG KERAS menghapus data lokal! Pertahankan lokal 100% dan re-sync ke Cloud.
+      if (localRegCount > 0 && cloudRegCount === 0) {
+        console.warn(`[DataShield] Mencegah penghapusan ${localRegCount} karyawan lokal oleh cloud kosong pada Gudang ${wh}`);
         return deduplicateUserList(localList, wh);
       }
 
-      // 2. Proteksi Timestamp: Jika timestamp lokal lebih baru atau sama dengan cloud, data lokal tetap dipertahankan
-      if (localMasterUpdatedAt && cloudUpdatedAt && localMasterUpdatedAt >= cloudUpdatedAt && Array.isArray(localList) && localList.length > 0) {
-        return deduplicateUserList(localList, wh);
-      }
-
-      // 3. Adopsi data Cloud hanya jika Cloud memiliki timestamp yang lebih baru (update resmi dari admin lain)
-      if (Array.isArray(cloudList) && cloudList.length > 0) {
-        if (localMasterUpdatedAt && cloudUpdatedAt && localMasterUpdatedAt > cloudUpdatedAt) {
-          return deduplicateUserList(localList || [], wh);
-        }
+      // PERISAI 2: Jika Lokal kosong / baru dibuka di HP, tapi Cloud memiliki karyawan reguler:
+      // Adopsi seluruh data Cloud 100%!
+      if (localRegCount === 0 && cloudRegCount > 0) {
+        console.log(`[DataShield] Mengadopsi ${cloudRegCount} karyawan dari Cloud ke Gudang ${wh}`);
         return deduplicateUserList(cloudList, wh);
       }
 
-      return deduplicateUserList(localList || [], wh);
+      // PERISAI 3: Jika baru saja ada perubahan lokal resmi (import excel, tambah, edit karyawan):
+      if (isRecentLocalChange && localRegCount > 0) {
+        return deduplicateUserList(localList, wh);
+      }
+
+      // PERISAI 4: SMART UNION MERGE (Gabungkan kedua sumber tanpa menghilangkan karyawan manapun)
+      const userMap = new Map();
+
+      // Masukkan data Cloud terlebih dahulu
+      cloudList.forEach(u => {
+        if (!u) return;
+        const key = cleanStr(u.nik) || cleanStr(u.name);
+        if (key) userMap.set(key, u);
+      });
+
+      // Gabungkan / update dengan data Lokal
+      localList.forEach(u => {
+        if (!u) return;
+        const key = cleanStr(u.nik) || cleanStr(u.name);
+        if (!key) return;
+        if (!userMap.has(key)) {
+          userMap.set(key, u);
+        } else {
+          const cloudItem = userMap.get(key);
+          userMap.set(key, { ...cloudItem, ...u });
+        }
+      });
+
+      const mergedList = Array.from(userMap.values());
+      return deduplicateUserList(mergedList, wh);
     }
 
     let lastAppliedCloudUpdatedAt = null;
@@ -4271,7 +4320,7 @@
 
         const endpoint = getFirebaseEndpoint();
 
-        // Pre-Merge dengan data terkini di Firebase Cloud agar presensi/cuti dari HP lain tidak tertimpa
+        // Pre-Merge dengan data terkini di Firebase Cloud agar presensi/cuti/karyawan dari HP lain tidak tertimpa
         try {
           const fetchRes = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
           if (fetchRes.ok) {
@@ -4290,20 +4339,62 @@
               localStorage.setItem('wfm_mai_leaves', JSON.stringify(mergedMaiLeaves));
               localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mergedMbiOt));
               localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
+
+              // PROTEKSI DATA MASTER: Pre-merge USERS agar HP baru tidak menghapus karyawan di Cloud
+              const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+              const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+              const cloudMbiUsers = normalizeFirebaseArray(cloudDb.mbi_users);
+              const cloudMaiUsers = normalizeFirebaseArray(cloudDb.mai_users);
+
+              const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudDb.updatedAt);
+              const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudDb.updatedAt);
+
+              localStorage.setItem('wfm_mbi_users', JSON.stringify(mergedMbiUsers));
+              localStorage.setItem('wfm_mai_users', JSON.stringify(mergedMaiUsers));
             }
           }
         } catch (eMerge) {
           console.warn('Pre-save merge fetch skipped/offline:', eMerge);
         }
 
+        const countReg = (arr) => (arr || []).filter(u => u && !isManagementSystemAccount(u)).length;
+        let finalMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        let finalMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+
+        // Jika data lokal 0 karyawan reguler tapi ada di cadangan backup, pulihkan terlebih dahulu
+        if (countReg(finalMbiUsers) === 0) {
+          try {
+            const rawBak = localStorage.getItem('wfm_mbi_users_backup');
+            if (rawBak) {
+              const bak = JSON.parse(rawBak);
+              if (Array.isArray(bak) && countReg(bak) > 0) {
+                finalMbiUsers = bak;
+                localStorage.setItem('wfm_mbi_users', JSON.stringify(finalMbiUsers));
+              }
+            }
+          } catch(e) {}
+        }
+        if (countReg(finalMaiUsers) === 0) {
+          try {
+            const rawBak = localStorage.getItem('wfm_mai_users_backup');
+            if (rawBak) {
+              const bak = JSON.parse(rawBak);
+              if (Array.isArray(bak) && countReg(bak) > 0) {
+                finalMaiUsers = bak;
+                localStorage.setItem('wfm_mai_users', JSON.stringify(finalMaiUsers));
+              }
+            }
+          } catch(e) {}
+        }
+
         const nowIso = new Date().toISOString();
         const payload = {
-          mbi_users: getWhDB('MBI', 'users', SEED_MBI_USERS),
+          mbi_users: finalMbiUsers,
           mbi_attendance: getWhDB('MBI', 'attendance', []),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: getWarehouseCoords('MBI'),
-          mai_users: getWhDB('MAI', 'users', SEED_MAI_USERS),
+          mai_users: finalMaiUsers,
           mai_attendance: getWhDB('MAI', 'attendance', []),
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
@@ -4649,6 +4740,7 @@
             const userDept = (u.dept || '').toLowerCase().trim();
             const isSysAdmin = u.role === 'admin' || (u.nik && u.nik.startsWith('ADM'));
             const isSysScanner = u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN'));
+            const isSysManager = u.role === 'manager' || (u.nik && u.nik.startsWith('MGR')) || u.id === 'mgr-eko' || cleanStr(u.name) === 'eko';
 
             if (isSysAdmin) {
               if (u.dept !== 'Administrator') { u.dept = 'Administrator'; hasChanges = true; }
@@ -4659,6 +4751,12 @@
               if (u.dept !== 'presensi') { u.dept = 'presensi'; hasChanges = true; }
               if (u.role !== 'scanner') { u.role = 'scanner'; hasChanges = true; }
               if (u.name !== 'Scanner Presensi Gudang') { u.name = 'Scanner Presensi Gudang'; hasChanges = true; }
+              if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
+              if (!u.password) { u.password = 'medika123'; hasChanges = true; }
+            } else if (isSysManager) {
+              if (u.dept !== 'Management') { u.dept = 'Management'; hasChanges = true; }
+              if (u.role !== 'manager') { u.role = 'manager'; hasChanges = true; }
+              if (u.name !== 'Eko') { u.name = 'Eko'; hasChanges = true; }
               if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
               if (!u.password) { u.password = 'medika123'; hasChanges = true; }
             } else {
@@ -4704,7 +4802,7 @@
         const year = new Date().getFullYear().toString().slice(-2);
         const prefix = `${wh.toUpperCase()}${year}-`;
 
-        // 1. Ambil Admin & Dedicated Scanner
+        // 1. Ambil Admin, Dedicated Scanner, dan Manager Eko
         const admin = rawUsers.find(u => u.role === 'admin') || (wh === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
         admin.nik = wh === 'MBI' ? 'ADM001' : 'ADM-MAI';
         admin.dept = 'Administrator';
@@ -4720,8 +4818,17 @@
         scanner.hasAccount = true;
         scanner.barcodeValue = scanner.nik;
 
-        // 2. Kumpulkan seluruh karyawan reguler (bukan admin & bukan scanner & bukan yang terhapus)
-        const seenNames = new Set([cleanStr(admin.name), cleanStr(scanner.name)]);
+        let manager = rawUsers.find(u => (u.role === 'manager' || u.nik === 'MGR001' || cleanStr(u.name) === 'eko' || u.id === 'mgr-eko')) || { ...SEED_MANAGER_USER, warehouse: wh };
+        manager.nik = 'MGR001';
+        manager.name = 'Eko';
+        manager.dept = 'Management';
+        manager.role = 'manager';
+        manager.hasAccount = true;
+        manager.barcodeValue = manager.nik;
+        if (!manager.password) manager.password = 'medika123';
+
+        // 2. Kumpulkan seluruh karyawan reguler (bukan admin & bukan scanner & bukan manager & bukan yang terhapus)
+        const seenNames = new Set([cleanStr(admin.name), cleanStr(scanner.name), cleanStr(manager.name), 'eko']);
         const regularEmployees = [];
 
         rawUsers.forEach(u => {
@@ -4779,6 +4886,7 @@
         // NIK yang sudah ada TIDAK BOLEH BERUBAH ATAU DIGESER saat ada karyawan keluar/resign/dihapus!
         const assignedNiks = new Set([admin.nik.toUpperCase()]);
         if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
+        if (manager && manager.nik) assignedNiks.add(manager.nik.toUpperCase());
 
         let maxNum = 0;
         regularEmployees.forEach(u => {
@@ -4816,7 +4924,7 @@
           }
         });
 
-        const updatedUsersList = [admin, scanner, ...regularEmployees];
+        const updatedUsersList = [admin, scanner, manager, ...regularEmployees];
         const storageKey = `wfm_${wh.toLowerCase()}_users`;
         localStorage.setItem(storageKey, JSON.stringify(updatedUsersList));
 
@@ -4885,6 +4993,199 @@
           if (navDept) navDept.innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
         }
       }
+    }
+
+    // =========================================================
+    // FITUR PEMULIHAN DATA KARYAWAN OTOMATIS & CADANGAN PERMANEN
+    // Memulihkan data master karyawan dari backup snapshot & riwayat presensi/lembur/izin
+    // =========================================================
+    function recoverLostEmployees(silent = false) {
+      let totalRecovered = 0;
+      const targetWarehouses = ['MBI', 'MAI'];
+
+      targetWarehouses.forEach(wh => {
+        const usersKey = `wfm_${wh.toLowerCase()}_users`;
+        const backupKey = `wfm_${wh.toLowerCase()}_users_backup`;
+
+        let currentUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        const existingNames = new Set(currentUsers.map(u => cleanStr(u.name)).filter(Boolean));
+        const existingNiks = new Set(currentUsers.map(u => (u.nik || '').toUpperCase().trim()).filter(Boolean));
+
+        const recoveredForWh = [];
+
+        // 1. Periksa Snapshot Cadangan Backup Permanen dari Excel / Master Simpanan
+        try {
+          const rawBak = localStorage.getItem(backupKey);
+          if (rawBak) {
+            const bakUsers = JSON.parse(rawBak);
+            if (Array.isArray(bakUsers)) {
+              bakUsers.forEach(u => {
+                if (!u || !u.name || isManagementSystemAccount(u)) return;
+                const cName = cleanStr(u.name);
+                const cNik = (u.nik || '').toUpperCase().trim();
+                if (!existingNames.has(cName) && (!cNik || !existingNiks.has(cNik))) {
+                  recoveredForWh.push(u);
+                  existingNames.add(cName);
+                  if (cNik) existingNiks.add(cNik);
+                }
+              });
+            }
+          }
+        } catch (eBak) {
+          console.warn('Backup parse error:', eBak);
+        }
+
+        // 2, 3, 4: JIKA KARYAWAN REGULER MASIH 0 (Backup Kosong / Rusak), REKONSTRUKSI SEBAGAI JARING PENGAMAN TERAKHIR
+        const regCountSoFar = currentUsers.filter(u => u && !isManagementSystemAccount(u)).length + recoveredForWh.length;
+        if (regCountSoFar === 0) {
+          // Rekonstruksi dari Riwayat Absensi (attendance)
+          try {
+            const attKey = `wfm_${wh.toLowerCase()}_attendance`;
+            const rawAtt = localStorage.getItem(attKey);
+            if (rawAtt) {
+              const atts = JSON.parse(rawAtt);
+              if (Array.isArray(atts)) {
+                atts.forEach(a => {
+                  if (!a || !a.userName) return;
+                  const cName = cleanStr(a.userName);
+                  const cNik = (a.userNik || '').toUpperCase().trim();
+                  if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
+
+                  if (!existingNames.has(cName) && (!cNik || !existingNiks.has(cNik))) {
+                    const dept = a.dept || 'Warehouse Staff';
+                    const isSpv = dept.toLowerCase().includes('supervisor') || dept.toLowerCase() === 'spv';
+                    const isCoord = dept.toLowerCase().includes('coordinator') || dept.toLowerCase().includes('koordinator');
+                    const role = isSpv ? 'supervisor' : (isCoord ? 'coordinator' : 'staff');
+                    const hasAcc = isSpv || isCoord;
+
+                    recoveredForWh.push({
+                      id: a.userId || `${wh.toLowerCase()}-rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                      name: a.userName,
+                      dept: isSpv ? 'Supervisor' : (isCoord ? 'Coordinator' : 'Warehouse Staff'),
+                      outsource: 'Internal',
+                      phone: '-',
+                      email: '',
+                      joinDate: '-',
+                      nik: a.userNik || '',
+                      barcodeValue: a.userNik || '',
+                      role: role,
+                      hasAccount: hasAcc,
+                      password: hasAcc ? 'medika123' : '',
+                      isFirstLogin: hasAcc,
+                      warehouse: wh
+                    });
+                    existingNames.add(cName);
+                    if (cNik) existingNiks.add(cNik);
+                  }
+                });
+              }
+            }
+          } catch (eAtt) {}
+
+          // Rekonstruksi dari Riwayat Lemburan (overtime)
+          try {
+            const otKey = `wfm_${wh.toLowerCase()}_overtime`;
+            const rawOt = localStorage.getItem(otKey);
+            if (rawOt) {
+              const ots = JSON.parse(rawOt);
+              if (Array.isArray(ots)) {
+                ots.forEach(o => {
+                  if (!o || !o.userName) return;
+                  const cName = cleanStr(o.userName);
+                  const cNik = (o.userNik || '').toUpperCase().trim();
+                  if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
+
+                  if (!existingNames.has(cName) && (!cNik || !existingNiks.has(cNik))) {
+                    recoveredForWh.push({
+                      id: o.userId || `${wh.toLowerCase()}-rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                      name: o.userName,
+                      dept: o.dept || 'Warehouse Staff',
+                      outsource: 'Internal',
+                      phone: '-',
+                      email: '',
+                      joinDate: '-',
+                      nik: o.userNik || '',
+                      barcodeValue: o.userNik || '',
+                      role: 'staff',
+                      hasAccount: false,
+                      password: '',
+                      isFirstLogin: false,
+                      warehouse: wh
+                    });
+                    existingNames.add(cName);
+                    if (cNik) existingNiks.add(cNik);
+                  }
+                });
+              }
+            }
+          } catch (eOt) {}
+
+          // Rekonstruksi dari Riwayat Izin / Cuti (leaves)
+          try {
+            const lvKey = `wfm_${wh.toLowerCase()}_leaves`;
+            const rawLv = localStorage.getItem(lvKey);
+            if (rawLv) {
+              const lvs = JSON.parse(rawLv);
+              if (Array.isArray(lvs)) {
+                lvs.forEach(l => {
+                  if (!l || !l.userName) return;
+                  const cName = cleanStr(l.userName);
+                  const cNik = (l.userNik || '').toUpperCase().trim();
+                  if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
+
+                  if (!existingNames.has(cName) && (!cNik || !existingNiks.has(cNik))) {
+                    recoveredForWh.push({
+                      id: `${wh.toLowerCase()}-rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                      name: l.userName,
+                      dept: 'Warehouse Staff',
+                      outsource: 'Internal',
+                      phone: '-',
+                      email: '',
+                      joinDate: '-',
+                      nik: l.userNik || '',
+                      barcodeValue: l.userNik || '',
+                      role: 'staff',
+                      hasAccount: false,
+                      password: '',
+                      isFirstLogin: false,
+                      warehouse: wh
+                    });
+                    existingNames.add(cName);
+                    if (cNik) existingNiks.add(cNik);
+                  }
+                });
+              }
+            }
+          } catch (eLv) {}
+        }
+
+        if (recoveredForWh.length > 0) {
+          totalRecovered += recoveredForWh.length;
+          const combined = deduplicateUserList([...currentUsers, ...recoveredForWh], wh);
+          localStorage.setItem(usersKey, JSON.stringify(combined));
+          localStorage.setItem(backupKey, JSON.stringify(combined));
+          const nowIso = new Date().toISOString();
+          localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+          localStorage.setItem('wfm_master_updated_at', nowIso);
+        }
+      });
+
+      if (totalRecovered > 0) {
+        harmonizeAndResequenceAllNIKs();
+        saveFullDatabaseToCloud(false, true);
+        if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
+        if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
+        if (typeof renderOvertimeEmployeeGrid === 'function') renderOvertimeEmployeeGrid();
+        if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
+        if (!silent) {
+          alert(`✅ BERHASIL MEMULIHKAN DATA KARYAWAN!\n\n• Sebanyak ${totalRecovered} data karyawan berhasil dipulihkan dari cadangan backup & riwayat presensi.\n• Data karyawan kini telah aktif kembali dan aman tersimpan di Cloud Database.`);
+        }
+      } else {
+        if (!silent) {
+          alert('ℹ️ INFORMASI PEMULIHAN DATA:\n\nSemua data karyawan sudah lengkap & aman. Tidak ada data karyawan yang terhapus atau hilang.');
+        }
+      }
+      return totalRecovered;
     }
 
     function deduplicateAndFixNIKs() {
@@ -5056,6 +5357,7 @@
       // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
       sanitizeEmployeesData();
       repairAndSanitizeAttendanceRecords();
+      recoverLostEmployees(true);
       getWhDB('MBI', 'users', SEED_MBI_USERS);
       getWhDB('MAI', 'users', SEED_MAI_USERS);
       getWhDB('MBI', 'attendance', []);
@@ -5767,14 +6069,11 @@
           isFirstLogin: false,
           warehouse
         };
-        users.push(scannerUser);
-        setWhDB(warehouse, 'users', users);
       } else {
         scannerUser.name = 'Scanner Presensi Gudang';
         scannerUser.warehouse = warehouse;
         scannerUser.role = 'scanner';
         if (!scannerUser.password) scannerUser.password = 'medika123';
-        setWhDB(warehouse, 'users', users);
       }
       activeWarehouse = warehouse;
       loginUserSession(scannerUser);
