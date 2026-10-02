@@ -1518,6 +1518,7 @@
                         <th class="p-3.5 border-r border-slate-200">Gudang</th>
                         <th class="p-3.5 border-r border-slate-200">NIK</th>
                         <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 border-r border-slate-200">Outsourcing</th>
                         <th class="p-3.5 border-r border-slate-200">Departemen</th>
                         <th class="p-3.5 border-r border-slate-200">Jam Masuk</th>
                         <th class="p-3.5 border-r border-slate-200">Jam Pulang</th>
@@ -8835,17 +8836,9 @@
         return 0;
       };
 
-      // URUTKAN ABSEN TERBARU DI PALING ATAS (Karyawan yang baru saja absen masuk atau pulang muncul di baris teratas)
+      // URUTKAN ABSEN MASUK TERBARU DI PALING ATAS (Scan masuk terbaru selalu di baris pertama)
+      // Karyawan yang absen pulang tidak mengubah urutan baris, hanya jam pulang terisi sesuai nama karyawan bersangkutan
       todayAtt.sort((a, b) => {
-        const timeA = Math.max(
-          parseScanTimestamp(a.checkOutTime, a.date),
-          parseScanTimestamp(a.checkInTime, a.date)
-        );
-        const timeB = Math.max(
-          parseScanTimestamp(b.checkOutTime, b.date),
-          parseScanTimestamp(b.checkInTime, b.date)
-        );
-        if (timeB !== timeA) return timeB - timeA;
         const inA = parseScanTimestamp(a.checkInTime, a.date);
         const inB = parseScanTimestamp(b.checkInTime, b.date);
         return inB - inA;
@@ -12984,16 +12977,29 @@
         attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
       }
 
+      // Mapping O(1) Outsource untuk pencarian instan
+      const userOSMap = new Map();
+      users.forEach(u => {
+        if (u.nik) userOSMap.set(u.nik.toUpperCase(), (u.outsource || 'Internal').toLowerCase());
+        if (u.name) userOSMap.set(cleanStr(u.name), (u.outsource || 'Internal').toLowerCase());
+        if (u.id) userOSMap.set(u.id, (u.outsource || 'Internal').toLowerCase());
+      });
+
       const filtered = attendances.filter(a => {
         if (!a) return false;
         const checkInLocalDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
         const inDate = (!startStr || a.date >= startStr || (checkInLocalDate && checkInLocalDate >= startStr)) && 
                        (!endStr || a.date <= endStr || (checkInLocalDate && checkInLocalDate <= endStr));
+        const uOS = (a.userNik && userOSMap.get(a.userNik.toUpperCase())) ||
+                    (a.userName && userOSMap.get(cleanStr(a.userName))) ||
+                    (a.userId && userOSMap.get(a.userId)) ||
+                    (a.outsource && a.outsource.toLowerCase()) || '';
         const inSearch = !searchQ || 
                          (a.userName && a.userName.toLowerCase().includes(searchQ)) || 
                          (a.userNik && a.userNik.toLowerCase().includes(searchQ)) ||
                          (a.dept && a.dept.toLowerCase().includes(searchQ)) ||
-                         (a.warehouse && a.warehouse.toLowerCase().includes(searchQ));
+                         (a.warehouse && a.warehouse.toLowerCase().includes(searchQ)) ||
+                         (uOS && uOS.includes(searchQ));
         return inDate && inSearch;
       });
 
@@ -13137,7 +13143,7 @@
       const tbody = document.getElementById('records-table-body');
       if (!tbody) return;
       if (totalFiltered === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
         return;
       }
 
@@ -13160,6 +13166,7 @@
 
         const finalName = emp ? emp.name : (rec.userName || '-');
         const finalNik = emp ? emp.nik : (rec.userNik || '-');
+        const finalOutsource = emp ? (emp.outsource || 'Internal') : (rec.outsource || 'Internal');
         const finalDept = emp ? emp.dept : (rec.dept || '-');
         const recWh = rec.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
         
@@ -13200,6 +13207,7 @@
             </td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 font-bold whitespace-nowrap">${finalNik}</td>
             <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${finalName}</td>
+            <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-700 whitespace-nowrap text-[11px]">${finalOutsource}</td>
             <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold whitespace-nowrap">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 whitespace-nowrap">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : (durInfo.isMissScan ? '<span class="text-rose-600 font-semibold italic text-[11px]">Miss Scan</span>' : '<span class="text-amber-600 font-medium italic text-[11px]">Sedang Shift</span>')}</td>
@@ -13275,15 +13283,29 @@
         attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
       }
 
+      // Mapping O(1) Outsource untuk pencarian instan
+      const userOSMap = new Map();
+      users.forEach(u => {
+        if (u.nik) userOSMap.set(u.nik.toUpperCase(), (u.outsource || 'Internal').toLowerCase());
+        if (u.name) userOSMap.set(cleanStr(u.name), (u.outsource || 'Internal').toLowerCase());
+        if (u.id) userOSMap.set(u.id, (u.outsource || 'Internal').toLowerCase());
+      });
+
       const filtered = attendances.filter(a => {
         if (!a) return false;
         const checkInLocalDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
         const inDate = (!startStr || a.date >= startStr || (checkInLocalDate && checkInLocalDate >= startStr)) && 
                        (!endStr || a.date <= endStr || (checkInLocalDate && checkInLocalDate <= endStr));
+        const uOS = (a.userNik && userOSMap.get(a.userNik.toUpperCase())) ||
+                    (a.userName && userOSMap.get(cleanStr(a.userName))) ||
+                    (a.userId && userOSMap.get(a.userId)) ||
+                    (a.outsource && a.outsource.toLowerCase()) || '';
         const inSearch = !searchQ || 
                          (a.userName && a.userName.toLowerCase().includes(searchQ)) || 
                          (a.userNik && a.userNik.toLowerCase().includes(searchQ)) ||
-                         (a.dept && a.dept.toLowerCase().includes(searchQ));
+                         (a.dept && a.dept.toLowerCase().includes(searchQ)) ||
+                         (a.warehouse && a.warehouse.toLowerCase().includes(searchQ)) ||
+                         (uOS && uOS.includes(searchQ));
         return inDate && inSearch;
       });
 
@@ -13331,6 +13353,7 @@
 
         const finalName = emp ? emp.name : (r.userName || '-');
         const finalNik = emp ? emp.nik : (r.userNik || '-');
+        const finalOutsource = emp ? (emp.outsource || 'Internal') : (r.outsource || 'Internal');
         const finalDept = emp ? emp.dept : (r.dept || '');
         const recWh = r.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
 
@@ -13350,6 +13373,7 @@
           "Gudang": recWh,
           "NIK": finalNik,
           "Nama Karyawan": finalName,
+          "Outsourcing": finalOutsource,
           "Departemen": finalDept,
           "Jam Masuk": r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('id-ID') : '-',
           "Jam Pulang": jamPulangStr,
@@ -13396,20 +13420,25 @@
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const eligibleUsers = users.filter(u => isMatrixEligibleUser(u));
 
-      const osSet = new Set();
+      const osMap = new Map();
       eligibleUsers.forEach(u => {
-        const os = (u.outsource || 'Internal').trim();
-        if (os) osSet.add(os);
+        const rawOS = (u.outsource || 'Internal').trim();
+        if (rawOS) {
+          const lower = rawOS.toLowerCase();
+          if (!osMap.has(lower)) {
+            osMap.set(lower, { name: rawOS, count: 0 });
+          }
+          osMap.get(lower).count += 1;
+        }
       });
 
-      const osList = Array.from(osSet).sort((a, b) => a.localeCompare(b));
+      const osList = Array.from(osMap.values()).sort((a, b) => a.name.localeCompare(b.name));
       let optionsHtml = `<option value="ALL">Semua OS / Vendor (${eligibleUsers.length} Karyawan)</option>`;
-      osList.forEach(os => {
-        const count = eligibleUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === os.toLowerCase())).length;
-        optionsHtml += `<option value="${escapeHTML(os)}">${escapeHTML(os)} (${count} Karyawan)</option>`;
+      osList.forEach(item => {
+        optionsHtml += `<option value="${escapeHTML(item.name)}">${escapeHTML(item.name)} (${item.count} Karyawan)</option>`;
       });
       select.innerHTML = optionsHtml;
-      if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+      if (currentVal && Array.from(select.options).some(o => o.value.toLowerCase() === currentVal.toLowerCase())) {
         select.value = currentVal;
       } else {
         select.value = 'ALL';
@@ -13463,8 +13492,7 @@
       let headerHTML = `
         <tr class="border-b border-slate-300">
           <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
-          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[180px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
-          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[110px] bg-slate-100 text-slate-800 font-black">Outsourcing</th>
+          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
       `;
 
       monthGroups.forEach((g, gIdx) => {
@@ -13517,7 +13545,7 @@
         });
       });
 
-      // Filter karyawan: hanya staf biasa (Supervisor & Coordinator dikecualikan) dan filter sesuai OS yang dipilih
+      // Filter karyawan: hanya staf biasa (Supervisor & Coordinator dikecualikan) dan filter sesuai OS yang dipilih (misal ADP, Staffinc, Internal, dll.)
       let regularUsers = users.filter(u => isMatrixEligibleUser(u));
       if (selectedOS !== 'ALL') {
         regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
@@ -13526,7 +13554,7 @@
       const rowsHTML = [];
 
       if (regularUsers.length === 0) {
-        const totalCols = 4 + dateList.length;
+        const totalCols = 3 + dateList.length;
         rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-400 font-medium">Tidak ada data karyawan untuk filter OS / Vendor "${escapeHTML(selectedOS)}" pada rentang tanggal ini.</td></tr>`);
       } else {
         regularUsers.forEach((user, uIdx) => {
@@ -13535,7 +13563,6 @@
             <tr class="hover:bg-slate-50 transition border-b border-slate-200">
               <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
               <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${escapeHTML(user.name)} <span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span></td>
-              <td class="p-2 border-r border-slate-200 text-center font-semibold text-slate-700 text-[11px]">${escapeHTML(user.outsource || 'Internal')}</td>
           `;
 
           const uNik = user.nik ? user.nik.toUpperCase() : '';
@@ -13634,8 +13661,8 @@
         });
       });
 
-      // 1. Format TSV (Tab-Separated Values) - Sangat rapi untuk langsung di-paste ke Excel atau Google Sheets
-      const headerRow = ['No', 'Nama Karyawan', 'NIK', 'Outsourcing'];
+      // 1. Format TSV (Tab-Separated Values) - Cukup Nomor, Nama Karyawan, dan NIK
+      const headerRow = ['No', 'Nama Karyawan', 'NIK'];
       dateList.forEach(d => {
         const dayNum = d.getDate();
         const dayName = DAY_NAMES[d.getDay()];
@@ -13647,7 +13674,7 @@
 
       regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
-        const row = [uIdx + 1, user.name, user.nik, user.outsource || 'Internal'];
+        const row = [uIdx + 1, user.name, user.nik];
         const uNik = user.nik ? user.nik.toUpperCase() : '';
         const uCleanName = user.name ? cleanStr(user.name) : '';
         const uId = user.id || '';
@@ -13773,15 +13800,14 @@
       });
 
       // Row 1: Header Bulan
-      const row1 = ["No", "Nama Karyawan", "NIK", "Outsourcing"];
+      const row1 = ["No", "Nama Karyawan", "NIK"];
       const merges = [
         { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // No
         { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Nama Karyawan
-        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // NIK
-        { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }  // Outsourcing
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }  // NIK
       ];
 
-      let currentCol = 4;
+      let currentCol = 3;
       monthGroups.forEach(g => {
         row1.push(g.name.toUpperCase());
         for (let i = 1; i < g.dates.length; i++) {
@@ -13799,7 +13825,7 @@
       }
 
       // Row 2: Header Tanggal & Hari
-      const row2 = ["", "", "", ""];
+      const row2 = ["", "", ""];
       dateList.forEach(d => {
         row2.push(`${d.getDate()} (${DAY_NAMES[d.getDay()]})`);
       });
@@ -13812,7 +13838,7 @@
         let totalSakit = 0;
         let totalCuti = 0;
 
-        const row = [uIdx + 1, user.name, user.nik, user.outsource || 'Internal'];
+        const row = [uIdx + 1, user.name, user.nik];
         dateList.forEach(d => {
           const dStr = getLocalDateString(d);
           const att = attendances.find(a => {
