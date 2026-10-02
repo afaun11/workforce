@@ -1080,12 +1080,9 @@
                   <p id="att-gps-desc-label" class="text-[11px] text-slate-600 leading-relaxed">
                     Sistem otomatis memverifikasi koordinat GPS HP saat kartu di-scan. Staf di luar radius yang ditentukan tidak dapat melakukan absensi.
                   </p>
-                  <div class="pt-1 flex items-center gap-2">
-                    <button type="button" onclick="checkLiveGPSDistance()" class="flex-1 py-1.5 px-2 bg-white hover:bg-slate-100 text-slate-700 font-bold text-[11px] rounded-lg border border-slate-300 transition text-center shadow-2xs">
-                      🔍 Cek Jarak GPS
-                    </button>
-                    <button type="button" onclick="calibrateCurrentWarehouseGPS()" class="flex-1 py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] rounded-lg transition text-center shadow-xs">
-                      📍 Daftarkan Titik HP Ini
+                  <div class="pt-1">
+                    <button type="button" onclick="checkLiveGPSDistance()" class="w-full py-2 px-3 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition text-center shadow-2xs flex items-center justify-center gap-1.5">
+                      <span>🔍 Cek Jarak GPS</span>
                     </button>
                   </div>
                 </div>
@@ -3260,6 +3257,76 @@
   <!-- JAVASCRIPT ENGINE (BULLETPROOF EXCEL & FUZZY LOGIN) -->
   <!-- ========================================================= -->
   <script>
+    // Helper standardisasi string (lowercase & alfanumerik saja)
+    function cleanStr(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    // Helper penentu apakah sebuah string adalah kode ID / NIK / Angka (BUKAN nama manusia)
+    function isLikelyIdNotName(str) {
+      if (!str || typeof str !== 'string') return false;
+      const s = str.trim();
+      if (!s || s === '-' || s === '--' || s.length < 1) return false;
+
+      // 1. Pola murni angka / digit (e.g. "1", "01", "001", "12345", dsb.)
+      if (/^\d+$/.test(s)) return true;
+
+      // 2. Pola angka dengan strip atau titik (e.g. "26-001", "01-002", "26.001", "1.01")
+      if (/^\d+[\-._]\d+$/.test(s)) return true;
+
+      // 3. Pola kode ID/NIK resmi sistem: MBI26-001, MAI26-012, ADM001, ABSEN-MBI, MGR001, SPV-MBI
+      // Mendukung pemisah strip, underscore, titik, atau spasi (e.g. "MBI 001", "MBI26-001", "MBI.26.001", "MBI26-064")
+      if (/^(MBI|MAI|ADM|ABSEN|MGR|SPV)[\s\-._]?[0-9A-Z\-._]+$/i.test(s)) return true;
+
+      // 4. Pola umum kode ID/NIK: prefix huruf 1-8 karakter diikuti angka/strip/spasi (e.g. ID001, ID 01, ID-1, EMP-102, K-01, K1, NIK123, NIP01, MEDIKA-01)
+      if (/^[A-Z]{1,8}[\s\-._]?[0-9]{1,}[0-9A-Z\-._]*$/i.test(s)) return true;
+
+      // 5. Pola string yang diawali kata Karyawan diikuti kode/angka: e.g. "Karyawan MBI26-001", "Karyawan 01", "Karyawan Baru"
+      if (/^karyawan\s+(baru|[0-9A-Z\-._]+)$/i.test(s)) return true;
+
+      // 6. Pola barcode/kode alfanumerik yang didominasi angka dan karakter non-huruf
+      const letters = (s.match(/[a-zA-Z]/g) || []).length;
+      const digits = (s.match(/[0-9]/g) || []).length;
+      if (digits > 0 && digits >= letters) return true;
+
+      return false;
+    }
+
+    // Helper penentu apakah sebuah string adalah nama manusia yang sah
+    function isLikelyHumanName(str) {
+      if (!str || typeof str !== 'string') return false;
+      const s = str.trim();
+      if (!s || s.length < 2 || s === '-' || s === '--') return false;
+
+      // Jika cocok dengan pola ID/kode di atas -> BUKAN nama
+      if (isLikelyIdNotName(s)) return false;
+
+      // Nama manusia tidak boleh mengandung angka (0-9)
+      if (/\d/.test(s)) return false;
+
+      // Nama manusia tidak boleh berupa email atau url
+      if (s.includes('@') || s.includes('http') || s.includes('.com')) return false;
+
+      // Nama manusia harus memiliki setidaknya 1 huruf vokal (a, i, u, e, o)
+      if (!/[aiueoAIUEO]/.test(s)) return false;
+
+      // Nama manusia tidak boleh berupa role atau departemen sistem
+      const lower = s.toLowerCase();
+      const blacklistedTerms = [
+        'warehouse staff', 'coordinator', 'supervisor', 'administrator', 'admin',
+        'scanner', 'manager', 'presensi', 'internal', 'outsource', 'staff',
+        'laki-laki', 'perempuan', 'pria', 'wanita', 'aktif', 'active',
+        'picker', 'packer', 'checker', 'driver', 'inbound', 'return', 'dispatch'
+      ];
+      if (blacklistedTerms.includes(lower)) return false;
+
+      // Nama manusia hanya terdiri dari huruf alfabet, spasi, tanda petik, dan titik (e.g. M. Budi, S.T.)
+      if (!/^[a-zA-Z\s'.-]+$/.test(s)) return false;
+
+      return true;
+    }
+
     // FUNGSI STANDARISASI TANGGAL LOKAL (WIB / GMT+7 - BEBAS DARI BUG TIMEZONE UTC)
     function getLocalDateString(d = new Date()) {
       if (!d) return '';
@@ -3619,8 +3686,8 @@
       if (!Array.isArray(users)) return [];
       const seenNames = new Set();
       const seenIds = new Set();
+      const seenNiks = new Set();
       const cleanList = [];
-      const deletedKeys = getDeletedUserKeys();
 
       // 1. Tempatkan Admin di awal
       const admin = users.find(u => u.role === 'admin') || (warehouse === 'MBI' ? SEED_MBI_USERS[0] : SEED_MAI_USERS[0]);
@@ -3632,6 +3699,7 @@
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
       if (admin.id) seenIds.add(admin.id);
+      seenNiks.add(admin.nik.toUpperCase());
 
       // 2. Tempatkan Akun Dedicated Scanner Absen
       const scanner = users.find(u => u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) || (warehouse === 'MBI' ? SEED_MBI_USERS[1] : SEED_MAI_USERS[1]);
@@ -3645,6 +3713,7 @@
         cleanList.push(scanner);
         seenNames.add(cleanStr(scanner.name));
         if (scanner.id) seenIds.add(scanner.id);
+        seenNiks.add(scanner.nik.toUpperCase());
       }
 
       // 2.5 Tempatkan Akun Dedicated Manager Eko (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
@@ -3664,22 +3733,77 @@
       seenNames.add(cleanStr(manager.name));
       seenNames.add('eko');
       if (manager.id) seenIds.add(manager.id);
+      seenNiks.add(manager.nik.toUpperCase());
 
-      // 3. Urutkan kandidat berdasarkan updatedAt terbaru agar data yang paling mutakhir yang diproses lebih dulu
-      const sortedCandidates = [...users].sort((a, b) => {
-        const timeA = new Date(a?.updatedAt || 0).getTime() || 0;
-        const timeB = new Date(b?.updatedAt || 0).getTime() || 0;
-        return timeB - timeA;
+      // 3. Filter calon karyawan reguler (bukan admin, scanner, manager)
+      const regularCandidates = users.filter(u => {
+        if (!u || typeof u !== 'object') return false;
+        if (u.role === 'admin' || u.role === 'scanner' || u.role === 'manager') return false;
+        if (u.nik && (u.nik.startsWith('ABSEN-') || u.nik.startsWith('MGR') || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
+        if (cleanStr(u.name) === 'eko' || u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
+        return true;
       });
 
-      // Kumpulkan seluruh karyawan reguler tanpa duplikasi nama & id
+      // Cek apakah ada kandidat yang memiliki nama manusia sah
+      const hasValidHumanCandidates = regularCandidates.some(u => isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name));
+
+      // Urutkan kandidat: Yang memiliki NAMA MANUSIA SAH ditaruh di depan!
+      // Lalu yang memiliki updatedAt terbaru
+      regularCandidates.sort((a, b) => {
+        const aIsHuman = (isLikelyHumanName(a.name) && !isLikelyIdNotName(a.name)) ? 1 : 0;
+        const bIsHuman = (isLikelyHumanName(b.name) && !isLikelyIdNotName(b.name)) ? 1 : 0;
+        if (aIsHuman !== bIsHuman) return bIsHuman - aIsHuman;
+
+        const timeA = new Date(a?.updatedAt || 0).getTime() || 0;
+        const timeB = new Date(b?.updatedAt || 0).getTime() || 0;
+        if (timeA !== timeB) return timeB - timeA;
+
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      // Kumpulkan seluruh karyawan reguler tanpa duplikasi nama, NIK, maupun ID
       const regularEmployees = [];
-      sortedCandidates.forEach(u => {
-        if (!u || u.role === 'admin' || u.role === 'scanner' || u.role === 'manager' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.nik && u.nik.startsWith('MGR')) || cleanStr(u.name) === 'eko' || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI' || u.id === 'mbi-spv' || u.id === 'mai-spv') return;
+      regularCandidates.forEach(u => {
+        // PERISAI GHOST: Jika dalam daftar sudah ada karyawan dengan nama manusia sah,
+        // MAKA DILARANG KERAS memasukkan data karyawan yang namanya berupa kode ID/angka!
+        if (hasValidHumanCandidates) {
+          if (isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name) || (u.nik && cleanStr(u.name) === cleanStr(u.nik))) {
+            return; // DROP GHOST RECORD!
+          }
+        }
+
         const normName = cleanStr(u.name);
-        if (!normName || seenNames.has(normName)) return;
-        if (u.id && seenIds.has(u.id)) return;
-        seenNames.add(normName);
+        const normNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
+
+        // Saring duplikasi nama manusia
+        if (normName && seenNames.has(normName)) {
+          const existing = regularEmployees.find(e => cleanStr(e.name) === normName);
+          if (existing) {
+            if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
+            if (!existing.email && u.email) existing.email = u.email;
+            if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+          }
+          return; // DUPLIKAT NAMA -> MERGE & SKIP
+        }
+
+        // Saring duplikasi NIK / ID Karyawan
+        if (normNik && seenNiks.has(normNik)) {
+          const existing = regularEmployees.find(e => (e.nik && e.nik.toUpperCase() === normNik) || (e.id && e.id === u.id));
+          if (existing) {
+            if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
+            if (!existing.email && u.email) existing.email = u.email;
+            if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+          }
+          return; // DUPLIKAT NIK -> MERGE & SKIP (JANGAN PERNAH DIJADIKAN KARYAWAN GANDA!)
+        }
+
+        // Saring duplikasi ID System
+        if (u.id && seenIds.has(u.id)) {
+          return;
+        }
+
+        if (normName) seenNames.add(normName);
+        if (normNik) seenNiks.add(normNik);
         if (u.id) seenIds.add(u.id);
 
         // Pilihan departemen diperkecil hanya 3: Warehouse Staff, Coordinator, Supervisor
@@ -3714,8 +3838,6 @@
       });
 
       // 4. Urutkan seluruh karyawan reguler:
-      // Karyawan yang sudah punya NIK diurutkan berdasarkan NIK mereka agar urutan stabil & permanen.
-      // Karyawan baru yang belum punya NIK diurutkan berdasarkan Join Date.
       regularEmployees.sort((a, b) => {
         if (a.nik && b.nik) {
           const cmpNik = a.nik.localeCompare(b.nik, undefined, { numeric: true });
@@ -3728,12 +3850,9 @@
         return (a.name || '').localeCompare(b.name || '');
       });
 
-      // 5. FIX & KUNCI ID KARYAWAN (NIK PERMANEN):
-      // Jika karyawan SUDAH punya NIK, JANGAN PERNAH DIRUBAH ATAU DIGESER!
-      // Jika ada karyawan keluar / resign / dihapus, karyawan lain TETAP MEMEGANG NIK ASLINYA.
+      // 5. Kunci & standarisasi NIK
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${warehouse.toUpperCase()}${year}-`;
-
       const assignedNiks = new Set([admin.nik.toUpperCase()]);
       if (scanner && scanner.nik) assignedNiks.add(scanner.nik.toUpperCase());
       if (manager && manager.nik) assignedNiks.add(manager.nik.toUpperCase());
@@ -3754,12 +3873,10 @@
       regularEmployees.forEach((u) => {
         const rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
         if (rawNik && !assignedNiks.has(rawNik)) {
-          // Karyawan sudah punya NIK & unik: KUNCI PERMANEN, JANGAN PERNAH DIGANTI
           assignedNiks.add(rawNik);
           u.nik = rawNik;
           u.barcodeValue = rawNik;
         } else {
-          // Karyawan baru yang belum punya NIK ATAU NIK duplikat: berikan nomor urut unik baru
           maxNum++;
           let newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
           while (assignedNiks.has(newNik)) {
@@ -3774,6 +3891,33 @@
       });
 
       return cleanList;
+    }
+
+    // Pembersihan otomatis data karyawan duplikat dan data ghost (nama berupa ID)
+    function autoPurgeDuplicateAndCorruptEmployees() {
+      try {
+        ['MBI', 'MAI'].forEach(wh => {
+          const storageKey = `wfm_${wh.toLowerCase()}_users`;
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          let users = JSON.parse(raw);
+          if (!Array.isArray(users) || users.length <= 2) return;
+
+          const cleaned = deduplicateUserList(users, wh);
+          if (cleaned.length !== users.length) {
+            console.log(`[AutoPurge] Berhasil membersihkan ${users.length - cleaned.length} data duplikat/ghost di Gudang ${wh}. Dari ${users.length} menjadi ${cleaned.length} akun.`);
+            localStorage.setItem(storageKey, JSON.stringify(cleaned));
+            localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(cleaned));
+            localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+            localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
+            if (typeof saveFullDatabaseToCloud === 'function') {
+              saveFullDatabaseToCloud(false, true);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('AutoPurge error:', e);
+      }
     }
 
     function harmonizeAndResequenceAllNIKs() {
@@ -10044,6 +10188,7 @@
     // FITUR DATA KARYAWAN (SESUAI GAMBAR 1) + EXCEL & HAPUS CEKLIS
     // =========================================================
     function renderEmployeeTable() {
+      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees();
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
@@ -11445,11 +11590,34 @@
             return;
           }
 
-          const replaceMode = confirm(
-            `📊 Ditemukan ${parsedRows.length} baris data karyawan pada file Excel.\n\n` +
-            `• Klik [OK] untuk MENGGANTI TOTAL & BERSIH seluruh data karyawan di Gudang ${targetWh} dengan data Excel ini (Data karyawan lama diperbarui ke data baru dari Excel, dan data yang dihapus dari Excel akan ikut terhapus).\n\n` +
-            `• Klik [Cancel] untuk UPDATE & GABUNG (Data karyawan yang cocok akan DIUPDATE ke data baru, karyawan baru ditambahkan, dan karyawan lain yang tidak tercatat di file Excel ini tetap aman tersimpan).`
-          );
+          let replaceMode = true;
+          if (parsedRows.length >= 10) {
+            const proceed = confirm(
+              `📊 Ditemukan ${parsedRows.length} data karyawan pada file Excel.\n\n` +
+              `Sinkronkan data ini ke Gudang ${targetWh}?\n\n` +
+              `• Karyawan yang cocok akan otomatis diperbarui datanya (nama, NIK/ID, departemen, dsb).\n` +
+              `• Karyawan baru dari Excel akan otomatis ditambahkan.\n` +
+              `• Total data karyawan aktif akan disinkronkan tepat berjumlah ${parsedRows.length} orang.\n` +
+              `• Riwayat absensi, lembur, dan izin tetap aman tersimpan.\n\n` +
+              `Klik [OK] untuk Memproses, atau [Cancel] untuk Batal.`
+            );
+            if (!proceed) return;
+            replaceMode = true;
+          } else {
+            const isAddMode = confirm(
+              `📊 Ditemukan ${parsedRows.length} data karyawan pada file Excel.\n\n` +
+              `• Klik [OK] untuk MENAMBAH / GABUNG ke daftar karyawan Gudang ${targetWh} saat ini.\n` +
+              `• Klik [Cancel] untuk MENGGANTI TOTAL seluruh data karyawan dengan file ini saja.`
+            );
+            replaceMode = !isAddMode;
+          }
+
+          // Bersihkan data existingUsers dari data ghost / nama kode ID sebelum diproses
+          existingUsers = existingUsers.filter(u => {
+            if (isManagementSystemAccount(u)) return true;
+            if (isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name)) return false;
+            return true;
+          });
 
           // Pisahkan akun pengelola sistem (Admin, Scanner, Manager)
           const managementAccounts = existingUsers.filter(u => isManagementSystemAccount(u));
@@ -11514,17 +11682,28 @@
               match = existingUsers.find(u => !isManagementSystemAccount(u) && cleanStr(u.name) === cleanStr(item.name));
             }
             if (!match && item.rawNik) {
-              match = existingUsers.find(u => !isManagementSystemAccount(u) && (u.nik || '').toUpperCase() === item.rawNik);
+              const itemNikUpper = item.rawNik.toUpperCase().trim();
+              const itemDigits = itemNikUpper.replace(/\D/g, '');
+              match = existingUsers.find(u => {
+                if (isManagementSystemAccount(u)) return false;
+                const uNikUpper = (u.nik || '').toUpperCase().trim();
+                if (uNikUpper === itemNikUpper) return true;
+                if (cleanStr(u.nik) === cleanStr(item.rawNik)) return true;
+                if (itemDigits && uNikUpper.endsWith(itemDigits.padStart(3, '0'))) return true;
+                return false;
+              });
             }
 
             // 2. TENTUKAN NIK FINAL:
-            // - Jika ada NIK dari Excel dan belum dipakai baris lain -> gunakan NIK dari Excel
-            // - Jika NIK di Excel kosong tapi ada NIK lama di database -> pertahankan NIK lama
-            // - Jika NIK kosong / duplikat -> generate nomor urut baru
             let finalNik = item.rawNik;
             if (!finalNik && match && match.nik) {
               finalNik = match.nik;
             }
+            // Jika format NIK hanya angka (seperti 64, 064, 1), beri prefix resmi gudang
+            if (finalNik && /^\d+$/.test(finalNik)) {
+              finalNik = `${prefix}${String(finalNik).padStart(3, '0')}`;
+            }
+
             if (finalNik && !assignedNiks.has(finalNik.toUpperCase())) {
               finalNik = finalNik.toUpperCase();
               assignedNiks.add(finalNik);
@@ -11554,7 +11733,6 @@
               }
 
               // Update nama karyawan lama HANYA jika item.name adalah nama manusia yang sah!
-              // JANGAN PERNAH menimpa nama manusia dengan ID atau string kosong!
               if (item.name && isLikelyHumanName(item.name)) {
                 if (oldName && oldName !== cleanStr(item.name)) {
                   nameChangeMap[oldName] = item.name;
@@ -11584,7 +11762,6 @@
               countUpdated++;
             } else {
               // 4. KARYAWAN BARU YANG BELUM ADA DI DATABASE
-              // Jamin nama karyawan baru TIDAK PERNAH BERUPA KODE ID
               let safeName = item.name;
               if (!safeName || isLikelyIdNotName(safeName) || !isLikelyHumanName(safeName)) {
                 safeName = finalNik ? `Karyawan Baru (${finalNik})` : 'Karyawan Baru';
@@ -11617,7 +11794,8 @@
           if (!replaceMode) {
             existingUsers.forEach(u => {
               if (!isManagementSystemAccount(u) && !matchedExistingIds.has(u.id)) {
-                if (!updatedRegularUsers.some(reg => reg.id === u.id || (reg.nik && reg.nik.toUpperCase() === (u.nik || '').toUpperCase()))) {
+                if (!isLikelyHumanName(u.name) || isLikelyIdNotName(u.name)) return;
+                if (!updatedRegularUsers.some(reg => reg.id === u.id || cleanStr(reg.name) === cleanStr(u.name) || (reg.nik && reg.nik.toUpperCase() === (u.nik || '').toUpperCase()))) {
                   updatedRegularUsers.push(u);
                 }
               }
@@ -14730,8 +14908,11 @@ function testManualSync() {
       alert(`✅ Berkas Excel 3-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 3 sheet persis:\n1. RECORD ABSEN\n2. REKAP PENGAJUAN\n3. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
     }
 
-    // Inisialisasi otomatis status Google Sheet, Audio Setting, Pemulihan Data & Sinkronisasi Suara saat halaman dimuat
+    // Inisialisasi otomatis status Google Sheet, Audio Setting, Pembersihan Duplikat & Sinkronisasi Suara saat halaman dimuat
     try {
+      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') {
+        autoPurgeDuplicateAndCorruptEmployees();
+      }
       if (typeof repairCorruptedEmployeeNames === 'function') {
         repairCorruptedEmployeeNames();
       }
