@@ -3776,6 +3776,22 @@
       return cleanList;
     }
 
+    function harmonizeAndResequenceAllNIKs() {
+      try {
+        ['MBI', 'MAI'].forEach(wh => {
+          const storageKey = `wfm_${wh.toLowerCase()}_users`;
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          const users = JSON.parse(raw);
+          if (Array.isArray(users)) {
+            const cleaned = deduplicateUserList(users, wh);
+            localStorage.setItem(storageKey, JSON.stringify(cleaned));
+            localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(cleaned));
+          }
+        });
+      } catch(e) {}
+    }
+
     function sanitizeAttendanceDatabase(warehouse) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_attendance`;
       const data = localStorage.getItem(storageKey);
@@ -4172,11 +4188,21 @@
           const cloudTime = cloudItem.updatedAt ? new Date(cloudItem.updatedAt).getTime() : 0;
 
           // Bandingkan mana yang lebih baru: jika lokal baru diedit atau localTime >= cloudTime, lokal menang
-          if (isRecentLocalChange || localTime >= cloudTime || !cloudItem.updatedAt) {
-            resultList.push({ ...cloudItem, ...localItem });
-          } else {
-            resultList.push({ ...localItem, ...cloudItem });
+          let winner = (isRecentLocalChange || localTime >= cloudTime || !cloudItem.updatedAt)
+            ? { ...cloudItem, ...localItem }
+            : { ...localItem, ...cloudItem };
+
+          // PERISAI ANTI-KONTAMINASI NAMA: Lindungi nama asli manusia agar tidak pernah tertimpa kode ID dari Cloud
+          if (typeof isLikelyIdNotName === 'function') {
+            if (isLikelyIdNotName(winner.name)) {
+              if (localItem.name && !isLikelyIdNotName(localItem.name)) {
+                winner.name = localItem.name;
+              } else if (cloudItem.name && !isLikelyIdNotName(cloudItem.name)) {
+                winner.name = cloudItem.name;
+              }
+            }
           }
+          resultList.push(winner);
         } else {
           resultList.push(cloudItem);
         }
@@ -4826,6 +4852,7 @@
     }
 
     function sanitizeEmployeesData() {
+      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const deletedKeys = getDeletedUserKeys();
       ['MBI', 'MAI'].forEach(wh => {
         const storageKey = `wfm_${wh.toLowerCase()}_users`;
@@ -4834,6 +4861,7 @@
         try {
           let users = JSON.parse(data);
           if (!Array.isArray(users)) return;
+          let hasChanges = false;
           const cleanUsers = users.filter(u => u && u.name && u.name.trim() !== '' && u.nik !== 'SPV-MBI' && u.nik !== 'SPV-MAI' && u.id !== 'mbi-spv' && u.id !== 'mai-spv');
           if (cleanUsers.length !== users.length) hasChanges = true;
 
@@ -5143,7 +5171,7 @@
             const bakUsers = JSON.parse(rawBak);
             if (Array.isArray(bakUsers)) {
               bakUsers.forEach(u => {
-                if (!u || !u.name || isManagementSystemAccount(u)) return;
+                if (!u || !u.name || isManagementSystemAccount(u) || isLikelyIdNotName(u.name)) return;
                 const cName = cleanStr(u.name);
                 const cNik = (u.nik || '').toUpperCase().trim();
                 if (!existingNames.has(cName) && (!cNik || !existingNiks.has(cNik))) {
@@ -5169,7 +5197,7 @@
               const atts = JSON.parse(rawAtt);
               if (Array.isArray(atts)) {
                 atts.forEach(a => {
-                  if (!a || !a.userName) return;
+                  if (!a || !a.userName || isLikelyIdNotName(a.userName)) return;
                   const cName = cleanStr(a.userName);
                   const cNik = (a.userNik || '').toUpperCase().trim();
                   if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
@@ -5213,7 +5241,7 @@
               const ots = JSON.parse(rawOt);
               if (Array.isArray(ots)) {
                 ots.forEach(o => {
-                  if (!o || !o.userName) return;
+                  if (!o || !o.userName || isLikelyIdNotName(o.userName)) return;
                   const cName = cleanStr(o.userName);
                   const cNik = (o.userNik || '').toUpperCase().trim();
                   if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
@@ -5251,7 +5279,7 @@
               const lvs = JSON.parse(rawLv);
               if (Array.isArray(lvs)) {
                 lvs.forEach(l => {
-                  if (!l || !l.userName) return;
+                  if (!l || !l.userName || isLikelyIdNotName(l.userName)) return;
                   const cName = cleanStr(l.userName);
                   const cNik = (l.userNik || '').toUpperCase().trim();
                   if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
@@ -5478,6 +5506,7 @@
       }
 
       // Ensure DB initialized & migrate NIK to Enterprise Matrix (MBI26-xxx)
+      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       sanitizeEmployeesData();
       repairAndSanitizeAttendanceRecords();
       recoverLostEmployees(true);
@@ -9675,6 +9704,7 @@
       const badgeText = user.warehouse || activeWarehouse;
       const qrUrl = getQrCodeUrl(user.nik);
       const idAttr = customId ? `id="${customId}"` : '';
+      const displayName = (user.name && typeof isLikelyIdNotName === 'function' && !isLikelyIdNotName(user.name)) ? user.name : (user.nik ? `Karyawan (${user.nik})` : (user.name || 'Karyawan'));
 
       if (isPrint) {
         // Layout Khusus Cetak Lembar A4 (Unit Milimeter)
@@ -9694,12 +9724,12 @@
 
             <div style="flex: 1; padding: 1.5mm 2.5mm; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; text-align: center; box-sizing: border-box;">
               <div style="width: 7mm; height: 7mm; border-radius: 9999px; background-color: #f1f5f9; border: 0.3mm solid #cbd5e1; display: flex; align-items: center; justify-content: center; color: #334155; font-weight: 900; font-size: 7.5pt; line-height: 1; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                ${(user.name || 'U').charAt(0).toUpperCase()}
+                ${(displayName || 'U').charAt(0).toUpperCase()}
               </div>
 
               <div style="width: 100%;">
                 <div style="font-size: 7.5pt; font-weight: 900; color: #0f172a; line-height: 1.2; text-transform: uppercase;">
-                  ${user.name}
+                  ${displayName}
                 </div>
                 <div style="margin-top: 0.4mm;">
                   <span style="font-size: 5.5pt; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border-radius: 1mm; padding: 0.4mm 1.8mm; text-transform: uppercase; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
@@ -9747,12 +9777,12 @@
             
             <!-- Avatar Frame -->
             <div style="width: 60px; height: 60px; border-radius: 9999px; background-color: #f0fdfa; border: 3px solid #0284c7; box-shadow: 0 4px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; color: #0369a1; font-weight: 900; font-size: 24px; line-height: 1; flex-shrink: 0;">
-              ${(user.name || 'U').charAt(0).toUpperCase()}
+              ${(displayName || 'U').charAt(0).toUpperCase()}
             </div>
 
             <!-- Employee Details -->
             <div style="width: 100%;">
-              <h4 style="font-size: 16px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; word-break: break-word; text-transform: uppercase; letter-spacing: 0.02em;">${user.name}</h4>
+              <h4 style="font-size: 16px; font-weight: 900; color: #0f172a; line-height: 1.25; margin: 0; word-break: break-word; text-transform: uppercase; letter-spacing: 0.02em;">${displayName}</h4>
               
               <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
                 <span style="font-size: 10.5px; font-weight: 800; color: #0284c7; background-color: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 10px; text-transform: uppercase; letter-spacing: 0.04em; display: inline-block;">
@@ -10014,6 +10044,7 @@
     // FITUR DATA KARYAWAN (SESUAI GAMBAR 1) + EXCEL & HAPUS CEKLIS
     // =========================================================
     function renderEmployeeTable() {
+      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
@@ -10040,12 +10071,14 @@
           ? 'bg-slate-900 text-white' 
           : (roleStr === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200');
 
+        const displayName = (emp.name && !isLikelyIdNotName(emp.name)) ? emp.name : `Karyawan (${emp.nik})`;
+
         tr.innerHTML = `
           <td class="p-3.5 border-r border-slate-100 text-center">
             <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
           </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
-          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${emp.name} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
+          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${displayName} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
           <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
           <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource || '-'}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
@@ -10767,21 +10800,22 @@
     }
 
     function downloadAccountsExcel() {
+      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
       const exportData = regularUsers.map((u, idx) => ({
-        "ID System": u.id || '',
         "No": idx + 1,
-        "NIK Karyawan": u.nik,
-        "Nama Karyawan": u.name,
-        "Departemen": u.dept,
+        "ID Karyawan": u.nik || '',
+        "Nama Karyawan": u.name || '',
+        "Departemen": u.dept || 'Warehouse Staff',
         "Outsource": u.outsource || '-',
         "Posisi / Role": (u.role || 'staff').toUpperCase(),
         "Status Akun": (u.role === 'supervisor' || u.role === 'coordinator') ? 'Memiliki Akun Login' : 'Data Presensi (Tanpa Akun)',
         "No Telepon": u.phone || '-',
         "Email": u.email || '-',
         "Join Date": u.joinDate || '-',
-        "Gudang": u.warehouse || activeWarehouse
+        "Gudang": u.warehouse || activeWarehouse,
+        "ID System": u.id || ''
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -10791,11 +10825,13 @@
     }
 
     function downloadEmployeeTemplate() {
+      const year = new Date().getFullYear().toString().slice(-2);
+      const prefix = `${activeWarehouse.toUpperCase()}${year}-`;
       const templateData = [
-        { "No": 1, "Nama Karyawan": "Afuani Huyan", "Departemen": "Warehouse Staff", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
-        { "No": 2, "Nama Karyawan": "Budi Santoso", "Departemen": "Warehouse Staff", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "budi@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
-        { "No": 3, "Nama Karyawan": "Citra Lestari", "Departemen": "Coordinator", "Outsource": "Internal", "No Telpon": "08129876544", "Email": "citra@medika.com", "JOIN DATE": "2022-06-10", "Posisi": "coordinator" },
-        { "No": 4, "Nama Karyawan": "Dedi Kurniawan", "Departemen": "Supervisor", "Outsource": "Internal", "No Telpon": "08129876545", "Email": "dedi@medika.com", "JOIN DATE": "2021-03-05", "Posisi": "supervisor" }
+        { "No": 1, "ID Karyawan": `${prefix}001`, "Nama Karyawan": "Afuani Huyan", "Departemen": "Warehouse Staff", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
+        { "No": 2, "ID Karyawan": `${prefix}002`, "Nama Karyawan": "Budi Santoso", "Departemen": "Warehouse Staff", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "budi@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
+        { "No": 3, "ID Karyawan": `${prefix}003`, "Nama Karyawan": "Citra Lestari", "Departemen": "Coordinator", "Outsource": "Internal", "No Telpon": "08129876544", "Email": "citra@medika.com", "JOIN DATE": "2022-06-10", "Posisi": "coordinator" },
+        { "No": 4, "ID Karyawan": `${prefix}004`, "Nama Karyawan": "Dedi Kurniawan", "Departemen": "Supervisor", "Outsource": "Internal", "No Telpon": "08129876545", "Email": "dedi@medika.com", "JOIN DATE": "2021-03-05", "Posisi": "supervisor" }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
@@ -10805,19 +10841,21 @@
     }
 
     function exportEmployeesExcel() {
+      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
-      const exportData = regularUsers.map(u => ({
-        "ID System": u.id || '',
-        "Nama Karyawan": u.name,
-        "Departemen": u.dept,
+      const exportData = regularUsers.map((u, idx) => ({
+        "No": idx + 1,
+        "ID Karyawan": u.nik || '',
+        "Nama Karyawan": u.name || '',
+        "Departemen": u.dept || 'Warehouse Staff',
         "Outsource": u.outsource || '-',
         "No Telpon": u.phone || '-',
         "Email": u.email || '-',
         "JOIN DATE": u.joinDate || '-',
-        "NIK": u.nik,
         "Posisi": u.role || 'staff',
-        "Gudang": u.warehouse || activeWarehouse
+        "Gudang": u.warehouse || activeWarehouse,
+        "ID System": u.id || ''
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -10875,6 +10913,182 @@
       return str;
     }
 
+    // Helper penentu apakah sebuah string adalah kode ID / NIK / Angka (BUKAN nama manusia)
+    function isLikelyIdNotName(str) {
+      if (!str || typeof str !== 'string') return false;
+      const s = str.trim();
+      if (!s || s === '-' || s === '--' || s.length < 1) return false;
+
+      // 1. Pola murni angka / digit (e.g. "1", "01", "001", "12345", dsb.)
+      if (/^\d+$/.test(s)) return true;
+
+      // 2. Pola angka dengan strip atau titik (e.g. "26-001", "01-002", "26.001", "1.01")
+      if (/^\d+[\-._]\d+$/.test(s)) return true;
+
+      // 3. Pola kode ID/NIK resmi sistem: MBI26-001, MAI26-012, ADM001, ABSEN-MBI, MGR001, SPV-MBI
+      // Mendukung pemisah strip, underscore, titik, atau spasi (e.g. "MBI 001", "MBI26-001", "MBI.26.001", "MBI26-064")
+      if (/^(MBI|MAI|ADM|ABSEN|MGR|SPV)[\s\-._]?[0-9A-Z\-._]+$/i.test(s)) return true;
+
+      // 4. Pola umum kode ID/NIK: prefix huruf 1-8 karakter diikuti angka/strip/spasi (e.g. ID001, ID 01, ID-1, EMP-102, K-01, K1, NIK123, NIP01, MEDIKA-01)
+      if (/^[A-Z]{1,8}[\s\-._]?[0-9]{1,}[0-9A-Z\-._]*$/i.test(s)) return true;
+
+      // 5. Pola string yang diawali kata Karyawan diikuti kode/angka: e.g. "Karyawan MBI26-001", "Karyawan 01", "Karyawan Baru"
+      if (/^karyawan\s+(baru|[0-9A-Z\-._]+)$/i.test(s)) return true;
+
+      // 6. Pola barcode/kode alfanumerik yang didominasi angka dan karakter non-huruf
+      const letters = (s.match(/[a-zA-Z]/g) || []).length;
+      const digits = (s.match(/[0-9]/g) || []).length;
+      if (digits > 0 && digits >= letters) return true; // Jika digit >= huruf, pasti ID/kode
+
+      return false;
+    }
+
+    // Helper penentu apakah sebuah string adalah nama manusia yang sah
+    function isLikelyHumanName(str) {
+      if (!str || typeof str !== 'string') return false;
+      const s = str.trim();
+      if (!s || s.length < 2 || s === '-' || s === '--') return false;
+
+      // Jika cocok dengan pola ID/kode di atas -> BUKAN nama
+      if (isLikelyIdNotName(s)) return false;
+
+      // Nama manusia tidak boleh mengandung angka (0-9)
+      if (/\d/.test(s)) return false;
+
+      // Nama manusia tidak boleh berupa email atau url
+      if (s.includes('@') || s.includes('http') || s.includes('.com')) return false;
+
+      // Nama manusia harus memiliki setidaknya 1 huruf vokal (a, i, u, e, o)
+      if (!/[aiueoAIUEO]/.test(s)) return false;
+
+      // Nama manusia tidak boleh berupa role atau departemen sistem
+      const lower = s.toLowerCase();
+      const blacklistedTerms = [
+        'warehouse staff', 'coordinator', 'supervisor', 'administrator', 'admin',
+        'scanner', 'manager', 'presensi', 'internal', 'outsource', 'staff',
+        'laki-laki', 'perempuan', 'pria', 'wanita', 'aktif', 'active',
+        'picker', 'packer', 'checker', 'driver', 'inbound', 'return', 'dispatch'
+      ];
+      if (blacklistedTerms.includes(lower)) return false;
+
+      // Nama manusia hanya terdiri dari huruf alfabet, spasi, tanda petik, dan titik (e.g. M. Budi, S.T.)
+      if (!/^[a-zA-Z\s'.-]+$/.test(s)) return false;
+
+      return true;
+    }
+
+    // Pemulihan darurat otomatis jika nama karyawan sempat rusak / terisi NIK/ID dari upload lama
+    function repairCorruptedEmployeeNames() {
+      ['MBI', 'MAI'].forEach(wh => {
+        const storageKey = `wfm_${wh.toLowerCase()}_users`;
+        const backupKey = `wfm_${wh.toLowerCase()}_users_backup`;
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) return;
+        try {
+          let users = JSON.parse(raw);
+          if (!Array.isArray(users) || users.length === 0) return;
+
+          const att = getWhDB(wh, 'attendance', []);
+          const ots = getWhDB(wh, 'overtime', []);
+          const lvs = getWhDB(wh, 'leaves', []);
+          const seedUsers = wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
+
+          // Baca data backup jika tersedia
+          let backupUsers = [];
+          try {
+            const bRaw = localStorage.getItem(backupKey);
+            if (bRaw) backupUsers = JSON.parse(bRaw);
+          } catch(e) {}
+
+          let changed = false;
+          users.forEach(u => {
+            if (!u || isManagementSystemAccount(u)) return;
+            const isCorrupt = isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name) || (u.nik && cleanStr(u.name) === cleanStr(u.nik));
+            if (isCorrupt) {
+              let realName = '';
+
+              // 1. Cek dari backup lokal
+              if (Array.isArray(backupUsers)) {
+                const foundBackup = backupUsers.find(b => (b.id && b.id === u.id) || (b.nik && b.nik === u.nik));
+                if (foundBackup && isLikelyHumanName(foundBackup.name)) {
+                  realName = foundBackup.name;
+                }
+              }
+
+              // 2. Cek dari riwayat presensi
+              if (!realName) {
+                const foundAtt = att.find(a => (a.userNik === u.nik || (u.id && a.userId === u.id)) && isLikelyHumanName(a.userName));
+                if (foundAtt) realName = foundAtt.userName;
+              }
+
+              // 3. Cek dari riwayat lembur
+              if (!realName) {
+                const foundOt = ots.find(o => (o.userNik === u.nik || (u.id && o.userId === u.id)) && isLikelyHumanName(o.userName));
+                if (foundOt) realName = foundOt.userName;
+              }
+
+              // 4. Cek dari riwayat cuti / izin
+              if (!realName) {
+                const foundLv = lvs.find(l => (l.userNik === u.nik || (u.id && l.userId === u.id)) && isLikelyHumanName(l.userName));
+                if (foundLv) realName = foundLv.userName;
+              }
+
+              // 5. Cek dari data master bawaan (seed)
+              if (!realName) {
+                const foundSeed = seedUsers.find(s => s.nik === u.nik || (u.id && s.id === u.id));
+                if (foundSeed && isLikelyHumanName(foundSeed.name)) realName = foundSeed.name;
+              }
+
+              if (realName) {
+                console.log(`[AutoRepair] Memulihkan nama karyawan ${u.nik}: "${u.name}" -> "${realName}"`);
+                u.name = realName;
+                changed = true;
+
+                // Sinkronkan ke riwayat presensi, lembur, dan izin jika ada catatan yang terisi ID
+                let attFix = false;
+                att.forEach(a => {
+                  if ((a.userNik === u.nik || (u.id && a.userId === u.id)) && isLikelyIdNotName(a.userName)) {
+                    a.userName = realName;
+                    attFix = true;
+                  }
+                });
+                if (attFix) setWhDB(wh, 'attendance', att);
+
+                let otsFix = false;
+                ots.forEach(o => {
+                  if ((o.userNik === u.nik || (u.id && o.userId === u.id)) && isLikelyIdNotName(o.userName)) {
+                    o.userName = realName;
+                    otsFix = true;
+                  }
+                });
+                if (otsFix) setWhDB(wh, 'overtime', ots);
+
+                let lvsFix = false;
+                lvs.forEach(l => {
+                  if ((l.userNik === u.nik || (u.id && l.userId === u.id)) && isLikelyIdNotName(l.userName)) {
+                    l.userName = realName;
+                    lvsFix = true;
+                  }
+                });
+                if (lvsFix) setWhDB(wh, 'leaves', lvs);
+              }
+            }
+          });
+
+          if (changed) {
+            localStorage.setItem(storageKey, JSON.stringify(users));
+            localStorage.setItem(backupKey, JSON.stringify(users));
+            const nowIso = new Date().toISOString();
+            localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+            localStorage.setItem('wfm_master_updated_at', nowIso);
+            if (typeof saveFullDatabaseToCloud === 'function') {
+              saveFullDatabaseToCloud(false, true);
+            }
+          }
+        } catch(e) {}
+      });
+    }
+
     // Helper pencari nilai kolom fleksibel pada baris Excel (Prioritas: Exact Match Dulu, Baru Partial Match)
     function getExcelVal(row, keywords, defaultVal = '', excludeKeywords = []) {
       if (!row || typeof row !== 'object') return defaultVal;
@@ -10882,6 +11096,7 @@
 
       // TAHAP 1: EXACT MATCH (Cocok persis 100% agar tidak ada kolom yang tertukar)
       for (const k of keys) {
+        if (k === '_rawCells') continue;
         const cleanK = k.trim().toLowerCase();
         if (excludeKeywords.length > 0 && excludeKeywords.some(ex => cleanK.includes(ex.toLowerCase()))) {
           continue;
@@ -10899,6 +11114,7 @@
 
       // TAHAP 2: PARTIAL MATCH (Hanya jika tidak ada kolom exact match)
       for (const k of keys) {
+        if (k === '_rawCells') continue;
         const cleanK = k.trim().toLowerCase();
         if (excludeKeywords.length > 0 && excludeKeywords.some(ex => cleanK.includes(ex.toLowerCase()))) {
           continue;
@@ -10923,6 +11139,10 @@
       const file = e.target.files[0];
       if (!file) return;
 
+      if (typeof repairCorruptedEmployeeNames === 'function') {
+        repairCorruptedEmployeeNames();
+      }
+
       const reader = new FileReader();
       reader.onload = async (event) => {
         try {
@@ -10937,77 +11157,236 @@
             return;
           }
 
-          // Cari baris header yang sebenarnya (baris yang memiliki kata 'nama', 'karyawan', 'pegawai', dsb.)
+          // Cari baris header yang sebenarnya (baris yang memiliki kata kunci kolom data)
           let headerRowIdx = 0;
-          for (let i = 0; i < Math.min(rawSheetData.length, 10); i++) {
-            const rowStr = rawSheetData[i].map(c => String(c).toLowerCase()).join(' ');
-            if (rowStr.includes('nama') || rowStr.includes('karyawan') || rowStr.includes('pegawai')) {
+          let maxHeaderScore = -1;
+
+          for (let i = 0; i < Math.min(rawSheetData.length, 15); i++) {
+            const rowArr = rawSheetData[i];
+            if (!Array.isArray(rowArr)) continue;
+            const nonBlankCells = rowArr.filter(c => c !== undefined && c !== null && String(c).trim() !== '');
+            if (nonBlankCells.length < 2) continue; // Lewati judul banner 1 sel
+
+            let score = 0;
+            const rowStr = rowArr.map(c => String(c).toLowerCase().trim()).join(' ');
+
+            if (rowStr.includes('nama') || rowStr.includes('name')) score += 10;
+            if (rowStr.includes('nik') || rowStr.includes('id karyawan') || rowStr.includes('nomor induk') || rowStr.includes('no induk') || rowStr.includes('nip')) score += 8;
+            if (rowStr.includes('dept') || rowStr.includes('departemen') || rowStr.includes('bagian')) score += 5;
+            if (rowStr.includes('outsource') || rowStr.includes('vendor')) score += 4;
+            if (rowStr.includes('posisi') || rowStr.includes('jabatan') || rowStr.includes('role')) score += 4;
+            if (rowStr.includes('telepon') || rowStr.includes('phone') || rowStr.includes('telp') || rowStr.includes('hp')) score += 4;
+            if (rowStr.includes('email') || rowStr.includes('surel')) score += 4;
+            if (rowStr.includes('join') || rowStr.includes('masuk')) score += 4;
+            if (rowStr.includes('gudang') || rowStr.includes('warehouse')) score += 4;
+
+            if (score > maxHeaderScore) {
+              maxHeaderScore = score;
               headerRowIdx = i;
-              break;
             }
           }
 
-          const headers = rawSheetData[headerRowIdx].map(h => String(h).trim().toLowerCase());
-          const rows = [];
-          for (let i = headerRowIdx + 1; i < rawSheetData.length; i++) {
-            const rowArr = rawSheetData[i];
-            if (!rowArr || rowArr.length === 0) continue;
-            const obj = {};
-            headers.forEach((h, colIdx) => {
-              if (h) obj[h] = rowArr[colIdx] !== undefined ? rowArr[colIdx] : '';
-            });
-            rows.push(obj);
+          // Jika tidak ada baris yang tampak seperti header sama sekali, data mulai dari baris 0
+          if (maxHeaderScore < 5) {
+            headerRowIdx = -1;
           }
 
-          if (rows.length === 0) {
-            alert('Tidak ada baris data karyawan yang ditemukan pada file Excel.');
-            return;
-          }
+          const rawHeaders = headerRowIdx >= 0 ? (rawSheetData[headerRowIdx] || []) : [];
+          const headers = rawHeaders.map(h => String(h || '').trim().toLowerCase());
 
-          const targetWh = activeWarehouse || 'MBI';
-          const replaceMode = confirm(
-            `📊 Ditemukan ${rows.length} baris data karyawan pada file Excel.\n\n` +
-            `• Klik [OK] untuk MENGGANTI TOTAL & BERSIH seluruh data karyawan di Gudang ${targetWh} dengan data Excel ini (Data karyawan lama diperbarui ke data baru dari Excel, dan data yang dihapus dari Excel akan ikut terhapus).\n\n` +
-            `• Klik [Cancel] untuk UPDATE & GABUNG (Data karyawan yang cocok akan DIUPDATE ke data baru, karyawan baru ditambahkan, dan karyawan lain yang tidak tercatat di file Excel ini tetap aman tersimpan).`
-          );
+          // =========================================================
+          // DETERMINISTIC COLUMN MAPPING
+          // Memetakan indeks kolom secara presisi dan pasti, tidak akan tertukar
+          // =========================================================
+          let colIdx_idSystem = -1;
+          let colIdx_nik = -1;
+          let colIdx_name = -1;
+          let colIdx_dept = -1;
+          let colIdx_outsource = -1;
+          let colIdx_role = -1;
+          let colIdx_phone = -1;
+          let colIdx_email = -1;
+          let colIdx_joinDate = -1;
+          let colIdx_warehouse = -1;
 
-          // Ambil data users aktif & pisahkan akun pengelola sistem (Admin, Scanner, Manager)
-          let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-          const managementAccounts = existingUsers.filter(u => isManagementSystemAccount(u));
+          // Tahap 1: Deteksi berdasarkan teks header
+          headers.forEach((h, colIdx) => {
+            if (!h) return;
+            // 1. ID System
+            if (h.includes('id system') || h.includes('idsystem') || h.includes('id database') || h.includes('user id') || h.includes('userid')) {
+              colIdx_idSystem = colIdx;
+              return;
+            }
+            // 2. NIK / ID Karyawan (WAJIB TIDAK MENGANDUNG KATA 'NAMA' ATAU 'NAME')
+            if ((h === 'nik' || h === 'id' || h === 'nip' || h.includes('nik karyawan') || h.includes('id karyawan') || h.includes('nomor induk') || h.includes('no induk') || h.includes('no. induk') || h.includes('kode karyawan') || h.includes('barcode') || h.includes('id pegawai') || h.includes('no karyawan') || h.includes('nomor karyawan') || h.includes('no. karyawan') || h.includes('no pegawai') || h.includes('nomor pegawai')) && !h.includes('nama') && !h.includes('name')) {
+              colIdx_nik = colIdx;
+              return;
+            }
+            // 3. Nama Karyawan (WAJIB TIDAK MENGANDUNG KATA 'SYSTEM' ATAU 'DATABASE')
+            if ((h.includes('nama') || h.includes('name')) && !h.includes('system') && !h.includes('database')) {
+              colIdx_name = colIdx;
+              return;
+            }
+            // 4. Departemen
+            if (h.includes('dept') || h.includes('departemen') || h.includes('bagian') || h.includes('divisi') || h.includes('unit')) {
+              colIdx_dept = colIdx;
+              return;
+            }
+            // 5. Outsource
+            if (h.includes('outsource') || h.includes('vendor') || h.includes('perusahaan') || h.includes('instansi') || h.includes('pt') || h.includes('cv')) {
+              colIdx_outsource = colIdx;
+              return;
+            }
+            // 6. Role / Posisi
+            if (h.includes('posisi') || h.includes('jabatan') || h.includes('role')) {
+              colIdx_role = colIdx;
+              return;
+            }
+            // 7. Telepon
+            if (h.includes('telp') || h.includes('telepon') || h.includes('phone') || h.includes('hp') || h.includes('wa') || h.includes('kontak') || h.includes('mobile')) {
+              colIdx_phone = colIdx;
+              return;
+            }
+            // 8. Email
+            if (h.includes('email') || h.includes('surel') || h.includes('mail')) {
+              colIdx_email = colIdx;
+              return;
+            }
+            // 9. Join Date
+            if (h.includes('join') || h.includes('masuk') || h.includes('gabung') || h.includes('tgl masuk') || h.includes('tanggal masuk')) {
+              colIdx_joinDate = colIdx;
+              return;
+            }
+            // 10. Gudang
+            if (h.includes('gudang') || h.includes('warehouse')) {
+              colIdx_warehouse = colIdx;
+              return;
+            }
+          });
+
+          // Tahap 2: Fallback Cerdas jika nama atau NIK belum terdeteksi (sampling isi sel baris data asli)
+          const startSample = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
+          const endSample = Math.min(rawSheetData.length, startSample + 10);
           
-          // Bersihkan seluruh tombstone / riwayat hapus lama agar upload baru tidak pernah terblokir
-          try {
-            localStorage.removeItem('wfm_deleted_user_keys');
-          } catch(e) {}
+          if (colIdx_name === -1 || colIdx_nik === -1) {
+            const colHumanNameVotes = {};
+            const colIdVotes = {};
 
-          const year = new Date().getFullYear().toString().slice(-2);
-          const prefix = `${targetWh.toUpperCase()}${year}-`;
+            for (let r = startSample; r < endSample; r++) {
+              const rowArr = rawSheetData[r];
+              if (!Array.isArray(rowArr)) continue;
+              rowArr.forEach((cell, cIdx) => {
+                if (cell === undefined || cell === null) return;
+                const str = String(cell).trim();
+                if (!str || str === '-') return;
+                if (isLikelyHumanName(str)) {
+                  colHumanNameVotes[cIdx] = (colHumanNameVotes[cIdx] || 0) + 1;
+                }
+                if (isLikelyIdNotName(str)) {
+                  colIdVotes[cIdx] = (colIdVotes[cIdx] || 0) + 1;
+                }
+              });
+            }
 
+            if (colIdx_name === -1) {
+              let maxVotes = 0;
+              Object.keys(colHumanNameVotes).forEach(cIdx => {
+                const votes = colHumanNameVotes[cIdx];
+                const colInt = parseInt(cIdx, 10);
+                if (votes > maxVotes && colInt !== colIdx_nik) {
+                  maxVotes = votes;
+                  colIdx_name = colInt;
+                }
+              });
+            }
+
+            if (colIdx_nik === -1) {
+              let maxVotes = 0;
+              Object.keys(colIdVotes).forEach(cIdx => {
+                const votes = colIdVotes[cIdx];
+                const colInt = parseInt(cIdx, 10);
+                if (votes > maxVotes && colInt !== colIdx_name && colInt !== colIdx_idSystem) {
+                  maxVotes = votes;
+                  colIdx_nik = colInt;
+                }
+              });
+            }
+          }
+
+          // Tahap 3: Ekstraksi seluruh baris data karyawan
+          const dataStartIdx = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
           const parsedRows = [];
           const seenInExcel = new Set();
+          const targetWh = activeWarehouse || 'MBI';
+          let existingUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
 
-          rows.forEach((r) => {
-            // Ambil ID System (jika ada dari hasil download aplikasi)
-            const idSystem = getExcelVal(r, ['id system', 'idsystem', 'id_system', 'system id', 'system_id', 'id database', 'database id', 'user id', 'userid'], '', ['nik', 'nama', 'name']).trim();
-            
-            // Ambil Nama Karyawan (WAJIB kecualikan kolom ID/NIK agar nama karyawan TIDAK PERNAH terisi NIK/ID)
-            const name = getExcelVal(r, ['nama karyawan', 'nama pegawai', 'nama lengkap', 'nama staf', 'nama', 'name'], '', ['nik', 'id', 'kode', 'barcode', 'nomor induk', 'no induk', 'system', 'outsource', 'dept', 'telepon', 'phone', 'email', 'join']).trim();
-            
-            // Ambil NIK / ID Karyawan (WAJIB kecualikan kolom nama, system, telepon, dsb.)
-            const rawNik = getExcelVal(r, ['nik karyawan', 'nik', 'id karyawan', 'nomor induk', 'no induk', 'kode karyawan', 'barcode', 'id pegawai', 'id'], '', ['nama', 'name', 'system', 'telp', 'phone', 'email', 'dept', 'role', 'jabatan', 'bagian', 'outsource', 'vendor']).trim().toUpperCase();
+          for (let i = dataStartIdx; i < rawSheetData.length; i++) {
+            const rowArr = rawSheetData[i];
+            if (!rowArr || !Array.isArray(rowArr) || rowArr.length === 0) continue;
+            const hasData = rowArr.some(c => c !== undefined && c !== null && String(c).trim() !== '');
+            if (!hasData) continue;
+
+            // 1. Ambil ID System (jika ada dari hasil download aplikasi)
+            let idSystem = '';
+            if (colIdx_idSystem !== -1 && rowArr[colIdx_idSystem] !== undefined && rowArr[colIdx_idSystem] !== null) {
+              idSystem = String(rowArr[colIdx_idSystem]).trim();
+            }
+
+            // 2. Ambil NIK / ID Karyawan
+            let rawNik = '';
+            if (colIdx_nik !== -1 && rowArr[colIdx_nik] !== undefined && rowArr[colIdx_nik] !== null) {
+              rawNik = String(rowArr[colIdx_nik]).trim().toUpperCase();
+            }
+
+            // 3. Ambil Nama Karyawan
+            let name = '';
+            if (colIdx_name !== -1 && rowArr[colIdx_name] !== undefined && rowArr[colIdx_name] !== null) {
+              name = String(rowArr[colIdx_name]).trim();
+            }
+
+            // PERISAI 1: Jika kolom nama ternyata berisi kode ID / angka
+            if (isLikelyIdNotName(name)) {
+              if (!rawNik) rawNik = name.toUpperCase();
+              name = '';
+            }
+
+            // PERISAI 2: Jika nama masih kosong atau belum memenuhi standar nama manusia
+            // Cari dari seluruh sel baris Excel yang memenuhi kriteria nama manusia sah
+            if (!name || !isLikelyHumanName(name)) {
+              for (let c = 0; c < rowArr.length; c++) {
+                if (c === colIdx_nik || c === colIdx_idSystem) continue;
+                const strCell = String(rowArr[c] || '').trim();
+                if (isLikelyHumanName(strCell)) {
+                  name = strCell;
+                  break;
+                }
+              }
+            }
+
+            // PERISAI 3: Jika masih kosong, coba pulihkan dari user lama di sistem berdasarkan NIK lama atau ID
+            if (!name || !isLikelyHumanName(name)) {
+              const prevUser = existingUsers.find(u => 
+                (idSystem && u.id === idSystem) || 
+                (rawNik && (u.nik || '').toUpperCase() === rawNik)
+              );
+              if (prevUser && prevUser.name && isLikelyHumanName(prevUser.name)) {
+                name = prevUser.name;
+              }
+            }
 
             // Lewati baris kosong tanpa nama dan tanpa NIK
-            if (!name && !rawNik && !idSystem) return;
+            if (!name && !rawNik && !idSystem) continue;
 
             // Cegah duplikasi baris ganda yang identik di file Excel itu sendiri
             const excelKey = idSystem || rawNik || cleanStr(name);
-            if (seenInExcel.has(excelKey)) return;
+            if (seenInExcel.has(excelKey)) continue;
             seenInExcel.add(excelKey);
 
-            const rawDept = getExcelVal(r, ['dept', 'departemen', 'bagian', 'divisi', 'unit'], '', ['nama', 'telp', 'phone', 'outsource', 'nik', 'email']).toLowerCase();
-            const rawRole = getExcelVal(r, ['posisi', 'jabatan', 'role'], 'staff', ['nama', 'telp', 'phone', 'nik', 'email']).toLowerCase();
+            // Departemen & Posisi
+            let rawDept = colIdx_dept !== -1 ? String(rowArr[colIdx_dept] || '').trim().toLowerCase() : '';
+            let rawRole = colIdx_role !== -1 ? String(rowArr[colIdx_role] || '').trim().toLowerCase() : 'staff';
+            if (!rawRole) rawRole = 'staff';
 
-            // Pilihan departemen: Warehouse Staff, Coordinator, Supervisor
             let finalDept = 'Warehouse Staff';
             let finalRole = 'staff';
             let hasAccount = false;
@@ -11029,17 +11408,21 @@
               hasAccount = false;
             }
 
-            let rawOutsource = getExcelVal(r, ['outsource', 'vendor', 'perusahaan', 'instansi', 'pt', 'cv'], 'Internal', ['nama', 'telp', 'phone', 'nik', 'dept', 'email']);
-            const outsource = (rawOutsource === name) ? 'Internal' : rawOutsource;
-            
-            const rawPhone = getExcelVal(r, ['no telp', 'no hp', 'nomor hp', 'nomor telp', 'no telepon', 'telepon', 'phone', 'mobile', 'whatsapp', 'wa', 'telp', 'kontak'], '-', ['nama', 'name', 'dept', 'departemen', 'outsource', 'vendor', 'nik', 'join', 'tgl', 'email']);
-            const phone = cleanExcelPhone(rawPhone, name, finalDept);
+            // Outsource
+            let rawOutsource = colIdx_outsource !== -1 ? String(rowArr[colIdx_outsource] || '').trim() : 'Internal';
+            if (!rawOutsource || rawOutsource === '-' || rawOutsource === name) rawOutsource = 'Internal';
 
-            const rawEmail = getExcelVal(r, ['email', 'surel', 'e-mail', 'alamat email', 'mail'], '', ['nama', 'telp', 'phone', 'nik', 'dept', 'outsource']).trim();
-            const email = rawEmail;
-            
-            const rawJoin = getExcelVal(r, ['join date', 'tgl masuk', 'tanggal masuk', 'tgl gabung', 'tanggal gabung', 'join', 'tgl', 'date'], '-', ['nama', 'telp', 'phone', 'hp', 'nik', 'outsource', 'vendor', 'dept', 'email']);
-            const joinDate = formatExcelDate(rawJoin);
+            // No Telepon
+            let rawPhone = colIdx_phone !== -1 ? String(rowArr[colIdx_phone] || '').trim() : '-';
+            let phone = cleanExcelPhone(rawPhone, name, finalDept);
+
+            // Email
+            let rawEmail = colIdx_email !== -1 ? String(rowArr[colIdx_email] || '').trim() : '';
+            let email = (rawEmail && rawEmail !== '-' && rawEmail.includes('@')) ? rawEmail : '';
+
+            // Join Date
+            let rawJoin = colIdx_joinDate !== -1 ? String(rowArr[colIdx_joinDate] || '').trim() : '-';
+            let joinDate = formatExcelDate(rawJoin);
 
             parsedRows.push({
               idSystem,
@@ -11050,12 +11433,33 @@
               hasAccount,
               password: hasAccount ? 'medika123' : '',
               isFirstLogin: hasAccount,
-              outsource,
+              outsource: rawOutsource,
               phone,
               email,
               joinDate
             });
-          });
+          }
+
+          if (parsedRows.length === 0) {
+            alert('Tidak ada baris data karyawan yang ditemukan pada file Excel.');
+            return;
+          }
+
+          const replaceMode = confirm(
+            `📊 Ditemukan ${parsedRows.length} baris data karyawan pada file Excel.\n\n` +
+            `• Klik [OK] untuk MENGGANTI TOTAL & BERSIH seluruh data karyawan di Gudang ${targetWh} dengan data Excel ini (Data karyawan lama diperbarui ke data baru dari Excel, dan data yang dihapus dari Excel akan ikut terhapus).\n\n` +
+            `• Klik [Cancel] untuk UPDATE & GABUNG (Data karyawan yang cocok akan DIUPDATE ke data baru, karyawan baru ditambahkan, dan karyawan lain yang tidak tercatat di file Excel ini tetap aman tersimpan).`
+          );
+
+          // Pisahkan akun pengelola sistem (Admin, Scanner, Manager)
+          const managementAccounts = existingUsers.filter(u => isManagementSystemAccount(u));
+          
+          try {
+            localStorage.removeItem('wfm_deleted_user_keys');
+          } catch(e) {}
+
+          const year = new Date().getFullYear().toString().slice(-2);
+          const prefix = `${targetWh.toUpperCase()}${year}-`;
 
           // Urutkan parsedRows agar terstruktur rapi
           parsedRows.sort((a, b) => {
@@ -11100,17 +11504,17 @@
             // 1. CARI DATA KARYAWAN LAMA YANG COCOK DI DATABASE SISTEM
             // Prioritas pencocokan identitas:
             // a. Cocok ID System (jika ada hasil download dari sistem)
-            // b. Cocok NIK lama
-            // c. Cocok Nama
+            // b. Cocok Nama Manusia (Orang yang sama meskipun ID-nya diganti di Excel!)
+            // c. Cocok NIK lama (Jika nama di Excel sedikit berbeda / typo tapi NIK sama)
             let match = null;
             if (item.idSystem) {
               match = existingUsers.find(u => !isManagementSystemAccount(u) && u.id === item.idSystem);
             }
+            if (!match && item.name && isLikelyHumanName(item.name)) {
+              match = existingUsers.find(u => !isManagementSystemAccount(u) && cleanStr(u.name) === cleanStr(item.name));
+            }
             if (!match && item.rawNik) {
               match = existingUsers.find(u => !isManagementSystemAccount(u) && (u.nik || '').toUpperCase() === item.rawNik);
-            }
-            if (!match && item.name) {
-              match = existingUsers.find(u => !isManagementSystemAccount(u) && cleanStr(u.name) === cleanStr(item.name));
             }
 
             // 2. TENTUKAN NIK FINAL:
@@ -11135,20 +11539,29 @@
               assignedNiks.add(finalNik.toUpperCase());
             }
 
+            // 3. JIKA MATCH KARYAWAN DITEMUKAN: UPDATE DATA KARYAWAN LAMA
             if (match) {
               matchedExistingIds.add(match.id);
               const oldNik = (match.nik || '').toUpperCase();
               const oldName = cleanStr(match.name);
 
+              // Catat perubahan NIK untuk kaskade ke attendance, overtime, leaves
               if (oldNik && oldNik !== finalNik) {
                 nikChangeMap[oldNik] = finalNik;
-              }
-              if (oldName && item.name && oldName !== cleanStr(item.name)) {
-                nameChangeMap[oldName] = item.name;
+                if (assignedNiks.has(oldNik) && oldNik !== finalNik) {
+                  assignedNiks.delete(oldNik);
+                }
               }
 
-              // Update data karyawan lama menjadi data baru dari Excel
-              match.name = item.name || match.name;
+              // Update nama karyawan lama HANYA jika item.name adalah nama manusia yang sah!
+              // JANGAN PERNAH menimpa nama manusia dengan ID atau string kosong!
+              if (item.name && isLikelyHumanName(item.name)) {
+                if (oldName && oldName !== cleanStr(item.name)) {
+                  nameChangeMap[oldName] = item.name;
+                }
+                match.name = item.name;
+              }
+
               match.nik = finalNik;
               match.barcodeValue = finalNik;
               match.dept = item.dept;
@@ -11170,11 +11583,17 @@
               updatedRegularUsers.push(match);
               countUpdated++;
             } else {
-              // Karyawan baru yang belum ada di database
+              // 4. KARYAWAN BARU YANG BELUM ADA DI DATABASE
+              // Jamin nama karyawan baru TIDAK PERNAH BERUPA KODE ID
+              let safeName = item.name;
+              if (!safeName || isLikelyIdNotName(safeName) || !isLikelyHumanName(safeName)) {
+                safeName = finalNik ? `Karyawan Baru (${finalNik})` : 'Karyawan Baru';
+              }
+
               const newId = item.idSystem || `${targetWh.toLowerCase()}-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`;
               const newUser = {
                 id: newId,
-                name: item.name,
+                name: safeName,
                 nik: finalNik,
                 barcodeValue: finalNik,
                 dept: item.dept,
@@ -11281,15 +11700,17 @@
             `• Data Ditambahkan (New): ${countAdded} orang\n` +
             `• Total Karyawan Aktif: ${totalActive} orang\n` +
             `• Sinkronisasi Cloud: Tersimpan Permanen 24/7 di Firebase\n\n` +
-            `Semua perubahan data lama dari Excel telah berhasil dirubah menjadi data baru dan ID Card diperbarui.`
+            `Semua perubahan NIK/ID dari Excel berhasil diperbarui dan nama karyawan tetap aman tersimpan.`
           );
         } catch (err) {
           console.error('Excel parse error:', err);
           alert('Gagal membaca file Excel: ' + (err.message || err));
         } finally {
           e.target.value = '';
-          const fileInput = document.getElementById('emp-excel-file');
-          if (fileInput) fileInput.value = '';
+          const empInput = document.getElementById('emp-excel-file');
+          if (empInput) empInput.value = '';
+          const excelInput = document.getElementById('excel-file-input');
+          if (excelInput) excelInput.value = '';
         }
       };
       reader.readAsArrayBuffer(file);
@@ -14309,8 +14730,11 @@ function testManualSync() {
       alert(`✅ Berkas Excel 3-Sheet berhasil didownload!\n\nNama berkas: BACKUP_REKAP_ABSEN_${wh}_${dateTag}.xlsx\nDi dalamnya sudah berisi 3 sheet persis:\n1. RECORD ABSEN\n2. REKAP PENGAJUAN\n3. REKAP LEMBUR\n\nAnda dapat langsung mengimpor file ini ke Google Sheet melalui menu File > Import.`);
     }
 
-    // Inisialisasi otomatis status Google Sheet, Audio Setting & Sinkronisasi Suara saat halaman dimuat
+    // Inisialisasi otomatis status Google Sheet, Audio Setting, Pemulihan Data & Sinkronisasi Suara saat halaman dimuat
     try {
+      if (typeof repairCorruptedEmployeeNames === 'function') {
+        repairCorruptedEmployeeNames();
+      }
       getGoogleSheetWebhookUrl();
       updateGSheetSyncBadge();
       preloadGPSLocation();
