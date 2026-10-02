@@ -1073,7 +1073,7 @@
                 <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2 font-bold text-xs text-slate-900">
-                      <span id="att-gps-radius-label">Radius GPS: 100 Meter</span>
+                      <span id="att-gps-radius-label">Radius GPS: 30 Meter</span>
                     </div>
                     <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800">AKTIF</span>
                   </div>
@@ -2148,7 +2148,7 @@
                 <p class="text-xs text-slate-500">
                   Gudang Aktif: <span id="lbl-registered-wh" class="font-bold text-slate-800">Gudang MBI</span>
                   • Titik: <span id="lbl-registered-coords" class="font-mono font-bold text-slate-800">-6.208800, 106.845600</span> 
-                  • Radius Aktif: <span id="lbl-registered-radius" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-extrabold text-xs">100 METER</span>
+                  • Radius Aktif: <span id="lbl-registered-radius" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-200 font-extrabold text-xs">30 METER</span>
                 </p>
               </div>
 
@@ -2157,10 +2157,10 @@
                   <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih Radius:</label>
                   <select id="select-gps-radius" onchange="changeWarehouseGPSRadius(this.value)" class="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-800 focus:outline-none cursor-pointer">
                     <option value="15">15 Meter (Ultra Ketat)</option>
-                    <option value="30">30 Meter (Ketat)</option>
+                    <option value="30" selected>30 Meter (Ketat)</option>
                     <option value="50">50 Meter (Sedang)</option>
                     <option value="75">75 Meter (Luas)</option>
-                    <option value="100" selected>100 Meter (Rekomendasi Pabrik)</option>
+                    <option value="100">100 Meter (Rekomendasi Pabrik)</option>
                     <option value="150">150 Meter (Area Kompleks)</option>
                     <option value="200">200 Meter (Area Sangat Luas)</option>
                     <option value="300">300 Meter (Kawasan Industri)</option>
@@ -2815,10 +2815,10 @@
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Radius Validasi GPS *</label>
           <select id="gps-input-radius" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
             <option value="15">15 Meter (Ultra Ketat)</option>
-            <option value="30">30 Meter (Ketat)</option>
+            <option value="30" selected>30 Meter (Ketat)</option>
             <option value="50">50 Meter (Sedang)</option>
             <option value="75">75 Meter (Luas)</option>
-            <option value="100" selected>100 Meter (Rekomendasi Pabrik / Gudang)</option>
+            <option value="100">100 Meter (Rekomendasi Pabrik / Gudang)</option>
             <option value="150">150 Meter (Area Kompleks)</option>
             <option value="200">200 Meter (Area Sangat Luas)</option>
             <option value="300">300 Meter (Kawasan Industri)</option>
@@ -3365,8 +3365,8 @@
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
     const DEFAULT_COORDS = {
-      MBI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MBI' },
-      MAI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MAI' }
+      MBI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MBI' },
+      MAI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MAI' }
     };
 
     function isDummyWarehouseCoords(coords) {
@@ -3374,9 +3374,21 @@
       return Math.abs(coords.lat - (-6.2088)) < 0.001 && Math.abs(coords.lng - 106.8456) < 0.001;
     }
 
+    // Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki wewenang untuk mengubah titik & radius GPS
+    function isUserAuthorizedToManageGPS(user = currentUser) {
+      if (!user) return false;
+      const role = (user.role || '').toLowerCase().trim();
+      const nik = (user.nik || '').toUpperCase().trim();
+      if (typeof isUserAdmin === 'function' && isUserAdmin(user)) return true;
+      if (typeof isUserManager === 'function' && isUserManager(user)) return true;
+      if (role === 'supervisor' || role === 'coordinator' || role === 'admin' || role === 'manager') return true;
+      if (nik.startsWith('ADM') || nik.startsWith('MGR') || nik.startsWith('SPV') || nik.startsWith('COR')) return true;
+      return false;
+    }
+
     function getWarehouseCoords(wh = activeWarehouse) {
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
       let ownCoords = null;
 
       try {
@@ -3410,13 +3422,17 @@
 
       // Jika kedua-duanya belum terkalibrasi, kembalikan ownCoords atau default
       if (ownCoords) return ownCoords;
-      const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 100, name: `Gudang ${targetWh}` };
-      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 100, name: def.name };
+      const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 30, name: `Gudang ${targetWh}` };
+      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 30, name: def.name };
     }
 
     function setWarehouseCoords(wh, lat, lng, radius = null) {
+      if (currentUser && !isUserAuthorizedToManageGPS(currentUser)) {
+        console.warn('[GPS Shield] Percobaan perubahan koordinat GPS ditolak karena bukan peran Admin/Management');
+        return getWarehouseCoords(wh);
+      }
       const current = getWarehouseCoords(wh);
-      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
       const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || defaultRad);
       const validRadius = Number(rad) > 0 ? Number(rad) : defaultRad;
       const coords = { 
@@ -3428,15 +3444,22 @@
       };
       localStorage.setItem(`wfm_${(wh || 'MBI').toLowerCase()}_coords`, JSON.stringify(coords));
       localStorage.setItem('wfm_gps_radius', String(validRadius));
+      localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
       saveFullDatabaseToCloud(false, true);
       updateRegisteredCoordsDisplay();
       return coords;
     }
 
     async function changeWarehouseGPSRadius(radius) {
+      if (!isUserAuthorizedToManageGPS()) {
+        alert('⛔ Akses Ditolak: Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki hak akses untuk mengubah radius GPS gudang.');
+        updateRegisteredCoordsDisplay();
+        return;
+      }
       const r = parseInt(radius, 10);
       if (isNaN(r) || r <= 0) return;
       localStorage.setItem('wfm_gps_radius', String(r));
+      localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
 
       // Update Gudang MBI & MAI secara seragam agar validasi berlaku konsisten
       const currentWh = activeWarehouse || 'MBI';
@@ -3452,12 +3475,12 @@
       // Kirim LANGSUNG ke Cloud tanpa jeda debounce agar Firebase ter-update instan ke seluruh HP
       await saveFullDatabaseToCloud(false, true);
 
-      alert(`✅ Jarak radius validasi GPS Gudang diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Pesan di seluruh HP akun scanner otomatis sinkron seketika.`);
+      alert(`✅ Jarak radius validasi GPS Gudang berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Perubahan otomatis berlaku ke seluruh HP scanner dan sistem.`);
     }
 
     function updateRegisteredCoordsDisplay() {
       const c = getWarehouseCoords(activeWarehouse);
-      const curRadius = Number(c.radius) > 0 ? Number(c.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
+      const curRadius = Number(c.radius) > 0 ? Number(c.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
 
       const lblCoords = document.getElementById('lbl-registered-coords');
       const lblWh = document.getElementById('lbl-registered-wh');
@@ -3486,13 +3509,15 @@
       }
     }
 
+    // FITUR CEK JARAK GPS MURNI DIAGNOSTIK (READ-ONLY)
+    // Tidak pernah mengubah titik koordinat ataupun merubah radius gudang
     function checkLiveGPSDistance() {
       if (!navigator.geolocation) {
         alert('Fitur GPS tidak didukung di browser ini.');
         return;
       }
       const targetCoords = getWarehouseCoords(activeWarehouse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
       const activeRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
       const isTargetDummy = isDummyWarehouseCoords(targetCoords);
 
@@ -3506,37 +3531,24 @@
           const effectiveRadius = activeRadius + accuracyBuffer;
           const isValid = isTargetDummy || (dist <= effectiveRadius);
 
-          let msg = `📍 STATUS PENGECEKAN GPS ANDA:\n\n`;
+          let msg = `📍 HASIL PENGECEKAN JARAK GPS:\n\n`;
           msg += `• Titik Lokasi HP Anda: ${userLat.toFixed(6)}, ${userLng.toFixed(6)}\n`;
           if (isTargetDummy) {
             msg += `• Titik Gudang ${activeWarehouse}: [BELUM DIDAFTARKAN / MASIH DEFAULT]\n`;
           } else {
             msg += `• Titik Gudang ${activeWarehouse}: ${targetCoords.lat.toFixed(6)}, ${targetCoords.lng.toFixed(6)}\n`;
           }
-          msg += `• Radius Resmi Gudang: ${activeRadius} Meter\n`;
-          msg += `• Akurasi Sinyal HP: ±${accuracy} meter (Toleransi Efektif: ${effectiveRadius}m)\n`;
-          msg += `• Jarak Fisik ke Gudang: ${isTargetDummy ? '0 (Auto-Calibrate)' : `${dist} meter`}\n`;
-          msg += `• Status Validasi: ${isValid ? `✅ DALAM RADIUS (BISA SCAN ABSEN)` : `❌ DI LUAR RADIUS (LEBIH ${dist - effectiveRadius} METER)`}\n\n`;
+          msg += `• Batas Radius Resmi: ${activeRadius} Meter\n`;
+          msg += `• Akurasi Sinyal HP: ±${accuracy} meter (Toleransi: ${effectiveRadius}m)\n`;
+          msg += `• Jarak Fisik ke Gudang: ${isTargetDummy ? '0 m (Default)' : `${dist} meter`}\n\n`;
 
-          if (isTargetDummy) {
-            msg += `⚠️ Titik koordinat gudang belum didaftarkan!\n\nKlik [OK] untuk langsung mendaftarkan titik lokasi HP Anda saat ini sebagai titik resmi Gudang ${activeWarehouse}.`;
-            if (confirm(msg)) {
-              setWarehouseCoords(activeWarehouse, userLat, userLng, activeRadius);
-              alert(`✅ Berhasil mendaftarkan lokasi HP Anda sebagai titik resmi Gudang ${activeWarehouse} (Radius ${activeRadius}m)!`);
-            }
-            return;
-          }
-
-          if (!isValid) {
-            msg += `⛔ Jarak Anda (${dist}m) melebihi batas toleransi ${effectiveRadius}m dari titik gudang.\n\nApakah Anda sedang berada di area Gudang ${activeWarehouse} dan ingin memperbarui titik koordinat resmi ke posisi Anda saat ini?`;
-            if (confirm(msg)) {
-              setWarehouseCoords(activeWarehouse, userLat, userLng, activeRadius);
-              alert(`✅ Berhasil memperbarui titik koordinat resmi Gudang ${activeWarehouse} ke posisi Anda saat ini!`);
-            }
+          if (isValid) {
+            msg += `✅ STATUS: DALAM RADIUS (BISA SCAN ABSEN)\nPosisi Anda memenuhi syarat untuk melakukan presensi di Gudang ${activeWarehouse}.`;
           } else {
-            msg += `✓ Posisi valid berada di dalam batas radius ${activeRadius} meter dari titik gudang. Anda dapat melakukan scan presensi.`;
-            alert(msg);
+            msg += `⛔ STATUS: DI LUAR RADIUS (LEBIH ${dist - effectiveRadius} METER)\nAnda berada di luar batas toleransi ${activeRadius} meter dari Gudang ${activeWarehouse}. Silakan mendekat ke area gudang untuk melakukan scan presensi.`;
           }
+
+          alert(msg);
         },
         (err) => {
           alert('Gagal membaca GPS: ' + err.message + '\nPastikan izin lokasi aktif di pengaturan browser HP.');
@@ -3546,12 +3558,16 @@
     }
 
     function calibrateCurrentWarehouseGPS() {
+      if (!isUserAuthorizedToManageGPS()) {
+        alert('⛔ Akses Ditolak: Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki hak akses untuk mendaftarkan titik lokasi resmi gudang.');
+        return;
+      }
       if (!navigator.geolocation) {
         alert('Fitur GPS tidak didukung di browser ini.');
         return;
       }
       const current = getWarehouseCoords(activeWarehouse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
       const curRadius = Number(current.radius) > 0 ? Number(current.radius) : globalRad;
       if (!confirm(`Daftarkan posisi GPS HP/perangkat Anda saat ini sebagai titik lokasi resmi Gudang ${activeWarehouse} (Radius ${curRadius} Meter)?\n\nPastikan Anda sedang berada di area gudang.`)) {
         return;
@@ -3570,7 +3586,7 @@
             setWarehouseCoords(otherWh, lat, lng, curRadius);
           }
 
-          alert(`✅ SUKSES MENDAFTARKAN TITIK GUDANG ${activeWarehouse}!\n\n• Latitude: ${lat.toFixed(6)}\n• Longitude: ${lng.toFixed(6)}\n• Radius Validasi: ${curRadius} Meter\n• Akurasi HP: ±${accuracy} meter\n\nTitik lokasi ini telah disimpan dan otomatis tersinkron ke Cloud & seluruh HP staf. Semua staf di area ini sekarang dapat absen dengan lancar!`);
+          alert(`✅ SUKSES MENDAFTARKAN TITIK GUDANG ${activeWarehouse}!\n\n• Latitude: ${lat.toFixed(6)}\n• Longitude: ${lng.toFixed(6)}\n• Radius Validasi: ${curRadius} Meter\n• Akurasi HP: ±${accuracy} meter\n\nTitik lokasi ini telah disimpan dan otomatis tersinkron ke Cloud & seluruh HP staf.`);
         },
         (err) => {
           alert('Gagal membaca GPS: ' + err.message + '\nPastikan izin lokasi browser HP aktif.');
@@ -3580,12 +3596,16 @@
     }
 
     function openManualGPSModal() {
+      if (!isUserAuthorizedToManageGPS()) {
+        alert('⛔ Akses Ditolak: Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki hak akses untuk mengubah titik koordinat GPS gudang.');
+        return;
+      }
       const c = getWarehouseCoords(activeWarehouse);
       document.getElementById('gps-wh-name').value = `Gudang ${activeWarehouse}`;
       document.getElementById('gps-input-lat').value = c.lat;
       document.getElementById('gps-input-lng').value = c.lng;
       const radSelect = document.getElementById('gps-input-radius');
-      if (radSelect) radSelect.value = String(c.radius || 100);
+      if (radSelect) radSelect.value = String(c.radius || 30);
       document.getElementById('manual-gps-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -3596,14 +3616,19 @@
 
     function handleSaveManualGPS(e) {
       e.preventDefault();
+      if (!isUserAuthorizedToManageGPS()) {
+        alert('⛔ Akses Ditolak: Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki hak akses untuk mengubah titik koordinat GPS gudang.');
+        return;
+      }
       const lat = parseFloat(document.getElementById('gps-input-lat').value);
       const lng = parseFloat(document.getElementById('gps-input-lng').value);
-      const radiusVal = parseInt(document.getElementById('gps-input-radius')?.value || '100', 10);
+      const radiusVal = parseInt(document.getElementById('gps-input-radius')?.value || '30', 10);
       if (isNaN(lat) || isNaN(lng)) {
         alert('Format koordinat tidak valid.');
         return;
       }
       localStorage.setItem('wfm_gps_radius', String(radiusVal));
+      localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
       setWarehouseCoords(activeWarehouse, lat, lng, radiusVal);
       closeManualGPSModal();
       alert(`✅ Koordinat & Radius Gudang ${activeWarehouse} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}\nRadius Validasi: ${radiusVal} Meter`);
@@ -3655,16 +3680,93 @@
     // Mencegah data terhapus bangkit kembali (anti-zombie) & sorting join date akurat
     // =========================================================
     function getDeletedUserKeys() {
-      return new Set();
+      const setKeys = new Set([
+        'agus setiawan', 'agussetiawan', 'mbi-cor-01', 'mbicor01', 'mbi-cor-001',
+        'budi santoso', 'budisantoso', 'mbi-stf-01', 'mbistf01', 'mbi-stf-001'
+      ]);
+      try {
+        const raw = localStorage.getItem('wfm_deleted_user_keys');
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            arr.forEach(k => {
+              if (k) setKeys.add(String(k).trim().toLowerCase());
+            });
+          }
+        }
+      } catch (e) {}
+      return setKeys;
     }
 
-    function saveDeletedUserKeys(setKeys) {}
+    function saveDeletedUserKeys(setKeys) {
+      try {
+        const arr = Array.from(setKeys);
+        localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(arr));
+      } catch (e) {}
+    }
 
-    function trackDeletedUsers(usersOrNiks) {}
+    function trackDeletedUsers(usersOrNiks) {
+      if (!usersOrNiks) return;
+      const keys = getDeletedUserKeys();
+      const list = Array.isArray(usersOrNiks) ? usersOrNiks : [usersOrNiks];
+      list.forEach(item => {
+        if (!item) return;
+        if (typeof item === 'string') {
+          keys.add(cleanStr(item));
+          keys.add(item.trim().toLowerCase());
+        } else if (typeof item === 'object') {
+          if (item.name) {
+            keys.add(cleanStr(item.name));
+            keys.add(item.name.trim().toLowerCase());
+          }
+          if (item.nik) {
+            keys.add(cleanStr(item.nik));
+            keys.add(item.nik.trim().toLowerCase());
+          }
+          if (item.id) {
+            keys.add(cleanStr(item.id));
+            keys.add(item.id.trim().toLowerCase());
+          }
+        }
+      });
+      saveDeletedUserKeys(keys);
+    }
 
-    function unmarkDeletedUser(nameOrNik) {}
+    function unmarkDeletedUser(nameOrNik) {
+      if (!nameOrNik) return;
+      const keys = getDeletedUserKeys();
+      const c = cleanStr(nameOrNik);
+      const raw = String(nameOrNik).trim().toLowerCase();
+      // Agus Setiawan dan Budi Santoso dilarang keras di-unmark agar tidak pernah bangkit kembali
+      if (raw === 'agus setiawan' || c === 'agussetiawan' || raw === 'budi santoso' || c === 'budisantoso') return;
+      keys.delete(c);
+      keys.delete(raw);
+      saveDeletedUserKeys(keys);
+    }
 
-    function isUserMarkedDeleted(user, deletedKeys) {
+    function isUserMarkedDeleted(user, deletedKeys = null) {
+      if (!user) return false;
+      const keys = deletedKeys || getDeletedUserKeys();
+      const rawName = (user.name || '').trim().toLowerCase();
+      const cName = cleanStr(user.name);
+      const rawNik = (user.nik || '').trim().toLowerCase();
+      const cNik = cleanStr(user.nik);
+      const rawId = (user.id || '').trim().toLowerCase();
+      const cId = cleanStr(user.id);
+
+      // KUNCI MATI PERMANEN: Agus Setiawan & Budi Santoso (dan NIK MBI-COR-01 / MBI-STF-01)
+      if (rawName === 'agus setiawan' || cName === 'agussetiawan') return true;
+      if (rawName === 'budi santoso' || cName === 'budisantoso') return true;
+      if (rawNik.startsWith('mbi-cor-') || rawNik.startsWith('mbi-stf-')) return true;
+      if (cNik.startsWith('mbicor') || cNik.startsWith('mbistf')) return true;
+
+      if (rawName && keys.has(rawName)) return true;
+      if (cName && keys.has(cName)) return true;
+      if (rawNik && keys.has(rawNik)) return true;
+      if (cNik && keys.has(cNik)) return true;
+      if (rawId && keys.has(rawId)) return true;
+      if (cId && keys.has(cId)) return true;
+
       return false;
     }
 
@@ -3735,9 +3837,11 @@
       if (manager.id) seenIds.add(manager.id);
       seenNiks.add(manager.nik.toUpperCase());
 
-      // 3. Filter calon karyawan reguler (bukan admin, scanner, manager)
+      // 3. Filter calon karyawan reguler (bukan admin, scanner, manager, bukan tombstone terhapus)
+      const deletedKeys = getDeletedUserKeys();
       const regularCandidates = users.filter(u => {
         if (!u || typeof u !== 'object') return false;
+        if (isUserMarkedDeleted(u, deletedKeys)) return false;
         if (u.role === 'admin' || u.role === 'scanner' || u.role === 'manager') return false;
         if (u.nik && (u.nik.startsWith('ABSEN-') || u.nik.startsWith('MGR') || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
         if (cleanStr(u.name) === 'eko' || u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
@@ -4265,8 +4369,9 @@
 
     // 4. SMART MERGE MASTER KARYAWAN & DATA SHIELD ANTI-HILANG
     function mergeUserArrays(localList, cloudList, wh, cloudUpdatedAt = '') {
-      localList = Array.isArray(localList) ? localList : [];
-      cloudList = Array.isArray(cloudList) ? cloudList : [];
+      const deletedKeys = getDeletedUserKeys();
+      localList = (Array.isArray(localList) ? localList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
+      cloudList = (Array.isArray(cloudList) ? cloudList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
 
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
       const isRecentLocalChange = (Date.now() - lastMasterChange < 600000); // 10 menit proteksi master lokal setelah upload/edit
@@ -4283,7 +4388,7 @@
           if (rawBackup) {
             const backupUsers = JSON.parse(rawBackup);
             if (Array.isArray(backupUsers) && countRegular(backupUsers) > 0) {
-              localList = backupUsers;
+              localList = backupUsers.filter(u => !isUserMarkedDeleted(u, deletedKeys));
               localRegCount = countRegular(localList);
             }
           }
@@ -4315,7 +4420,7 @@
       const matchedLocalIndices = new Set();
 
       cloudList.forEach(cloudItem => {
-        if (!cloudItem) return;
+        if (!cloudItem || isUserMarkedDeleted(cloudItem, deletedKeys)) return;
         // Cari pasangan di localList berdasarkan ID, NIK, atau Nama
         const localIdx = localList.findIndex((loc, idx) => {
           if (!loc || matchedLocalIndices.has(idx)) return false;
@@ -4346,15 +4451,19 @@
               }
             }
           }
-          resultList.push(winner);
+          if (!isUserMarkedDeleted(winner, deletedKeys)) {
+            resultList.push(winner);
+          }
         } else {
-          resultList.push(cloudItem);
+          if (!isUserMarkedDeleted(cloudItem, deletedKeys)) {
+            resultList.push(cloudItem);
+          }
         }
       });
 
       // Tambahkan sisa karyawan lokal yang belum ada di Cloud (karyawan baru lokal)
       localList.forEach((loc, idx) => {
-        if (loc && !matchedLocalIndices.has(idx)) {
+        if (loc && !matchedLocalIndices.has(idx) && !isUserMarkedDeleted(loc, deletedKeys)) {
           resultList.push(loc);
         }
       });
@@ -4366,6 +4475,15 @@
     let lastAppliedCloudUpdatedAt = null;
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
+
+      // Sinkronkan daftar user yang dihapus dari Cloud agar konsisten di seluruh perangkat
+      if (Array.isArray(db.deleted_user_keys)) {
+        const localKeys = getDeletedUserKeys();
+        db.deleted_user_keys.forEach(k => {
+          if (k) localKeys.add(String(k).trim().toLowerCase());
+        });
+        saveDeletedUserKeys(localKeys);
+      }
 
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
       const isRecentLocalChange = (Date.now() - lastMasterChange < 600000);
@@ -4417,36 +4535,40 @@
       const hasLeavesChanged = (currMbiLeaves !== newMbiLeaves || currMaiLeaves !== newMaiLeaves);
 
       let hasCoordsChanged = false;
-      if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
-        const localMbi = getWarehouseCoords('MBI');
-        const incomingIsDummy = isDummyWarehouseCoords(db.mbi_coords);
-        const localIsDummy = isDummyWarehouseCoords(localMbi);
-        // Jangan timpa koordinat lokal yang sudah terkalibrasi asli dengan koordinat dummy dari Cloud
-        if (!incomingIsDummy || localIsDummy) {
-          const cloudMbiRad = Math.max(Number(db.mbi_coords.radius) || 100, 30);
-          const isDiff = (localMbi.radius !== cloudMbiRad) || 
-                         (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
-                         (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
-          if (isDiff) {
-            localStorage.setItem('wfm_mbi_coords', JSON.stringify({ ...db.mbi_coords, radius: cloudMbiRad }));
-            localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
-            hasCoordsChanged = true;
+      const lastGpsChange = parseInt(localStorage.getItem('wfm_last_gps_change_time') || '0', 10);
+      const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 600000); // 10 menit proteksi lokal setelah management ubah radius/titik
+
+      if (!isRecentLocalGpsChange) {
+        if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
+          const localMbi = getWarehouseCoords('MBI');
+          const incomingIsDummy = isDummyWarehouseCoords(db.mbi_coords);
+          const localIsDummy = isDummyWarehouseCoords(localMbi);
+          if (!incomingIsDummy || localIsDummy) {
+            const cloudMbiRad = Number(db.gps_radius) || Number(db.mbi_coords.radius) || Number(localStorage.getItem('wfm_gps_radius')) || 30;
+            const isDiff = (localMbi.radius !== cloudMbiRad) || 
+                           (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
+                           (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
+            if (isDiff) {
+              localStorage.setItem('wfm_mbi_coords', JSON.stringify({ ...db.mbi_coords, radius: cloudMbiRad }));
+              localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
+              hasCoordsChanged = true;
+            }
           }
         }
-      }
-      if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
-        const localMai = getWarehouseCoords('MAI');
-        const incomingIsDummy = isDummyWarehouseCoords(db.mai_coords);
-        const localIsDummy = isDummyWarehouseCoords(localMai);
-        if (!incomingIsDummy || localIsDummy) {
-          const cloudMaiRad = Math.max(Number(db.mai_coords.radius) || 100, 30);
-          const isDiff = (localMai.radius !== cloudMaiRad) || 
-                         (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
-                         (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
-          if (isDiff) {
-            localStorage.setItem('wfm_mai_coords', JSON.stringify({ ...db.mai_coords, radius: cloudMaiRad }));
-            localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
-            hasCoordsChanged = true;
+        if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
+          const localMai = getWarehouseCoords('MAI');
+          const incomingIsDummy = isDummyWarehouseCoords(db.mai_coords);
+          const localIsDummy = isDummyWarehouseCoords(localMai);
+          if (!incomingIsDummy || localIsDummy) {
+            const cloudMaiRad = Number(db.gps_radius) || Number(db.mai_coords.radius) || Number(localStorage.getItem('wfm_gps_radius')) || 30;
+            const isDiff = (localMai.radius !== cloudMaiRad) || 
+                           (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
+                           (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
+            if (isDiff) {
+              localStorage.setItem('wfm_mai_coords', JSON.stringify({ ...db.mai_coords, radius: cloudMaiRad }));
+              localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
+              hasCoordsChanged = true;
+            }
           }
         }
       }
@@ -4657,29 +4779,36 @@
 
         let mbiCoordsToSave = getWarehouseCoords('MBI');
         let maiCoordsToSave = getWarehouseCoords('MAI');
+        const activeRadiusToSave = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+        if (mbiCoordsToSave) mbiCoordsToSave.radius = activeRadiusToSave;
+        if (maiCoordsToSave) maiCoordsToSave.radius = activeRadiusToSave;
+
         if (cloudDb) {
           if (isDummyWarehouseCoords(mbiCoordsToSave) && cloudDb.mbi_coords && !isDummyWarehouseCoords(cloudDb.mbi_coords)) {
-            mbiCoordsToSave = cloudDb.mbi_coords;
+            mbiCoordsToSave = { ...cloudDb.mbi_coords, radius: activeRadiusToSave };
             localStorage.setItem('wfm_mbi_coords', JSON.stringify(mbiCoordsToSave));
           }
           if (isDummyWarehouseCoords(maiCoordsToSave) && cloudDb.mai_coords && !isDummyWarehouseCoords(cloudDb.mai_coords)) {
-            maiCoordsToSave = cloudDb.mai_coords;
+            maiCoordsToSave = { ...cloudDb.mai_coords, radius: activeRadiusToSave };
             localStorage.setItem('wfm_mai_coords', JSON.stringify(maiCoordsToSave));
           }
         }
 
+        const deletedKeys = getDeletedUserKeys();
         const nowIso = new Date().toISOString();
         const payload = {
-          mbi_users: finalMbiUsers,
+          mbi_users: (finalMbiUsers || []).filter(u => !isUserMarkedDeleted(u, deletedKeys)),
           mbi_attendance: getWhDB('MBI', 'attendance', []),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: mbiCoordsToSave,
-          mai_users: finalMaiUsers,
+          mai_users: (finalMaiUsers || []).filter(u => !isUserMarkedDeleted(u, deletedKeys)),
           mai_attendance: getWhDB('MAI', 'attendance', []),
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: maiCoordsToSave,
+          gps_radius: activeRadiusToSave,
+          deleted_user_keys: Array.from(deletedKeys),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
           updatedAt: nowIso
         };
@@ -10599,6 +10728,7 @@
         return;
       }
 
+      trackDeletedUsers(user);
       const updatedUsers = users.filter(u => isManagementSystemAccount(u) || (u.nik !== nik && cleanStr(u.name) !== cleanStr(user.name)));
       setWhDB(targetWh, 'users', updatedUsers);
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(updatedUsers));
@@ -10650,6 +10780,8 @@
 
       const targetWh = activeWarehouse || 'MBI';
       let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const toDelete = users.filter(u => selectedNiks.has(u.nik) && !isManagementSystemAccount(u));
+      trackDeletedUsers(toDelete);
       const updatedUsers = users.filter(u => isManagementSystemAccount(u) || !selectedNiks.has(u.nik));
 
       setWhDB(targetWh, 'users', updatedUsers);
@@ -10974,7 +11106,7 @@
       const prefix = `${activeWarehouse.toUpperCase()}${year}-`;
       const templateData = [
         { "No": 1, "ID Karyawan": `${prefix}001`, "Nama Karyawan": "Afuani Huyan", "Departemen": "Warehouse Staff", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
-        { "No": 2, "ID Karyawan": `${prefix}002`, "Nama Karyawan": "Budi Santoso", "Departemen": "Warehouse Staff", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "budi@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
+        { "No": 2, "ID Karyawan": `${prefix}002`, "Nama Karyawan": "Bambang Wijaya", "Departemen": "Warehouse Staff", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "bambang@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
         { "No": 3, "ID Karyawan": `${prefix}003`, "Nama Karyawan": "Citra Lestari", "Departemen": "Coordinator", "Outsource": "Internal", "No Telpon": "08129876544", "Email": "citra@medika.com", "JOIN DATE": "2022-06-10", "Posisi": "coordinator" },
         { "No": 4, "ID Karyawan": `${prefix}004`, "Nama Karyawan": "Dedi Kurniawan", "Departemen": "Supervisor", "Outsource": "Internal", "No Telpon": "08129876545", "Email": "dedi@medika.com", "JOIN DATE": "2021-03-05", "Posisi": "supervisor" }
       ];
@@ -11145,9 +11277,12 @@
             if (bRaw) backupUsers = JSON.parse(bRaw);
           } catch(e) {}
 
-          let changed = false;
+          const deletedKeys = getDeletedUserKeys();
+          const origLen = users.length;
+          users = users.filter(u => !isUserMarkedDeleted(u, deletedKeys));
+          let changed = (users.length !== origLen);
           users.forEach(u => {
-            if (!u || isManagementSystemAccount(u)) return;
+            if (!u || isManagementSystemAccount(u) || isUserMarkedDeleted(u, deletedKeys)) return;
             const isCorrupt = isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name) || (u.nik && cleanStr(u.name) === cleanStr(u.nik));
             if (isCorrupt) {
               let realName = '';
