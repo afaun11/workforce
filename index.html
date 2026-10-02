@@ -1584,6 +1584,9 @@
                         <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih OS / Vendor:</label>
                         <select id="matrix-filter-os" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 min-w-[170px]">
                           <option value="ALL">Semua OS / Vendor</option>
+                          <option value="ADP">ADP</option>
+                          <option value="Staffinc">Staffinc</option>
+                          <option value="Internal">Internal</option>
                         </select>
                       </div>
                       <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
@@ -2681,7 +2684,16 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-          <input type="text" id="m-emp-outsource" required placeholder="Nama Vendor / Internal" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <input type="text" id="m-emp-outsource" list="outsource-vendor-list" required placeholder="Pilih atau Ketik OS (ADP, Staffinc, Internal, dll)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 font-semibold">
+          <datalist id="outsource-vendor-list">
+            <option value="ADP">
+            <option value="Staffinc">
+            <option value="Internal">
+            <option value="SOS">
+            <option value="Valdo">
+            <option value="Persona">
+            <option value="Bina Insani">
+          </datalist>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -2761,7 +2773,7 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-          <input type="text" id="edit-emp-outsource" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <input type="text" id="edit-emp-outsource" list="outsource-vendor-list" required placeholder="Pilih atau Ketik OS (ADP, Staffinc, Internal, dll)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 font-semibold">
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -13412,36 +13424,91 @@
 
     const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
+    function normalizeOSName(os) {
+      if (!os || typeof os !== 'string') return 'Internal';
+      const clean = cleanStr(os);
+      if (!clean || clean === 'internal' || clean === 'medika' || clean === '-' || clean === 'nonos') return 'Internal';
+      if (clean.includes('adp')) return 'ADP';
+      if (clean.includes('staffinc') || clean.includes('staffing') || clean.includes('staff')) return 'Staffinc';
+      if (clean.includes('sos')) return 'SOS';
+      if (clean.includes('valdo')) return 'Valdo';
+      if (clean.includes('persona')) return 'Persona';
+      if (clean.includes('binainsani') || clean.includes('bina')) return 'Bina Insani';
+      return os.trim();
+    }
+
+    function isMatchOS(userOS, selectedOS) {
+      if (!selectedOS || selectedOS === 'ALL') return true;
+      const uNorm = normalizeOSName(userOS).toLowerCase();
+      const selNorm = normalizeOSName(selectedOS).toLowerCase();
+      if (uNorm === selNorm) return true;
+
+      const uClean = cleanStr(userOS || 'Internal');
+      const selClean = cleanStr(selectedOS);
+      if (uClean === selClean) return true;
+      if (uClean.includes(selClean) || selClean.includes(uClean)) return true;
+
+      return false;
+    }
+
     function populateMatrixOSDropdown(preserveSelection = true) {
       const select = document.getElementById('matrix-filter-os');
       if (!select) return;
-      const currentVal = preserveSelection ? select.value : 'ALL';
+      const currentVal = (select.value || 'ALL').trim();
       const targetWh = activeWarehouse || 'MBI';
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const eligibleUsers = users.filter(u => isMatrixEligibleUser(u));
 
+      // Standar default vendor OS resmi yang selalu tersedia
+      const defaultVendors = ['ADP', 'Staffinc', 'Internal'];
       const osMap = new Map();
-      eligibleUsers.forEach(u => {
-        const rawOS = (u.outsource || 'Internal').trim();
-        if (rawOS) {
-          const lower = rawOS.toLowerCase();
-          if (!osMap.has(lower)) {
-            osMap.set(lower, { name: rawOS, count: 0 });
-          }
-          osMap.get(lower).count += 1;
-        }
+
+      // Inisialisasi default vendors
+      defaultVendors.forEach(v => {
+        osMap.set(v.toLowerCase(), { name: v, count: 0 });
       });
 
-      const osList = Array.from(osMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+      // Hitung dan masukkan seluruh OS dari database karyawan gudang aktif
+      eligibleUsers.forEach(u => {
+        const norm = normalizeOSName(u.outsource);
+        const lower = norm.toLowerCase();
+        if (!osMap.has(lower)) {
+          osMap.set(lower, { name: norm, count: 0 });
+        }
+        osMap.get(lower).count += 1;
+      });
+
+      const osList = Array.from(osMap.values()).sort((a, b) => {
+        const idxA = defaultVendors.findIndex(v => v.toLowerCase() === a.name.toLowerCase());
+        const idxB = defaultVendors.findIndex(v => v.toLowerCase() === b.name.toLowerCase());
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
       let optionsHtml = `<option value="ALL">Semua OS / Vendor (${eligibleUsers.length} Karyawan)</option>`;
       osList.forEach(item => {
-        optionsHtml += `<option value="${escapeHTML(item.name)}">${escapeHTML(item.name)} (${item.count} Karyawan)</option>`;
+        const countText = item.count > 0 ? ` (${item.count} Karyawan)` : '';
+        optionsHtml += `<option value="${escapeHTML(item.name)}">${escapeHTML(item.name)}${countText}</option>`;
       });
-      select.innerHTML = optionsHtml;
-      if (currentVal && Array.from(select.options).some(o => o.value.toLowerCase() === currentVal.toLowerCase())) {
-        select.value = currentVal;
-      } else {
-        select.value = 'ALL';
+
+      if (select.dataset.lastHtml !== optionsHtml) {
+        select.innerHTML = optionsHtml;
+        select.dataset.lastHtml = optionsHtml;
+        if (preserveSelection && currentVal) {
+          const match = Array.from(select.options).find(o => 
+            o.value.toLowerCase() === currentVal.toLowerCase() || 
+            normalizeOSName(o.value).toLowerCase() === normalizeOSName(currentVal).toLowerCase()
+          );
+          if (match) {
+            select.value = match.value;
+          } else {
+            select.value = 'ALL';
+          }
+        } else {
+          select.value = 'ALL';
+        }
       }
     }
 
@@ -13461,10 +13528,8 @@
       }
 
       // Pastikan pilihan OS selalu sinkron dengan data gudang aktif
+      populateMatrixOSDropdown(true);
       const selectOS = document.getElementById('matrix-filter-os');
-      if (selectOS && selectOS.options.length <= 1) {
-        populateMatrixOSDropdown(true);
-      }
       const selectedOS = (selectOS?.value || 'ALL').trim();
 
       const dateList = getDatesInRange(startStr, endStr);
@@ -13548,7 +13613,7 @@
       // Filter karyawan: hanya staf biasa (Supervisor & Coordinator dikecualikan) dan filter sesuai OS yang dipilih (misal ADP, Staffinc, Internal, dll.)
       let regularUsers = users.filter(u => isMatrixEligibleUser(u));
       if (selectedOS !== 'ALL') {
-        regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
+        regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
       }
 
       const rowsHTML = [];
@@ -13627,7 +13692,7 @@
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       let regularUsers = users.filter(u => isMatrixEligibleUser(u));
       if (selectedOS !== 'ALL') {
-        regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
+        regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
       }
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
@@ -13782,7 +13847,7 @@
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       let regularUsers = users.filter(u => isMatrixEligibleUser(u));
       if (selectedOS !== 'ALL') {
-        regularUsers = regularUsers.filter(u => ((u.outsource || 'Internal').trim().toLowerCase() === selectedOS.toLowerCase()));
+        regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
       }
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
