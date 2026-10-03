@@ -13518,18 +13518,44 @@
       return Array.from(empMap.values());
     }
 
-    function initMatrixDateRange() {
+    function initMatrixDateRange(forceReset = false) {
       const sInput = document.getElementById('matrix-start-date');
       const eInput = document.getElementById('matrix-end-date');
       if (!sInput || !eInput) return;
+
+      const targetWh = activeWarehouse || 'MBI';
+      const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const validDates = [];
+
+      attendances.forEach(a => {
+        if (!a) return;
+        if (a.date && /^\d{4}-\d{2}-\d{2}$/.test(a.date)) validDates.push(a.date);
+        if (a.checkInTime) {
+          const locD = getLocalDateString(new Date(a.checkInTime));
+          if (locD && /^\d{4}-\d{2}-\d{2}$/.test(locD)) validDates.push(locD);
+        }
+      });
+
+      validDates.sort();
+
       const now = new Date();
-      if (!eInput.value) {
-        eInput.value = getLocalDateString(now);
+      const todayStr = getLocalDateString(now);
+
+      if (forceReset || !eInput.value) {
+        if (validDates.length > 0) {
+          const latestAtt = validDates[validDates.length - 1];
+          // Jika absensi terbaru ada di masa lalu (misal bulan kemarin), prioritaskan tanggal absensi tersebut
+          eInput.value = (latestAtt > todayStr) ? latestAtt : (latestAtt.substring(0, 7) === todayStr.substring(0, 7) ? todayStr : latestAtt);
+        } else {
+          eInput.value = todayStr;
+        }
       }
-      if (!sInput.value) {
-        const past = new Date(now);
-        past.setDate(1); // Default mulai tanggal 1 bulan berjalan
-        sInput.value = getLocalDateString(past);
+
+      if (forceReset || !sInput.value) {
+        const refEnd = parseYMD(eInput.value || todayStr);
+        // Default mulai tanggal 1 di bulan yang sama dengan tanggal akhir
+        const firstDayOfMonth = new Date(refEnd.getFullYear(), refEnd.getMonth(), 1, 12, 0, 0);
+        sInput.value = getLocalDateString(firstDayOfMonth);
       }
     }
 
@@ -13696,7 +13722,24 @@
 
         if (regularUsers.length === 0) {
           const totalCols = 3 + dateList.length;
-          rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-500 bg-slate-50 font-medium">Belum ada karyawan dengan OS / Vendor "${escapeHTML(selectedOS)}" di Gudang ${activeWarehouse}. Silakan atur atau lengkapi vendor OS karyawan di menu Data Karyawan.</td></tr>`);
+          if (allMatrixUsers.length === 0) {
+            rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-500 bg-slate-50 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}. Silakan tambahkan data karyawan melalui menu Data Karyawan.</td></tr>`);
+          } else {
+            rowsHTML.push(`
+              <tr>
+                <td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-600 bg-slate-50 font-medium">
+                  <div class="space-y-2">
+                    <p>Tidak ditemukan karyawan dengan Vendor OS <b>"${escapeHTML(selectedOS)}"</b> di Gudang ${activeWarehouse} (Tersedia ${allMatrixUsers.length} karyawan di vendor lain).</p>
+                    <div>
+                      <button type="button" onclick="document.getElementById('matrix-filter-os').value='ALL'; renderMatrixTable();" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs inline-flex items-center">
+                        Tampilkan Semua Vendor (${allMatrixUsers.length} Karyawan)
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `);
+          }
         } else {
           regularUsers.forEach((user, uIdx) => {
             let totalHariKerja = 0;
