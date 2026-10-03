@@ -1044,62 +1044,44 @@
             <!-- Alert Notification -->
             <div id="att-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
-            <!-- Mode Tab Selector (Kamera HP vs Barcode Gun / PDA External) -->
-            <div class="flex items-center justify-between flex-wrap gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-slate-700">Metode Pemindaian:</span>
-                <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                  <button type="button" id="tab-scan-camera" onclick="switchScanMethod('camera')" class="px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center justify-center">
-                    <span>Kamera HP</span>
-                  </button>
-                  <button type="button" id="tab-scan-gun" onclick="switchScanMethod('gun')" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center justify-center">
-                    <span>Scanner External (PDA / Barcode Gun)</span>
-                  </button>
+            <!-- Mode & Attendance Action Bar (Sleek, Clean, Modern) -->
+            <div class="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-2xs">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <!-- Metode Pemindaian -->
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold text-slate-700">Metode Pemindaian:</span>
+                  <div class="inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                    <button type="button" id="tab-scan-camera" onclick="switchScanMethod('camera')" class="px-4 py-2 rounded-lg text-xs font-black bg-white text-slate-900 shadow-xs transition flex items-center justify-center gap-1.5">
+                      <span>Kamera HP</span>
+                    </button>
+                    <button type="button" id="tab-scan-gun" onclick="switchScanMethod('gun')" class="px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5">
+                      <span>Scanner External (PDA / Barcode Gun)</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <!-- Controls & GPS Status Box -->
-              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-5 shadow-xs">
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Jenis Presensi:</label>
-                  <div class="grid grid-cols-2 gap-2">
-                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center">
+                <!-- Jenis Presensi -->
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-slate-700 hidden md:inline">Jenis Presensi:</span>
+                  <div class="grid grid-cols-2 gap-2 w-full sm:w-auto min-w-[240px]">
+                    <button type="button" id="btn-type-in" onclick="setAttendanceType('check_in')" class="py-2.5 px-4 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-md transition flex items-center justify-center gap-1.5">
                       <span>Absen Masuk</span>
                     </button>
-                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center">
+                    <button type="button" id="btn-type-out" onclick="setAttendanceType('check_out')" class="py-2.5 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex items-center justify-center gap-1.5">
                       <span>Absen Keluar</span>
                     </button>
                   </div>
                 </div>
-
-                <!-- GPS Location Radius Status Indicator -->
-                <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50 space-y-2">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-2 font-bold text-xs text-slate-900">
-                      <span id="att-gps-radius-label">Radius GPS: 30 Meter</span>
-                    </div>
-                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800">AKTIF</span>
-                  </div>
-                  <p id="att-gps-desc-label" class="text-[11px] text-slate-600 leading-relaxed">
-                    Sistem otomatis memverifikasi koordinat GPS HP saat kartu di-scan. Staf di luar radius yang ditentukan tidak dapat melakukan absensi.
-                  </p>
-                  <div class="pt-1">
-                    <button type="button" onclick="checkLiveGPSDistance()" class="w-full py-2 px-3 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition text-center shadow-2xs flex items-center justify-center gap-1.5">
-                      <span>🔍 Cek Jarak GPS</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Tambahan (Opsional):</label>
-                  <input type="text" id="att-notes" placeholder="Catatan tugas / shift..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                </div>
               </div>
+            </div>
 
-              <!-- Scanner Column (Kamera HP vs Barcode Gun External) -->
-              <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-xs min-h-[380px]">
+            <!-- Hidden Inputs for JS Compatibility -->
+            <input type="hidden" id="att-notes" value="">
+            <span id="att-gps-radius-label" class="hidden"></span>
+            <span id="att-gps-desc-label" class="hidden"></span>
+
+            <!-- Scanner Column (Kamera HP vs Barcode Gun External) -->
+            <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 flex flex-col items-center justify-center shadow-xs min-h-[380px]">
                 
                 <!-- CONTAINER 1: MODE KAMERA HP -->
                 <div id="mode-camera-container" class="w-full">
@@ -1220,7 +1202,6 @@
                 </div>
 
               </div>
-            </div>
 
             <!-- Riwayat Scan Absensi Hari Ini (Collapsible Click-to-View) -->
             <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all duration-200">
