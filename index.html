@@ -2683,17 +2683,21 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-          <input type="text" id="m-emp-outsource" list="outsource-vendor-list" required placeholder="Pilih atau Ketik OS (ADP, Staffinc, Internal, dll)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 font-semibold">
-          <datalist id="outsource-vendor-list">
-            <option value="ADP">
-            <option value="Staffinc">
-            <option value="Internal">
-            <option value="SOS">
-            <option value="Valdo">
-            <option value="Persona">
-            <option value="Bina Insani">
-          </datalist>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource (Vendor) *</label>
+          <div class="space-y-1.5">
+            <select id="m-emp-outsource-select" onchange="handleOutsourceSelectChange('add')" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="ADP">ADP</option>
+              <option value="Staffinc">Staffinc</option>
+              <option value="Internal" selected>Internal (Karyawan Tetap Medika)</option>
+              <option value="SOS">SOS</option>
+              <option value="Valdo">Valdo</option>
+              <option value="Persona">Persona</option>
+              <option value="Bina Insani">Bina Insani</option>
+              <option value="__custom__">+ Vendor Outsource Lainnya (Ketik Manual)...</option>
+            </select>
+            <input type="text" id="m-emp-outsource-custom" oninput="handleOutsourceCustomInput('add', this.value)" placeholder="Ketik nama vendor outsource baru..." class="hidden w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <input type="hidden" id="m-emp-outsource" value="Internal">
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -2772,8 +2776,21 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource *</label>
-          <input type="text" id="edit-emp-outsource" list="outsource-vendor-list" required placeholder="Pilih atau Ketik OS (ADP, Staffinc, Internal, dll)" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 font-semibold">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource (Vendor) *</label>
+          <div class="space-y-1.5">
+            <select id="edit-emp-outsource-select" onchange="handleOutsourceSelectChange('edit')" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="ADP">ADP</option>
+              <option value="Staffinc">Staffinc</option>
+              <option value="Internal">Internal (Karyawan Tetap Medika)</option>
+              <option value="SOS">SOS</option>
+              <option value="Valdo">Valdo</option>
+              <option value="Persona">Persona</option>
+              <option value="Bina Insani">Bina Insani</option>
+              <option value="__custom__">+ Vendor Outsource Lainnya (Ketik Manual)...</option>
+            </select>
+            <input type="text" id="edit-emp-outsource-custom" oninput="handleOutsourceCustomInput('edit', this.value)" placeholder="Ketik nama vendor outsource..." class="hidden w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <input type="hidden" id="edit-emp-outsource" value="Internal">
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -5653,6 +5670,7 @@
       // Ensure DB initialized & clean active users from tombstone list
       if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
+      if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
       sanitizeEmployeesData();
       repairAndSanitizeAttendanceRecords();
       recoverLostEmployees(true);
@@ -10260,7 +10278,7 @@
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${displayName} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
           <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
-          <td class="p-3.5 border-r border-slate-100 text-slate-600">${emp.outsource || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${escapeHTML(emp.outsource || 'Internal')}</span></td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
           <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
@@ -10393,6 +10411,33 @@
       }
     }
 
+    function handleOutsourceSelectChange(type) {
+      const prefix = type === 'edit' ? 'edit-emp' : 'm-emp';
+      const selEl = document.getElementById(`${prefix}-outsource-select`);
+      const custEl = document.getElementById(`${prefix}-outsource-custom`);
+      const hidEl = document.getElementById(`${prefix}-outsource`);
+      if (!selEl || !hidEl) return;
+
+      if (selEl.value === '__custom__') {
+        if (custEl) {
+          custEl.classList.remove('hidden');
+          custEl.focus();
+          hidEl.value = custEl.value.trim() || 'Internal';
+        }
+      } else {
+        if (custEl) custEl.classList.add('hidden');
+        hidEl.value = selEl.value;
+      }
+    }
+
+    function handleOutsourceCustomInput(type, val) {
+      const prefix = type === 'edit' ? 'edit-emp' : 'm-emp';
+      const hidEl = document.getElementById(`${prefix}-outsource`);
+      if (hidEl) {
+        hidEl.value = (val || '').trim() || 'Internal';
+      }
+    }
+
     function openEditEmployeeModal(nik) {
       const cleanNik = (nik || '').trim().toUpperCase();
       let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -10433,7 +10478,38 @@
       
       syncDepartmentDropdownOptions('edit', user.dept || '');
 
-      document.getElementById('edit-emp-outsource').value = user.outsource || '';
+      const rawUserOS = user.outsource || 'Internal';
+      const normOS = normalizeOSName(rawUserOS);
+      const selEdit = document.getElementById('edit-emp-outsource-select');
+      const custEdit = document.getElementById('edit-emp-outsource-custom');
+      const hidEdit = document.getElementById('edit-emp-outsource');
+      if (hidEdit) hidEdit.value = normOS;
+
+      if (selEdit) {
+        let found = false;
+        for (let i = 0; i < selEdit.options.length; i++) {
+          const opt = selEdit.options[i];
+          if (opt.value === '__custom__') continue;
+          if (opt.value.toLowerCase() === normOS.toLowerCase() || opt.value.toLowerCase() === rawUserOS.toLowerCase()) {
+            selEdit.value = opt.value;
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          selEdit.value = '__custom__';
+          if (custEdit) {
+            custEdit.value = rawUserOS;
+            custEdit.classList.remove('hidden');
+          }
+        } else {
+          if (custEdit) {
+            custEdit.value = '';
+            custEdit.classList.add('hidden');
+          }
+        }
+      }
+
       document.getElementById('edit-emp-phone').value = user.phone || '';
       if (document.getElementById('edit-emp-email')) document.getElementById('edit-emp-email').value = user.email || '';
       document.getElementById('edit-emp-joindate').value = user.joinDate || '';
@@ -10903,6 +10979,17 @@
       document.getElementById('m-emp-joindate').value = getLocalDateString(new Date());
       document.getElementById('m-emp-nik').value = '';
       if (document.getElementById('m-emp-email')) document.getElementById('m-emp-email').value = '';
+
+      const selAdd = document.getElementById('m-emp-outsource-select');
+      const custAdd = document.getElementById('m-emp-outsource-custom');
+      const hidAdd = document.getElementById('m-emp-outsource');
+      if (selAdd) selAdd.value = 'Internal';
+      if (custAdd) {
+        custAdd.value = '';
+        custAdd.classList.add('hidden');
+      }
+      if (hidAdd) hidAdd.value = 'Internal';
+
       syncDepartmentDropdownOptions('add', 'warehouse staff');
       document.getElementById('add-emp-modal').classList.remove('hidden');
       lucide.createIcons();
@@ -13436,6 +13523,74 @@
       return false;
     }
 
+    // Fungsi Auto-Sanitasi & Penyimpanan Vendor OS Karyawan ke Database & Cloud
+    function autoMigrateAndPersistAllEmployeeOS() {
+      const warehouses = ['MBI', 'MAI'];
+      let anyChanged = false;
+
+      warehouses.forEach(wh => {
+        try {
+          const storageKey = `wfm_${wh.toLowerCase()}_users`;
+          const backupKey = `wfm_${wh.toLowerCase()}_users_backup`;
+          let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          let attendances = getWhDB(wh, 'attendance', []);
+          let whChanged = false;
+
+          const attOsMap = new Map();
+          attendances.forEach(a => {
+            if (!a) return;
+            const os = (a.outsource || '').trim();
+            if (os && os !== '-' && os !== 'Internal') {
+              if (a.userNik) attOsMap.set(a.userNik.toUpperCase().trim(), os);
+              if (a.userName) attOsMap.set(cleanStr(a.userName), os);
+              if (a.userId) attOsMap.set(a.userId, os);
+            }
+          });
+
+          users.forEach(u => {
+            if (!u) return;
+            if (isManagementSystemAccount(u)) {
+              if (!u.outsource) u.outsource = 'Internal';
+              return;
+            }
+
+            let curOS = (u.outsource || '').trim();
+            if (!curOS || curOS === '-' || curOS === '--' || curOS.toLowerCase() === 'undefined' || curOS.toLowerCase() === 'null') {
+              const nikKey = u.nik ? u.nik.toUpperCase().trim() : '';
+              const nameKey = cleanStr(u.name);
+              const attOS = (nikKey && attOsMap.get(nikKey)) || (nameKey && attOsMap.get(nameKey)) || (u.id && attOsMap.get(u.id));
+              curOS = attOS || 'Internal';
+              u.outsource = normalizeOSName(curOS);
+              whChanged = true;
+            } else {
+              const norm = normalizeOSName(curOS);
+              if (norm !== curOS) {
+                u.outsource = norm;
+                whChanged = true;
+              }
+            }
+          });
+
+          if (whChanged) {
+            localStorage.setItem(storageKey, JSON.stringify(users));
+            localStorage.setItem(backupKey, JSON.stringify(users));
+            anyChanged = true;
+          }
+        } catch(e) {
+          console.warn('autoMigrateAndPersistAllEmployeeOS error in ' + wh, e);
+        }
+      });
+
+      if (anyChanged) {
+        const nowIso = new Date().toISOString();
+        localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+        localStorage.setItem('wfm_master_updated_at', nowIso);
+        if (typeof saveFullDatabaseToCloud === 'function') {
+          saveFullDatabaseToCloud(false, true, true);
+        }
+      }
+    }
+
     // Mendapatkan seluruh daftar karyawan untuk matriks presensi (Harmonisasi Users DB + Riwayat Absensi + Riwayat Cuti)
     function getMatrixEmployees(warehouse = activeWarehouse || 'MBI') {
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -13460,7 +13615,7 @@
           name: u.name || '',
           dept: u.dept || 'Staff',
           role: u.role || 'staff',
-          outsource: u.outsource ? u.outsource.trim() : '',
+          outsource: normalizeOSName(u.outsource || 'Internal'),
           warehouse: u.warehouse || warehouse
         };
 
@@ -13496,7 +13651,7 @@
 
         if (matchedEmp) {
           if ((!matchedEmp.outsource || matchedEmp.outsource === '-' || matchedEmp.outsource === 'Internal') && aOS && aOS !== '-' && aOS !== 'Internal') {
-            matchedEmp.outsource = aOS;
+            matchedEmp.outsource = normalizeOSName(aOS);
           }
         } else {
           const newKey = aNik || aCleanName;
@@ -13506,7 +13661,7 @@
             name: a.userName || `Karyawan (${a.userNik || '-'})`,
             dept: a.dept || 'Warehouse Staff',
             role: 'staff',
-            outsource: aOS || 'Internal',
+            outsource: normalizeOSName(aOS || 'Internal'),
             warehouse
           };
           empMap.set(newKey, newEmp);
@@ -13567,7 +13722,7 @@
       const eligibleUsers = getMatrixEmployees(targetWh);
 
       // Standar default vendor OS resmi yang selalu tersedia
-      const defaultVendors = ['ADP', 'Staffinc', 'Internal'];
+      const defaultVendors = ['ADP', 'Staffinc', 'Internal', 'SOS', 'Valdo', 'Persona', 'Bina Insani'];
       const osMap = new Map();
 
       // Inisialisasi default vendors
@@ -15661,6 +15816,9 @@ function testManualSync() {
       }
       if (typeof repairCorruptedEmployeeNames === 'function') {
         repairCorruptedEmployeeNames();
+      }
+      if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') {
+        autoMigrateAndPersistAllEmployeeOS();
       }
       getGoogleSheetWebhookUrl();
       updateGSheetSyncBadge();
