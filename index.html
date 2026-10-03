@@ -1337,6 +1337,7 @@
                     <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
                       <tr>
                         <th class="p-3">Karyawan</th>
+                        <th class="p-3">Outsourcing</th>
                         <th class="p-3">Jenis</th>
                         <th class="p-3">Rentang Tanggal</th>
                         <th class="p-3">Keterangan</th>
@@ -1704,8 +1705,9 @@
                     <thead class="bg-slate-100 text-slate-800 font-black uppercase text-[11px] border-b border-slate-200">
                       <tr>
                         <th class="p-3.5 w-12 text-center border-r border-slate-200">No</th>
-                        <th class="p-3.5 min-w-[220px] border-r border-slate-200">Nama Karyawan</th>
-                        <th class="p-3.5 min-w-[110px] border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 min-w-[200px] border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 min-w-[100px] border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 min-w-[110px] border-r border-slate-200">Outsourcing</th>
                         <th class="p-3.5 min-w-[120px] border-r border-slate-200">Departemen</th>
                         <th class="p-3.5 min-w-[100px] text-center border-r border-slate-200">Hari Hadir</th>
                         <th class="p-3.5 min-w-[130px] text-center border-r border-slate-200">Total Jam Kerja</th>
@@ -1797,6 +1799,7 @@
                         <th class="p-3.5 border-r border-slate-200">No</th>
                         <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
                         <th class="p-3.5 border-r border-slate-200">NIK</th>
+                        <th class="p-3.5 border-r border-slate-200">Outsourcing</th>
                         <th class="p-3.5 border-r border-slate-200">Departemen</th>
                         <th class="p-3.5 border-r border-slate-200">Jenis</th>
                         <th class="p-3.5 border-r border-slate-200">Rentang Tanggal</th>
@@ -1878,6 +1881,7 @@
                         <th class="p-3.5 border-r border-slate-200">Tanggal</th>
                         <th class="p-3.5 border-r border-slate-200">NIK</th>
                         <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                        <th class="p-3.5 border-r border-slate-200">Outsourcing</th>
                         <th class="p-3.5 border-r border-slate-200">Departemen</th>
                         <th class="p-3.5 border-r border-slate-200">Kategori Hari</th>
                         <th class="p-3.5 border-r border-slate-200">Jam Lembur</th>
@@ -2047,6 +2051,7 @@
                       <th class="p-3.5 border-r border-slate-200">Tanggal</th>
                       <th class="p-3.5 border-r border-slate-200">NIK</th>
                       <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
+                      <th class="p-3.5 border-r border-slate-200">Outsourcing</th>
                       <th class="p-3.5 border-r border-slate-200">Departemen</th>
                       <th class="p-3.5 border-r border-slate-200">Kategori</th>
                       <th class="p-3.5 border-r border-slate-200">Jam Lembur</th>
@@ -12506,6 +12511,7 @@
         reportData.push({
           nik: emp.nik,
           name: emp.name,
+          outsource: emp.outsource || 'Internal',
           dept: (emp.dept || 'STAFF').toUpperCase(),
           daysPresent,
           totalEffectiveMinutes,
@@ -12563,7 +12569,7 @@
       tbody.innerHTML = '';
 
       if (reportData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-8 text-center text-slate-400 font-medium">Tidak ada data karyawan yang cocok dengan filter pencarian.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-400 font-medium">Tidak ada data karyawan yang cocok dengan filter pencarian.</td></tr>`;
         return;
       }
 
@@ -12586,6 +12592,7 @@
             </div>
           </td>
           <td class="p-3.5 font-mono font-bold text-slate-700 border-r border-slate-100">${row.nik}</td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${row.outsource}</span></td>
           <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px] border-r border-slate-100">${row.dept}</td>
           <td class="p-3.5 text-center font-bold text-slate-800 border-r border-slate-100 font-mono">${row.daysPresent} Hari</td>
           <td class="p-3.5 text-center font-mono font-black text-slate-900 border-r border-slate-100 bg-slate-50/50">
@@ -12624,6 +12631,7 @@
           'No',
           'NIK',
           'Nama Karyawan',
+          'Outsourcing',
           'Departemen',
           'Hari Hadir (Hari)',
           'Total Jam Kerja (Jam & Menit)',
@@ -12639,6 +12647,7 @@
           idx + 1,
           r.nik,
           r.name,
+          r.outsource || 'Internal',
           r.dept,
           r.daysPresent,
           r.formattedWorkHours,
@@ -12654,6 +12663,7 @@
         { wch: 6 },
         { wch: 14 },
         { wch: 26 },
+        { wch: 15 },
         { wch: 15 },
         { wch: 14 },
         { wch: 22 },
@@ -12699,12 +12709,13 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400 font-medium">Tidak ada data pengajuan pada filter ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-medium">Tidak ada data pengajuan pada filter ini.</td></tr>`;
         return;
       }
 
       filtered.forEach((lv, idx) => {
-        const emp = users.find(u => u.nik === lv.userNik);
+        const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (lv.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(lv.userName)));
+        const osVal = emp ? (emp.outsource || 'Internal') : (lv.outsource || 'Internal');
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
@@ -12723,6 +12734,7 @@
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${lv.userName}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${lv.userNik}</td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
           <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${emp ? emp.dept : '-'}</td>
           <td class="p-3.5 border-r border-slate-100">${typeBadge}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800">${lv.startDate} s/d ${lv.endDate}</td>
@@ -12755,7 +12767,8 @@
       filtered.sort((a, b) => (b.startDate || '').localeCompare(a.startDate || ''));
 
       const rows = filtered.map((lv, i) => {
-        const emp = users.find(u => u.nik === lv.userNik);
+        const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (lv.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(lv.userName)));
+        const osVal = emp ? (emp.outsource || 'Internal') : (lv.outsource || 'Internal');
         let statusLabel = 'Menunggu SPV';
         if (lv.status === 'approved') statusLabel = 'Disetujui';
         else if (lv.status === 'rejected') statusLabel = 'Ditolak';
@@ -12765,6 +12778,7 @@
           "No": i + 1,
           "Nama Karyawan": lv.userName,
           "NIK": lv.userNik,
+          "Outsourcing": osVal,
           "Departemen": emp ? emp.dept : '',
           "Jenis Pengajuan": lv.type.toUpperCase(),
           "Dari Tanggal": lv.startDate,
@@ -12818,11 +12832,15 @@
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400 font-medium">Tidak ada data lembur pada filter periode ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="p-6 text-center text-slate-400 font-medium">Tidak ada data lembur pada filter periode ini.</td></tr>`;
         return;
       }
 
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+
       filtered.forEach((ot, idx) => {
+        const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (ot.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(ot.userName)));
+        const osVal = emp ? (emp.outsource || 'Internal') : (ot.outsource || 'Internal');
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
@@ -12837,7 +12855,8 @@
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.userName}</td>
-          <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
+          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
+          <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || (emp ? emp.dept : '-')}</td>
           <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-slate-900 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
           <td class="p-3.5 border-r border-slate-100 font-mono font-bold text-slate-800">${ot.effectiveHours} Jam</td>
@@ -12855,6 +12874,7 @@
       const statusFilter = document.getElementById('report-ot-status-filter')?.value || '';
       const searchQ = (document.getElementById('report-ot-search')?.value || '').toLowerCase().trim();
 
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const filtered = overtimes.filter(o => {
         const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
@@ -12875,6 +12895,8 @@
       });
 
       const rows = filtered.map((r, i) => {
+        const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (r.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(r.userName)));
+        const osVal = emp ? (emp.outsource || 'Internal') : (r.outsource || 'Internal');
         let statusLabel = 'Menunggu SPV';
         if (r.status === 'approved') statusLabel = 'Disetujui';
         else if (r.status === 'rejected') statusLabel = 'Ditolak';
@@ -12885,7 +12907,8 @@
           "Tanggal": r.date,
           "NIK": r.userNik,
           "Nama Karyawan": r.userName,
-          "Departemen": r.dept || '',
+          "Outsourcing": osVal,
+          "Departemen": r.dept || (emp ? emp.dept : ''),
           "Kategori Hari": r.dayType === 'hari_libur' ? 'Hari Libur' : 'Hari Kerja',
           "Jam Mulai": r.startTime,
           "Jam Selesai": r.endTime,
@@ -13698,6 +13721,7 @@
           <tr class="border-b border-slate-300">
             <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
             <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
+            <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[95px] bg-slate-100 text-slate-800 font-black">Outsourcing</th>
         `;
 
         monthGroups.forEach((g, gIdx) => {
@@ -13759,7 +13783,7 @@
         const rowsHTML = [];
 
         if (regularUsers.length === 0) {
-          const totalCols = 3 + dateList.length;
+          const totalCols = 4 + dateList.length;
           if (allMatrixUsers.length === 0) {
             rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-500 bg-slate-50 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}. Silakan tambahkan data karyawan melalui menu Data Karyawan.</td></tr>`);
           } else {
@@ -13781,11 +13805,13 @@
         } else {
           regularUsers.forEach((user, uIdx) => {
             let totalHariKerja = 0;
+            const osVal = user.outsource || 'Internal';
             const nikDisplay = user.nik ? `<span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span>` : '';
             let rowHTML = `
               <tr class="hover:bg-slate-50 transition border-b border-slate-200">
                 <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
                 <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${escapeHTML(user.name)} ${nikDisplay}</td>
+                <td class="p-2 border-r border-slate-200 text-center"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-800">${escapeHTML(osVal)}</span></td>
             `;
 
             const uNik = user.nik ? user.nik.toUpperCase() : '';
@@ -13886,8 +13912,8 @@
         });
       });
 
-      // 1. Format TSV (Tab-Separated Values) - Cukup Nomor, Nama Karyawan, dan NIK
-      const headerRow = ['No', 'Nama Karyawan', 'NIK'];
+      // 1. Format TSV (Tab-Separated Values) - Nomor, Nama Karyawan, NIK, dan Outsourcing
+      const headerRow = ['No', 'Nama Karyawan', 'NIK', 'Outsourcing'];
       dateList.forEach(d => {
         const dayNum = d.getDate();
         const dayName = DAY_NAMES[d.getDay()];
@@ -13899,7 +13925,8 @@
 
       regularUsers.forEach((user, uIdx) => {
         let totalHariKerja = 0;
-        const row = [uIdx + 1, user.name, user.nik];
+        const osVal = user.outsource || 'Internal';
+        const row = [uIdx + 1, user.name, user.nik, osVal];
         const uNik = user.nik ? user.nik.toUpperCase() : '';
         const uCleanName = user.name ? cleanStr(user.name) : '';
         const uId = user.id || '';
@@ -14025,14 +14052,15 @@
       });
 
       // Row 1: Header Bulan
-      const row1 = ["No", "Nama Karyawan", "NIK"];
+      const row1 = ["No", "Nama Karyawan", "NIK", "Outsourcing"];
       const merges = [
         { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // No
         { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, // Nama Karyawan
-        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }  // NIK
+        { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } }, // NIK
+        { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }  // Outsourcing
       ];
 
-      let currentCol = 3;
+      let currentCol = 4;
       monthGroups.forEach(g => {
         row1.push(g.name.toUpperCase());
         for (let i = 1; i < g.dates.length; i++) {
@@ -14050,7 +14078,7 @@
       }
 
       // Row 2: Header Tanggal & Hari
-      const row2 = ["", "", ""];
+      const row2 = ["", "", "", ""];
       dateList.forEach(d => {
         row2.push(`${d.getDate()} (${DAY_NAMES[d.getDay()]})`);
       });
@@ -14062,8 +14090,9 @@
         let totalHadir = 0;
         let totalSakit = 0;
         let totalCuti = 0;
+        const osVal = user.outsource || 'Internal';
 
-        const row = [uIdx + 1, user.name, user.nik];
+        const row = [uIdx + 1, user.name, user.nik, osVal];
         dateList.forEach(d => {
           const dStr = getLocalDateString(d);
           const att = attendances.find(a => {
@@ -14133,6 +14162,7 @@
         id: `lv-${activeWarehouse.toLowerCase()}-${Date.now()}`,
         userNik: emp.nik,
         userName: emp.name,
+        outsource: emp.outsource || 'Internal',
         type, startDate, endDate, reason,
         status: 'pending',
         warehouse: activeWarehouse
@@ -14173,6 +14203,7 @@
     }
 
     function renderLeavesTable() {
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
       const searchQ = (document.getElementById('leave-table-search')?.value || '').toLowerCase().trim();
       const tbody = document.getElementById('leave-table-body');
@@ -14203,11 +14234,13 @@
 
       if (filtered.length === 0) {
         const typeNote = activeLeaveTabFilter !== 'all' ? ` (Kategori: ${activeLeaveTabFilter.toUpperCase()})` : '';
-        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400">Belum ada pengajuan izin/sakit/cuti${typeNote} di Gudang ${activeWarehouse}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada pengajuan izin/sakit/cuti${typeNote} di Gudang ${activeWarehouse}.</td></tr>`;
         return;
       }
 
       filtered.forEach(lv => {
+        const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (lv.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(lv.userName)));
+        const osVal = emp ? (emp.outsource || 'Internal') : (lv.outsource || 'Internal');
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
         
@@ -14224,6 +14257,7 @@
 
         tr.innerHTML = `
           <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
+          <td class="p-3"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
           <td class="p-3">${typeBadge}</td>
           <td class="p-3 font-mono text-[11px] text-slate-700">${lv.startDate} s/d ${lv.endDate}</td>
           <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
@@ -14367,6 +14401,7 @@
       }
 
       filtered.forEach(u => {
+        const osVal = u.outsource || 'Internal';
         const div = document.createElement('label');
         div.className = 'cursor-pointer p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center justify-between gap-2 text-xs select-none shadow-xs';
         div.innerHTML = `
@@ -14374,10 +14409,10 @@
             <input type="checkbox" name="ot-emp-check" value="${u.nik}" onchange="updateSelectedOvertimeCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
             <div class="min-w-0">
               <span class="font-extrabold text-slate-900 block truncate text-[11px]">${u.name}</span>
-              <span class="text-[10px] font-mono text-slate-400 block">${u.nik} &bull; ${u.dept}</span>
+              <span class="text-[10px] font-mono text-slate-400 block">${u.nik} &bull; ${u.dept} &bull; <b class="text-slate-700">${osVal}</b></span>
             </div>
           </div>
-          <span class="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">${u.role}</span>
+          <span class="text-[10px] font-bold text-slate-800 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">${osVal}</span>
         `;
         container.appendChild(div);
       });
@@ -14452,6 +14487,7 @@
             userNik: emp.nik,
             userName: emp.name,
             dept: emp.dept,
+            outsource: emp.outsource || 'Internal',
             warehouse: activeWarehouse,
             date,
             dayType: calc.dayType,
@@ -14488,6 +14524,7 @@
       const endStr = document.getElementById('ot-filter-end')?.value || '';
       const searchQ = (document.getElementById('ot-filter-search')?.value || '').toLowerCase().trim();
       const statusFilter = document.getElementById('ot-filter-status')?.value || '';
+      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const tbody = document.getElementById('ot-table-body');
       tbody.innerHTML = '';
@@ -14517,11 +14554,13 @@
       if (totalBadge) totalBadge.innerText = `Total: ${filtered.length} Data Lembur (${activeWarehouse})`;
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="p-6 text-center text-slate-400">Belum ada data lembur pada filter ini di Gudang ${activeWarehouse}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400">Belum ada data lembur pada filter ini di Gudang ${activeWarehouse}.</td></tr>`;
         return;
       }
 
       filtered.forEach((ot, idx) => {
+        const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (ot.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(ot.userName)));
+        const osVal = emp ? (emp.outsource || 'Internal') : (ot.outsource || 'Internal');
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
@@ -14540,7 +14579,8 @@
           <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
           <td class="p-3 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
           <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${ot.userName}</td>
-          <td class="p-3 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || '-'}</td>
+          <td class="p-3 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
+          <td class="p-3 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${ot.dept || (emp ? emp.dept : '-')}</td>
           <td class="p-3 border-r border-slate-100 font-medium text-slate-700">${ot.dayType === 'hari_libur' ? '<span class="text-slate-900 font-bold">Hari Libur</span>' : 'Hari Kerja'}</td>
           <td class="p-3 border-r border-slate-100 font-mono font-bold">${ot.startTime} - ${ot.endTime}<br><span class="font-normal text-[10px] text-slate-500">(${ot.totalHours} Jam)</span></td>
           <td class="p-3 border-r border-slate-100 font-mono font-bold text-slate-800">${ot.effectiveHours} Jam</td>
