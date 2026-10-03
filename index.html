@@ -3428,25 +3428,7 @@
         }
       } catch(e) {}
 
-      // Jika koordinat gudang ini valid dan BUKAN dummy, langsung gunakan
-      if (ownCoords && !isDummyWarehouseCoords(ownCoords)) {
-        return ownCoords;
-      }
-
-      // Jika koordinat gudang ini masih dummy atau belum ada, cek apakah gudang saudaranya sudah terkalibrasi
-      const otherWh = (targetWh === 'MBI') ? 'MAI' : 'MBI';
-      try {
-        const otherSaved = localStorage.getItem(`wfm_${otherWh.toLowerCase()}_coords`);
-        if (otherSaved) {
-          const parsed = JSON.parse(otherSaved);
-          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number' && !isDummyWarehouseCoords(parsed)) {
-            const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : globalRad;
-            return { lat: parsed.lat, lng: parsed.lng, radius: r, name: `Gudang ${targetWh} (Mengikuti ${otherWh})` };
-          }
-        }
-      } catch(e) {}
-
-      // Jika kedua-duanya belum terkalibrasi, kembalikan ownCoords atau default
+      // Masing-masing gudang (MBI & MAI) 100% TERPISAH & INDEPENDEN
       if (ownCoords) return ownCoords;
       const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 30, name: `Gudang ${targetWh}` };
       return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 30, name: def.name };
@@ -3457,7 +3439,8 @@
         console.warn('[GPS Shield] Percobaan perubahan koordinat GPS ditolak karena bukan peran Admin/Management');
         return getWarehouseCoords(wh);
       }
-      const current = getWarehouseCoords(wh);
+      const targetWh = wh || activeWarehouse || 'MBI';
+      const current = getWarehouseCoords(targetWh);
       const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
       const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || defaultRad);
       const validRadius = Number(rad) > 0 ? Number(rad) : defaultRad;
@@ -3465,11 +3448,11 @@
         lat: parseFloat(lat), 
         lng: parseFloat(lng), 
         radius: validRadius, 
-        name: `Gudang ${wh}`, 
+        name: `Gudang ${targetWh}`, 
         updatedAt: new Date().toISOString() 
       };
-      localStorage.setItem(`wfm_${(wh || 'MBI').toLowerCase()}_coords`, JSON.stringify(coords));
-      localStorage.setItem('wfm_gps_radius', String(validRadius));
+      // Simpan HANYA ke storage gudang target yang bersangkutan (MBI atau MAI terpisah)
+      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(coords));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
       saveFullDatabaseToCloud(false, true);
       updateRegisteredCoordsDisplay();
@@ -3484,24 +3467,18 @@
       }
       const r = parseInt(radius, 10);
       if (isNaN(r) || r <= 0) return;
+      const currentWh = activeWarehouse || 'MBI';
       localStorage.setItem('wfm_gps_radius', String(r));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
 
-      // Update Gudang MBI & MAI secara seragam agar validasi berlaku konsisten
-      const currentWh = activeWarehouse || 'MBI';
+      // Update HANYA untuk gudang aktif saat ini (tidak mengubah gudang lain)
       const c = getWarehouseCoords(currentWh);
       setWarehouseCoords(currentWh, c.lat, c.lng, r);
 
-      const otherWh = currentWh === 'MBI' ? 'MAI' : 'MBI';
-      const otherC = getWarehouseCoords(otherWh);
-      setWarehouseCoords(otherWh, otherC.lat, otherC.lng, r);
-
       updateRegisteredCoordsDisplay();
-
-      // Kirim LANGSUNG ke Cloud tanpa jeda debounce agar Firebase ter-update instan ke seluruh HP
       await saveFullDatabaseToCloud(false, true);
 
-      alert(`✅ Jarak radius validasi GPS Gudang berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf kini maksimal ${r} Meter.\n• Perubahan otomatis berlaku ke seluruh HP scanner dan sistem.`);
+      alert(`✅ Jarak radius validasi GPS Gudang ${currentWh} berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf di Gudang ${currentWh} kini maksimal ${r} Meter.\n• Perubahan otomatis berlaku ke seluruh HP scanner dan sistem.`);
     }
 
     function updateRegisteredCoordsDisplay() {
@@ -3605,12 +3582,6 @@
           const lng = pos.coords.longitude;
           const accuracy = Math.round(pos.coords.accuracy || 0);
           setWarehouseCoords(activeWarehouse, lat, lng, curRadius);
-
-          const otherWh = activeWarehouse === 'MBI' ? 'MAI' : 'MBI';
-          const otherC = getWarehouseCoords(otherWh);
-          if (isDummyWarehouseCoords(otherC)) {
-            setWarehouseCoords(otherWh, lat, lng, curRadius);
-          }
 
           alert(`✅ SUKSES MENDAFTARKAN TITIK GUDANG ${activeWarehouse}!\n\n• Latitude: ${lat.toFixed(6)}\n• Longitude: ${lng.toFixed(6)}\n• Radius Validasi: ${curRadius} Meter\n• Akurasi HP: ±${accuracy} meter\n\nTitik lokasi ini telah disimpan dan otomatis tersinkron ke Cloud & seluruh HP staf.`);
         },
@@ -4137,11 +4108,13 @@
           }
 
           if (matchedUser) {
-            if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept) {
+            const userOS = matchedUser.outsource || 'Internal';
+            if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
               a.userName = matchedUser.name;
               a.userNik = matchedUser.nik;
               a.userId = matchedUser.id;
               a.dept = matchedUser.dept;
+              a.outsource = userOS;
               hasChanges = true;
             }
           }
@@ -8336,6 +8309,7 @@
           userNik: matchedUser.nik,
           userName: matchedUser.name,
           dept: matchedUser.dept,
+          outsource: matchedUser.outsource || 'Internal',
           warehouse: targetWh,
           date: todayStr,
           checkInTime: now.toISOString(),
@@ -8355,7 +8329,7 @@
         showProfessionalAttendanceToast({
           type: 'check_in',
           title: 'Absen Masuk Berhasil!',
-          subtitle: `Presensi ${matchedUser.name} sukses tercatat & tersinkron ke Google Sheet & Cloud`,
+          subtitle: `Presensi ${matchedUser.name} (${matchedUser.outsource || 'Internal'}) sukses tercatat & tersinkron ke Google Sheet & Cloud`,
           name: matchedUser.name,
           nik: matchedUser.nik,
           dept: matchedUser.dept || 'Staff',
@@ -8380,6 +8354,7 @@
           openSession.userName = matchedUser.name;
           openSession.userId = matchedUser.id;
           openSession.dept = matchedUser.dept;
+          openSession.outsource = matchedUser.outsource || openSession.outsource || 'Internal';
 
           // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
           setWhDB(targetWh, 'attendance', attendances);
@@ -8888,21 +8863,32 @@
             <thead class="bg-slate-100/90 text-slate-700 font-black uppercase text-[11px] border-b border-slate-200">
               <tr>
                 <th class="p-3.5 w-12 text-center">No</th>
-                <th class="p-3.5 min-w-[200px]">Nama Karyawan</th>
-                <th class="p-3.5 min-w-[110px]">NIK</th>
+                <th class="p-3.5 min-w-[180px]">Nama Karyawan</th>
+                <th class="p-3.5 min-w-[100px]">NIK</th>
+                <th class="p-3.5 min-w-[110px]">Outsourcing</th>
                 <th class="p-3.5 min-w-[110px]">Departemen</th>
-                <th class="p-3.5 min-w-[120px]">Jam Masuk</th>
-                <th class="p-3.5 min-w-[120px]">Status Masuk</th>
-                <th class="p-3.5 min-w-[140px]">Jam Pulang</th>
+                <th class="p-3.5 min-w-[110px]">Jam Masuk</th>
+                <th class="p-3.5 min-w-[110px]">Status Masuk</th>
+                <th class="p-3.5 min-w-[130px]">Jam Pulang</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
       `;
 
+      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const userMap = new Map();
+      users.forEach(u => {
+        if (u.nik) userMap.set(u.nik.toUpperCase(), u);
+        if (u.name) userMap.set(cleanStr(u.name), u);
+        if (u.id) userMap.set(u.id, u);
+      });
+
       todayAtt.forEach((a, idx) => {
         const inTime = a.checkInTime ? new Date(a.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : '-';
         const outTime = a.checkOutTime ? new Date(a.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : '-';
         const isLate = a.checkInStatus === 'late';
+        const matchedU = (a.userNik && userMap.get(a.userNik.toUpperCase())) || (a.userName && userMap.get(cleanStr(a.userName))) || (a.userId && userMap.get(a.userId));
+        const outsourceName = a.outsource || (matchedU ? matchedU.outsource : 'Internal') || 'Internal';
 
         html += `
           <tr class="hover:bg-slate-50 transition">
@@ -8916,6 +8902,7 @@
               </div>
             </td>
             <td class="p-3.5 font-mono font-bold text-slate-700">${a.userNik}</td>
+            <td class="p-3.5 font-bold text-slate-800">${outsourceName}</td>
             <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px]">${a.dept || 'STAFF'}</td>
             <td class="p-3.5 font-mono font-bold text-slate-800">${inTime}</td>
             <td class="p-3.5">
@@ -9126,22 +9113,27 @@
 
       if (idSelect) {
         idSelect.innerHTML = '';
-        regularUsers.forEach(u => {
+        if (regularUsers.length === 0) {
           const opt = document.createElement('option');
-          opt.value = u.nik;
-          const uDept = (u.dept || 'STAFF').trim().toUpperCase();
-          opt.innerText = `${u.name} (${u.nik}) - ${uDept}`;
-          if (prevSelected && (u.nik || '').toUpperCase() === prevSelected) {
-            opt.selected = true;
-          } else if (!prevSelected && currentUser && (u.nik || '').toUpperCase() === (currentUser.nik || '').toUpperCase()) {
-            opt.selected = true;
-          }
+          opt.value = '';
+          opt.innerText = `-- Belum Ada Karyawan di Gudang ${activeWarehouse} --`;
           idSelect.appendChild(opt);
-        });
+        } else {
+          regularUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.nik;
+            const uDept = (u.dept || 'STAFF').trim().toUpperCase();
+            opt.innerText = `${u.name} (${u.nik}) - ${uDept}`;
+            if (prevSelected && (u.nik || '').toUpperCase() === prevSelected) {
+              opt.selected = true;
+            }
+            idSelect.appendChild(opt);
+          });
 
-        // Pastikan ada yang terpilih jika belum
-        if (!idSelect.value && regularUsers.length > 0) {
-          idSelect.value = regularUsers[0].nik;
+          // Pastikan ada yang terpilih jika belum
+          if (!idSelect.value && regularUsers.length > 0) {
+            idSelect.value = regularUsers[0].nik;
+          }
         }
       }
 
@@ -9187,16 +9179,28 @@
       if (targetNik && select) {
         select.value = targetNik;
       }
-      const rawNik = (select ? select.value : '') || targetNik || (currentUser ? currentUser.nik : '');
+      const rawNik = (select ? select.value : '') || targetNik || '';
       const cleanNik = (rawNik || '').trim().toUpperCase();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
-      if (!user) {
-        const regularUsers = users.filter(u => !isManagementSystemAccount(u));
-        user = regularUsers[0] || currentUser;
-        if (user && select && !select.value) select.value = user.nik;
+      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      
+      let user = regularUsers.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
+      if (!user && regularUsers.length > 0) {
+        user = regularUsers[0];
+        if (select) select.value = user.nik;
       }
-      if (user) renderIDCard(user);
+      if (user) {
+        const cardUser = { ...user, warehouse: activeWarehouse };
+        renderIDCard(cardUser);
+      } else {
+        const emptyUser = {
+          name: 'Belum Ada Karyawan',
+          nik: `${activeWarehouse}26-001`,
+          dept: 'Warehouse Staff',
+          warehouse: activeWarehouse
+        };
+        renderIDCard(emptyUser);
+      }
     }
 
     function getMBILogoHTML(height = 20) {
