@@ -3306,6 +3306,17 @@
       return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
+    // Helper escape HTML untuk keamanan rendering tabel & teks UI
+    function escapeHTML(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     // Helper penentu apakah sebuah string adalah kode ID / NIK / Angka (BUKAN nama manusia)
     function isLikelyIdNotName(str) {
       if (!str || typeof str !== 'string') return false;
@@ -10239,69 +10250,78 @@
     // FITUR DATA KARYAWAN (SESUAI GAMBAR 1) + EXCEL & HAPUS CEKLIS
     // =========================================================
     function renderEmployeeTable() {
-      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees();
-      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
-      const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
-      const filtered = regularUsers.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query)));
+      try {
+        if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees();
+        if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
+        const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+        const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
+        const filtered = regularUsers.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query)));
 
-      const tbody = document.getElementById('emp-table-body');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-      const totalBadge = document.getElementById('emp-total-badge');
-      if (totalBadge) totalBadge.innerText = `Total: ${filtered.length} Karyawan (${activeWarehouse})`;
+        const tbody = document.getElementById('emp-table-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        const totalBadge = document.getElementById('emp-total-badge');
+        if (totalBadge) totalBadge.innerText = `Total: ${filtered.length} Karyawan (${activeWarehouse})`;
 
-      const masterCheck = document.getElementById('emp-master-check');
-      if (masterCheck) masterCheck.checked = false;
-      updateSelectedEmployeesCount();
+        const masterCheck = document.getElementById('emp-master-check');
+        if (masterCheck) masterCheck.checked = false;
+        updateSelectedEmployeesCount();
 
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
-        return;
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 font-medium">Belum ada data karyawan di Gudang ${activeWarehouse}.</td></tr>`;
+          return;
+        }
+
+        filtered.forEach((emp, idx) => {
+          try {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+            const roleStr = (emp.role || 'staff').toLowerCase().trim();
+            const roleBadgeClass = (roleStr === 'supervisor' || roleStr === 'admin') 
+              ? 'bg-slate-900 text-white' 
+              : (roleStr === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200');
+
+            const displayName = (emp.name && !isLikelyIdNotName(emp.name)) ? emp.name : `Karyawan (${emp.nik})`;
+            const osVal = (typeof escapeHTML === 'function') ? escapeHTML(emp.outsource || 'Internal') : (emp.outsource || 'Internal');
+
+            tr.innerHTML = `
+              <td class="p-3.5 border-r border-slate-100 text-center">
+                <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
+              </td>
+              <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
+              <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${displayName} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
+              <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
+              <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
+              <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
+              <td class="p-3.5 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
+              <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
+              <td class="p-3.5 border-r border-slate-100">
+                <span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${roleBadgeClass}">${(emp.role || 'staff').toUpperCase()}</span>
+              </td>
+              <td class="p-3.5 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                    Edit
+                  </button>
+                  <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                    ID Card
+                  </button>
+                  <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold transition shadow-2xs">
+                    Hapus
+                  </button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          } catch (rowErr) {
+            console.error('Error rendering employee row:', emp, rowErr);
+          }
+        });
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+      } catch (err) {
+        console.error('Error in renderEmployeeTable:', err);
       }
-
-      filtered.forEach((emp, idx) => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
-        const roleStr = (emp.role || 'staff').toLowerCase().trim();
-        const roleBadgeClass = (roleStr === 'supervisor' || roleStr === 'admin') 
-          ? 'bg-slate-900 text-white' 
-          : (roleStr === 'coordinator' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 border border-slate-200');
-
-        const displayName = (emp.name && !isLikelyIdNotName(emp.name)) ? emp.name : `Karyawan (${emp.nik})`;
-
-        tr.innerHTML = `
-          <td class="p-3.5 border-r border-slate-100 text-center">
-            <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
-          </td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
-          <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${displayName} <br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
-          <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
-          <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${escapeHTML(emp.outsource || 'Internal')}</span></td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
-          <td class="p-3.5 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
-          <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
-          <td class="p-3.5 border-r border-slate-100">
-            <span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${roleBadgeClass}">${(emp.role || 'staff').toUpperCase()}</span>
-          </td>
-          <td class="p-3.5 text-right">
-            <div class="flex items-center justify-end gap-1.5">
-              <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
-                Edit
-              </button>
-              <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
-                ID Card
-              </button>
-              <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold transition shadow-2xs">
-                Hapus
-              </button>
-            </div>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      lucide.createIcons();
     }
 
     function toggleDeptDropdown(type) {
