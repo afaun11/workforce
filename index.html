@@ -6330,21 +6330,6 @@
       }
     }
 
-    // Akun manajemen sistem (Admin, Scanner, Manager, Supervisor, Coordinator) tidak dimasukkan ke dalam matriks presensi staf
-    function isMatrixEligibleUser(user) {
-      if (!user) return false;
-      if (isManagementSystemAccount(user)) return false;
-      if (isUserAdmin(user) || isUserScanner(user) || isUserManager(user)) return false;
-
-      // Akun Supervisor dan Coordinator tidak dimasukkan ke dalam matriks presensi
-      const role = (user.role || '').toLowerCase().trim();
-      const dept = (user.dept || '').toLowerCase().trim();
-      const nik = (user.nik || '').toUpperCase().trim();
-      if (role === 'supervisor' || role.includes('supervisor') || dept.includes('supervisor') || nik.startsWith('SPV')) return false;
-      if (role === 'coordinator' || role === 'cordinator' || role.includes('coord') || dept.includes('coordinator') || dept.includes('cordinator') || nik.startsWith('CRD')) return false;
-
-      return true;
-    }
 
     function quickLoginScannerAccount(warehouse = 'MBI') {
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -13451,6 +13436,88 @@
       return false;
     }
 
+    // Mendapatkan seluruh daftar karyawan untuk matriks presensi (Harmonisasi Users DB + Riwayat Absensi + Riwayat Cuti)
+    function getMatrixEmployees(warehouse = activeWarehouse || 'MBI') {
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(warehouse, 'attendance', warehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      const leaves = getWhDB(warehouse, 'leaves', warehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+
+      const empMap = new Map();
+      const seenNiks = new Set();
+      const seenNames = new Set();
+
+      // 1. Masukkan seluruh karyawan reguler dari database master
+      users.forEach(u => {
+        if (!u || !isMatrixEligibleUser(u)) return;
+        const nikKey = u.nik ? u.nik.toUpperCase().trim() : '';
+        const nameKey = cleanStr(u.name);
+        const key = nikKey || nameKey || u.id;
+        if (!key) return;
+
+        const empObj = {
+          id: u.id || `emp-${Date.now()}-${Math.random()}`,
+          nik: u.nik || '',
+          name: u.name || '',
+          dept: u.dept || 'Staff',
+          role: u.role || 'staff',
+          outsource: u.outsource ? u.outsource.trim() : '',
+          warehouse: u.warehouse || warehouse
+        };
+
+        empMap.set(key, empObj);
+        if (nikKey) seenNiks.add(nikKey);
+        if (nameKey) seenNames.add(nameKey);
+      });
+
+      // 2. Hubungkan & periksa data kehadiran untuk melengkapi OS karyawan atau menambahkan staf yang tercatat di absensi
+      attendances.forEach(a => {
+        if (!a) return;
+        const aNik = a.userNik ? a.userNik.toUpperCase().trim() : '';
+        const aName = a.userName ? a.userName.trim() : '';
+        const aCleanName = cleanStr(aName);
+        const aOS = a.outsource ? a.outsource.trim() : '';
+
+        if (!aName && !aNik) return;
+        if (aNik.startsWith('ADM') || aNik.startsWith('ABSEN') || aNik === 'MGR001') return;
+        if (aCleanName === 'admingudangmbi' || aCleanName === 'admingudangmai' || aCleanName === 'scannerpresensigudang' || aCleanName === 'eko') return;
+
+        let matchedEmp = null;
+        if (aNik && empMap.has(aNik)) matchedEmp = empMap.get(aNik);
+        else if (aCleanName && empMap.has(aCleanName)) matchedEmp = empMap.get(aCleanName);
+        else {
+          for (const [k, emp] of empMap.entries()) {
+            if ((aNik && emp.nik && emp.nik.toUpperCase() === aNik) ||
+                (aCleanName && cleanStr(emp.name) === aCleanName)) {
+              matchedEmp = emp;
+              break;
+            }
+          }
+        }
+
+        if (matchedEmp) {
+          if ((!matchedEmp.outsource || matchedEmp.outsource === '-' || matchedEmp.outsource === 'Internal') && aOS && aOS !== '-' && aOS !== 'Internal') {
+            matchedEmp.outsource = aOS;
+          }
+        } else {
+          const newKey = aNik || aCleanName;
+          const newEmp = {
+            id: a.userId || `att-user-${Date.now()}-${Math.random()}`,
+            nik: a.userNik || '',
+            name: a.userName || `Karyawan (${a.userNik || '-'})`,
+            dept: a.dept || 'Warehouse Staff',
+            role: 'staff',
+            outsource: aOS || 'Internal',
+            warehouse
+          };
+          empMap.set(newKey, newEmp);
+          if (aNik) seenNiks.add(aNik);
+          if (aCleanName) seenNames.add(aCleanName);
+        }
+      });
+
+      return Array.from(empMap.values());
+    }
+
     function initMatrixDateRange() {
       const sInput = document.getElementById('matrix-start-date');
       const eInput = document.getElementById('matrix-end-date');
@@ -13471,8 +13538,7 @@
       if (!select) return;
       const currentVal = (select.value || 'ALL').trim();
       const targetWh = activeWarehouse || 'MBI';
-      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const eligibleUsers = users.filter(u => isMatrixEligibleUser(u));
+      const eligibleUsers = getMatrixEmployees(targetWh);
 
       // Standar default vendor OS resmi yang selalu tersedia
       const defaultVendors = ['ADP', 'Staffinc', 'Internal'];
@@ -13483,7 +13549,7 @@
         osMap.set(v.toLowerCase(), { name: v, count: 0 });
       });
 
-      // Hitung dan masukkan seluruh OS dari database karyawan gudang aktif
+      // Hitung dan masukkan seluruh OS dari database karyawan & absensi gudang aktif
       eligibleUsers.forEach(u => {
         const norm = normalizeOSName(u.outsource);
         const lower = norm.toLowerCase();
@@ -13523,157 +13589,161 @@
     }
 
     function renderMatrixTable() {
-      initMatrixDateRange();
-      const sInput = document.getElementById('matrix-start-date');
-      const eInput = document.getElementById('matrix-end-date');
-      let startStr = sInput?.value;
-      let endStr = eInput?.value;
-      if (!startStr || !endStr) return;
+      try {
+        initMatrixDateRange();
+        const sInput = document.getElementById('matrix-start-date');
+        const eInput = document.getElementById('matrix-end-date');
+        let startStr = sInput?.value;
+        let endStr = eInput?.value;
+        if (!startStr || !endStr) return;
 
-      if (startStr > endStr) {
-        const tmp = startStr;
-        startStr = endStr;
-        endStr = tmp;
-        if (sInput) sInput.value = startStr;
-        if (eInput) eInput.value = endStr;
-      }
-
-      const selectOS = document.getElementById('matrix-filter-os');
-      const selectedOS = (selectOS?.value || 'ALL').trim();
-
-      const dateList = getDatesInRange(startStr, endStr);
-      const dateKeys = dateList.map(d => getLocalDateString(d));
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
-
-      const thead = document.getElementById('matrix-thead');
-      const tbody = document.getElementById('matrix-tbody');
-      if (!thead || !tbody) return;
-
-      // Kelompokkan Tanggal berdasarkan Bulan (contoh: 19-31 Agustus, 1-20 September)
-      const monthGroups = [];
-      dateList.forEach(d => {
-        const monthKey = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-        let group = monthGroups.find(g => g.name === monthKey);
-        if (!group) {
-          group = { name: monthKey, dates: [] };
-          monthGroups.push(group);
+        if (startStr > endStr) {
+          const tmp = startStr;
+          startStr = endStr;
+          endStr = tmp;
+          if (sInput) sInput.value = startStr;
+          if (eInput) eInput.value = endStr;
         }
-        group.dates.push(d);
-      });
 
-      let headerHTML = `
-        <tr class="border-b border-slate-300">
-          <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
-          <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
-      `;
+        const selectOS = document.getElementById('matrix-filter-os');
+        const selectedOS = (selectOS?.value || 'ALL').trim();
 
-      monthGroups.forEach((g, gIdx) => {
-        const bgClass = gIdx % 2 === 0 ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-800';
-        headerHTML += `<th colspan="${g.dates.length}" class="p-2 border-r border-slate-300 font-extrabold uppercase text-xs tracking-wider ${bgClass}">${g.name}</th>`;
-      });
+        const dateList = getDatesInRange(startStr, endStr);
+        const dateKeys = dateList.map(d => getLocalDateString(d));
+        const allMatrixUsers = getMatrixEmployees(activeWarehouse);
+        const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+        const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
-      headerHTML += `
-          <th rowspan="2" class="p-2 min-w-[90px] bg-slate-200 text-slate-900 font-black">Total Hadir</th>
-        </tr>
-        <tr class="border-b border-slate-300 text-[10px]">
-      `;
+        const thead = document.getElementById('matrix-thead');
+        const tbody = document.getElementById('matrix-tbody');
+        if (!thead || !tbody) return;
 
-      dateList.forEach(d => {
-        const dayNum = d.getDate();
-        const dayName = DAY_NAMES[d.getDay()];
-        headerHTML += `<th class="p-1 border-r border-slate-300 min-w-[28px] font-bold">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
-      });
-      headerHTML += `</tr>`;
-      thead.innerHTML = headerHTML;
-
-      // Optimasi O(1): Indexing kehadiran ke dalam Set (Mendukung tanggal operasional & tanggal checkIn lokal)
-      const attSet = new Set();
-      attendances.forEach(a => {
-        if (!a) return;
-        const opDate = a.date;
-        const localCheckInDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
-        const datesToRegister = [opDate];
-        if (localCheckInDate && localCheckInDate !== opDate) datesToRegister.push(localCheckInDate);
-
-        datesToRegister.forEach(dVal => {
-          if (!dVal) return;
-          if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${dVal}`);
-          if (a.userName) attSet.add(`${cleanStr(a.userName)}__${dVal}`);
-          if (a.userId) attSet.add(`${a.userId}__${dVal}`);
+        // Kelompokkan Tanggal berdasarkan Bulan (contoh: 19-31 Agustus, 1-20 September)
+        const monthGroups = [];
+        dateList.forEach(d => {
+          const monthKey = d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          let group = monthGroups.find(g => g.name === monthKey);
+          if (!group) {
+            group = { name: monthKey, dates: [] };
+            monthGroups.push(group);
+          }
+          group.dates.push(d);
         });
-      });
 
-      // Optimasi O(1): Indexing cuti/sakit yang sudah disetujui ke dalam Map
-      const leaveMap = new Map();
-      leaves.forEach(l => {
-        if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
-        const lDates = getDatesInRange(l.startDate, l.endDate);
-        lDates.forEach(ld => {
-          const ldStr = getLocalDateString(ld);
-          const type = l.type;
-          if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
-          if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
-          if (l.userId) leaveMap.set(`${l.userId}__${ldStr}`, type);
+        let headerHTML = `
+          <tr class="border-b border-slate-300">
+            <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
+            <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
+        `;
+
+        monthGroups.forEach((g, gIdx) => {
+          const bgClass = gIdx % 2 === 0 ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-800';
+          headerHTML += `<th colspan="${g.dates.length}" class="p-2 border-r border-slate-300 font-extrabold uppercase text-xs tracking-wider ${bgClass}">${g.name}</th>`;
         });
-      });
 
-      // Filter karyawan: hanya staf biasa (Supervisor & Coordinator dikecualikan) dan filter sesuai OS yang dipilih (misal ADP, Staffinc, Internal, dll.)
-      let regularUsers = users.filter(u => isMatrixEligibleUser(u));
-      if (selectedOS !== 'ALL') {
-        regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
-      }
+        headerHTML += `
+            <th rowspan="2" class="p-2 min-w-[90px] bg-slate-200 text-slate-900 font-black">Total Hadir</th>
+          </tr>
+          <tr class="border-b border-slate-300 text-[10px]">
+        `;
 
-      const rowsHTML = [];
+        dateList.forEach(d => {
+          const dayNum = d.getDate();
+          const dayName = DAY_NAMES[d.getDay()];
+          headerHTML += `<th class="p-1 border-r border-slate-300 min-w-[28px] font-bold">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
+        });
+        headerHTML += `</tr>`;
+        thead.innerHTML = headerHTML;
 
-      if (regularUsers.length === 0) {
-        const totalCols = 3 + dateList.length;
-        rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-500 bg-slate-50 font-medium">Belum ada karyawan dengan OS / Vendor "${escapeHTML(selectedOS)}" di Gudang ${activeWarehouse}. Silakan atur atau lengkapi vendor OS karyawan di menu Data Karyawan.</td></tr>`);
-      } else {
-        regularUsers.forEach((user, uIdx) => {
-          let totalHariKerja = 0;
-          let rowHTML = `
-            <tr class="hover:bg-slate-50 transition border-b border-slate-200">
-              <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
-              <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${escapeHTML(user.name)} <span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span></td>
-          `;
+        // Optimasi O(1): Indexing kehadiran ke dalam Set (Mendukung tanggal operasional & tanggal checkIn lokal)
+        const attSet = new Set();
+        attendances.forEach(a => {
+          if (!a) return;
+          const opDate = a.date;
+          const localCheckInDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+          const datesToRegister = [opDate];
+          if (localCheckInDate && localCheckInDate !== opDate) datesToRegister.push(localCheckInDate);
 
-          const uNik = user.nik ? user.nik.toUpperCase() : '';
-          const uCleanName = user.name ? cleanStr(user.name) : '';
-          const uId = user.id || '';
-
-          dateKeys.forEach(dStr => {
-            const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
-                          (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
-                          (uId && attSet.has(`${uId}__${dStr}`));
-
-            if (isAtt) {
-              totalHariKerja += 1;
-              rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
-            } else {
-              const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
-                                (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
-                                (uId && leaveMap.get(`${uId}__${dStr}`));
-              if (leaveType === 'sakit') {
-                rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
-              } else if (leaveType === 'izin') {
-                rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
-              } else if (leaveType) {
-                rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
-              } else {
-                rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
-              }
-            }
+          datesToRegister.forEach(dVal => {
+            if (!dVal) return;
+            if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${dVal}`);
+            if (a.userName) attSet.add(`${cleanStr(a.userName)}__${dVal}`);
+            if (a.userId) attSet.add(`${a.userId}__${dVal}`);
           });
-
-          rowHTML += `<td class="p-2 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
-          rowsHTML.push(rowHTML);
         });
-      }
 
-      // Update DOM sekali saja (batch)
-      tbody.innerHTML = rowsHTML.join('');
+        // Optimasi O(1): Indexing cuti/sakit yang sudah disetujui ke dalam Map
+        const leaveMap = new Map();
+        leaves.forEach(l => {
+          if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
+          const lDates = getDatesInRange(l.startDate, l.endDate);
+          lDates.forEach(ld => {
+            const ldStr = getLocalDateString(ld);
+            const type = l.type;
+            if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
+            if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
+            if (l.userId) leaveMap.set(`${l.userId}__${ldStr}`, type);
+          });
+        });
+
+        // Filter karyawan sesuai OS yang dipilih (misal ADP, Staffinc, Internal, dll.)
+        let regularUsers = allMatrixUsers;
+        if (selectedOS !== 'ALL') {
+          regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
+        }
+
+        const rowsHTML = [];
+
+        if (regularUsers.length === 0) {
+          const totalCols = 3 + dateList.length;
+          rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-500 bg-slate-50 font-medium">Belum ada karyawan dengan OS / Vendor "${escapeHTML(selectedOS)}" di Gudang ${activeWarehouse}. Silakan atur atau lengkapi vendor OS karyawan di menu Data Karyawan.</td></tr>`);
+        } else {
+          regularUsers.forEach((user, uIdx) => {
+            let totalHariKerja = 0;
+            const nikDisplay = user.nik ? `<span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span>` : '';
+            let rowHTML = `
+              <tr class="hover:bg-slate-50 transition border-b border-slate-200">
+                <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
+                <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${escapeHTML(user.name)} ${nikDisplay}</td>
+            `;
+
+            const uNik = user.nik ? user.nik.toUpperCase() : '';
+            const uCleanName = user.name ? cleanStr(user.name) : '';
+            const uId = user.id || '';
+
+            dateKeys.forEach(dStr => {
+              const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
+                            (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
+                            (uId && attSet.has(`${uId}__${dStr}`));
+
+              if (isAtt) {
+                totalHariKerja += 1;
+                rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
+              } else {
+                const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
+                                  (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
+                                  (uId && leaveMap.get(`${uId}__${dStr}`));
+                if (leaveType === 'sakit') {
+                  rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
+                } else if (leaveType === 'izin') {
+                  rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
+                } else if (leaveType) {
+                  rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
+                } else {
+                  rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
+                }
+              }
+            });
+
+            rowHTML += `<td class="p-2 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
+            rowsHTML.push(rowHTML);
+          });
+        }
+
+        tbody.innerHTML = rowsHTML.join('');
+      } catch (err) {
+        console.error('Error in renderMatrixTable:', err);
+      }
     }
 
     // =========================================================
@@ -13698,8 +13768,8 @@
       const selectedOS = (document.getElementById('matrix-filter-os')?.value || 'ALL').trim();
       const dateList = getDatesInRange(startStr, endStr);
       const dateKeys = dateList.map(d => getLocalDateString(d));
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      const allMatrixUsers = getMatrixEmployees(activeWarehouse);
+      let regularUsers = allMatrixUsers;
       if (selectedOS !== 'ALL') {
         regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
       }
@@ -13853,8 +13923,8 @@
       }
       const selectedOS = (document.getElementById('matrix-filter-os')?.value || 'ALL').trim();
       const dateList = getDatesInRange(startStr, endStr);
-      const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let regularUsers = users.filter(u => isMatrixEligibleUser(u));
+      const allMatrixUsers = getMatrixEmployees(activeWarehouse);
+      let regularUsers = allMatrixUsers;
       if (selectedOS !== 'ALL') {
         regularUsers = regularUsers.filter(u => isMatchOS(u.outsource, selectedOS));
       }
