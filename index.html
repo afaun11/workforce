@@ -2684,20 +2684,11 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource (Vendor) *</label>
-          <div class="space-y-1.5">
-            <select id="m-emp-outsource-select" onchange="handleOutsourceSelectChange('add')" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-              <option value="ADP">ADP</option>
-              <option value="Staffinc">Staffinc</option>
-              <option value="Internal" selected>Internal (Karyawan Tetap Medika)</option>
-              <option value="SOS">SOS</option>
-              <option value="Valdo">Valdo</option>
-              <option value="Persona">Persona</option>
-              <option value="Bina Insani">Bina Insani</option>
-              <option value="__custom__">+ Vendor Outsource Lainnya (Ketik Manual)...</option>
-            </select>
-            <input type="text" id="m-emp-outsource-custom" oninput="handleOutsourceCustomInput('add', this.value)" placeholder="Ketik nama vendor outsource baru..." class="hidden w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-            <input type="hidden" id="m-emp-outsource" value="Internal">
-          </div>
+          <select id="m-emp-outsource" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <option value="ADP">ADP</option>
+            <option value="Staffinc">Staffinc</option>
+            <option value="Internal" selected>Internal</option>
+          </select>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -2777,20 +2768,11 @@
 
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Outsource (Vendor) *</label>
-          <div class="space-y-1.5">
-            <select id="edit-emp-outsource-select" onchange="handleOutsourceSelectChange('edit')" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-              <option value="ADP">ADP</option>
-              <option value="Staffinc">Staffinc</option>
-              <option value="Internal">Internal (Karyawan Tetap Medika)</option>
-              <option value="SOS">SOS</option>
-              <option value="Valdo">Valdo</option>
-              <option value="Persona">Persona</option>
-              <option value="Bina Insani">Bina Insani</option>
-              <option value="__custom__">+ Vendor Outsource Lainnya (Ketik Manual)...</option>
-            </select>
-            <input type="text" id="edit-emp-outsource-custom" oninput="handleOutsourceCustomInput('edit', this.value)" placeholder="Ketik nama vendor outsource..." class="hidden w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-            <input type="hidden" id="edit-emp-outsource" value="Internal">
-          </div>
+          <select id="edit-emp-outsource" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <option value="ADP">ADP</option>
+            <option value="Staffinc">Staffinc</option>
+            <option value="Internal">Internal</option>
+          </select>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -10431,32 +10413,8 @@
       }
     }
 
-    function handleOutsourceSelectChange(type) {
-      const prefix = type === 'edit' ? 'edit-emp' : 'm-emp';
-      const selEl = document.getElementById(`${prefix}-outsource-select`);
-      const custEl = document.getElementById(`${prefix}-outsource-custom`);
-      const hidEl = document.getElementById(`${prefix}-outsource`);
-      if (!selEl || !hidEl) return;
-
-      if (selEl.value === '__custom__') {
-        if (custEl) {
-          custEl.classList.remove('hidden');
-          custEl.focus();
-          hidEl.value = custEl.value.trim() || 'Internal';
-        }
-      } else {
-        if (custEl) custEl.classList.add('hidden');
-        hidEl.value = selEl.value;
-      }
-    }
-
-    function handleOutsourceCustomInput(type, val) {
-      const prefix = type === 'edit' ? 'edit-emp' : 'm-emp';
-      const hidEl = document.getElementById(`${prefix}-outsource`);
-      if (hidEl) {
-        hidEl.value = (val || '').trim() || 'Internal';
-      }
-    }
+    function handleOutsourceSelectChange(type) {}
+    function handleOutsourceCustomInput(type, val) {}
 
     function openEditEmployeeModal(nik) {
       const cleanNik = (nik || '').trim().toUpperCase();
@@ -10498,37 +10456,9 @@
       
       syncDepartmentDropdownOptions('edit', user.dept || '');
 
-      const rawUserOS = user.outsource || 'Internal';
-      const normOS = normalizeOSName(rawUserOS);
-      const selEdit = document.getElementById('edit-emp-outsource-select');
-      const custEdit = document.getElementById('edit-emp-outsource-custom');
-      const hidEdit = document.getElementById('edit-emp-outsource');
-      if (hidEdit) hidEdit.value = normOS;
-
-      if (selEdit) {
-        let found = false;
-        for (let i = 0; i < selEdit.options.length; i++) {
-          const opt = selEdit.options[i];
-          if (opt.value === '__custom__') continue;
-          if (opt.value.toLowerCase() === normOS.toLowerCase() || opt.value.toLowerCase() === rawUserOS.toLowerCase()) {
-            selEdit.value = opt.value;
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          selEdit.value = '__custom__';
-          if (custEdit) {
-            custEdit.value = rawUserOS;
-            custEdit.classList.remove('hidden');
-          }
-        } else {
-          if (custEdit) {
-            custEdit.value = '';
-            custEdit.classList.add('hidden');
-          }
-        }
-      }
+      const normOS = normalizeOSName(user.outsource || 'Internal');
+      const editOS = document.getElementById('edit-emp-outsource');
+      if (editOS) editOS.value = normOS;
 
       document.getElementById('edit-emp-phone').value = user.phone || '';
       if (document.getElementById('edit-emp-email')) document.getElementById('edit-emp-email').value = user.email || '';
@@ -11000,15 +10930,8 @@
       document.getElementById('m-emp-nik').value = '';
       if (document.getElementById('m-emp-email')) document.getElementById('m-emp-email').value = '';
 
-      const selAdd = document.getElementById('m-emp-outsource-select');
-      const custAdd = document.getElementById('m-emp-outsource-custom');
-      const hidAdd = document.getElementById('m-emp-outsource');
-      if (selAdd) selAdd.value = 'Internal';
-      if (custAdd) {
-        custAdd.value = '';
-        custAdd.classList.add('hidden');
-      }
-      if (hidAdd) hidAdd.value = 'Internal';
+      const addOS = document.getElementById('m-emp-outsource');
+      if (addOS) addOS.value = 'Internal';
 
       syncDepartmentDropdownOptions('add', 'warehouse staff');
       document.getElementById('add-emp-modal').classList.remove('hidden');
@@ -11211,8 +11134,8 @@
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${activeWarehouse.toUpperCase()}${year}-`;
       const templateData = [
-        { "No": 1, "ID Karyawan": `${prefix}001`, "Nama Karyawan": "Afuani Huyan", "Departemen": "Warehouse Staff", "Outsource": "PT Sumber Daya", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
-        { "No": 2, "ID Karyawan": `${prefix}002`, "Nama Karyawan": "Bambang Wijaya", "Departemen": "Warehouse Staff", "Outsource": "Internal", "No Telpon": "08129876543", "Email": "bambang@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
+        { "No": 1, "ID Karyawan": `${prefix}001`, "Nama Karyawan": "Afuani Huyan", "Departemen": "Warehouse Staff", "Outsource": "ADP", "No Telpon": "08123456789", "Email": "afuani@medika.com", "JOIN DATE": "2023-01-15", "Posisi": "staff" },
+        { "No": 2, "ID Karyawan": `${prefix}002`, "Nama Karyawan": "Bambang Wijaya", "Departemen": "Warehouse Staff", "Outsource": "Staffinc", "No Telpon": "08129876543", "Email": "bambang@medika.com", "JOIN DATE": "2023-02-01", "Posisi": "staff" },
         { "No": 3, "ID Karyawan": `${prefix}003`, "Nama Karyawan": "Citra Lestari", "Departemen": "Coordinator", "Outsource": "Internal", "No Telpon": "08129876544", "Email": "citra@medika.com", "JOIN DATE": "2022-06-10", "Posisi": "coordinator" },
         { "No": 4, "ID Karyawan": `${prefix}004`, "Nama Karyawan": "Dedi Kurniawan", "Departemen": "Supervisor", "Outsource": "Internal", "No Telpon": "08129876545", "Email": "dedi@medika.com", "JOIN DATE": "2021-03-05", "Posisi": "supervisor" }
       ];
@@ -11849,9 +11772,9 @@
               hasAccount = false;
             }
 
-            // Outsource
+            // Outsource (Hanya ADP, Staffinc, Internal)
             let rawOutsource = colIdx_outsource !== -1 ? String(rowArr[colIdx_outsource] || '').trim() : 'Internal';
-            if (!rawOutsource || rawOutsource === '-' || rawOutsource === name) rawOutsource = 'Internal';
+            let finalOutsource = normalizeOSName(rawOutsource);
 
             // No Telepon
             let rawPhone = colIdx_phone !== -1 ? String(rowArr[colIdx_phone] || '').trim() : '-';
@@ -11874,7 +11797,7 @@
               hasAccount,
               password: hasAccount ? 'medika123' : '',
               isFirstLogin: hasAccount,
-              outsource: rawOutsource,
+              outsource: finalOutsource,
               phone,
               email,
               joinDate
@@ -13522,28 +13445,15 @@
       if (!clean || clean === 'internal' || clean === 'medika' || clean === '-' || clean === 'nonos' || clean === 'null' || clean === 'undefined') return 'Internal';
       if (clean.includes('adp')) return 'ADP';
       if (clean.includes('staffinc') || clean.includes('staffing')) return 'Staffinc';
-      if (clean.includes('sos')) return 'SOS';
-      if (clean.includes('valdo')) return 'Valdo';
-      if (clean.includes('persona')) return 'Persona';
-      if (clean.includes('binainsani') || clean.includes('bina')) return 'Bina Insani';
-      return os.trim();
+      return 'Internal';
     }
 
     function isMatchOS(userOS, selectedOS) {
       if (!selectedOS || selectedOS === 'ALL') return true;
-      const uNorm = normalizeOSName(userOS).toLowerCase();
-      const selNorm = normalizeOSName(selectedOS).toLowerCase();
-      if (uNorm === selNorm) return true;
-
-      const uClean = cleanStr(userOS || 'Internal');
-      const selClean = cleanStr(selectedOS);
-      if (uClean === selClean) return true;
-      if (uClean.includes(selClean) || selClean.includes(uClean)) return true;
-
-      return false;
+      return normalizeOSName(userOS).toLowerCase() === normalizeOSName(selectedOS).toLowerCase();
     }
 
-    // Fungsi Auto-Sanitasi & Penyimpanan Vendor OS Karyawan ke Database & Cloud
+    // Fungsi Auto-Sanitasi & Penyimpanan Vendor OS Karyawan ke Database & Cloud (Hanya 3 OS: ADP, Staffinc, Internal)
     function autoMigrateAndPersistAllEmployeeOS() {
       const warehouses = ['MBI', 'MAI'];
       let anyChanged = false;
@@ -13553,41 +13463,14 @@
           const storageKey = `wfm_${wh.toLowerCase()}_users`;
           const backupKey = `wfm_${wh.toLowerCase()}_users_backup`;
           let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-          let attendances = getWhDB(wh, 'attendance', []);
           let whChanged = false;
-
-          const attOsMap = new Map();
-          attendances.forEach(a => {
-            if (!a) return;
-            const os = (a.outsource || '').trim();
-            if (os && os !== '-' && os !== 'Internal') {
-              if (a.userNik) attOsMap.set(a.userNik.toUpperCase().trim(), os);
-              if (a.userName) attOsMap.set(cleanStr(a.userName), os);
-              if (a.userId) attOsMap.set(a.userId, os);
-            }
-          });
 
           users.forEach(u => {
             if (!u) return;
-            if (isManagementSystemAccount(u)) {
-              if (!u.outsource) u.outsource = 'Internal';
-              return;
-            }
-
-            let curOS = (u.outsource || '').trim();
-            if (!curOS || curOS === '-' || curOS === '--' || curOS.toLowerCase() === 'undefined' || curOS.toLowerCase() === 'null') {
-              const nikKey = u.nik ? u.nik.toUpperCase().trim() : '';
-              const nameKey = cleanStr(u.name);
-              const attOS = (nikKey && attOsMap.get(nikKey)) || (nameKey && attOsMap.get(nameKey)) || (u.id && attOsMap.get(u.id));
-              curOS = attOS || 'Internal';
-              u.outsource = normalizeOSName(curOS);
+            const targetOS = isManagementSystemAccount(u) ? 'Internal' : normalizeOSName(u.outsource || 'Internal');
+            if (u.outsource !== targetOS) {
+              u.outsource = targetOS;
               whChanged = true;
-            } else {
-              const norm = normalizeOSName(curOS);
-              if (norm !== curOS) {
-                u.outsource = norm;
-                whChanged = true;
-              }
             }
           });
 
@@ -13741,46 +13624,28 @@
       const targetWh = activeWarehouse || 'MBI';
       const eligibleUsers = getMatrixEmployees(targetWh);
 
-      // Standar default vendor OS resmi yang selalu tersedia
-      const defaultVendors = ['ADP', 'Staffinc', 'Internal', 'SOS', 'Valdo', 'Persona', 'Bina Insani'];
-      const osMap = new Map();
+      const vendors = ['ADP', 'Staffinc', 'Internal'];
+      const osCounts = { 'ADP': 0, 'Staffinc': 0, 'Internal': 0 };
 
-      // Inisialisasi default vendors
-      defaultVendors.forEach(v => {
-        osMap.set(v.toLowerCase(), { name: v, count: 0 });
-      });
-
-      // Hitung dan masukkan seluruh OS dari database karyawan & absensi gudang aktif
       eligibleUsers.forEach(u => {
         const norm = normalizeOSName(u.outsource);
-        const lower = norm.toLowerCase();
-        if (!osMap.has(lower)) {
-          osMap.set(lower, { name: norm, count: 0 });
+        if (osCounts.hasOwnProperty(norm)) {
+          osCounts[norm] += 1;
+        } else {
+          osCounts['Internal'] += 1;
         }
-        osMap.get(lower).count += 1;
-      });
-
-      const osList = Array.from(osMap.values()).sort((a, b) => {
-        const idxA = defaultVendors.findIndex(v => v.toLowerCase() === a.name.toLowerCase());
-        const idxB = defaultVendors.findIndex(v => v.toLowerCase() === b.name.toLowerCase());
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
-        return a.name.localeCompare(b.name);
       });
 
       let optionsHtml = `<option value="ALL">Semua OS / Vendor (${eligibleUsers.length} Karyawan)</option>`;
-      osList.forEach(item => {
-        const countText = ` (${item.count} Karyawan)`;
-        optionsHtml += `<option value="${escapeHTML(item.name)}">${escapeHTML(item.name)}${countText}</option>`;
+      vendors.forEach(v => {
+        optionsHtml += `<option value="${v}">${v} (${osCounts[v]} Karyawan)</option>`;
       });
 
       const targetSelectVal = preserveSelection ? currentVal : 'ALL';
       select.innerHTML = optionsHtml;
       
       const match = Array.from(select.options).find(o => 
-        o.value.toLowerCase() === targetSelectVal.toLowerCase() || 
-        normalizeOSName(o.value).toLowerCase() === normalizeOSName(targetSelectVal).toLowerCase()
+        o.value.toUpperCase() === targetSelectVal.toUpperCase()
       );
       if (match) {
         select.value = match.value;
