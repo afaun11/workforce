@@ -2259,27 +2259,37 @@
                   <p class="text-[11px] text-slate-500">Anda dapat mengubah atau menghubungkan ke project Firebase baru kapan saja cukup dengan menempelkan URL-nya di sini.</p>
                 </div>
 
-                <!-- Solusi Cepat: Aturan Keamanan Firebase Rules (Anti-Expired 401) -->
+                <!-- Solusi Cepat: Aturan Keamanan Firebase Rules (Aman & Permanen) -->
                 <div class="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-2 text-xs">
                   <div class="flex items-center justify-between gap-2 flex-wrap">
                     <div class="flex items-center gap-2 text-amber-950 font-bold">
-                      <i data-lucide="shield-alert" class="w-4 h-4 text-amber-600 shrink-0"></i>
-                      <span>Solusi Jika Muncul "Gagal Terhubung ke Firebase" (Rules Expired)</span>
+                      <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600 shrink-0"></i>
+                      <span>Aturan Keamanan Firebase Rules (Aman &amp; Aktif Selamanya)</span>
                     </div>
                     <button type="button" onclick="copyFirebaseRules()" class="px-3 py-1 bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold rounded-xl text-[10px] transition shadow-2xs">
                       Salin Rules
                     </button>
                   </div>
                   <p class="text-[11px] text-amber-900 leading-relaxed">
-                    Jika Firebase menolak koneksi (HTTP 401: Permission Denied), aturan default 30 hari di <b>console.firebase.google.com</b> telah kedaluwarsa. Buka Realtime Database &rarr; Tab <b>Rules</b>, ganti menjadi:
+                    Agar tidak muncul peringatan email dan database tidak terkunci setelah 30 hari, buka <b>console.firebase.google.com</b> &rarr; pilih <b>Realtime Database</b> &rarr; tab <b>Rules</b>, lalu pasang aturan aman berikut:
                   </p>
                   <pre class="bg-slate-900 text-emerald-400 p-2.5 rounded-xl font-mono text-[10px] overflow-x-auto leading-relaxed">{
   "rules": {
-    ".read": true,
-    ".write": true
+    "wfm_database": {
+      ".read": true,
+      ".write": true
+    },
+    "wfm_audio": {
+      ".read": true,
+      ".write": true
+    },
+    "$other": {
+      ".read": false,
+      ".write": false
+    }
   }
 }</pre>
-                  <p class="text-[10px] text-amber-800 font-semibold italic">Lalu klik tombol <b>Publish (Publikasikan)</b> di kanan atas. Sinkronisasi antar-perangkat akan langsung normal seketika!</p>
+                  <p class="text-[10px] text-amber-800 font-semibold italic">Klik tombol <b>Publish (Publikasikan)</b> di kanan atas console Firebase. Database akan aman permanen dan sinkronisasi 24/7 tetap lancar tanpa batas waktu!</p>
                 </div>
 
                 <!-- Action Buttons Khusus & Rapih -->
@@ -4198,10 +4208,10 @@
     const CLOUD_ENDPOINTS = [getFirebaseEndpoint()];
 
     function copyFirebaseRules() {
-      const rules = `{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}`;
+      const rules = `{\n  "rules": {\n    "wfm_database": {\n      ".read": true,\n      ".write": true\n    },\n    "wfm_audio": {\n      ".read": true,\n      ".write": true\n    },\n    "$other": {\n      ".read": false,\n      ".write": false\n    }\n  }\n}`;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(rules).then(() => {
-          alert('✅ Aturan (Rules) Firebase berhasil disalin!\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, tempelkan aturan ini, lalu klik Publish.');
+          alert('✅ Aturan (Rules) Keamanan Firebase berhasil disalin!\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, tempelkan aturan ini, lalu klik Publish.');
         }).catch(() => {
           prompt('Salin teks Rules Firebase berikut:', rules);
         });
@@ -6005,19 +6015,15 @@
     }
 
     function getMBIIconHTML(size = 32) {
-      const p0 = MBI_UPLOADED_IMG_PATHS[0];
-      const p1 = MBI_UPLOADED_IMG_PATHS[1];
-      const p2 = MBI_UPLOADED_IMG_PATHS[2];
       return `
-        <div style="width: ${size}px; height: ${size}px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-          <img src="${p0}" 
-               onerror="if(!this.dataset.retry){this.dataset.retry='1';this.src='${p1}';}else if(this.dataset.retry==='1'){this.dataset.retry='2';this.src='${p2}';}else{this.style.display='none';this.nextElementSibling.style.display='block';}" 
-               alt="Logo MBI" 
-               style="width: ${size}px; height: ${size}px; object-fit: contain; display: block;" />
-          <div style="display: none; width: ${size}px; height: ${size}px;">
-            ${getMBIIconSVGFallback(size)}
-          </div>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="width: ${size}px; height: ${size}px; display: block;" fill="none">
+          <!-- 1. Golden Yellow Head Circle -->
+          <circle cx="100" cy="38" r="28" fill="#F7B200"/>
+          <!-- 2. Cyan Right Capsule (+45 deg around 128, 114) -->
+          <rect x="97" y="47" width="62" height="134" rx="31" fill="#24D3E3" transform="rotate(45 128 114)"/>
+          <!-- 3. Pink Left Capsule (-45 deg around 72, 114, overlapping on top) -->
+          <rect x="41" y="47" width="62" height="134" rx="31" fill="#EE1D78" transform="rotate(-45 72 114)"/>
+        </svg>
       `;
     }
 
@@ -9183,26 +9189,18 @@
     }
 
     function getMBILogoHTML(height = 20) {
-      const p0 = MBI_UPLOADED_IMG_PATHS[0];
-      const p1 = MBI_UPLOADED_IMG_PATHS[1];
-      const p2 = MBI_UPLOADED_IMG_PATHS[2];
-      const iconH = Math.max(16, height);
-      const fontSize = Math.max(10, Math.round(height * 0.62));
       return `
-        <div style="display: flex; align-items: center; gap: 7px; height: ${height}px;">
-          <div style="width: ${iconH}px; height: ${iconH}px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-            <img src="${p0}" 
-                 onerror="if(!this.dataset.retry){this.dataset.retry='1';this.src='${p1}';}else if(this.dataset.retry==='1'){this.dataset.retry='2';this.src='${p2}';}else{this.style.display='none';this.nextElementSibling.style.display='block';}" 
-                 alt="Logo MBI" 
-                 style="width: ${iconH}px; height: ${iconH}px; object-fit: contain; display: block;" />
-            <div style="display: none; width: ${iconH}px; height: ${iconH}px;">
-              ${getMBIIconSVGFallback(iconH)}
-            </div>
-          </div>
-          <span style="font-family: 'Plus Jakarta Sans', 'Segoe UI', Montserrat, sans-serif; font-weight: 800; font-size: ${fontSize}px; color: #0B4B8A; white-space: nowrap; letter-spacing: -0.2px; line-height: 1;">
-            Medika Bina Investama
-          </span>
-        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 66" style="height: ${height}px; width: auto; max-width: 180px; display: block;" fill="none">
+          <g transform="translate(6, 4) scale(0.28)">
+            <!-- 1. Golden Yellow Head Circle -->
+            <circle cx="100" cy="38" r="28" fill="#F7B200"/>
+            <!-- 2. Cyan Right Capsule (+45 deg around 128, 114) -->
+            <rect x="97" y="47" width="62" height="134" rx="31" fill="#24D3E3" transform="rotate(45 128 114)"/>
+            <!-- 3. Pink Left Capsule (-45 deg around 72, 114, overlapping on top) -->
+            <rect x="41" y="47" width="62" height="134" rx="31" fill="#EE1D78" transform="rotate(-45 72 114)"/>
+          </g>
+          <text x="70" y="44" font-family="'Plus Jakarta Sans', 'Segoe UI', Montserrat, Roboto, sans-serif" font-weight="800" font-size="31" fill="#0B4B8A" letter-spacing="-0.2px">Medika Bina Investama</text>
+        </svg>
       `;
     }
 
