@@ -1574,11 +1574,11 @@
                     <div class="flex items-center gap-3 flex-wrap">
                       <div class="flex items-center gap-2">
                         <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                        <input type="date" id="matrix-start-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                        <input type="date" id="matrix-start-date" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                       </div>
                       <div class="flex items-center gap-2">
                         <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                        <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                        <input type="date" id="matrix-end-date" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                       </div>
                       <div class="flex items-center gap-2">
                         <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih OS / Vendor:</label>
@@ -2173,10 +2173,10 @@
                   <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih Radius:</label>
                   <select id="select-gps-radius" onchange="changeWarehouseGPSRadius(this.value)" class="h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-black text-slate-800 focus:outline-none cursor-pointer">
                     <option value="15">15 Meter (Ultra Ketat)</option>
-                    <option value="30" selected>30 Meter (Ketat)</option>
+                    <option value="30">30 Meter (Ketat)</option>
                     <option value="50">50 Meter (Sedang)</option>
                     <option value="75">75 Meter (Luas)</option>
-                    <option value="100">100 Meter (Rekomendasi Pabrik)</option>
+                    <option value="100" selected>100 Meter (Rekomendasi Pabrik)</option>
                     <option value="150">150 Meter (Area Kompleks)</option>
                     <option value="200">200 Meter (Area Sangat Luas)</option>
                     <option value="300">300 Meter (Kawasan Industri)</option>
@@ -2841,10 +2841,10 @@
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Radius Validasi GPS *</label>
           <select id="gps-input-radius" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
             <option value="15">15 Meter (Ultra Ketat)</option>
-            <option value="30" selected>30 Meter (Ketat)</option>
+            <option value="30">30 Meter (Ketat)</option>
             <option value="50">50 Meter (Sedang)</option>
             <option value="75">75 Meter (Luas)</option>
-            <option value="100">100 Meter (Rekomendasi Pabrik / Gudang)</option>
+            <option value="100" selected>100 Meter (Rekomendasi Pabrik / Gudang)</option>
             <option value="150">150 Meter (Area Kompleks)</option>
             <option value="200">200 Meter (Area Sangat Luas)</option>
             <option value="300">300 Meter (Kawasan Industri)</option>
@@ -3391,8 +3391,8 @@
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
     const DEFAULT_COORDS = {
-      MBI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MBI' },
-      MAI: { lat: -6.2088, lng: 106.8456, radius: 30, name: 'Gudang MAI' }
+      MBI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MBI' },
+      MAI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MAI' }
     };
 
     function isDummyWarehouseCoords(coords) {
@@ -3414,7 +3414,7 @@
 
     function getWarehouseCoords(wh = activeWarehouse) {
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       let ownCoords = null;
 
       try {
@@ -3430,8 +3430,8 @@
 
       // Masing-masing gudang (MBI & MAI) 100% TERPISAH & INDEPENDEN
       if (ownCoords) return ownCoords;
-      const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 30, name: `Gudang ${targetWh}` };
-      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 30, name: def.name };
+      const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 100, name: `Gudang ${targetWh}` };
+      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 100, name: def.name };
     }
 
     function setWarehouseCoords(wh, lat, lng, radius = null) {
@@ -3441,7 +3441,7 @@
       }
       const targetWh = wh || activeWarehouse || 'MBI';
       const current = getWarehouseCoords(targetWh);
-      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || defaultRad);
       const validRadius = Number(rad) > 0 ? Number(rad) : defaultRad;
       const coords = { 
@@ -3453,8 +3453,9 @@
       };
       // Simpan HANYA ke storage gudang target yang bersangkutan (MBI atau MAI terpisah)
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(coords));
+      localStorage.setItem('wfm_gps_radius', String(validRadius));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
-      saveFullDatabaseToCloud(false, true);
+      saveFullDatabaseToCloud(false, true, true);
       updateRegisteredCoordsDisplay();
       return coords;
     }
@@ -3476,14 +3477,14 @@
       setWarehouseCoords(currentWh, c.lat, c.lng, r);
 
       updateRegisteredCoordsDisplay();
-      await saveFullDatabaseToCloud(false, true);
+      await saveFullDatabaseToCloud(false, true, true);
 
       alert(`✅ Jarak radius validasi GPS Gudang ${currentWh} berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf di Gudang ${currentWh} kini maksimal ${r} Meter.\n• Perubahan otomatis berlaku ke seluruh HP scanner dan sistem.`);
     }
 
     function updateRegisteredCoordsDisplay() {
       const c = getWarehouseCoords(activeWarehouse);
-      const curRadius = Number(c.radius) > 0 ? Number(c.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
+      const curRadius = Number(c.radius) > 0 ? Number(c.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
 
       const lblCoords = document.getElementById('lbl-registered-coords');
       const lblWh = document.getElementById('lbl-registered-wh');
@@ -4574,13 +4575,13 @@
           const incomingIsDummy = isDummyWarehouseCoords(db.mbi_coords);
           const localIsDummy = isDummyWarehouseCoords(localMbi);
           if (!incomingIsDummy || localIsDummy) {
-            const cloudMbiRad = Number(db.gps_radius) || Number(db.mbi_coords.radius) || Number(localStorage.getItem('wfm_gps_radius')) || 30;
+            const cloudMbiRad = Number(db.mbi_coords.radius) || Number(db.gps_radius) || Number(localStorage.getItem('wfm_gps_radius')) || 100;
             const isDiff = (localMbi.radius !== cloudMbiRad) || 
                            (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
                            (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
             if (isDiff) {
               localStorage.setItem('wfm_mbi_coords', JSON.stringify({ ...db.mbi_coords, radius: cloudMbiRad }));
-              localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
+              if (activeWarehouse === 'MBI') localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
               hasCoordsChanged = true;
             }
           }
@@ -4590,13 +4591,13 @@
           const incomingIsDummy = isDummyWarehouseCoords(db.mai_coords);
           const localIsDummy = isDummyWarehouseCoords(localMai);
           if (!incomingIsDummy || localIsDummy) {
-            const cloudMaiRad = Number(db.gps_radius) || Number(db.mai_coords.radius) || Number(localStorage.getItem('wfm_gps_radius')) || 30;
+            const cloudMaiRad = Number(db.mai_coords.radius) || Number(db.gps_radius) || Number(localStorage.getItem('wfm_gps_radius')) || 100;
             const isDiff = (localMai.radius !== cloudMaiRad) || 
                            (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
                            (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
             if (isDiff) {
               localStorage.setItem('wfm_mai_coords', JSON.stringify({ ...db.mai_coords, radius: cloudMaiRad }));
-              localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
+              if (activeWarehouse === 'MAI') localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
               hasCoordsChanged = true;
             }
           }
@@ -4826,17 +4827,17 @@
 
         let mbiCoordsToSave = getWarehouseCoords('MBI');
         let maiCoordsToSave = getWarehouseCoords('MAI');
-        const activeRadiusToSave = Number(localStorage.getItem('wfm_gps_radius')) || 30;
-        if (mbiCoordsToSave) mbiCoordsToSave.radius = activeRadiusToSave;
-        if (maiCoordsToSave) maiCoordsToSave.radius = activeRadiusToSave;
+        const activeRadiusToSave = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+        if (mbiCoordsToSave) mbiCoordsToSave.radius = Number(mbiCoordsToSave.radius) > 0 ? Number(mbiCoordsToSave.radius) : activeRadiusToSave;
+        if (maiCoordsToSave) maiCoordsToSave.radius = Number(maiCoordsToSave.radius) > 0 ? Number(maiCoordsToSave.radius) : activeRadiusToSave;
 
         if (cloudDb) {
           if (isDummyWarehouseCoords(mbiCoordsToSave) && cloudDb.mbi_coords && !isDummyWarehouseCoords(cloudDb.mbi_coords)) {
-            mbiCoordsToSave = { ...cloudDb.mbi_coords, radius: activeRadiusToSave };
+            mbiCoordsToSave = { ...cloudDb.mbi_coords, radius: Number(cloudDb.mbi_coords.radius) > 0 ? Number(cloudDb.mbi_coords.radius) : activeRadiusToSave };
             localStorage.setItem('wfm_mbi_coords', JSON.stringify(mbiCoordsToSave));
           }
           if (isDummyWarehouseCoords(maiCoordsToSave) && cloudDb.mai_coords && !isDummyWarehouseCoords(cloudDb.mai_coords)) {
-            maiCoordsToSave = { ...cloudDb.mai_coords, radius: activeRadiusToSave };
+            maiCoordsToSave = { ...cloudDb.mai_coords, radius: Number(cloudDb.mai_coords.radius) > 0 ? Number(cloudDb.mai_coords.radius) : activeRadiusToSave };
             localStorage.setItem('wfm_mai_coords', JSON.stringify(maiCoordsToSave));
           }
         }
@@ -7215,7 +7216,7 @@
       isGPSFetching = true;
       const whToUse = targetWh || activeWarehouse || 'MBI';
       const targetCoords = getWarehouseCoords(whToUse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const maxRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
 
       navigator.geolocation.getCurrentPosition(
@@ -7243,20 +7244,14 @@
           }
 
           const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-          const otherWh = whToUse === 'MBI' ? 'MAI' : 'MBI';
-          const otherCoords = getWarehouseCoords(otherWh);
-          const isOtherDummy = isDummyWarehouseCoords(otherCoords);
-          const rawDistOther = isOtherDummy ? 999999 : getDistanceMeters(userLat, userLng, otherCoords.lat, otherCoords.lng);
-
-          const bestRawDist = Math.min(rawDistActive, rawDistOther);
           const effectiveAllowedRadius = maxRadius + accuracyBuffer;
-          const effectiveDistance = Math.max(0, bestRawDist - accuracyBuffer);
-          const isValid = (bestRawDist <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
+          const effectiveDistance = Math.max(0, rawDistActive - accuracyBuffer);
+          const isValid = (rawDistActive <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
 
           if (isValid) {
             latestCachedGPS = {
               valid: true,
-              distance: bestRawDist,
+              distance: rawDistActive,
               maxRadius: maxRadius,
               effectiveAllowedRadius: effectiveAllowedRadius,
               accuracy: accuracy,
@@ -7310,11 +7305,6 @@
             // Cek jika koordinat gudang masih default Monas / dummy
             if (isDummyWarehouseCoords(targetCoords)) {
               setWarehouseCoords(whToUse, userLat, userLng, maxRadius);
-              const otherWh = whToUse === 'MBI' ? 'MAI' : 'MBI';
-              const otherC = getWarehouseCoords(otherWh);
-              if (isDummyWarehouseCoords(otherC)) {
-                setWarehouseCoords(otherWh, userLat, userLng, maxRadius);
-              }
               const autoRes = {
                 valid: true,
                 distance: 0,
@@ -7333,20 +7323,13 @@
             }
 
             const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-            const otherWh = whToUse === 'MBI' ? 'MAI' : 'MBI';
-            const otherCoords = getWarehouseCoords(otherWh);
-            const isOtherDummy = isDummyWarehouseCoords(otherCoords);
-            const rawDistOther = isOtherDummy ? 999999 : getDistanceMeters(userLat, userLng, otherCoords.lat, otherCoords.lng);
-
-            // Dual warehouse tolerance: jika lebih dekat ke gudang saudaranya yang sudah terkalibrasi
-            const bestRawDist = Math.min(rawDistActive, rawDistOther);
             const effectiveAllowedRadius = maxRadius + accuracyBuffer;
-            const effectiveDistance = Math.max(0, bestRawDist - accuracyBuffer);
-            const isValid = (bestRawDist <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
+            const effectiveDistance = Math.max(0, rawDistActive - accuracyBuffer);
+            const isValid = (rawDistActive <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
 
             const res = {
               valid: isValid,
-              distance: bestRawDist,
+              distance: rawDistActive,
               maxRadius: maxRadius,
               effectiveAllowedRadius: effectiveAllowedRadius,
               accuracy: accuracy,
@@ -7354,7 +7337,7 @@
               lng: userLng,
               wh: whToUse,
               timestamp: Date.now(),
-              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi gudang! Jarak: ${bestRawDist}m (Batas toleransi: ${effectiveAllowedRadius}m termasuk akurasi HP ±${accuracy}m). Dekatkan HP ke area gudang atau daftarkan titik GPS HP ini di menu Pengaturan.`
+              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi Gudang ${whToUse}! Jarak ke titik gudang: ${rawDistActive}m (Batas toleransi: ${effectiveAllowedRadius}m termasuk akurasi HP ±${accuracy}m). Dekatkan HP ke area Gudang ${whToUse} atau daftarkan titik GPS HP ini di menu Pengaturan.`
             };
 
             if (isValid) {
@@ -13074,13 +13057,10 @@
         }
       }
 
-      // PENGURUTAN RAPI & KRONOLOGIS (DEFAULT: WAKTU SCAN TERBARU DI PALING ATAS):
+      // PENGURUTAN RAPI & KRONOLOGIS (DEFAULT: WAKTU SCAN MASUK TERBARU DI PALING ATAS):
       filtered.sort((a, b) => {
         if (sortOrder === 'time_desc') {
           if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
-          const timeA = Math.max(a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0, a.checkInTime ? new Date(a.checkInTime).getTime() : 0);
-          const timeB = Math.max(b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0, b.checkInTime ? new Date(b.checkInTime).getTime() : 0);
-          if (timeB !== timeA) return timeB - timeA;
           const inA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
           const inB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
           return inB - inA;
@@ -13334,13 +13314,10 @@
         return;
       }
 
-      // PENGURUTAN RAPI & KRONOLOGIS UNTUK FILE EXCEL (DEFAULT: WAKTU SCAN TERBARU DI ATAS):
+      // PENGURUTAN RAPI & KRONOLOGIS UNTUK FILE EXCEL (DEFAULT: WAKTU SCAN MASUK TERBARU DI ATAS):
       filtered.sort((a, b) => {
         if (sortOrder === 'time_desc') {
           if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
-          const timeA = Math.max(a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0, a.checkInTime ? new Date(a.checkInTime).getTime() : 0);
-          const timeB = Math.max(b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0, b.checkInTime ? new Date(b.checkInTime).getTime() : 0);
-          if (timeB !== timeA) return timeB - timeA;
           const inA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
           const inB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
           return inB - inA;
@@ -13431,6 +13408,21 @@
     }
 
     const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+    function isMatrixEligibleUser(u) {
+      if (!u || typeof u !== 'object') return false;
+      if (typeof isManagementSystemAccount === 'function' && isManagementSystemAccount(u)) return false;
+      const name = (u.name || '').trim();
+      if (!name) return false;
+      if (typeof isUserMarkedDeleted === 'function' && isUserMarkedDeleted(u)) return false;
+      const role = (u.role || '').toLowerCase().trim();
+      const nik = (u.nik || '').toUpperCase().trim();
+      const dept = (u.dept || '').toLowerCase().trim();
+      if (role === 'admin' || role === 'scanner' || role === 'manager') return false;
+      if (nik.startsWith('ADM') || nik.startsWith('ABSEN') || nik === 'MGR001') return false;
+      if (dept === 'administrator' || dept === 'presensi' || dept === 'management') return false;
+      return true;
+    }
 
     function normalizeOSName(os) {
       if (!os || typeof os !== 'string') return 'Internal';
@@ -13637,7 +13629,7 @@
 
       if (regularUsers.length === 0) {
         const totalCols = 3 + dateList.length;
-        rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-400 font-medium">Tidak ada data karyawan untuk filter OS / Vendor "${escapeHTML(selectedOS)}" pada rentang tanggal ini.</td></tr>`);
+        rowsHTML.push(`<tr><td colspan="${totalCols}" class="p-8 text-center text-xs text-slate-500 bg-slate-50 font-medium">Belum ada karyawan dengan OS / Vendor "${escapeHTML(selectedOS)}" di Gudang ${activeWarehouse}. Silakan atur atau lengkapi vendor OS karyawan di menu Data Karyawan.</td></tr>`);
       } else {
         regularUsers.forEach((user, uIdx) => {
           let totalHariKerja = 0;
