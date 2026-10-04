@@ -4137,8 +4137,10 @@
 
     function sanitizeAttendanceDatabase(warehouse) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_attendance`;
-      const data = localStorage.getItem(storageKey);
-      if (!data) return [];
+      const usersKey = `wfm_${warehouse.toLowerCase()}_users`;
+      try {
+        const data = localStorage.getItem(storageKey);
+        if (!data) return [];
         let attendances = JSON.parse(data);
         if (!Array.isArray(attendances)) return [];
 
@@ -4149,7 +4151,6 @@
         const rawUsers = localStorage.getItem(usersKey);
         const users = rawUsers ? JSON.parse(rawUsers) : (warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
 
-        let hasChanges = false;
         attendances.forEach(a => {
           if (!a) return;
           // 1. Perbaikan otomatis tanggal absensi (Gunakan tanggal lokal dari checkInTime)
@@ -6141,9 +6142,6 @@
       }
     }
 
-    function cleanStr(str) {
-      return (str || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
 
     function isManagementSystemAccount(user) {
       if (!user) return false;
