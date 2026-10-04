@@ -661,64 +661,6 @@
   <!-- ========================================================= -->
   <div id="app-container" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
     
-    <!-- Top Navbar (Fixed di Posisi Atas) -->
-    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <div id="nav-logo-box" class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0 relative">
-          <div id="nav-logo-container" class="w-full h-full flex items-center justify-center">
-            <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
-          </div>
-        </div>
-        <div>
-          <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
-            <span id="nav-company-name">Medika Bina Investama</span>
-            <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200">GUDANG MBI</span>
-            <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">SUPERVISOR</span>
-          </h1>
-          <p class="text-[11px] text-slate-500 font-medium">Workforce Management System</p>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2.5">
-        <!-- Live Cloud Sync Button (Khusus Admin) -->
-        <button id="nav-btn-cloud-sync" onclick="openDirectSyncModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime HP & Laptop">
-          <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
-          <span id="nav-cloud-label">Cloud: Live</span>
-        </button>
-
-        <!-- Tombol Pengaturan Suara (Khusus Admin) -->
-        <button id="nav-btn-audio-admin" onclick="openAudioSettingsModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Pengaturan Suara Notifikasi Presensi (Khusus Admin)">
-          <span>Suara Notif</span>
-        </button>
-
-        <!-- Live Google Sheet Auto-Sync Indicator & Trigger (Hidden as requested) -->
-        <button id="nav-btn-gsheet-status" onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
-          <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
-          <span id="nav-gsheet-label">Google Sheet: Auto</span>
-        </button>
-
-        <!-- Switch Database Gudang View (Khusus Super Admin Saja) -->
-        <div id="wh-switcher-box" class="hidden items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-          <button onclick="switchActiveWarehouse('MBI')" id="wh-btn-mbi" class="px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">MBI</button>
-          <button onclick="switchActiveWarehouse('MAI')" id="wh-btn-mai" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">MAI</button>
-        </div>
-
-        <!-- User Info & Logout -->
-        <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
-          <div class="text-right hidden sm:block">
-            <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
-            <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
-          </div>
-          <button id="nav-btn-settings" onclick="switchView('settings')" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition" title="Pengaturan Profil & Akun">
-            Profil
-          </button>
-          <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition" title="Logout">
-            Logout
-          </button>
-        </div>
-      </div>
-    </header>
-
     <!-- App Body: Sidebar + Main Content -->
     <div class="flex-1 flex overflow-hidden">
       
@@ -804,14 +746,74 @@
         </div>
       </aside>
 
-      <!-- Main Content Area -->
-      <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div class="max-w-7xl mx-auto space-y-6">
+      <!-- Main Content Area with Natural Scroll -->
+      <main class="flex-1 overflow-y-auto flex flex-col">
+        
+        <!-- Top Navbar (Ikut Scroll Alami, Tidak Melayang / Menempel) -->
+        <header class="bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div id="nav-logo-box" class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0 relative">
+              <div id="nav-logo-container" class="w-full h-full flex items-center justify-center">
+                <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
+              </div>
+            </div>
+            <div>
+              <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
+                <span id="nav-company-name">Medika Bina Investama</span>
+                <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200">GUDANG MBI</span>
+                <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">SUPERVISOR</span>
+              </h1>
+              <p class="text-[11px] text-slate-500 font-medium">Workforce Management System</p>
+            </div>
+          </div>
 
-          <!-- ========================================================= -->
-          <!-- VIEW 1: DASHBOARD UTAMA -->
-          <!-- ========================================================= -->
-          <div id="view-dashboard" class="view-panel hidden space-y-6">
+          <div class="flex items-center gap-2.5">
+            <!-- Live Cloud Sync Button (Khusus Admin) -->
+            <button id="nav-btn-cloud-sync" onclick="openDirectSyncModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Sinkronisasi Data Realtime HP & Laptop">
+              <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
+              <span id="nav-cloud-label">Cloud: Live</span>
+            </button>
+
+            <!-- Tombol Pengaturan Suara (Khusus Admin) -->
+            <button id="nav-btn-audio-admin" onclick="openAudioSettingsModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Pengaturan Suara Notifikasi Presensi (Khusus Admin)">
+              <span>Suara Notif</span>
+            </button>
+
+            <!-- Live Google Sheet Auto-Sync Indicator & Trigger (Hidden as requested) -->
+            <button id="nav-btn-gsheet-status" onclick="openGoogleSheetBackupModal()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition shadow-xs" title="Status Sinkronisasi Otomatis Google Spreadsheet">
+              <span id="nav-gsheet-dot" class="w-2 h-2 rounded-full bg-slate-900 animate-pulse"></span>
+              <span id="nav-gsheet-label">Google Sheet: Auto</span>
+            </button>
+
+            <!-- Switch Database Gudang View (Khusus Super Admin Saja) -->
+            <div id="wh-switcher-box" class="hidden items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button onclick="switchActiveWarehouse('MBI')" id="wh-btn-mbi" class="px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs">MBI</button>
+              <button onclick="switchActiveWarehouse('MAI')" id="wh-btn-mai" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900">MAI</button>
+            </div>
+
+            <!-- User Info & Logout -->
+            <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div class="text-right hidden sm:block">
+                <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
+                <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
+              </div>
+              <button id="nav-btn-settings" onclick="switchView('settings')" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition" title="Pengaturan Profil & Akun">
+                Profil
+              </button>
+              <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition" title="Logout">
+                Logout
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="flex-1 p-4 sm:p-6 lg:p-8">
+          <div class="max-w-7xl mx-auto space-y-6">
+
+            <!-- ========================================================= -->
+            <!-- VIEW 1: DASHBOARD UTAMA -->
+            <!-- ========================================================= -->
+            <div id="view-dashboard" class="view-panel hidden space-y-6">
             <div class="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
               <div>
                 <div class="flex items-center gap-2 flex-wrap mb-1">
