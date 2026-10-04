@@ -4162,21 +4162,11 @@
             }
           }
 
-          // 1.5 Auto-close sesi terlantar lama (> 20 jam lalu) yang lupa absen pulang agar tidak menjadi penghalang absensi baru
-          if (a.checkInTime && !a.checkOutTime) {
-            const inDate = new Date(a.checkInTime);
-            if (!isNaN(inDate.getTime())) {
-              const elapsedHours = (Date.now() - inDate.getTime()) / (1000 * 60 * 60);
-              if (elapsedHours > 20) {
-                a.checkOutTime = new Date(inDate.getTime() + 7 * 60 * 60 * 1000).toISOString();
-                if (!a.notes || a.notes === 'Tepat Waktu' || a.notes === 'Terlambat' || a.notes === '-') {
-                  a.notes = 'Selesai Otomatis (Miss Scan Pulang)';
-                } else if (!a.notes.includes('Miss Scan')) {
-                  a.notes += ' • Auto-Close Miss Scan';
-                }
-                hasChanges = true;
-              }
-            }
+          // 1.5 Standarisasi Miss Scan: Jangan inject jam pulang buatan pada sesi yang tidak tap pulang
+          if (a.notes && (a.notes.includes('Selesai Otomatis') || a.notes.includes('Auto-Close Miss Scan'))) {
+            a.checkOutTime = null;
+            a.notes = '';
+            hasChanges = true;
           }
 
           // 2. Cari user master berdasarkan nama lengkap atau NIK
@@ -4325,11 +4315,12 @@
     }
 
     // =========================================================
-    // ATURAN TOLERANSI SHIFT & MISS SCAN RESMI: 16 JAM 25 MENIT (985 Menit = 59.100.000 ms)
-    // Jika lewat dari 16 jam 25 menit sejak absen masuk, sesi resmi jadi Miss Scan & terbaca 7 jam.
-    // Jika masih dalam rentang 16 jam 25 menit, karyawan masih bisa absen pulang (termasuk beda hari).
+    // ATURAN TOLERANSI SHIFT & MISS SCAN RESMI: 14 JAM (14 * 60 * 60 * 1000 ms)
+    // Sesi aktif berjalan berlaku hingga 14 jam (mendukung penuh shift 24 jam: Pagi, Siang, Malam/Dini Hari).
+    // Jika lewat dari 14 jam sejak absen masuk tanpa tap pulang: Sesi otomatis jadi Miss Scan murni (checkOutTime: null) & terhitung 7 jam kerja.
+    // Karyawan dapat langsung absen masuk di hari/shift berikutnya tanpa terhambat.
     // =========================================================
-    const MAX_SHIFT_MS = (16 * 60 + 25) * 60 * 1000;
+    const MAX_SHIFT_MS = 14 * 60 * 60 * 1000;
 
     function getAttendanceDurationInfo(rec) {
       if (!rec || !rec.checkInTime) {
@@ -8271,41 +8262,16 @@
         return tB - tA;
       });
 
-      // 2. AUTO-CLEANUP SESI LAMA YANG TERLANTAR (LUPA ABSEN PULANG)
-      // Jika karyawan lupa tap pulang pada shift kemarin/sebelumnya (> 14-16 jam lalu),
-      // sesi lama otomatis ditutup sebagai 'Miss Scan' sehingga karyawan PASTI BISA ABSEN MASUK di hari berikutnya!
-      let hasAutoClosedStale = false;
-      userAtts.forEach(a => {
-        if (a.checkInTime && !a.checkOutTime) {
-          const inT = new Date(a.checkInTime).getTime();
-          if (!isNaN(inT)) {
-            const elapsedHours = (now.getTime() - inT) / (1000 * 60 * 60);
-            if (elapsedHours >= 14) {
-              a.checkOutTime = new Date(inT + 7 * 60 * 60 * 1000).toISOString();
-              if (!a.notes || a.notes === 'Tepat Waktu' || a.notes === 'Terlambat' || a.notes === '-') {
-                a.notes = 'Selesai Otomatis (Miss Scan Pulang)';
-              } else if (!a.notes.includes('Miss Scan')) {
-                a.notes += ' • Auto-Close Miss Scan';
-              }
-              hasAutoClosedStale = true;
-            }
-          }
-        }
-      });
-
-      if (hasAutoClosedStale) {
-        setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(false, true);
-      }
-
-      // 3. CARI SESI MASUK TERAKHIR YANG MASIH AKTIF (BELUM CHECK-OUT & DALAM RENTANG SHIFT < 14 JAM)
-      // Mendukung 100% seluruh jenis shift 24 Jam: Pagi (06:00 / 07:00), Siang/Sore (15:00), Malam/Dini Hari (23:00 / 23:59 / 00:00)
+      // 2. IDENTIFIKASI SESI AKTIF (HANYA BERLAKU UNTUK SHIFT BERJALAN < 14 JAM)
+      // Mendukung 100% seluruh jenis shift 24 Jam: Pagi (06:00 / 07:00), Siang/Sore (15:00), Malam/Dini Hari (23:00 / 00:00).
+      // Sesi lama yang tidak di-tap pulang (> 14 jam lalu) dibiarkan murni sebagai Miss Scan (checkOutTime tetap null, tanpa jam buatan)
+      // dan karyawan BISA LANGSUNG ABSEN MASUK UNTUK SHIFT BARU TANPA TERHAMBAT!
       const openSession = userAtts.find(a => a.checkInTime && !a.checkOutTime);
       let isOpenSessionValid = false;
       let sessionElapsedMs = 0;
       if (openSession) {
         sessionElapsedMs = now.getTime() - new Date(openSession.checkInTime).getTime();
-        isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs < 14 * 60 * 60 * 1000);
+        isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs < MAX_SHIFT_MS);
       }
 
       if (selectedAttendanceType === 'check_in') {
@@ -13316,7 +13282,10 @@
           : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>Normal</span>';
         
         let outBadge = '';
-        if (rec.checkOutTime) {
+        const isAutoClosedMissScan = rec.notes && (rec.notes.includes('Miss Scan') || rec.notes.includes('Selesai Otomatis'));
+        if (isAutoClosedMissScan) {
+          outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs whitespace-nowrap" title="Shift ditutup otomatis oleh sistem karena karyawan tidak melakukan tap pulang"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Miss Scan (Tutup Otomatis)</span>';
+        } else if (rec.checkOutTime) {
           outBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap">Sudah Pulang</span>';
         } else if (durInfo.isMissScan) {
           outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Miss Scan</span>';
@@ -13509,11 +13478,12 @@
         const recWh = r.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
 
         const durInfo = getAttendanceDurationInfo(r);
+        const isAutoClosedMissScan = r.notes && (r.notes.includes('Miss Scan') || r.notes.includes('Selesai Otomatis'));
         const checkInDate = new Date(r.checkInTime);
         const minute = checkInDate.getMinutes();
         const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
         const statusMasuk = isLate ? 'Late In' : 'Normal';
-        const statusPulang = durInfo.statusOut;
+        const statusPulang = isAutoClosedMissScan ? 'Miss Scan (Tutup Otomatis)' : durInfo.statusOut;
         const jamPulangStr = r.checkOutTime 
           ? new Date(r.checkOutTime).toLocaleTimeString('id-ID') 
           : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan');
