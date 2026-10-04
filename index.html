@@ -3795,6 +3795,9 @@
       if (rawId && keys.has(rawId)) return true;
       if (cId && keys.has(cId)) return true;
 
+      return false;
+    }
+
     // =========================================================
     // RECORD ABSENSI: TOMBSTONE TRACKING ENGINE
     // Mencegah record absen yang dihapus bangkit kembali dari Cloud & sinkronisasi Google Sheet
@@ -15868,6 +15871,19 @@ function testManualSync() {
       updateLoginWhStyle();
       updateRealtimeDashboardDate();
       setInterval(updateRealtimeDashboardDate, 1000);
+
+      const savedSession = localStorage.getItem('wfm_active_session');
+      if (savedSession) {
+        try {
+          const userObj = JSON.parse(savedSession);
+          if (userObj && (userObj.nik || userObj.id)) {
+            loginUserSession(userObj);
+          }
+        } catch (e) {}
+      }
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+      }
     } catch(e) {}
   </script>
 </body>
