@@ -440,6 +440,44 @@
       transform: scale(1.15);
       background-color: rgba(0, 0, 0, 0.06);
     }
+
+    /* ========================================================= */
+    /* HIDE ALL ICONS ACROSS THE ENTIRE APPLICATION */
+    /* Tampilan bersih murni teks, tanpa ikon yang membuat ribet */
+    /* ========================================================= */
+    i[data-lucide],
+    svg.lucide,
+    i.lucide,
+    svg[data-lucide],
+    .lucide,
+    [data-lucide],
+    .sidebar-link i,
+    .sidebar-link svg {
+      display: none !important;
+      visibility: hidden !important;
+      width: 0 !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      font-size: 0 !important;
+    }
+
+    /* Tombol Tutup Modal: Menampilkan teks simbol ✕ yang bersih */
+    button:has(> i[data-lucide="x"])::after,
+    button:has(> svg[data-lucide="x"])::after,
+    button:has(> .lucide-x)::after {
+      content: '✕';
+      display: inline-block;
+      font-size: 16px;
+      font-weight: 800;
+      line-height: 1;
+      color: #64748b;
+    }
+    button:hover:has(> i[data-lucide="x"])::after,
+    button:hover:has(> svg[data-lucide="x"])::after,
+    button:hover:has(> .lucide-x)::after {
+      color: #0f172a;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
@@ -690,11 +728,11 @@
             <p id="nav-user-name" class="text-xs font-bold text-slate-800 leading-tight">Nama User</p>
             <p id="nav-user-dept" class="text-[11px] text-slate-500">Departemen</p>
           </div>
-          <button id="nav-btn-settings" onclick="switchView('settings')" class="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition" title="Pengaturan Profil & Akun">
-            <i data-lucide="user-cog" class="w-4 h-4"></i>
+          <button id="nav-btn-settings" onclick="switchView('settings')" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition" title="Pengaturan Profil & Akun">
+            Profil
           </button>
-          <button onclick="handleLogout()" class="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition" title="Logout">
-            <i data-lucide="log-out" class="w-4 h-4"></i>
+          <button onclick="handleLogout()" class="px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition" title="Logout">
+            Logout
           </button>
         </div>
       </div>
@@ -1473,7 +1511,7 @@
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
                       <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Terapkan Filter
+                        Cari Data
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
@@ -1605,7 +1643,7 @@
                         </select>
                       </div>
                       <button onclick="renderMatrixTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Tarik Matriks
+                        Cari Data
                       </button>
                     </div>
 
@@ -1679,7 +1717,7 @@
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
                       <button onclick="renderWorkHoursReport()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Hitung Jam Kerja
+                        Cari Data
                       </button>
 
                       <button onclick="exportWorkHoursToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
@@ -1796,7 +1834,7 @@
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
                       <button onclick="renderReportLeavesTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Filter Pengajuan
+                        Cari Data
                       </button>
 
                       <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
@@ -1872,7 +1910,7 @@
 
                     <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
                       <button onclick="renderReportOvertimeTable()" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Filter Lembur
+                        Cari Data
                       </button>
 
                       <div class="flex items-center gap-2.5 flex-wrap">
