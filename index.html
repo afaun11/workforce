@@ -440,6 +440,25 @@
       transform: scale(1.15);
       background-color: rgba(0, 0, 0, 0.06);
     }
+
+    /* ========================================================= */
+    /* TABLE HEADER STATIC SCROLL FIX (JANGAN IKUT KEBAWAH) */
+    /* Header baris tabel tetap di posisinya dan tidak melayang / ikut kebawah saat discroll */
+    /* ========================================================= */
+    table thead,
+    table thead tr,
+    table thead th,
+    .view-panel table thead,
+    .view-panel table thead th,
+    #emp-table-body,
+    #table-matrix-display thead,
+    #table-matrix-display thead th {
+      position: static !important;
+      top: auto !important;
+      bottom: auto !important;
+      z-index: auto !important;
+      transform: none !important;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
