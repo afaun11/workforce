@@ -6863,17 +6863,20 @@
       setAttendanceType('check_in');
       updateRegisteredCoordsDisplay();
       renderScannerTodayRecords();
-      refreshAllDashboardData();
-      populateDropdownEmployees();
-      renderOvertimeEmployeeGrid();
-      renderOvertimeTable();
-      renderReportOvertimeTable();
-      renderLeavesTable();
-      renderReportLeavesTable();
-      renderRecordsTable();
-      renderMatrixTable();
-      calculateOvertimeNominal();
-      lucide.createIcons();
+      
+      try {
+        if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
+        if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
+        if (typeof renderOvertimeEmployeeGrid === 'function') renderOvertimeEmployeeGrid();
+        if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
+        if (typeof renderLeavesTable === 'function') renderLeavesTable();
+        if (typeof renderRecordsTable === 'function') renderRecordsTable();
+        if (typeof renderMatrixTable === 'function') renderMatrixTable();
+        if (typeof calculateOvertimeNominal === 'function') calculateOvertimeNominal();
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+      } catch (renderErr) {
+        console.warn('Non-blocking render error after login:', renderErr);
+      }
     }
 
     function handleLogout() {
@@ -14462,10 +14465,9 @@
       setWhDB(activeWarehouse, 'leaves', leaves);
       saveFullDatabaseToCloud();
       if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
-      renderLeavesTable();
-      renderReportLeavesTable();
-      refreshAllDashboardData();
-      renderMatrixTable();
+      if (typeof renderLeavesTable === 'function') renderLeavesTable();
+      if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
+      if (typeof renderMatrixTable === 'function') renderMatrixTable();
     }
 
     // =========================================================
@@ -14795,9 +14797,8 @@
       setWhDB(activeWarehouse, 'overtime', overtimes);
       saveFullDatabaseToCloud();
       if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
-      renderOvertimeTable();
-      renderReportOvertimeTable();
-      refreshAllDashboardData();
+      if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
+      if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
     }
 
     function exportOvertimeToExcel() {
