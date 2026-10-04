@@ -440,44 +440,6 @@
       transform: scale(1.15);
       background-color: rgba(0, 0, 0, 0.06);
     }
-
-    /* ========================================================= */
-    /* HIDE ALL ICONS ACROSS THE ENTIRE APPLICATION */
-    /* Tampilan bersih murni teks, tanpa ikon yang membuat ribet */
-    /* ========================================================= */
-    i[data-lucide],
-    svg.lucide,
-    i.lucide,
-    svg[data-lucide],
-    .lucide,
-    [data-lucide],
-    .sidebar-link i,
-    .sidebar-link svg {
-      display: none !important;
-      visibility: hidden !important;
-      width: 0 !important;
-      height: 0 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      font-size: 0 !important;
-    }
-
-    /* Tombol Tutup Modal: Menampilkan teks simbol ✕ yang bersih */
-    button:has(> i[data-lucide="x"])::after,
-    button:has(> svg[data-lucide="x"])::after,
-    button:has(> .lucide-x)::after {
-      content: '✕';
-      display: inline-block;
-      font-size: 16px;
-      font-weight: 800;
-      line-height: 1;
-      color: #64748b;
-    }
-    button:hover:has(> i[data-lucide="x"])::after,
-    button:hover:has(> svg[data-lucide="x"])::after,
-    button:hover:has(> .lucide-x)::after {
-      color: #0f172a;
-    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
