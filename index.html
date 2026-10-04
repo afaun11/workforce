@@ -407,6 +407,39 @@
     #qr-reader__scan_region {
       background: transparent !important;
     }
+
+    /* ========================================================= */
+    /* ENHANCED DATE & TIME PICKER ACCESSIBILITY (CLICK ANYWHERE) */
+    /* Kalender/Waktu langsung muncul saat kotak input diklik di mana saja */
+    /* ========================================================= */
+    input[type="date"],
+    input[type="time"],
+    input[type="month"],
+    input[type="datetime-local"] {
+      cursor: pointer !important;
+      position: relative;
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator,
+    input[type="month"]::-webkit-calendar-picker-indicator,
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+      cursor: pointer !important;
+      padding: 4px;
+      border-radius: 6px;
+      opacity: 0.85;
+      font-size: 1.1rem;
+      transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease;
+    }
+
+    input[type="date"]:hover::-webkit-calendar-picker-indicator,
+    input[type="time"]:hover::-webkit-calendar-picker-indicator,
+    input[type="month"]:hover::-webkit-calendar-picker-indicator,
+    input[type="datetime-local"]:hover::-webkit-calendar-picker-indicator {
+      opacity: 1;
+      transform: scale(1.15);
+      background-color: rgba(0, 0, 0, 0.06);
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
@@ -15854,6 +15887,44 @@ function testManualSync() {
         lucide.createIcons();
       }
     } catch(e) {}
+
+    // =========================================================
+    // GLOBAL DATE & TIME PICKER TRIGGER
+    // Otomatis memunculkan popup kalender & waktu saat kotak input diklik di mana saja
+    // Mendukung Chrome, Edge, Safari, Opera, dan Browser HP (Android & iOS)
+    // =========================================================
+    document.addEventListener('click', function(e) {
+      const el = e.target;
+      if (!el) return;
+      if (el.tagName === 'INPUT' && (el.type === 'date' || el.type === 'time' || el.type === 'month' || el.type === 'datetime-local')) {
+        if (typeof el.showPicker === 'function') {
+          try {
+            el.showPicker();
+          } catch (err) {}
+        }
+      } else if (el.tagName === 'LABEL') {
+        const forId = el.getAttribute('for');
+        if (forId) {
+          const inputEl = document.getElementById(forId);
+          if (inputEl && (inputEl.type === 'date' || inputEl.type === 'time' || inputEl.type === 'month' || inputEl.type === 'datetime-local')) {
+            if (typeof inputEl.showPicker === 'function') {
+              try { inputEl.showPicker(); } catch (err) {}
+            }
+          }
+        }
+      }
+    });
+
+    document.addEventListener('focusin', function(e) {
+      const el = e.target;
+      if (el && el.tagName === 'INPUT' && (el.type === 'date' || el.type === 'time' || el.type === 'month' || el.type === 'datetime-local')) {
+        if (typeof el.showPicker === 'function') {
+          try {
+            el.showPicker();
+          } catch (err) {}
+        }
+      }
+    });
   </script>
 </body>
 </html>
