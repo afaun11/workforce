@@ -4096,13 +4096,13 @@
         seenNiks.add(scanner.nik.toUpperCase());
       }
 
-      // 2.5 Tempatkan Akun Dedicated Manager Eko (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
-      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || (u.role === 'manager' && cleanStr(u.name) === 'eko')));
+      // 2.5 Tempatkan Akun Dedicated Manager (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
+      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager'));
       if (!manager) {
         manager = { ...SEED_MANAGER_USER, warehouse };
       } else {
-        manager.nik = 'MGR001';
-        manager.name = 'Eko';
+        manager.nik = manager.nik || 'MGR001';
+        manager.name = (manager.name && manager.name.trim() !== '') ? manager.name : 'Manager';
         manager.dept = 'Management';
         manager.role = 'manager';
         manager.hasAccount = true;
@@ -4111,7 +4111,6 @@
       }
       cleanList.push(manager);
       seenNames.add(cleanStr(manager.name));
-      seenNames.add('eko');
       if (manager.id) seenIds.add(manager.id);
       seenNiks.add(manager.nik.toUpperCase());
 
@@ -4122,7 +4121,7 @@
         if (isUserMarkedDeleted(u, deletedKeys)) return false;
         if (u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI') return false;
         if (u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) return false;
-        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || (cleanStr(u.name) === 'eko' && u.role === 'manager')) return false;
+        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager') return false;
         if (u.nik && (u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
         if (u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
         return true;
@@ -5494,7 +5493,7 @@
             const userDept = (u.dept || '').toLowerCase().trim();
             const isSysAdmin = u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || cleanStr(u.name) === 'admingudangmbi' || cleanStr(u.name) === 'admingudangmai';
             const isSysScanner = u.id === 'mbi-scanner' || u.id === 'mai-scanner' || u.nik === 'ABSEN-MBI' || u.nik === 'ABSEN-MAI';
-            const isSysManager = u.id === 'mgr-eko' || u.nik === 'MGR001' || (cleanStr(u.name) === 'eko' && u.role === 'manager');
+            const isSysManager = u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager';
 
             if (isSysAdmin) {
               if (u.dept !== 'Administrator') { u.dept = 'Administrator'; hasChanges = true; }
@@ -5510,7 +5509,7 @@
             } else if (isSysManager) {
               if (u.dept !== 'Management') { u.dept = 'Management'; hasChanges = true; }
               if (u.role !== 'manager') { u.role = 'manager'; hasChanges = true; }
-              if (u.name !== 'Eko') { u.name = 'Eko'; hasChanges = true; }
+              if (!u.name || u.name.trim() === '') { u.name = 'Manager'; hasChanges = true; }
               if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
               if (!u.password) { u.password = 'medika123'; hasChanges = true; }
             } else {
@@ -6337,12 +6336,14 @@
       const nik = (user.nik || '').toUpperCase().trim();
       const name = (user.name || '').toLowerCase().trim();
       const clean = cleanStr(name);
+      const role = (user.role || '').toLowerCase().trim();
 
       // Khusus akun sistem bawaan (Admin Utama, Scanner Presensi, dan Manager Utama)
       if (id === 'mbi-admin' || id === 'mai-admin' || id === 'mbi-scanner' || id === 'mai-scanner' || id === 'mgr-eko') return true;
       if (nik === 'ADM001' || nik === 'ADM-MAI' || nik === 'ABSEN-MBI' || nik === 'ABSEN-MAI' || nik === 'MGR001') return true;
+      if (role === 'manager' || role === 'admin' || role === 'scanner') return true;
       if (clean === 'admingudangmbi' || clean === 'admingudangmai' || clean === 'scannerpresensigudang') return true;
-      if ((clean === 'eko' || clean === 'managereko') && (id === 'mgr-eko' || nik === 'MGR001' || (user.role || '').toLowerCase() === 'manager')) return true;
+      if ((clean === 'eko' || clean === 'managereko') && (id === 'mgr-eko' || nik === 'MGR001' || role === 'manager')) return true;
       return false;
     }
 
@@ -6617,9 +6618,20 @@
       
       const map = new Map();
 
-      // Pastikan akun manager sistem bawaan (Eko) terdaftar jika tersedia
-      if (typeof SEED_MANAGER_USER !== 'undefined' && SEED_MANAGER_USER) {
+      // Pastikan akun manager terdaftar dari database mutakhir atau fallback seed
+      const existingMbiMgr = mbiUsers.find(u => u && (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager'));
+      const existingMaiMgr = maiUsers.find(u => u && (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager'));
+
+      if (existingMbiMgr) {
+        map.set(`MBI_${existingMbiMgr.nik || 'MGR001'}`, { ...existingMbiMgr, warehouse: 'MBI', nik: existingMbiMgr.nik || 'MGR001' });
+      } else if (typeof SEED_MANAGER_USER !== 'undefined' && SEED_MANAGER_USER) {
         map.set(`MBI_${SEED_MANAGER_USER.nik}`, { ...SEED_MANAGER_USER, warehouse: 'MBI' });
+      }
+
+      if (existingMaiMgr) {
+        map.set(`MAI_${existingMaiMgr.nik || 'MGR001'}`, { ...existingMaiMgr, warehouse: 'MAI', nik: existingMaiMgr.nik || 'MGR001' });
+      } else if (typeof SEED_MANAGER_USER !== 'undefined' && SEED_MANAGER_USER) {
+        map.set(`MAI_${SEED_MANAGER_USER.nik}`, { ...SEED_MANAGER_USER, warehouse: 'MAI' });
       }
 
       mbiUsers.forEach(u => {
@@ -7685,7 +7697,7 @@
         document.getElementById('nav-user-name').innerText = 'Scanner Presensi Gudang';
         document.getElementById('nav-user-dept').innerText = 'POS SCANNER PRESENSI';
       } else if (isUserManager(currentUser)) {
-        document.getElementById('nav-user-name').innerText = currentUser.name || 'Eko';
+        document.getElementById('nav-user-name').innerText = currentUser.name || 'Manager';
         document.getElementById('nav-user-dept').innerText = 'GENERAL MANAGER';
       } else {
         document.getElementById('nav-user-name').innerText = currentUser.name || 'User';
@@ -13291,7 +13303,7 @@
 
       const wh = currentUser.warehouse || activeWarehouse || 'MBI';
       let users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const idx = users.findIndex(u => u.id === currentUser.id || u.nik === currentUser.nik);
+      const idx = users.findIndex(u => u.id === currentUser.id || u.nik === currentUser.nik || (isUserManager(currentUser) && isUserManager(u)));
 
       if (idx !== -1) {
         const oldName = users[idx].name;
@@ -13315,6 +13327,30 @@
         }
 
         setWhDB(wh, 'users', users);
+
+        // Jika Manager atau Admin, sinkronkan juga perubahan nama/profil ke gudang lainnya
+        if (isUserManager(currentUser) || isUserAdmin(currentUser)) {
+          const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const otherIdx = otherUsers.findIndex(u => u.id === currentUser.id || u.nik === currentUser.nik || (isUserManager(currentUser) && isUserManager(u)));
+          if (otherIdx !== -1) {
+            otherUsers[otherIdx].name = newName;
+            otherUsers[otherIdx].phone = newPhone;
+            otherUsers[otherIdx].email = newEmail;
+            if (p1) {
+              otherUsers[otherIdx].password = p1;
+              otherUsers[otherIdx].isFirstLogin = false;
+            }
+            setWhDB(otherWh, 'users', otherUsers);
+          } else if (isUserManager(currentUser)) {
+            otherUsers.push({
+              ...users[idx],
+              warehouse: otherWh
+            });
+            setWhDB(otherWh, 'users', otherUsers);
+          }
+        }
+
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
         saveFullDatabaseToCloud();
 
@@ -13322,7 +13358,7 @@
         if (oldName !== newName) {
           let att = getWhDB(wh, 'attendance', []);
           att.forEach(a => {
-            if (a.userNik === oldNik || a.userId === currentUser.id) {
+            if (a.userNik === oldNik || a.userId === currentUser.id || a.userName === oldName) {
               a.userName = newName;
             }
           });
@@ -13330,7 +13366,7 @@
 
           let lvs = getWhDB(wh, 'leaves', []);
           lvs.forEach(l => {
-            if (l.userNik === oldNik) {
+            if (l.userNik === oldNik || l.userName === oldName) {
               l.userName = newName;
             }
           });
@@ -13338,7 +13374,7 @@
 
           let ots = getWhDB(wh, 'overtime', []);
           ots.forEach(o => {
-            if (o.userNik === oldNik || o.userId === currentUser.id) {
+            if (o.userNik === oldNik || o.userId === currentUser.id || o.userName === oldName) {
               o.userName = newName;
             }
           });
@@ -13354,6 +13390,7 @@
         renderEmployeeTable();
         populateDropdownEmployees();
         renderOvertimeEmployeeGrid();
+        populatePermissionAccountDropdown();
         refreshAllDashboardData();
         renderAccountLookupList();
 
