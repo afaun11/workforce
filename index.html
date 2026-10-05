@@ -780,7 +780,11 @@
 
           <!-- 3. Sistem & Pengaturan (Dikelompokkan Paling Bawah) -->
           <div id="system-settings-section" class="space-y-1 pt-2 border-t border-slate-800">
-            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Database</p>
+            <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Sistem & Pengaturan</p>
+            <button onclick="switchView('permissions')" id="nav-permissions" title="Pengaturan Hak Akses Akun" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition items-center gap-2.5">
+              <i data-lucide="shield-check" class="w-4 h-4 flex-shrink-0"></i>
+              <span class="sidebar-text">Hak Akses Akun</span>
+            </button>
             <button onclick="switchView('github')" id="nav-github" title="Database Cloud Firebase 24/7" class="hidden sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition items-center gap-2.5">
               <i data-lucide="cloud" class="w-4 h-4 flex-shrink-0"></i>
               <span class="sidebar-text">Database Cloud 24/7</span>
@@ -2680,8 +2684,134 @@
             </div>
           </div>
 
-        </div>
-      </main>
+          <!-- ========================================================= -->
+          <!-- VIEW 9: PENGATURAN & KONTROL HAK AKSES AKUN (GRANULAR) -->
+          <!-- ========================================================= -->
+          <div id="view-permissions" class="view-panel hidden space-y-6">
+            
+            <!-- Header Kartu Utama -->
+            <div class="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 border border-slate-800">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2 flex-wrap mb-1">
+                  <span class="px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold border border-slate-700 inline-flex items-center shadow-2xs">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 mr-1 text-teal-400"></i> Kontrol Hak Akses Akun
+                  </span>
+                  <span class="px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-mono font-bold border border-teal-500/30 inline-flex items-center">
+                    Realtime Firebase Sync 24/7
+                  </span>
+                </div>
+                <h2 class="text-2xl font-black tracking-tight text-white">Manajemen Hak Akses Sistem</h2>
+                <p class="text-xs text-slate-400 leading-relaxed max-w-2xl">
+                  Tentukan secara detail fitur dan kewenangan apa saja yang boleh diakses atau ditolak untuk setiap akun (Admin, Manager, Supervisor, Coordinator, dan Karyawan) tanpa perlu mengubah kode sumber.
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <button type="button" onclick="saveUserPermissions()" id="btn-save-perm-top" class="px-5 py-2.5 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs shadow-lg transition flex items-center gap-2 cursor-pointer active:scale-95">
+                  <i data-lucide="save" class="w-4 h-4"></i>
+                  <span>Simpan Hak Akses</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Panel Pemilihan Akun & Profil Ringkas -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div>
+                  <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                    <i data-lucide="user-check" class="w-5 h-5 text-slate-700"></i>
+                    Pilih Akun yang Ingin Diatur Izinnya
+                  </h3>
+                  <p class="text-xs text-slate-500 mt-0.5">Pilih akun dari daftar nama &amp; NIK di bawah ini untuk menampilkan serta mengubah hak aksesnya.</p>
+                </div>
+                
+                <!-- Search Filter Akun -->
+                <div class="w-full md:w-72">
+                  <div class="relative">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="perm-user-search-input" oninput="filterPermissionAccountOptions(this.value)" placeholder="Ketik NIK atau nama akun..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                <!-- Dropdown Select Akun -->
+                <div class="lg:col-span-2 space-y-2">
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Daftar Akun Karyawan &amp; Manajemen:</label>
+                  <select id="perm-account-select" onchange="onPermissionAccountChange()" class="w-full bg-slate-50 hover:bg-white border-2 border-slate-200 focus:border-slate-900 rounded-2xl p-3.5 text-xs font-bold text-slate-900 focus:outline-none transition cursor-pointer shadow-2xs">
+                    <!-- Populated via JavaScript -->
+                  </select>
+                </div>
+
+                <!-- Info Card Akun Terpilih -->
+                <div id="perm-selected-user-card" class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold uppercase text-slate-400">Akun Terpilih</span>
+                    <span id="perm-user-badge-wh" class="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-900 text-white">Gudang MBI</span>
+                  </div>
+                  <div>
+                    <h4 id="perm-user-name-display" class="font-extrabold text-sm text-slate-900 truncate">-</h4>
+                    <p id="perm-user-meta-display" class="text-[11px] font-mono text-slate-500 mt-0.5">NIK: - &bull; Bagian: -</p>
+                  </div>
+                  <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                    <span class="text-slate-600 font-semibold">Status Role:</span>
+                    <span id="perm-user-role-display" class="font-black text-slate-900 uppercase">STAFF</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Quick Presets Toolbar -->
+              <div class="pt-2 flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-slate-600 mr-1 flex items-center gap-1.5">
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i> Preset Cepat:
+                </span>
+                <button type="button" onclick="applyPermissionPreset('allow_all')" class="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                  <span>🟢 Izinkan Semua</span>
+                </button>
+                <button type="button" onclick="applyPermissionPreset('deny_all')" class="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                  <span>🔴 Tolak Semua</span>
+                </button>
+                <button type="button" onclick="applyPermissionPreset('supervisor')" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                  <span>⭐ Preset Supervisor</span>
+                </button>
+                <button type="button" onclick="applyPermissionPreset('manager')" class="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                  <span>⭐ Preset Manager</span>
+                </button>
+                <button type="button" onclick="applyPermissionPreset('default_role')" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs font-bold transition flex items-center gap-1 shadow-2xs">
+                  <span>🔄 Reset Default Role</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Daftar Grup & Item Hak Akses -->
+            <div id="perm-categories-container" class="space-y-6">
+              <!-- Rendered via JavaScript: PERMISSION_DEFINITIONS -->
+            </div>
+
+            <!-- Floating / Bottom Save Bar -->
+            <div class="sticky bottom-4 z-20 bg-slate-900/95 backdrop-blur-md rounded-3xl p-4 sm:p-5 text-white shadow-2xl border border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div class="flex items-center gap-3 text-xs">
+                <div class="w-9 h-9 rounded-2xl bg-teal-500/20 text-teal-400 flex items-center justify-center flex-shrink-0 border border-teal-500/30">
+                  <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <span class="font-bold text-white block">Simpan Perubahan Hak Akses</span>
+                  <span class="text-slate-300 text-[11px]">Perubahan langsung aktif dan otomatis tersinkron ke semua perangkat (HP &amp; Laptop).</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button type="button" onclick="renderPermissionEditor()" class="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition">
+                  Batal / Muat Ulang
+                </button>
+                <button type="button" onclick="saveUserPermissions()" id="btn-save-perm-bottom" class="px-6 py-2.5 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs shadow-lg transition flex items-center gap-2 cursor-pointer active:scale-95">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                  <span>Simpan Sekarang</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
     </div>
   </div>
 
@@ -6263,6 +6393,529 @@
       return role === 'supervisor' || role.includes('supervisor');
     }
 
+    // =========================================================
+    // SISTEM KONTROL HAK AKSES AKUN (GRANULAR PERMISSION ENGINE)
+    // =========================================================
+    const PERMISSION_DEFINITIONS = [
+      {
+        category: "Cakupan Gudang & Switcher",
+        icon: "warehouse",
+        items: [
+          { key: "perm_wh_mbi", label: "Akses Gudang MBI", desc: "Izin melihat dan mengelola operasional di Gudang MBI" },
+          { key: "perm_wh_mai", label: "Akses Gudang MAI", desc: "Izin melihat dan mengelola operasional di Gudang MAI" },
+          { key: "perm_wh_switch", label: "Ganti Gudang (MBI & MAI)", desc: "Izin berganti portal antara Gudang MBI dan MAI secara bebas" }
+        ]
+      },
+      {
+        category: "Manajemen Karyawan",
+        icon: "users",
+        items: [
+          { key: "perm_emp_view", label: "Lihat Data Karyawan", desc: "Membuka tabel dan mencari data seluruh karyawan" },
+          { key: "perm_emp_add", label: "Tambah Karyawan Manual", desc: "Menambahkan akun karyawan baru satu per satu" },
+          { key: "perm_emp_edit", label: "Edit Data & Outsource", desc: "Mengubah NIK, nama, vendor/outsource, dan bagian karyawan" },
+          { key: "perm_emp_delete", label: "Hapus Karyawan", desc: "Menghapus akun karyawan satuan atau centang massal" },
+          { key: "perm_emp_upload_excel", label: "Upload Master Data Excel", desc: "Mengimpor data karyawan secara massal dari file Excel" },
+          { key: "perm_emp_download_excel", label: "Download Master / Template Excel", desc: "Mengunduh file Excel master data karyawan" },
+          { key: "perm_emp_reset_all", label: "Reset Semua Data Karyawan", desc: "Mengosongkan total seluruh data karyawan gudang" }
+        ]
+      },
+      {
+        category: "Approval & Persetujuan (Sakit, Cuti, Lembur)",
+        icon: "check-circle",
+        items: [
+          { key: "perm_approve_leave_spv", label: "Approve Cuti/Sakit Tahap 1 (SPV)", desc: "Menyetujui pengajuan sakit/cuti untuk diteruskan ke Manager" },
+          { key: "perm_approve_leave_mgr", label: "Approve Cuti/Sakit Tahap 2 (Manager)", desc: "Persetujuan final pengajuan sakit/cuti karyawan" },
+          { key: "perm_approve_ot_spv", label: "Approve Lembur Tahap 1 (SPV)", desc: "Menyetujui nominal dan jam lembur ke tahap Manager" },
+          { key: "perm_approve_ot_mgr", label: "Approve Lembur Tahap 2 (Manager)", desc: "Persetujuan final pengajuan upah lembur karyawan" },
+          { key: "perm_reject_submission", label: "Tolak Pengajuan & Lembur", desc: "Berhak menolak pengajuan izin, sakit, cuti, atau lembur" }
+        ]
+      },
+      {
+        category: "Input Pengajuan & Lembur",
+        icon: "file-plus",
+        items: [
+          { key: "perm_submit_batch_ot", label: "Input Lembur Massal (Batch)", desc: "Mengajukan daftar lembur karyawan sekaligus" },
+          { key: "perm_submit_leave_staff", label: "Input Form Sakit / Izin / Cuti", desc: "Mengajukan permohonan izin, sakit, atau cuti" }
+        ]
+      },
+      {
+        category: "Laporan & Rekapitulasi",
+        icon: "bar-chart-3",
+        items: [
+          { key: "perm_rep_records", label: "Lihat Record Absen Harian", desc: "Membuka riwayat scan jam masuk dan pulang harian" },
+          { key: "perm_rep_matrix", label: "Lihat Matriks Kehadiran", desc: "Membuka tabel matriks kehadiran bulanan" },
+          { key: "perm_rep_workhours", label: "Lihat Rekap Jam Kerja", desc: "Membuka kalkulasi durasi jam kerja karyawan" },
+          { key: "perm_rep_leaves", label: "Lihat Rekap Sakit & Cuti", desc: "Membuka rekapitulasi seluruh pengajuan izin & sakit" },
+          { key: "perm_rep_ot", label: "Lihat Rekap Lembur & Biaya", desc: "Membuka rekap upah dan jam lembur operasional" },
+          { key: "perm_rep_copy_matrix", label: "Salin Matriks (WhatsApp/Clipboard)", desc: "Menyalin teks tabel matriks untuk dikirim ke chat" },
+          { key: "perm_rep_download_excel", label: "Download Laporan Excel", desc: "Mengekspor laporan record absen & lembur ke Excel" },
+          { key: "perm_rep_reset_att", label: "Reset Riwayat Absensi", desc: "Menghapus total riwayat scan absensi gudang" }
+        ]
+      },
+      {
+        category: "Cetak & Kartu ID Karyawan",
+        icon: "contact",
+        items: [
+          { key: "perm_idcard_single", label: "Cetak / Unduh Kartu ID Satuan", desc: "Mencetak atau mengunduh 1 kartu ID ber-QR" },
+          { key: "perm_idcard_batch_a4", label: "Cetak Lembar Massal A4", desc: "Mencetak kartu ID seluruh karyawan di lembar A4" },
+          { key: "perm_idcard_qr_location", label: "QR Barcode Lokasi Gudang", desc: "Melihat dan mencetak QR Code titik koordinat absensi" }
+        ]
+      },
+      {
+        category: "Sistem, GPS & Database Cloud",
+        icon: "settings",
+        items: [
+          { key: "perm_sys_gps_edit", label: "Ubah Titik Koordinat GPS", desc: "Memperbarui titik lintang & bujur absensi gudang" },
+          { key: "perm_sys_cloud_sync", label: "Akses Database Cloud 24/7", desc: "Membuka kontrol sinkronisasi database Firebase" },
+          { key: "perm_sys_gsheet_backup", label: "Backup Google Spreadsheet", desc: "Melakukan sinkronisasi data ke Google Sheets" },
+          { key: "perm_sys_audio_settings", label: "Pengaturan Suara Presensi", desc: "Mengatur berkas audio notifikasi suara scan" },
+          { key: "perm_sys_manage_permissions", label: "Kelola Hak Akses Akun", desc: "Berhak membuka menu ini dan mengatur izin akun lain" }
+        ]
+      }
+    ];
+
+    function getDefaultPermissions(user) {
+      if (!user) return {};
+      const isAdmin = isUserAdmin(user);
+      const isMgr = isUserManager(user);
+      const isScanner = isUserScanner(user);
+      const role = (user.role || 'staff').toLowerCase().trim();
+      const isSpv = role === 'supervisor' || role.includes('supervisor');
+      const isCoord = role === 'coordinator' || role.includes('coordinator') || role.includes('cordinator');
+
+      const perms = {};
+      PERMISSION_DEFINITIONS.forEach(cat => {
+        cat.items.forEach(it => {
+          perms[it.key] = false;
+        });
+      });
+
+      if (isAdmin) {
+        // Admin Utama memiliki semua izin secara default
+        Object.keys(perms).forEach(k => perms[k] = true);
+        return perms;
+      }
+
+      if (isMgr) {
+        // Manager Eko: Full operasional & approval final, switch gudang, manage permissions
+        Object.keys(perms).forEach(k => perms[k] = true);
+        perms['perm_sys_cloud_sync'] = false;
+        perms['perm_sys_gsheet_backup'] = false;
+        perms['perm_approve_leave_spv'] = false; // Manager adalah final approval
+        perms['perm_approve_ot_spv'] = false;
+        return perms;
+      }
+
+      if (isSpv || isCoord) {
+        // Supervisor & Coordinator
+        perms['perm_wh_mbi'] = user.warehouse === 'MBI' || !user.warehouse;
+        perms['perm_wh_mai'] = user.warehouse === 'MAI';
+        perms['perm_wh_switch'] = false;
+
+        perms['perm_emp_view'] = true;
+        perms['perm_emp_add'] = false;
+        perms['perm_emp_edit'] = false;
+        perms['perm_emp_delete'] = false;
+        perms['perm_emp_upload_excel'] = false;
+        perms['perm_emp_download_excel'] = true;
+        perms['perm_emp_reset_all'] = false;
+
+        perms['perm_approve_leave_spv'] = true;
+        perms['perm_approve_leave_mgr'] = false;
+        perms['perm_approve_ot_spv'] = true;
+        perms['perm_approve_ot_mgr'] = false;
+        perms['perm_reject_submission'] = true;
+
+        perms['perm_submit_batch_ot'] = true;
+        perms['perm_submit_leave_staff'] = true;
+
+        perms['perm_rep_records'] = true;
+        perms['perm_rep_matrix'] = true;
+        perms['perm_rep_workhours'] = true;
+        perms['perm_rep_leaves'] = true;
+        perms['perm_rep_ot'] = true;
+        perms['perm_rep_copy_matrix'] = true;
+        perms['perm_rep_download_excel'] = true;
+        perms['perm_rep_reset_att'] = false;
+
+        perms['perm_idcard_single'] = true;
+        perms['perm_idcard_batch_a4'] = true;
+        perms['perm_idcard_qr_location'] = true;
+
+        perms['perm_sys_gps_edit'] = false;
+        perms['perm_sys_cloud_sync'] = false;
+        perms['perm_sys_gsheet_backup'] = false;
+        perms['perm_sys_audio_settings'] = false;
+        perms['perm_sys_manage_permissions'] = false;
+        return perms;
+      }
+
+      if (isScanner) {
+        return perms;
+      }
+
+      // Karyawan Staff Biasa
+      perms['perm_wh_mbi'] = user.warehouse === 'MBI' || !user.warehouse;
+      perms['perm_wh_mai'] = user.warehouse === 'MAI';
+      perms['perm_wh_switch'] = false;
+      perms['perm_submit_leave_staff'] = true;
+      perms['perm_idcard_single'] = true;
+      return perms;
+    }
+
+    function hasPermission(permKey, user = currentUser) {
+      if (!user) return false;
+      if (user.permissions && typeof user.permissions[permKey] === 'boolean') {
+        return user.permissions[permKey];
+      }
+      const defaults = getDefaultPermissions(user);
+      return !!defaults[permKey];
+    }
+
+    let currentEditingUserNik = null;
+    let currentEditingPermissions = {};
+
+    function populatePermissionAccountDropdown(selectedNik = null) {
+      const select = document.getElementById('perm-account-select');
+      if (!select) return;
+
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      
+      const map = new Map();
+      mbiUsers.forEach(u => {
+        if (u && u.nik) map.set(`MBI_${u.nik}`, { ...u, warehouse: 'MBI' });
+      });
+      maiUsers.forEach(u => {
+        if (u && u.nik) map.set(`MAI_${u.nik}`, { ...u, warehouse: 'MAI' });
+      });
+
+      const all = Array.from(map.values());
+      all.sort((a, b) => {
+        if (isUserAdmin(a)) return -1;
+        if (isUserAdmin(b)) return 1;
+        if (isUserManager(a)) return -1;
+        if (isUserManager(b)) return 1;
+        if (isUserSupervisor(a)) return -1;
+        if (isUserSupervisor(b)) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      select.innerHTML = '';
+      all.forEach(u => {
+        const opt = document.createElement('option');
+        const uniqueVal = `${u.warehouse}__${u.nik}`;
+        opt.value = uniqueVal;
+        const roleLabel = (u.role || 'staff').toUpperCase();
+        opt.innerText = `[Gudang ${u.warehouse}] ${u.name} (NIK: ${u.nik}) - ${roleLabel} [${u.dept || '-'}]`;
+        select.appendChild(opt);
+      });
+
+      if (selectedNik) {
+        const matchingOpt = Array.from(select.options).find(o => o.value.endsWith(`__${selectedNik}`) || o.value === selectedNik);
+        if (matchingOpt) select.value = matchingOpt.value;
+      }
+    }
+
+    function filterPermissionAccountOptions(query) {
+      const q = (query || '').toLowerCase().trim();
+      const select = document.getElementById('perm-account-select');
+      if (!select) return;
+
+      let firstMatch = null;
+      Array.from(select.options).forEach(opt => {
+        const match = !q || opt.innerText.toLowerCase().includes(q) || opt.value.toLowerCase().includes(q);
+        opt.style.display = match ? '' : 'none';
+        if (match && !firstMatch) firstMatch = opt;
+      });
+
+      if (firstMatch && q) {
+        select.value = firstMatch.value;
+        onPermissionAccountChange();
+      }
+    }
+
+    function onPermissionAccountChange() {
+      const select = document.getElementById('perm-account-select');
+      if (!select || !select.value) return;
+      const [wh, nik] = select.value.split('__');
+      renderPermissionEditor(nik, wh);
+    }
+
+    function findUserByWhAndNik(nik, wh = null) {
+      const targetWh = wh || activeWarehouse || 'MBI';
+      const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let found = users.find(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase() || u.id === nik);
+      if (!found) {
+        const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
+        const otherUsers = getWhDB(otherWh, 'users', []);
+        found = otherUsers.find(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase() || u.id === nik);
+      }
+      return found;
+    }
+
+    function renderPermissionEditor(targetNik = null, targetWh = null) {
+      const select = document.getElementById('perm-account-select');
+      if (!select) return;
+
+      if (!select.options || select.options.length === 0) {
+        populatePermissionAccountDropdown();
+      }
+
+      let selectedVal = select.value;
+      if (targetNik) {
+        const matchingOpt = Array.from(select.options).find(o => o.value.endsWith(`__${targetNik}`));
+        if (matchingOpt) {
+          select.value = matchingOpt.value;
+          selectedVal = matchingOpt.value;
+        }
+      }
+
+      if (!selectedVal && select.options.length > 0) {
+        selectedVal = select.options[0].value;
+        select.value = selectedVal;
+      }
+
+      if (!selectedVal) return;
+
+      const [wh, nik] = selectedVal.split('__');
+      const user = findUserByWhAndNik(nik, wh);
+      if (!user) return;
+
+      currentEditingUserNik = user.nik;
+      const userWh = user.warehouse || wh || 'MBI';
+
+      // Load existing permissions or generate defaults
+      const defaults = getDefaultPermissions(user);
+      currentEditingPermissions = {};
+      PERMISSION_DEFINITIONS.forEach(cat => {
+        cat.items.forEach(it => {
+          if (user.permissions && typeof user.permissions[it.key] === 'boolean') {
+            currentEditingPermissions[it.key] = user.permissions[it.key];
+          } else {
+            currentEditingPermissions[it.key] = !!defaults[it.key];
+          }
+        });
+      });
+
+      // Update Summary Card
+      const nameEl = document.getElementById('perm-user-name-display');
+      const metaEl = document.getElementById('perm-user-meta-display');
+      const roleEl = document.getElementById('perm-user-role-display');
+      const whBadge = document.getElementById('perm-user-badge-wh');
+
+      if (nameEl) nameEl.innerText = user.name || '-';
+      if (metaEl) metaEl.innerText = `NIK: ${user.nik} • Bagian: ${user.dept || '-'} • Outsource: ${user.outsource || 'Internal'}`;
+      if (roleEl) {
+        roleEl.innerText = (user.role || 'STAFF').toUpperCase();
+        roleEl.className = (user.role === 'admin' || user.role === 'supervisor') ? 'font-black text-teal-700 uppercase' : 'font-black text-slate-900 uppercase';
+      }
+      if (whBadge) whBadge.innerText = `Gudang ${userWh}`;
+
+      // Render Categories
+      const container = document.getElementById('perm-categories-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      PERMISSION_DEFINITIONS.forEach((cat, catIdx) => {
+        const catCard = document.createElement('div');
+        catCard.className = 'bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4';
+
+        const grantedCount = cat.items.filter(it => currentEditingPermissions[it.key] === true).length;
+        const totalCount = cat.items.length;
+
+        catCard.innerHTML = `
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
+                <i data-lucide="${cat.icon || 'shield'}" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h4 class="font-extrabold text-sm text-slate-900">${cat.category}</h4>
+                <p class="text-[11px] text-slate-500">${totalCount} opsi kewenangan</p>
+              </div>
+            </div>
+            <span id="cat-badge-${catIdx}" class="px-2.5 py-1 rounded-full text-[10px] font-bold ${grantedCount === totalCount ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (grantedCount === 0 ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-slate-100 text-slate-700 border border-slate-200')}">
+              ${grantedCount} / ${totalCount} Diizinkan
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1" id="cat-items-${catIdx}">
+            <!-- Item cards populated below -->
+          </div>
+        `;
+
+        const itemsContainer = catCard.querySelector(`#cat-items-${catIdx}`);
+        cat.items.forEach(it => {
+          const isAllowed = currentEditingPermissions[it.key] === true;
+          const itemDiv = document.createElement('div');
+          itemDiv.id = `perm-box-${it.key}`;
+          itemDiv.className = `p-3.5 rounded-2xl border transition flex flex-col justify-between gap-3 ${isAllowed ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'}`;
+
+          itemDiv.innerHTML = `
+            <div class="space-y-1">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-bold text-slate-900">${it.label}</span>
+                <span id="status-tag-${it.key}" class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${isAllowed ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}">
+                  ${isAllowed ? '🟢 Diizinkan' : '🔴 Ditolak'}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-snug">${it.desc}</p>
+            </div>
+
+            <div class="flex items-center gap-1.5 pt-2 border-t border-slate-200/60">
+              <button type="button" onclick="togglePermissionItem('${it.key}', true, ${catIdx})" id="btn-allow-${it.key}" class="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs ${isAllowed ? 'bg-emerald-600 text-white font-extrabold shadow-sm' : 'bg-white hover:bg-emerald-50 text-slate-600 border border-slate-200'}">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                <span>IZINKAN</span>
+              </button>
+              <button type="button" onclick="togglePermissionItem('${it.key}', false, ${catIdx})" id="btn-deny-${it.key}" class="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs ${!isAllowed ? 'bg-rose-600 text-white font-extrabold shadow-sm' : 'bg-white hover:bg-rose-50 text-slate-600 border border-slate-200'}">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                <span>TOLAK</span>
+              </button>
+            </div>
+          `;
+          itemsContainer.appendChild(itemDiv);
+        });
+
+        container.appendChild(catCard);
+      });
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function togglePermissionItem(permKey, state, catIdx = null) {
+      currentEditingPermissions[permKey] = state;
+
+      const itemBox = document.getElementById(`perm-box-${permKey}`);
+      const statusTag = document.getElementById(`status-tag-${permKey}`);
+      const btnAllow = document.getElementById(`btn-allow-${permKey}`);
+      const btnDeny = document.getElementById(`btn-deny-${permKey}`);
+
+      if (itemBox) {
+        itemBox.className = `p-3.5 rounded-2xl border transition flex flex-col justify-between gap-3 ${state ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'}`;
+      }
+      if (statusTag) {
+        statusTag.className = `px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${state ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`;
+        statusTag.innerText = state ? '🟢 Diizinkan' : '🔴 Ditolak';
+      }
+      if (btnAllow) {
+        btnAllow.className = `flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs ${state ? 'bg-emerald-600 text-white font-extrabold shadow-sm' : 'bg-white hover:bg-emerald-50 text-slate-600 border border-slate-200'}`;
+      }
+      if (btnDeny) {
+        btnDeny.className = `flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs ${!state ? 'bg-rose-600 text-white font-extrabold shadow-sm' : 'bg-white hover:bg-rose-50 text-slate-600 border border-slate-200'}`;
+      }
+
+      // Update badge category count
+      if (catIdx !== null && PERMISSION_DEFINITIONS[catIdx]) {
+        const cat = PERMISSION_DEFINITIONS[catIdx];
+        const grantedCount = cat.items.filter(it => currentEditingPermissions[it.key] === true).length;
+        const totalCount = cat.items.length;
+        const badgeEl = document.getElementById(`cat-badge-${catIdx}`);
+        if (badgeEl) {
+          badgeEl.className = `px-2.5 py-1 rounded-full text-[10px] font-bold ${grantedCount === totalCount ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (grantedCount === 0 ? 'bg-rose-100 text-rose-800 border border-rose-300' : 'bg-slate-100 text-slate-700 border border-slate-200')}`;
+          badgeEl.innerText = `${grantedCount} / ${totalCount} Diizinkan`;
+        }
+      }
+    }
+
+    function applyPermissionPreset(presetType) {
+      const select = document.getElementById('perm-account-select');
+      if (!select || !select.value) return;
+      const [wh, nik] = select.value.split('__');
+      const user = findUserByWhAndNik(nik, wh);
+      if (!user) return;
+
+      if (presetType === 'allow_all') {
+        PERMISSION_DEFINITIONS.forEach(cat => {
+          cat.items.forEach(it => {
+            currentEditingPermissions[it.key] = true;
+          });
+        });
+      } else if (presetType === 'deny_all') {
+        PERMISSION_DEFINITIONS.forEach(cat => {
+          cat.items.forEach(it => {
+            currentEditingPermissions[it.key] = false;
+          });
+        });
+      } else if (presetType === 'supervisor') {
+        const tempUser = { ...user, role: 'supervisor' };
+        const spvDefaults = getDefaultPermissions(tempUser);
+        Object.keys(currentEditingPermissions).forEach(k => {
+          currentEditingPermissions[k] = !!spvDefaults[k];
+        });
+      } else if (presetType === 'manager') {
+        const tempUser = { ...user, role: 'manager' };
+        const mgrDefaults = getDefaultPermissions(tempUser);
+        Object.keys(currentEditingPermissions).forEach(k => {
+          currentEditingPermissions[k] = !!mgrDefaults[k];
+        });
+      } else if (presetType === 'default_role') {
+        const defaults = getDefaultPermissions(user);
+        Object.keys(currentEditingPermissions).forEach(k => {
+          currentEditingPermissions[k] = !!defaults[k];
+        });
+      }
+
+      // Re-render editor with updated state
+      PERMISSION_DEFINITIONS.forEach((cat, catIdx) => {
+        cat.items.forEach(it => {
+          togglePermissionItem(it.key, !!currentEditingPermissions[it.key], catIdx);
+        });
+      });
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function saveUserPermissions() {
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_sys_manage_permissions')) {
+        alert('Akses Ditolak: Anda tidak memiliki wewenang untuk menyimpan pengaturan hak akses akun.');
+        return;
+      }
+
+      const select = document.getElementById('perm-account-select');
+      if (!select || !select.value) {
+        alert('Silakan pilih akun terlebih dahulu.');
+        return;
+      }
+
+      const [wh, nik] = select.value.split('__');
+      const targetWh = wh || activeWarehouse || 'MBI';
+      let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let idx = users.findIndex(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase() || u.id === nik);
+      
+      let actualWh = targetWh;
+      if (idx === -1) {
+        const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
+        const otherUsers = getWhDB(otherWh, 'users', []);
+        idx = otherUsers.findIndex(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase() || u.id === nik);
+        if (idx !== -1) {
+          users = otherUsers;
+          actualWh = otherWh;
+        }
+      }
+
+      if (idx === -1) {
+        alert('Data akun karyawan tidak ditemukan di database.');
+        return;
+      }
+
+      users[idx].permissions = { ...currentEditingPermissions };
+      setWhDB(actualWh, 'users', users);
+      localStorage.setItem(`wfm_${actualWh.toLowerCase()}_users_backup`, JSON.stringify(users));
+
+      // Jika akun yang diedit adalah akun yang sedang aktif login
+      if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id)) {
+        currentUser.permissions = { ...currentEditingPermissions };
+        localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+        applyRolePermissions();
+      }
+
+      // Sync ke Firebase Cloud 24/7
+      await saveFullDatabaseToCloud(false, true, true);
+
+      alert(`✅ Hak Akses Berhasil Disimpan!\n\nAkun: ${users[idx].name} (${users[idx].nik})\nGudang: ${actualWh}\n\nPengaturan hak akses telah aktif seketika dan tersinkronisasi 24/7 ke Cloud Firebase.`);
+      renderPermissionEditor(users[idx].nik, actualWh);
+    }
+
     function applyRolePermissions() {
       if (!currentUser) return;
       const isAdmin = isUserAdmin(currentUser);
@@ -6271,12 +6924,26 @@
       const userRole = (currentUser.role || 'staff').toLowerCase().trim();
       const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager;
 
-      // 1. Tombol Backup Google Sheet (HANYA ADA DI AKUN ADMIN)
+      // 0. Menu Hak Akses Akun (Admin, Manager, atau akun yang diizinkan perm_sys_manage_permissions)
+      const navPerm = document.getElementById('nav-permissions');
+      const canManagePerm = isAdmin || isManager || hasPermission('perm_sys_manage_permissions');
+      if (navPerm) {
+        if (canManagePerm && !isScanner) {
+          navPerm.classList.remove('hidden');
+          navPerm.classList.add('flex');
+        } else {
+          navPerm.classList.add('hidden');
+          navPerm.classList.remove('flex');
+        }
+      }
+
+      // 1. Tombol Backup Google Sheet
       const gsheetReportsBtn = document.getElementById('btn-reports-gsheet-backup');
       const gsheetMatrixBtn = document.getElementById('btn-matrix-gsheet-backup');
       const gsheetNavBtn = document.getElementById('nav-btn-gsheet-status');
+      const canGsheet = hasPermission('perm_sys_gsheet_backup');
       if (gsheetReportsBtn) {
-        if (isAdmin) {
+        if (canGsheet) {
           gsheetReportsBtn.classList.remove('hidden');
           gsheetReportsBtn.classList.add('inline-flex');
         } else {
@@ -6285,7 +6952,7 @@
         }
       }
       if (gsheetMatrixBtn) {
-        if (isAdmin) {
+        if (canGsheet) {
           gsheetMatrixBtn.classList.remove('hidden');
           gsheetMatrixBtn.classList.add('inline-flex');
         } else {
@@ -6294,16 +6961,17 @@
         }
       }
       if (gsheetNavBtn) {
-        if (!isAdmin) {
+        if (!canGsheet) {
           gsheetNavBtn.classList.add('hidden');
         }
       }
 
-      // 2. Database Cloud 24/7 (HANYA ADA DI AKUN ADMIN)
+      // 2. Database Cloud 24/7
       const navGithub = document.getElementById('nav-github');
       const navCloudBtn = document.getElementById('nav-btn-cloud-sync');
+      const canCloud = hasPermission('perm_sys_cloud_sync');
       if (navGithub) {
-        if (isAdmin) {
+        if (canCloud && !isScanner) {
           navGithub.classList.remove('hidden');
           navGithub.classList.add('flex');
         } else {
@@ -6312,7 +6980,7 @@
         }
       }
       if (navCloudBtn) {
-        if (isAdmin) {
+        if (canCloud && !isScanner) {
           navCloudBtn.classList.remove('hidden');
           navCloudBtn.classList.add('flex');
         } else {
@@ -6321,11 +6989,12 @@
         }
       }
 
-      // 2.5 Pengaturan Suara Notifikasi Presensi (KHUSUS ADMIN & MANAGER)
+      // 2.5 Pengaturan Suara Notifikasi Presensi
       const navAudioBtn = document.getElementById('nav-btn-audio-settings');
       const navAudioAdmin = document.getElementById('nav-btn-audio-admin');
       const settingsAudioSection = document.getElementById('admin-audio-settings-card');
-      if (isAdmin || isManager) {
+      const canAudio = hasPermission('perm_sys_audio_settings');
+      if (canAudio && !isScanner) {
         if (navAudioBtn) { navAudioBtn.classList.remove('hidden'); navAudioBtn.classList.add('flex'); }
         if (navAudioAdmin) { navAudioAdmin.classList.remove('hidden'); navAudioAdmin.classList.add('inline-flex'); }
         if (settingsAudioSection) settingsAudioSection.classList.remove('hidden');
@@ -6335,15 +7004,15 @@
         if (settingsAudioSection) settingsAudioSection.classList.add('hidden');
       }
 
-      // 2.6 Pengaturan Tema Warna Tampilan Aplikasi (KHUSUS ADMIN & MANAGER)
+      // 2.6 Pengaturan Tema Warna Tampilan Aplikasi
       const settingsThemeSection = document.getElementById('admin-theme-settings-card');
-      if (isAdmin || isManager) {
+      if ((isAdmin || isManager) && !isScanner) {
         if (settingsThemeSection) settingsThemeSection.classList.remove('hidden');
       } else {
         if (settingsThemeSection) settingsThemeSection.classList.add('hidden');
       }
 
-      // 3. Pengaturan Akun (Atas & Bawah) & Akses Menu Sesuai Role
+      // 3. Pengaturan Akun & Akses Menu Sesuai Role & Granular Permissions
       const navBtnSettings = document.getElementById('nav-btn-settings');
       const navSettings = document.getElementById('nav-settings');
       const sysSettings = document.getElementById('system-settings-section');
@@ -6352,22 +7021,12 @@
 
       const appSidebar = document.getElementById('app-sidebar');
       if (isScanner) {
-        // Akun Absen MAI & MBI / Scanner: TANPA NAVIGATOR SIDEBAR (LAYAR PENUH 100% UNTUK SCANNER)
+        // Scanner Mode
         document.body.classList.add('is-scanner-mode');
         if (appSidebar) {
           appSidebar.classList.add('hidden');
           appSidebar.style.display = 'none';
         }
-      } else {
-        document.body.classList.remove('is-scanner-mode');
-        if (appSidebar) {
-          appSidebar.classList.remove('hidden');
-          appSidebar.style.display = '';
-        }
-      }
-
-      if (isScanner) {
-        // Akun Absen MAI / Scanner: JANGAN ADA FITUR PENGATURAN AKUN DI ATAS MAUPUN DI BAWAH
         if (navBtnSettings) navBtnSettings.classList.add('hidden');
         if (navSettings) {
           navSettings.classList.add('hidden');
@@ -6379,64 +7038,74 @@
           navDash.classList.add('hidden');
           navDash.classList.remove('flex');
         }
-      } else if (isAdmin) {
-        // Admin: Semua fitur aktif
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
-        if (navSettings) {
-          navSettings.classList.remove('hidden');
-          navSettings.classList.add('flex');
-        }
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (adminSection) adminSection.classList.remove('hidden');
-        if (navDash) {
-          navDash.classList.remove('hidden');
-          navDash.classList.add('flex');
-        }
-      } else if (isManager) {
-        // Manager Eko: Bisa buka 2 gudang, kelola pengajuan, lembur, karyawan, laporan, dashboard, TAPI TANPA menu pengaturan database
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
-        if (navSettings) {
-          navSettings.classList.remove('hidden');
-          navSettings.classList.add('flex');
-        }
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (adminSection) adminSection.classList.remove('hidden');
-        if (navDash) {
-          navDash.classList.remove('hidden');
-          navDash.classList.add('flex');
-        }
-      } else if (isManagement) {
-        // Supervisor / Coordinator: Pengaturan aktif, tapi Database Cloud 24/7 & Backup Google Sheet disembunyikan
-        if (navBtnSettings) navBtnSettings.classList.remove('hidden');
-        if (navSettings) {
-          navSettings.classList.remove('hidden');
-          navSettings.classList.add('flex');
-        }
-        if (sysSettings) sysSettings.classList.remove('hidden');
-        if (adminSection) adminSection.classList.remove('hidden');
-        if (navDash) {
-          navDash.classList.remove('hidden');
-          navDash.classList.add('flex');
-        }
       } else {
-        // Staff Biasa
+        document.body.classList.remove('is-scanner-mode');
+        if (appSidebar) {
+          appSidebar.classList.remove('hidden');
+          appSidebar.style.display = '';
+        }
         if (navBtnSettings) navBtnSettings.classList.remove('hidden');
         if (navSettings) {
           navSettings.classList.remove('hidden');
           navSettings.classList.add('flex');
         }
         if (sysSettings) sysSettings.classList.remove('hidden');
-        if (adminSection) adminSection.classList.add('hidden');
+
+        // Periksa izin sub-menu di manajemen
+        const canViewLeaves = hasPermission('perm_submit_leave_staff') || hasPermission('perm_approve_leave_spv') || hasPermission('perm_approve_leave_mgr');
+        const canViewOt = hasPermission('perm_submit_batch_ot') || hasPermission('perm_approve_ot_spv') || hasPermission('perm_approve_ot_mgr') || hasPermission('perm_rep_ot');
+        const canViewEmp = hasPermission('perm_emp_view') || hasPermission('perm_emp_add');
+        const canViewIdCard = hasPermission('perm_idcard_single') || hasPermission('perm_idcard_batch_a4') || hasPermission('perm_idcard_qr_location');
+        const canViewReports = hasPermission('perm_rep_records') || hasPermission('perm_rep_matrix') || hasPermission('perm_rep_workhours') || hasPermission('perm_rep_leaves') || hasPermission('perm_rep_ot');
+
+        const navLeaves = document.getElementById('nav-leaves');
+        const navOt = document.getElementById('nav-overtime');
+        const navEmp = document.getElementById('nav-employees');
+        const navIdCard = document.getElementById('nav-idcard');
+        const navReports = document.getElementById('nav-reports-group');
+
+        if (navLeaves) {
+          if (canViewLeaves) { navLeaves.classList.remove('hidden'); navLeaves.classList.add('flex'); }
+          else { navLeaves.classList.add('hidden'); navLeaves.classList.remove('flex'); }
+        }
+        if (navOt) {
+          if (canViewOt) { navOt.classList.remove('hidden'); navOt.classList.add('flex'); }
+          else { navOt.classList.add('hidden'); navOt.classList.remove('flex'); }
+        }
+        if (navEmp) {
+          if (canViewEmp) { navEmp.classList.remove('hidden'); navEmp.classList.add('flex'); }
+          else { navEmp.classList.add('hidden'); navEmp.classList.remove('flex'); }
+        }
+        if (navIdCard) {
+          if (canViewIdCard) { navIdCard.classList.remove('hidden'); navIdCard.classList.add('flex'); }
+          else { navIdCard.classList.add('hidden'); navIdCard.classList.remove('flex'); }
+        }
+        if (navReports) {
+          if (canViewReports) { navReports.classList.remove('hidden'); navReports.classList.add('flex'); }
+          else { navReports.classList.add('hidden'); navReports.classList.remove('flex'); }
+        }
+
+        const hasAnyAdminMenu = canViewLeaves || canViewOt || canViewEmp || canViewIdCard || canViewReports;
+        if (adminSection) {
+          if (hasAnyAdminMenu) adminSection.classList.remove('hidden');
+          else adminSection.classList.add('hidden');
+        }
+
         if (navDash) {
-          navDash.classList.add('hidden');
-          navDash.classList.remove('flex');
+          if (hasAnyAdminMenu || isManagement) {
+            navDash.classList.remove('hidden');
+            navDash.classList.add('flex');
+          } else {
+            navDash.classList.add('hidden');
+            navDash.classList.remove('flex');
+          }
         }
       }
 
-      // 4. Switcher Warehouse (Bisa dibuka oleh Admin Utama dan Manager Eko)
+      // 4. Switcher Warehouse (Berdasarkan permission perm_wh_switch atau Admin/Manager)
       const whSwitcher = document.getElementById('wh-switcher-box');
       if (whSwitcher) {
-        if (isAdmin || isManager) {
+        if ((hasPermission('perm_wh_switch') || isAdmin || isManager) && !isScanner) {
           whSwitcher.classList.remove('hidden');
           whSwitcher.classList.add('flex');
         } else {
@@ -6445,10 +7114,10 @@
         }
       }
 
-      // 5. Tombol Reset Semua Data Karyawan (HANYA ADA DI AKUN ADMIN DAN MANAGER)
+      // 5. Tombol Reset Semua Data Karyawan
       const btnResetAllEmp = document.getElementById('btn-reset-all-emp');
       if (btnResetAllEmp) {
-        if (isAdmin || isManager) {
+        if (hasPermission('perm_emp_reset_all') && !isScanner) {
           btnResetAllEmp.classList.remove('hidden');
           btnResetAllEmp.classList.add('inline-flex');
         } else {
@@ -6929,8 +7598,16 @@
     }
 
     function switchActiveWarehouse(wh) {
-      if (currentUser && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
-        alert('Akses terkunci pada Gudang ' + currentUser.warehouse);
+      if (currentUser && !hasPermission('perm_wh_switch') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses terkunci pada Gudang ' + currentUser.warehouse + '. Anda tidak memiliki izin ganti gudang.');
+        return;
+      }
+      if (wh === 'MBI' && !hasPermission('perm_wh_mbi')) {
+        alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang MBI.');
+        return;
+      }
+      if (wh === 'MAI' && !hasPermission('perm_wh_mai')) {
+        alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang MAI.');
         return;
       }
       activeWarehouse = wh;
@@ -6945,6 +7622,7 @@
       renderOvertimeTable();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
+      populatePermissionAccountDropdown();
       updateRegisteredCoordsDisplay();
       resetVerificationState();
       lucide.createIcons();
@@ -7023,10 +7701,41 @@
       if (isScanner) {
         // Akun Scanner Absensi (MAI & MBI) HANYA boleh membuka menu attendance
         viewName = 'attendance';
-      } else if (!isAdmin && (viewName === 'github' || viewName === 'cloud')) {
-        // Database Cloud 24/7 hanya boleh diakses oleh Admin
-        alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses oleh Akun Admin Gudang.');
-        viewName = isManagement ? 'dashboard' : 'attendance';
+      } else if (viewName === 'permissions') {
+        if (!hasPermission('perm_sys_manage_permissions') && !isAdmin && !isManager) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengelola hak akses akun.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
+      } else if (viewName === 'github' || viewName === 'cloud') {
+        if (!hasPermission('perm_sys_cloud_sync')) {
+          alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses dengan izin Cloud Database.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
+      } else if (viewName === 'employees') {
+        if (!hasPermission('perm_emp_view') && !hasPermission('perm_emp_add')) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk membuka menu Data Karyawan.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
+      } else if (viewName === 'leaves') {
+        if (!hasPermission('perm_submit_leave_staff') && !hasPermission('perm_approve_leave_spv') && !hasPermission('perm_approve_leave_mgr')) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Form Pengajuan Sakit/Cuti.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
+      } else if (viewName === 'overtime') {
+        if (!hasPermission('perm_submit_batch_ot') && !hasPermission('perm_approve_ot_spv') && !hasPermission('perm_approve_ot_mgr') && !hasPermission('perm_rep_ot')) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Input & Rekap Lembur.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
+      } else if (viewName === 'reports-group') {
+        if (!hasPermission('perm_rep_records') && !hasPermission('perm_rep_matrix') && !hasPermission('perm_rep_workhours') && !hasPermission('perm_rep_leaves') && !hasPermission('perm_rep_ot')) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Laporan & Rekap Absensi.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
+      } else if (viewName === 'idcard') {
+        if (!hasPermission('perm_idcard_single') && !hasPermission('perm_idcard_batch_a4') && !hasPermission('perm_idcard_qr_location')) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Kartu ID Karyawan.');
+          viewName = isManagement ? 'dashboard' : 'attendance';
+        }
       } else if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
         viewName = 'attendance';
       }
@@ -7037,7 +7746,7 @@
         el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5';
       });
 
-      // Pastikan seluruh section menu dan tombol tersembunyi sesuai role
+      // Pastikan seluruh section menu dan tombol tersembunyi sesuai role & permissions
       applyRolePermissions();
 
       const activeView = document.getElementById('view-' + viewName);
@@ -7049,6 +7758,9 @@
         activeNav.className = 'sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5';
       }
 
+      if (viewName === 'permissions') {
+        renderPermissionEditor();
+      }
       if (viewName === 'attendance') {
         setAttendanceType('check_in');
         renderScannerTodayRecords();
@@ -10162,6 +10874,10 @@
     }
 
     function openAllIDCardsA4Modal() {
+      if (!hasPermission('perm_idcard_batch_a4') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mencetak / mengunduh ID Card batch A4.');
+        return;
+      }
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
       if (!users || users.length === 0) {
         alert('Tidak ada data karyawan di Gudang ' + activeWarehouse);
@@ -10238,6 +10954,10 @@
     }
 
     async function downloadSingleUserCardPNG(nik) {
+      if (!hasPermission('perm_idcard_single') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh ID Card perorangan.');
+        return;
+      }
       const cleanNik = (nik || '').trim().toUpperCase();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik);
@@ -10256,6 +10976,10 @@
     }
 
     async function downloadAllIndividualCardsZIP() {
+      if (!hasPermission('perm_idcard_batch_a4') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh ID Card massal (ZIP).');
+        return;
+      }
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
       if (!users || users.length === 0) return;
 
@@ -10541,6 +11265,10 @@
     function handleOutsourceCustomInput(type, val) {}
 
     function openEditEmployeeModal(nik) {
+      if (!hasPermission('perm_emp_edit') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengedit data karyawan.');
+        return;
+      }
       const cleanNik = (nik || '').trim().toUpperCase();
       let users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       let user = users.find(u => (u.nik || '').trim().toUpperCase() === cleanNik || u.id === nik || cleanStr(u.name) === cleanStr(nik));
@@ -10624,6 +11352,10 @@
 
     async function handleSaveEditEmployee(e) {
       e.preventDefault();
+      if (!hasPermission('perm_emp_edit') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengedit data karyawan.');
+        return;
+      }
       const id = (document.getElementById('edit-emp-id')?.value || '').trim();
       const oldNikVal = (document.getElementById('edit-emp-old-nik')?.value || '').trim().toUpperCase();
       const oldNameVal = (document.getElementById('edit-emp-old-name')?.value || '').trim();
@@ -10851,6 +11583,10 @@
     }
 
     async function deleteSingleEmployee(nik) {
+      if (!hasPermission('perm_emp_delete') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk menghapus karyawan.');
+        return;
+      }
       if (!nik) return;
       const targetWh = activeWarehouse || 'MBI';
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -10903,6 +11639,10 @@
     }
 
     async function deleteSelectedEmployees() {
+      if (!hasPermission('perm_emp_delete') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk menghapus karyawan.');
+        return;
+      }
       const selectedCbs = document.querySelectorAll('input[name="emp-row-check"]:checked');
       if (selectedCbs.length === 0) {
         alert('Pilih minimal 1 karyawan untuk dihapus.');
@@ -10938,8 +11678,8 @@
     }
 
     async function deleteAllEmployees() {
-      if (!isUserAdmin() && !isUserManager()) {
-        alert('Akses Ditolak: Fitur Reset Semua Data Karyawan hanya dapat dilakukan oleh Akun Admin atau Manager Gudang.');
+      if (!hasPermission('perm_emp_reset_all') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Fitur Reset Semua Data Karyawan hanya dapat dilakukan dengan izin khusus Reset Data Karyawan.');
         return;
       }
       const targetWh = activeWarehouse || 'MBI';
@@ -10971,8 +11711,8 @@
     }
 
     async function deleteAllAttendanceRecords() {
-      if (!isUserAdmin() && !isUserManager()) {
-        alert('Akses Ditolak: Fitur Reset Riwayat Absensi hanya dapat dilakukan oleh Akun Admin atau Manager Gudang.');
+      if (!hasPermission('perm_rep_reset_att') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Fitur Reset Riwayat Absensi hanya dapat dilakukan dengan izin khusus Reset Riwayat Absensi.');
         return;
       }
       const targetWh = activeWarehouse || 'MBI';
@@ -11042,6 +11782,10 @@
     }
 
     function openAddEmployeeModal() {
+      if (!hasPermission('perm_emp_add') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk menambah data karyawan baru.');
+        return;
+      }
       document.getElementById('modal-emp-wh').innerText = activeWarehouse;
       document.getElementById('m-emp-joindate').value = getLocalDateString(new Date());
       document.getElementById('m-emp-nik').value = '';
@@ -11096,6 +11840,10 @@
 
     async function handleManualAddEmployee(e) {
       e.preventDefault();
+      if (!hasPermission('perm_emp_add') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk menambah data karyawan baru.');
+        return;
+      }
       const name = document.getElementById('m-emp-name').value.trim();
       const customNik = document.getElementById('m-emp-nik').value.trim();
       const rawDept = (document.getElementById('m-emp-dept').value || document.getElementById('add-dept-label')?.innerText || 'warehouse staff').toLowerCase();
@@ -11223,6 +11971,10 @@
     }
 
     function downloadAccountsExcel() {
+      if (!hasPermission('perm_emp_export_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh data karyawan ke Excel.');
+        return;
+      }
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
@@ -11248,6 +12000,10 @@
     }
 
     function downloadEmployeeTemplate() {
+      if (!hasPermission('perm_emp_import_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh template Excel karyawan.');
+        return;
+      }
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${activeWarehouse.toUpperCase()}${year}-`;
       const templateData = [
@@ -11264,6 +12020,10 @@
     }
 
     function exportEmployeesExcel() {
+      if (!hasPermission('perm_emp_export_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh data karyawan ke Excel.');
+        return;
+      }
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
@@ -12726,6 +13486,10 @@
     }
 
     function exportWorkHoursToExcel() {
+      if (!hasPermission('perm_rep_download_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh laporan ke Excel.');
+        return;
+      }
       const {
         startStr,
         endStr,
@@ -12860,6 +13624,10 @@
     }
 
     function exportReportLeavesToExcel() {
+      if (!hasPermission('perm_rep_download_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh laporan ke Excel.');
+        return;
+      }
       const startStr = document.getElementById('report-leave-start')?.value || '';
       const endStr = document.getElementById('report-leave-end')?.value || '';
       const typeFilter = document.getElementById('report-leave-type-filter')?.value || '';
@@ -13426,6 +14194,10 @@
     }
 
     function exportRecordsToExcel() {
+      if (!hasPermission('perm_rep_download_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh laporan ke Excel.');
+        return;
+      }
       let startStr = document.getElementById('record-start-date')?.value || '';
       let endStr = document.getElementById('record-end-date')?.value || '';
       if (startStr && endStr && startStr > endStr) {
@@ -13997,6 +14769,10 @@
     // FITUR COPY TABEL MATRIKS KE CLIPBOARD
     // =========================================================
     function copyMatrixTable() {
+      if (!hasPermission('perm_rep_copy_matrix') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk menyalin data matriks ke clipboard.');
+        return;
+      }
       let startStr = document.getElementById('matrix-start-date')?.value;
       let endStr = document.getElementById('matrix-end-date')?.value;
       if (!startStr || !endStr) {
@@ -14161,6 +14937,10 @@
     }
 
     function exportMatrixToExcel() {
+      if (!hasPermission('perm_rep_download_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh laporan ke Excel.');
+        return;
+      }
       let startStr = document.getElementById('matrix-start-date')?.value;
       let endStr = document.getElementById('matrix-end-date')?.value;
       if (!startStr || !endStr) return;
@@ -14288,6 +15068,10 @@
     // =========================================================
     function handleLeaveSubmit(e) {
       e.preventDefault();
+      if (!hasPermission('perm_submit_leave_staff') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengajukan form sakit/izin/cuti.');
+        return;
+      }
       const targetNik = document.getElementById('leave-employee').value;
       const type = document.getElementById('leave-type').value;
       const startDate = document.getElementById('leave-start-date').value;
@@ -14349,6 +15133,10 @@
       const tbody = document.getElementById('leave-table-body');
       tbody.innerHTML = '';
 
+      const canApproveSpv = hasPermission('perm_approve_leave_spv');
+      const canApproveMgr = hasPermission('perm_approve_leave_mgr');
+      const canReject = hasPermission('perm_reject_submission');
+
       let filtered = leaves.filter(lv => {
         const matchesSearch = !searchQ || (lv.userName && lv.userName.toLowerCase().includes(searchQ)) || (lv.userNik && lv.userNik.toLowerCase().includes(searchQ)) || (lv.reason && lv.reason.toLowerCase().includes(searchQ));
         if (!matchesSearch) return false;
@@ -14395,6 +15183,33 @@
         else if (lv.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
         else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
+        let actionCellHtml = '<span class="text-[10px] text-slate-400">-</span>';
+        if (canApproveMgr) {
+          if (lv.status === 'pending_manager' || lv.status === 'pending') {
+            actionCellHtml = `
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition" title="${lv.status === 'pending' ? 'Setujui Langsung oleh Manager' : 'Setujui Final'}">${lv.status === 'pending' ? 'Setujui Langsung' : 'Setujui Final'}</button>
+                ${canReject ? `<button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>` : ''}
+              </div>
+            `;
+          } else {
+            actionCellHtml = `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`;
+          }
+        } else if (canApproveSpv) {
+          if (lv.status === 'pending') {
+            actionCellHtml = `
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="updateLeaveStatus('${lv.id}', 'approve_spv')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui (ke Manager)</button>
+                ${canReject ? `<button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>` : ''}
+              </div>
+            `;
+          } else {
+            actionCellHtml = `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase()}</span>`;
+          }
+        } else if (isUserAdmin(currentUser)) {
+          actionCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'pending' ? 'bg-slate-100 text-slate-700 border border-slate-200' : (lv.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${lv.status === 'pending' ? 'Menunggu SPV' : (lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase())}</span>`;
+        }
+
         tr.innerHTML = `
           <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
           <td class="p-3"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
@@ -14403,23 +15218,7 @@
           <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
           <td class="p-3">${statusBadge}</td>
           <td class="p-3 text-right">
-            ${isUserSupervisor(currentUser) ? (
-              lv.status === 'pending' ? `
-                <div class="flex items-center justify-end gap-1.5">
-                  <button onclick="updateLeaveStatus('${lv.id}', 'approve_spv')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">Setujui (ke Manager)</button>
-                  <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
-                </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase()}</span>`
-            ) : isUserManager(currentUser) ? (
-              (lv.status === 'pending_manager' || lv.status === 'pending') ? `
-                <div class="flex items-center justify-end gap-1.5">
-                  <button onclick="updateLeaveStatus('${lv.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition" title="${lv.status === 'pending' ? 'Setujui Langsung oleh Manager' : 'Setujui Final'}">${lv.status === 'pending' ? 'Setujui Langsung' : 'Setujui Final'}</button>
-                  <button onclick="updateLeaveStatus('${lv.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>
-                </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${lv.status.toUpperCase()}</span>`
-            ) : isUserAdmin(currentUser) ? (
-              `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${lv.status === 'pending' ? 'bg-slate-100 text-slate-700 border border-slate-200' : (lv.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${lv.status === 'pending' ? 'Menunggu SPV' : (lv.status === 'pending_manager' ? 'Menunggu Manager' : lv.status.toUpperCase())}</span>`
-            ) : `<span class="text-[10px] text-slate-400">-</span>`}
+            ${actionCellHtml}
           </td>
         `;
         tbody.appendChild(tr);
@@ -14427,59 +15226,55 @@
     }
 
     function updateLeaveStatus(id, action) {
-      if (isUserAdmin(currentUser)) {
-        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Alur persetujuan: Supervisor -> Manager Eko.");
+      if (isUserAdmin(currentUser) && !hasPermission('perm_approve_leave_spv') && !hasPermission('perm_approve_leave_mgr')) {
+        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Berikan izin khusus jika ingin menyetujui.");
         return;
       }
-      const isSpv = isUserSupervisor(currentUser);
-      const isMgr = isUserManager(currentUser);
+      const canApproveSpv = hasPermission('perm_approve_leave_spv');
+      const canApproveMgr = hasPermission('perm_approve_leave_mgr');
+      const canReject = hasPermission('perm_reject_submission');
 
-      if (!isSpv && !isMgr) {
-        alert("Akses Ditolak: Hanya akun Supervisor dan Manager Eko yang berhak melakukan persetujuan izin/sakit/cuti.");
+      if (!canApproveSpv && !canApproveMgr && !canReject) {
+        alert("Akses Ditolak: Anda tidak memiliki wewenang untuk persetujuan izin/sakit/cuti.");
         return;
       }
       const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
       const item = leaves.find(l => l.id === id);
       if (!item) return;
 
-      if (isSpv) {
-        if (item.status !== 'pending') {
-          alert("Pengajuan ini sudah diproses dan tidak berstatus Menunggu SPV.");
+      if (action === 'rejected') {
+        if (!canReject) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk menolak pengajuan.');
           return;
         }
-        if (action === 'approve_spv' || action === 'approved') {
-          item.status = 'pending_manager';
-          item.spvApprovedBy = currentUser.name || 'Supervisor';
-          item.spvApprovedAt = new Date().toISOString();
-          alert(`✅ Pengajuan berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager Eko untuk persetujuan akhir (Final Approval).`);
-        } else if (action === 'rejected') {
-          item.status = 'rejected';
-          item.rejectedBy = `${currentUser.name || 'Supervisor'} (SPV)`;
-          item.rejectedAt = new Date().toISOString();
-          alert(`Pengajuan berhasil DITOLAK oleh Supervisor (${currentUser.name}).`);
-        }
-      } else if (isMgr) {
+        item.status = 'rejected';
+        item.rejectedBy = `${currentUser.name || 'Petugas'} (${(currentUser.role || '').toUpperCase()})`;
+        item.rejectedAt = new Date().toISOString();
+        alert(`Pengajuan berhasil DITOLAK oleh ${currentUser.name}.`);
+      } else if (canApproveMgr) {
         if (item.status !== 'pending_manager' && item.status !== 'pending') {
           alert("Pengajuan ini sudah selesai diproses.");
           return;
         }
-        if (action === 'approved') {
-          item.status = 'approved';
-          item.mgrApprovedBy = currentUser.name || 'Eko';
-          item.mgrApprovedAt = new Date().toISOString();
-          if (!item.spvApprovedBy) {
-            item.spvApprovedBy = 'Disetujui Langsung Manager';
-            item.spvApprovedAt = item.mgrApprovedAt;
-          }
-          item.approvedBy = `${item.spvApprovedBy} & Manager ${currentUser.name || 'Eko'}`;
-          item.approvedAt = new Date().toISOString();
-          alert(`✅ Pengajuan berhasil DISETUJUI FINAL oleh Manager Eko!\nStatus cuti/izin/sakit karyawan resmi aktif.`);
-        } else if (action === 'rejected') {
-          item.status = 'rejected';
-          item.rejectedBy = `Manager ${currentUser.name || 'Eko'}`;
-          item.rejectedAt = new Date().toISOString();
-          alert(`Pengajuan berhasil DITOLAK oleh Manager Eko.`);
+        item.status = 'approved';
+        item.mgrApprovedBy = currentUser.name || 'Manager';
+        item.mgrApprovedAt = new Date().toISOString();
+        if (!item.spvApprovedBy) {
+          item.spvApprovedBy = 'Disetujui Langsung Manager';
+          item.spvApprovedAt = item.mgrApprovedAt;
         }
+        item.approvedBy = `${item.spvApprovedBy} & ${currentUser.name || 'Manager'}`;
+        item.approvedAt = new Date().toISOString();
+        alert(`✅ Pengajuan berhasil DISETUJUI FINAL oleh ${currentUser.name}!\nStatus cuti/izin/sakit karyawan resmi aktif.`);
+      } else if (canApproveSpv) {
+        if (item.status !== 'pending') {
+          alert("Pengajuan ini sudah diproses dan tidak berstatus Menunggu SPV.");
+          return;
+        }
+        item.status = 'pending_manager';
+        item.spvApprovedBy = currentUser.name || 'Supervisor';
+        item.spvApprovedAt = new Date().toISOString();
+        alert(`✅ Pengajuan berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       }
 
       setWhDB(activeWarehouse, 'leaves', leaves);
@@ -14590,6 +15385,10 @@
 
     function handleBatchOvertimeSubmit(e) {
       e.preventDefault();
+      if (!hasPermission('perm_submit_batch_ot') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengajukan input lembur massal.');
+        return;
+      }
       const checkboxes = document.querySelectorAll('input[name="ot-emp-check"]:checked');
       if (checkboxes.length === 0) {
         alert('Silakan pilih minimal 1 karyawan untuk diajukan lembur!');
@@ -14668,6 +15467,10 @@
       const tbody = document.getElementById('ot-table-body');
       tbody.innerHTML = '';
 
+      const canApproveSpv = hasPermission('perm_approve_ot_spv');
+      const canApproveMgr = hasPermission('perm_approve_ot_mgr');
+      const canReject = hasPermission('perm_reject_submission');
+
       let filtered = overtimes.filter(o => {
         const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
         const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
@@ -14713,6 +15516,37 @@
         else if (ot.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
         else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
+        let actionCellHtml = '<span class="text-[10px] text-slate-400">-</span>';
+        if (canApproveMgr) {
+          if (ot.status === 'pending_manager' || isPending) {
+            actionCellHtml = `
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition" title="${isPending ? 'Setujui Langsung oleh Manager' : 'Setujui Final'}">
+                  ${isPending ? 'Setujui Langsung' : 'Setujui Final'}
+                </button>
+                ${canReject ? `<button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>` : ''}
+              </div>
+            `;
+          } else {
+            actionCellHtml = `<span class="text-[10px] font-bold text-slate-400 italic">${'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`;
+          }
+        } else if (canApproveSpv) {
+          if (isPending) {
+            actionCellHtml = `
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approve_spv')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
+                  Setujui (ke Manager)
+                </button>
+                ${canReject ? `<button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">Tolak</button>` : ''}
+              </div>
+            `;
+          } else {
+            actionCellHtml = `<span class="text-[10px] font-bold text-slate-400 italic">${ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`;
+          }
+        } else if (isUserAdmin(currentUser)) {
+          actionCellHtml = `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPending ? 'bg-slate-100 text-slate-700 border border-slate-200' : (ot.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${isPending ? 'Menunggu SPV' : (ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')')}</span>`;
+        }
+
         tr.innerHTML = `
           <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
@@ -14727,31 +15561,7 @@
           <td class="p-3 border-r border-slate-100 text-slate-600 max-w-xs truncate">${ot.reason}</td>
           <td class="p-3 border-r border-slate-100 text-center">${statusBadge}</td>
           <td class="p-3 text-center">
-            ${isUserSupervisor(currentUser) ? (
-              isPending ? `
-                <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approve_spv')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition">
-                    Setujui (ke Manager)
-                  </button>
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">
-                    Tolak
-                  </button>
-                </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
-            ) : isUserManager(currentUser) ? (
-              (ot.status === 'pending_manager' || isPending) ? `
-                <div class="flex items-center justify-center gap-1.5">
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'approved')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-bold shadow-xs transition" title="${isPending ? 'Setujui Langsung oleh Manager' : 'Setujui Final'}">
-                    ${isPending ? 'Setujui Langsung' : 'Setujui Final'}
-                  </button>
-                  <button onclick="updateOvertimeStatusAndLock('${ot.id}', 'rejected')" class="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold shadow-xs transition">
-                    Tolak
-                  </button>
-                </div>
-              ` : `<span class="text-[10px] font-bold text-slate-400 italic">${'Terkunci (' + ot.status.toUpperCase() + ')'}</span>`
-            ) : isUserAdmin(currentUser) ? (
-              `<span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPending ? 'bg-slate-100 text-slate-700 border border-slate-200' : (ot.status === 'pending_manager' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'text-slate-400 italic')}">${isPending ? 'Menunggu SPV' : (ot.status === 'pending_manager' ? 'Menunggu Manager' : 'Terkunci (' + ot.status.toUpperCase() + ')')}</span>`
-            ) : `<span class="text-[10px] text-slate-400">-</span>`}
+            ${actionCellHtml}
           </td>
         `;
         tbody.appendChild(tr);
@@ -14759,59 +15569,55 @@
     }
 
     function updateOvertimeStatusAndLock(id, action) {
-      if (isUserAdmin(currentUser)) {
-        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Alur persetujuan lembur: Supervisor -> Manager Eko.");
+      if (isUserAdmin(currentUser) && !hasPermission('perm_approve_ot_spv') && !hasPermission('perm_approve_ot_mgr')) {
+        alert("Akses Ditolak: Akun Administrator tidak dapat melakukan persetujuan (approval). Berikan izin khusus jika ingin menyetujui.");
         return;
       }
-      const isSpv = isUserSupervisor(currentUser);
-      const isMgr = isUserManager(currentUser);
+      const canApproveSpv = hasPermission('perm_approve_ot_spv');
+      const canApproveMgr = hasPermission('perm_approve_ot_mgr');
+      const canReject = hasPermission('perm_reject_submission');
 
-      if (!isSpv && !isMgr) {
-        alert("Akses Ditolak: Hanya akun Supervisor dan Manager Eko yang berhak melakukan persetujuan lembur.");
+      if (!canApproveSpv && !canApproveMgr && !canReject) {
+        alert("Akses Ditolak: Anda tidak memiliki wewenang untuk persetujuan lembur.");
         return;
       }
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
       const item = overtimes.find(o => o.id === id);
       if (!item) return;
 
-      if (isSpv) {
-        if (item.status !== 'pending') {
-          alert("Pengajuan lembur ini sudah diproses dan tidak berstatus Menunggu SPV.");
+      if (action === 'rejected') {
+        if (!canReject) {
+          alert('Akses Ditolak: Anda tidak memiliki izin untuk menolak pengajuan lembur.');
           return;
         }
-        if (action === 'approve_spv' || action === 'approved') {
-          item.status = 'pending_manager';
-          item.spvApprovedBy = currentUser.name || 'Supervisor';
-          item.spvApprovedAt = new Date().toISOString();
-          alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager Eko untuk persetujuan akhir (Final Approval).`);
-        } else if (action === 'rejected') {
-          item.status = 'rejected';
-          item.rejectedBy = `${currentUser.name || 'Supervisor'} (SPV)`;
-          item.rejectedAt = new Date().toISOString();
-          alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh Supervisor (${currentUser.name}).`);
-        }
-      } else if (isMgr) {
+        item.status = 'rejected';
+        item.rejectedBy = `${currentUser.name || 'Petugas'} (${(currentUser.role || '').toUpperCase()})`;
+        item.rejectedAt = new Date().toISOString();
+        alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh ${currentUser.name}.`);
+      } else if (canApproveMgr) {
         if (item.status !== 'pending_manager' && item.status !== 'pending') {
           alert("Pengajuan lembur ini sudah selesai diproses.");
           return;
         }
-        if (action === 'approved') {
-          item.status = 'approved';
-          item.mgrApprovedBy = currentUser.name || 'Eko';
-          item.mgrApprovedAt = new Date().toISOString();
-          if (!item.spvApprovedBy) {
-            item.spvApprovedBy = 'Disetujui Langsung Manager';
-            item.spvApprovedAt = item.mgrApprovedAt;
-          }
-          item.approvedBy = `${item.spvApprovedBy} & Manager ${currentUser.name || 'Eko'}`;
-          item.approvedAt = new Date().toISOString();
-          alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil DISETUJUI FINAL oleh Manager Eko!\nData lembur terkunci permanen.`);
-        } else if (action === 'rejected') {
-          item.status = 'rejected';
-          item.rejectedBy = `Manager ${currentUser.name || 'Eko'}`;
-          item.rejectedAt = new Date().toISOString();
-          alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh Manager Eko.`);
+        item.status = 'approved';
+        item.mgrApprovedBy = currentUser.name || 'Manager';
+        item.mgrApprovedAt = new Date().toISOString();
+        if (!item.spvApprovedBy) {
+          item.spvApprovedBy = 'Disetujui Langsung Manager';
+          item.spvApprovedAt = item.mgrApprovedAt;
         }
+        item.approvedBy = `${item.spvApprovedBy} & ${currentUser.name || 'Manager'}`;
+        item.approvedAt = new Date().toISOString();
+        alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil DISETUJUI FINAL oleh ${currentUser.name}!\nData lembur terkunci permanen.`);
+      } else if (canApproveSpv) {
+        if (item.status !== 'pending') {
+          alert("Pengajuan lembur ini sudah diproses dan tidak berstatus Menunggu SPV.");
+          return;
+        }
+        item.status = 'pending_manager';
+        item.spvApprovedBy = currentUser.name || 'Supervisor';
+        item.spvApprovedAt = new Date().toISOString();
+        alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       }
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
@@ -14822,6 +15628,10 @@
     }
 
     function exportOvertimeToExcel() {
+      if (!hasPermission('perm_rep_download_excel') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengunduh laporan Excel.');
+        return;
+      }
       const startStr = document.getElementById('ot-filter-start')?.value || '';
       const endStr = document.getElementById('ot-filter-end')?.value || '';
       const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
