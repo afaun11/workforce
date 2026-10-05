@@ -1012,20 +1012,20 @@
 
               <!-- Action Buttons Bersih, Rapi & Elegan -->
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="openAddEmployeeModal()" class="h-9 px-3.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                <button id="btn-add-emp-modal" onclick="openAddEmployeeModal()" class="h-9 px-3.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
                   <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
                   <span>Tambah Karyawan</span>
                 </button>
-                <label class="cursor-pointer h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
+                <label id="lbl-upload-excel" class="cursor-pointer h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5">
                   <i data-lucide="upload" class="w-3.5 h-3.5 text-slate-500"></i>
                   <span>Upload Excel</span>
                   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" onchange="handleExcelUpload(event)" class="sr-only">
                 </label>
-                <button onclick="downloadAccountsExcel()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Seluruh Data Karyawan ke format Excel">
+                <button id="btn-download-emp-excel" onclick="downloadAccountsExcel()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Seluruh Data Karyawan ke format Excel">
                   <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
                   <span>Download Excel</span>
                 </button>
-                <button onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Template Format Upload Excel">
+                <button id="btn-template-emp-excel" onclick="downloadEmployeeTemplate()" class="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Download Template Format Upload Excel">
                   <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-slate-500"></i>
                   <span>Template</span>
                 </button>
@@ -4888,6 +4888,17 @@
       if (hasUsersChanged && !isRecentLocalChange) {
         localStorage.setItem('wfm_mbi_users', newMbiUsers);
         localStorage.setItem('wfm_mai_users', newMaiUsers);
+
+        if (currentUser) {
+          const myWh = currentUser.warehouse || activeWarehouse || 'MBI';
+          const myUsers = myWh === 'MAI' ? cleanMaiUsers : cleanMbiUsers;
+          const me = myUsers.find(u => (u.nik && u.nik === currentUser.nik) || (u.id && u.id === currentUser.id) || (u.name && cleanStr(u.name) === cleanStr(currentUser.name)));
+          if (me) {
+            currentUser.permissions = me.permissions || currentUser.permissions;
+            localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+            applyRolePermissions();
+          }
+        }
       }
       if (hasAttChanged) {
         localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
@@ -6953,8 +6964,7 @@
     }
 
     async function saveUserPermissions() {
-      const isSpv = isUserSupervisor(currentUser) || ((currentUser?.role || '').toLowerCase() === 'supervisor') || ((currentUser?.role || '').toLowerCase() === 'coordinator');
-      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !isSpv && !hasPermission('perm_sys_manage_permissions')) {
+      if (!isUserAdmin(currentUser) && !hasPermission('perm_sys_manage_permissions')) {
         alert('Akses Ditolak: Anda tidak memiliki wewenang untuk menyimpan pengaturan hak akses akun.');
         return;
       }
@@ -7013,9 +7023,9 @@
       const isSpv = isUserSupervisor(currentUser) || userRole === 'supervisor' || userRole === 'coordinator';
       const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager || isSpv;
 
-      // 0. Menu Hak Akses Akun (Admin, Manager, Supervisor, atau akun yang diizinkan perm_sys_manage_permissions)
+      // 0. Menu Hak Akses Akun (Admin Utama atau akun yang diizinkan perm_sys_manage_permissions)
       const navPerm = document.getElementById('nav-permissions');
-      const canManagePerm = isAdmin || isManager || isSpv || hasPermission('perm_sys_manage_permissions');
+      const canManagePerm = isAdmin || hasPermission('perm_sys_manage_permissions');
       if (navPerm) {
         if (canManagePerm && !isScanner) {
           navPerm.classList.remove('hidden');
@@ -7030,7 +7040,7 @@
       const gsheetReportsBtn = document.getElementById('btn-reports-gsheet-backup');
       const gsheetMatrixBtn = document.getElementById('btn-matrix-gsheet-backup');
       const gsheetNavBtn = document.getElementById('nav-btn-gsheet-status');
-      const canGsheet = hasPermission('perm_sys_gsheet_backup');
+      const canGsheet = isAdmin || hasPermission('perm_sys_gsheet_backup');
       if (gsheetReportsBtn) {
         if (canGsheet) {
           gsheetReportsBtn.classList.remove('hidden');
@@ -7058,7 +7068,7 @@
       // 2. Database Cloud 24/7
       const navGithub = document.getElementById('nav-github');
       const navCloudBtn = document.getElementById('nav-btn-cloud-sync');
-      const canCloud = hasPermission('perm_sys_cloud_sync');
+      const canCloud = isAdmin || hasPermission('perm_sys_cloud_sync');
       if (navGithub) {
         if (canCloud && !isScanner) {
           navGithub.classList.remove('hidden');
@@ -7082,7 +7092,7 @@
       const navAudioBtn = document.getElementById('nav-btn-audio-settings');
       const navAudioAdmin = document.getElementById('nav-btn-audio-admin');
       const settingsAudioSection = document.getElementById('admin-audio-settings-card');
-      const canAudio = hasPermission('perm_sys_audio_settings');
+      const canAudio = isAdmin || hasPermission('perm_sys_audio_settings');
       if (canAudio && !isScanner) {
         if (navAudioBtn) { navAudioBtn.classList.remove('hidden'); navAudioBtn.classList.add('flex'); }
         if (navAudioAdmin) { navAudioAdmin.classList.remove('hidden'); navAudioAdmin.classList.add('inline-flex'); }
@@ -7141,11 +7151,11 @@
         if (sysSettings) sysSettings.classList.remove('hidden');
 
         // Periksa izin sub-menu di manajemen
-        const canViewLeaves = hasPermission('perm_submit_leave_staff') || hasPermission('perm_approve_leave_spv') || hasPermission('perm_approve_leave_mgr');
-        const canViewOt = hasPermission('perm_submit_batch_ot') || hasPermission('perm_approve_ot_spv') || hasPermission('perm_approve_ot_mgr') || hasPermission('perm_rep_ot');
-        const canViewEmp = hasPermission('perm_emp_view') || hasPermission('perm_emp_add');
-        const canViewIdCard = hasPermission('perm_idcard_single') || hasPermission('perm_idcard_batch_a4') || hasPermission('perm_idcard_qr_location');
-        const canViewReports = hasPermission('perm_rep_records') || hasPermission('perm_rep_matrix') || hasPermission('perm_rep_workhours') || hasPermission('perm_rep_leaves') || hasPermission('perm_rep_ot');
+        const canViewLeaves = isAdmin || hasPermission('perm_submit_leave_staff') || hasPermission('perm_approve_leave_spv') || hasPermission('perm_approve_leave_mgr');
+        const canViewOt = isAdmin || hasPermission('perm_submit_batch_ot') || hasPermission('perm_approve_ot_spv') || hasPermission('perm_approve_ot_mgr') || hasPermission('perm_rep_ot');
+        const canViewEmp = isAdmin || hasPermission('perm_emp_view') || hasPermission('perm_emp_add');
+        const canViewIdCard = isAdmin || hasPermission('perm_idcard_single') || hasPermission('perm_idcard_batch_a4') || hasPermission('perm_idcard_qr_location');
+        const canViewReports = isAdmin || hasPermission('perm_rep_records') || hasPermission('perm_rep_matrix') || hasPermission('perm_rep_workhours') || hasPermission('perm_rep_leaves') || hasPermission('perm_rep_ot');
 
         const navLeaves = document.getElementById('nav-leaves');
         const navOt = document.getElementById('nav-overtime');
@@ -7189,6 +7199,59 @@
             navDash.classList.remove('flex');
           }
         }
+
+        // Tombol aksi di modul Data Karyawan
+        const btnAddEmp = document.getElementById('btn-add-emp-modal');
+        const lblUploadExcel = document.getElementById('lbl-upload-excel');
+        const btnDownloadExcel = document.getElementById('btn-download-emp-excel');
+        const btnTemplateExcel = document.getElementById('btn-template-emp-excel');
+        const btnDeleteSelected = document.getElementById('btn-delete-selected-emp');
+
+        if (btnAddEmp) {
+          if (isAdmin || hasPermission('perm_emp_add')) {
+            btnAddEmp.classList.remove('hidden');
+            btnAddEmp.classList.add('inline-flex');
+          } else {
+            btnAddEmp.classList.add('hidden');
+            btnAddEmp.classList.remove('inline-flex');
+          }
+        }
+        if (lblUploadExcel) {
+          if (isAdmin || hasPermission('perm_emp_upload_excel')) {
+            lblUploadExcel.classList.remove('hidden');
+            lblUploadExcel.classList.add('inline-flex');
+          } else {
+            lblUploadExcel.classList.add('hidden');
+            lblUploadExcel.classList.remove('inline-flex');
+          }
+        }
+        if (btnDownloadExcel) {
+          if (isAdmin || hasPermission('perm_emp_download_excel')) {
+            btnDownloadExcel.classList.remove('hidden');
+            btnDownloadExcel.classList.add('inline-flex');
+          } else {
+            btnDownloadExcel.classList.add('hidden');
+            btnDownloadExcel.classList.remove('inline-flex');
+          }
+        }
+        if (btnTemplateExcel) {
+          if (isAdmin || hasPermission('perm_emp_upload_excel') || hasPermission('perm_emp_add')) {
+            btnTemplateExcel.classList.remove('hidden');
+            btnTemplateExcel.classList.add('inline-flex');
+          } else {
+            btnTemplateExcel.classList.add('hidden');
+            btnTemplateExcel.classList.remove('inline-flex');
+          }
+        }
+        if (btnDeleteSelected) {
+          if (isAdmin || hasPermission('perm_emp_delete')) {
+            btnDeleteSelected.classList.remove('hidden');
+            btnDeleteSelected.classList.add('inline-flex');
+          } else {
+            btnDeleteSelected.classList.add('hidden');
+            btnDeleteSelected.classList.remove('inline-flex');
+          }
+        }
       }
 
       // 4. Switcher Warehouse (Berdasarkan permission perm_wh_switch atau Admin/Manager)
@@ -7206,7 +7269,7 @@
       // 5. Tombol Reset Semua Data Karyawan
       const btnResetAllEmp = document.getElementById('btn-reset-all-emp');
       if (btnResetAllEmp) {
-        if (hasPermission('perm_emp_reset_all') && !isScanner) {
+        if ((isAdmin || hasPermission('perm_emp_reset_all')) && !isScanner) {
           btnResetAllEmp.classList.remove('hidden');
           btnResetAllEmp.classList.add('inline-flex');
         } else {
@@ -7473,8 +7536,8 @@
     }
 
     function openDirectSyncModal() {
-      if (!isUserAdmin()) {
-        alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses oleh Akun Admin Gudang.');
+      if (!isUserAdmin(currentUser) && !hasPermission('perm_sys_cloud_sync')) {
+        alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses oleh Akun yang memiliki izin Database Cloud.');
         return;
       }
       document.getElementById('direct-sync-modal').classList.remove('hidden');
@@ -7793,37 +7856,37 @@
         // Akun Scanner Absensi (MAI & MBI) HANYA boleh membuka menu attendance
         viewName = 'attendance';
       } else if (viewName === 'permissions') {
-        if (!hasPermission('perm_sys_manage_permissions') && !isAdmin && !isManager && !isSpv) {
+        if (!isAdmin && !hasPermission('perm_sys_manage_permissions')) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk mengelola hak akses akun.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
       } else if (viewName === 'github' || viewName === 'cloud') {
-        if (!hasPermission('perm_sys_cloud_sync')) {
+        if (!isAdmin && !hasPermission('perm_sys_cloud_sync')) {
           alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses dengan izin Cloud Database.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
       } else if (viewName === 'employees') {
-        if (!hasPermission('perm_emp_view') && !hasPermission('perm_emp_add')) {
+        if (!isAdmin && !hasPermission('perm_emp_view') && !hasPermission('perm_emp_add')) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk membuka menu Data Karyawan.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
       } else if (viewName === 'leaves') {
-        if (!hasPermission('perm_submit_leave_staff') && !hasPermission('perm_approve_leave_spv') && !hasPermission('perm_approve_leave_mgr')) {
+        if (!isAdmin && !hasPermission('perm_submit_leave_staff') && !hasPermission('perm_approve_leave_spv') && !hasPermission('perm_approve_leave_mgr')) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Form Pengajuan Sakit/Cuti.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
       } else if (viewName === 'overtime') {
-        if (!hasPermission('perm_submit_batch_ot') && !hasPermission('perm_approve_ot_spv') && !hasPermission('perm_approve_ot_mgr') && !hasPermission('perm_rep_ot')) {
+        if (!isAdmin && !hasPermission('perm_submit_batch_ot') && !hasPermission('perm_approve_ot_spv') && !hasPermission('perm_approve_ot_mgr') && !hasPermission('perm_rep_ot')) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Input & Rekap Lembur.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
       } else if (viewName === 'reports-group') {
-        if (!hasPermission('perm_rep_records') && !hasPermission('perm_rep_matrix') && !hasPermission('perm_rep_workhours') && !hasPermission('perm_rep_leaves') && !hasPermission('perm_rep_ot')) {
+        if (!isAdmin && !hasPermission('perm_rep_records') && !hasPermission('perm_rep_matrix') && !hasPermission('perm_rep_workhours') && !hasPermission('perm_rep_leaves') && !hasPermission('perm_rep_ot')) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Laporan & Rekap Absensi.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
       } else if (viewName === 'idcard') {
-        if (!hasPermission('perm_idcard_single') && !hasPermission('perm_idcard_batch_a4') && !hasPermission('perm_idcard_qr_location')) {
+        if (!isAdmin && !hasPermission('perm_idcard_single') && !hasPermission('perm_idcard_batch_a4') && !hasPermission('perm_idcard_qr_location')) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Kartu ID Karyawan.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
@@ -8700,8 +8763,8 @@
 
     // MODAL PENGATURAN SUARA DARI LAPTOP (KHUSUS ADMIN)
     function openAudioSettingsModal() {
-      if (!isUserAdmin(currentUser)) {
-        alert('Akses Ditolak: Pengaturan suara notifikasi presensi hanya dapat diakses oleh Akun Administrator.');
+      if (!isUserAdmin(currentUser) && !hasPermission('perm_sys_audio_settings')) {
+        alert('Akses Ditolak: Pengaturan suara notifikasi presensi hanya dapat diakses oleh Akun Administrator atau akun yang memiliki izin.');
         return;
       }
       const modal = document.getElementById('audio-settings-modal');
