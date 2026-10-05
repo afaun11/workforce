@@ -3827,11 +3827,11 @@
 
     const SEED_MANAGER_USER = {
       id: 'mgr-eko',
-      name: 'Eko',
+      name: 'Manager',
       dept: 'Management',
       outsource: 'Internal',
       phone: '081200000001',
-      email: 'eko.manager@medika.com',
+      email: 'manager@medika.com',
       joinDate: '2023-01-01',
       nik: 'MGR001',
       role: 'manager',
@@ -4101,21 +4101,14 @@
       }
 
       // 2.5 Tempatkan Akun Dedicated Manager (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
-      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || (u.dept && u.dept.toLowerCase() === 'management')));
+      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || (u.role === 'manager' && (u.id === 'mgr-eko' || u.nik === 'MGR001'))));
       if (!manager) {
-        let defaultName = 'Manager';
-        try {
-          const activeSession = JSON.parse(localStorage.getItem('wfm_active_session') || '{}');
-          if (activeSession && (activeSession.role === 'manager' || activeSession.id === 'mgr-eko' || activeSession.nik === 'MGR001')) {
-            defaultName = activeSession.name || 'Manager';
-          } else if (typeof SEED_MANAGER_USER !== 'undefined' && SEED_MANAGER_USER && SEED_MANAGER_USER.name) {
-            defaultName = SEED_MANAGER_USER.name;
-          }
-        } catch(e) {}
-        manager = { ...SEED_MANAGER_USER, name: defaultName, warehouse };
+        manager = { ...SEED_MANAGER_USER, name: 'Manager', warehouse };
       } else {
-        manager.nik = manager.nik || 'MGR001';
-        manager.name = (manager.name && manager.name.trim() !== '') ? manager.name : 'Manager';
+        manager.id = 'mgr-eko';
+        manager.nik = 'MGR001';
+        const isManagerNameMelinda = cleanStr(manager.name) === 'melinda';
+        manager.name = (!isManagerNameMelinda && manager.name && manager.name.trim() !== '') ? manager.name : 'Manager';
         manager.dept = 'Management';
         manager.role = 'manager';
         manager.hasAccount = true;
@@ -4134,7 +4127,7 @@
         if (isUserMarkedDeleted(u, deletedKeys)) return false;
         if (u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI') return false;
         if (u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) return false;
-        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || (u.dept && u.dept.toLowerCase() === 'management')) return false;
+        if (u.id === 'mgr-eko' || u.nik === 'MGR001') return false;
         if (u.nik && (u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
         if (u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
         return true;
@@ -4331,6 +4324,94 @@
         }
       } catch (e) {
         console.warn('AutoPurge error:', e);
+      }
+    }
+
+    // Memastikan akun Manager (MGR001) dan akun Melinda adalah 2 akun terpisah dan independen
+    function restoreSeparateMelindaAndManagerAccounts() {
+      try {
+        let hasChanges = false;
+        ['MBI', 'MAI'].forEach(wh => {
+          const storageKey = `wfm_${wh.toLowerCase()}_users`;
+          const raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          let users = JSON.parse(raw);
+          if (!Array.isArray(users)) return;
+
+          let hasMelindaAsManager = false;
+          let hasRegularMelinda = false;
+
+          users.forEach(u => {
+            if (!u || !u.name) return;
+            const cName = cleanStr(u.name);
+            if (cName.includes('melinda')) {
+              if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager') {
+                hasMelindaAsManager = true;
+              } else {
+                hasRegularMelinda = true;
+              }
+            }
+          });
+
+          if (hasMelindaAsManager && !hasRegularMelinda) {
+            const mgrItem = users.find(u => u && cleanStr(u.name).includes('melinda'));
+            const melindaUser = {
+              id: `${wh.toLowerCase()}-melinda-${Date.now()}`,
+              name: mgrItem ? mgrItem.name : 'Melinda',
+              dept: 'Warehouse Staff',
+              outsource: (mgrItem && mgrItem.outsource) ? mgrItem.outsource : 'Internal',
+              phone: (mgrItem && mgrItem.phone && mgrItem.phone !== '081200000001') ? mgrItem.phone : '-',
+              email: (mgrItem && mgrItem.email && !mgrItem.email.includes('eko') && !mgrItem.email.includes('manager')) ? mgrItem.email : '',
+              joinDate: (mgrItem && mgrItem.joinDate) ? mgrItem.joinDate : '-',
+              nik: '',
+              role: 'staff',
+              hasAccount: false,
+              password: '',
+              isFirstLogin: false,
+              warehouse: wh
+            };
+
+            users = users.map(u => {
+              if (u && (u.id === 'mgr-eko' || u.nik === 'MGR001' || cleanStr(u.name).includes('melinda'))) {
+                return {
+                  id: 'mgr-eko',
+                  name: 'Manager',
+                  dept: 'Management',
+                  outsource: 'Internal',
+                  phone: '081200000001',
+                  email: 'manager@medika.com',
+                  joinDate: '2023-01-01',
+                  nik: 'MGR001',
+                  role: 'manager',
+                  password: 'medika123',
+                  isFirstLogin: false,
+                  hasAccount: true,
+                  warehouse: wh
+                };
+              }
+              return u;
+            });
+
+            users.push(melindaUser);
+
+            const cleaned = deduplicateUserList(users, wh);
+            localStorage.setItem(storageKey, JSON.stringify(cleaned));
+            localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(cleaned));
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+          localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
+          if (typeof saveFullDatabaseToCloud === 'function') {
+            saveFullDatabaseToCloud(false, true, true);
+          }
+          if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
+          if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
+        }
+      } catch (e) {
+        console.warn('restoreSeparateMelindaAndManagerAccounts error:', e);
       }
     }
 
@@ -5971,10 +6052,12 @@
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
       if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
+      if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts();
       sanitizeEmployeesData();
       repairAndSanitizeAttendanceRecords();
       recoverLostEmployees(true);
       if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
+      if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts();
       getWhDB('MBI', 'users', SEED_MBI_USERS);
       getWhDB('MAI', 'users', SEED_MAI_USERS);
       getWhDB('MBI', 'attendance', []);
@@ -6643,7 +6726,7 @@
       
       const isSpv = role === 'supervisor' || role.includes('supervisor') || role === 'spv' || dept.includes('supervisor') || dept.includes('spv') || nik.startsWith('SPV');
       const isCoord = role === 'coordinator' || role.includes('coordinator') || role.includes('cordinator') || role.includes('koordinator') || dept.includes('coordinator') || dept.includes('cordinator') || dept.includes('koordinator') || nik.startsWith('CRD');
-      const isMgr = role === 'manager' || dept.includes('manager') || nik.startsWith('MGR') || name.includes('manager');
+      const isMgr = role === 'manager' || (dept.includes('manager') && role === 'manager') || nik === 'MGR001' || nik.startsWith('MGR');
       const isAdminRole = role === 'admin' || role === 'superadmin' || dept.includes('admin') || nik.startsWith('ADM');
       const hasExplicitAccount = (u.hasAccount === true && role !== 'staff' && role !== 'scanner');
       const hasCustomPass = !!(u.password && String(u.password).trim().length > 0 && role !== 'staff' && role !== 'scanner');
