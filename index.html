@@ -4184,15 +4184,18 @@
           return; // DUPLIKAT IDENTIK -> MERGE & SKIP
         }
 
-        // Saring duplikasi NIK / ID Karyawan
+        // Saring duplikasi NIK / ID Karyawan HANYA JIKA nama sama atau salah satunya bukan nama manusia
         if (normNik && seenNiks.has(normNik)) {
           const existing = regularEmployees.find(e => (e.nik && e.nik.toUpperCase() === normNik) || (e.id && e.id === u.id));
-          if (existing) {
+          if (existing && (cleanStr(existing.name) === normName || !isLikelyHumanName(u.name))) {
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+            return; // DUPLIKAT NIK & NAMA SAMA -> MERGE & SKIP
           }
-          return; // DUPLIKAT NIK -> MERGE & SKIP
+          // JIKA DUA ORANG MANUSIA BERBEDA (misal DINARYA & FIRMAN): JANGAN DI-MERGE / DIBUANG!
+          // Kosongkan u.nik agar dibuatkan NIK baru yang unik dan tidak bentrok di tahap 4!
+          u.nik = '';
         }
 
         // Saring duplikasi ID System
@@ -4443,20 +4446,251 @@
       }
     }
 
-    function harmonizeAndResequenceAllNIKs() {
+    // =========================================================================
+    // SISTEM PATEN NIK & NAMA KARYAWAN 100% MUTLAK (IMMUTABLE 1-TO-1 MAPPING)
+    // Menjamin SELURUH KARYAWAN di kedua gudang (MBI & MAI) memiliki NIK & Nama
+    // yang terpaut 1-to-1, tidak bisa tertukar, bertabrakan, atau terbalik selamanya.
+    // =========================================================================
+    function lockAndHarmonizeAllEmployeeNIKs() {
       try {
+        let hasAnyChanges = false;
+        const permanentRegistry = {};
+        try {
+          const rawReg = localStorage.getItem('wfm_permanent_nik_name_registry');
+          if (rawReg) Object.assign(permanentRegistry, JSON.parse(rawReg));
+        } catch(e) {}
+
         ['MBI', 'MAI'].forEach(wh => {
-          const storageKey = `wfm_${wh.toLowerCase()}_users`;
-          const raw = localStorage.getItem(storageKey);
-          if (!raw) return;
-          const users = JSON.parse(raw);
-          if (Array.isArray(users)) {
-            const cleaned = deduplicateUserList(users, wh);
-            localStorage.setItem(storageKey, JSON.stringify(cleaned));
-            localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(cleaned));
+          const userKey = `wfm_${wh.toLowerCase()}_users`;
+          const backupKey = `wfm_${wh.toLowerCase()}_users_backup`;
+          const attKey = `wfm_${wh.toLowerCase()}_attendance`;
+          const otKey = `wfm_${wh.toLowerCase()}_overtime`;
+          const lvKey = `wfm_${wh.toLowerCase()}_leaves`;
+
+          const rawUsers = localStorage.getItem(userKey);
+          if (!rawUsers) return;
+          let users = JSON.parse(rawUsers);
+          if (!Array.isArray(users) || users.length === 0) return;
+
+          const year = new Date().getFullYear().toString().slice(-2);
+          const prefix = `${wh.toUpperCase()}${year}-`;
+
+          // 1. Kumpulkan seluruh NIK yang sudah digunakan dan pastikan keunikan 100%
+          const assignedNiks = new Set();
+          const nameToUserMap = new Map();
+          let maxSeq = 0;
+
+          // Proteksi Khusus untuk Dinarya & Firman agar NIK Dinarya selalu MBI26-118
+          let dinarya = users.find(u => u && cleanStr(u.name).includes('dinarya'));
+          let firman = users.find(u => u && cleanStr(u.name).includes('firman'));
+          if (wh === 'MBI') {
+            if (dinarya) {
+              dinarya.nik = 'MBI26-118';
+              dinarya.barcodeValue = 'MBI26-118';
+              assignedNiks.add('MBI26-118');
+              permanentRegistry[`${wh}_${cleanStr(dinarya.name)}`] = 'MBI26-118';
+            }
+            if (firman && (firman.nik === 'MBI26-118' || !firman.nik)) {
+              firman.nik = '';
+            }
+          }
+
+          // Hitung nomor urut NIK tertinggi saat ini
+          users.forEach(u => {
+            if (!u || !u.nik) return;
+            const cNik = String(u.nik).trim().toUpperCase();
+            if (cNik.startsWith(prefix)) {
+              const num = parseInt(cNik.replace(prefix, ''), 10);
+              if (!isNaN(num) && num > maxSeq) maxSeq = num;
+            } else if (/^\d+$/.test(cNik)) {
+              const num = parseInt(cNik, 10);
+              if (!isNaN(num) && num > maxSeq) maxSeq = num;
+            }
+          });
+
+          // Tahap A: Patenkan NIK untuk akun sistem dan seluruh karyawan reguler
+          users.forEach(u => {
+            if (!u) return;
+            if (isManagementSystemAccount(u)) {
+              if (u.nik) assignedNiks.add(u.nik.toUpperCase());
+              return;
+            }
+
+            const cleanName = cleanStr(u.name);
+            if (!cleanName || isLikelyIdNotName(u.name)) return;
+
+            let currentNik = (u.nik ? String(u.nik).trim().toUpperCase() : '');
+            if (currentNik && /^\d+$/.test(currentNik)) {
+              currentNik = `${prefix}${String(currentNik).padStart(3, '0')}`;
+            }
+
+            // Cek apakah karyawan ini sudah pernah dipatenkan NIK-nya di registry
+            const regKey = `${wh}_${cleanName}`;
+            if (!currentNik && permanentRegistry[regKey]) {
+              currentNik = permanentRegistry[regKey];
+            }
+
+            // Jika NIK bentrok dengan karyawan lain yang sudah diproses:
+            if (currentNik && assignedNiks.has(currentNik) && (!dinarya || u !== dinarya)) {
+              maxSeq++;
+              let cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
+              while (assignedNiks.has(cand)) {
+                maxSeq++;
+                cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
+              }
+              currentNik = cand;
+              hasAnyChanges = true;
+            } else if (!currentNik) {
+              maxSeq++;
+              let cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
+              while (assignedNiks.has(cand)) {
+                maxSeq++;
+                cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
+              }
+              currentNik = cand;
+              hasAnyChanges = true;
+            }
+
+            assignedNiks.add(currentNik);
+            u.nik = currentNik;
+            u.barcodeValue = currentNik;
+            permanentRegistry[regKey] = currentNik;
+            nameToUserMap.set(cleanName, u);
+          });
+
+          // Simpan master karyawan yang telah dipatenkan
+          users = deduplicateUserList(users, wh);
+          localStorage.setItem(userKey, JSON.stringify(users));
+          localStorage.setItem(backupKey, JSON.stringify(users));
+
+          // Tahap B: Kaskade Paten NIK & Nama ke SELURUH Riwayat Presensi (Attendance)
+          const rawAtt = localStorage.getItem(attKey);
+          if (rawAtt) {
+            let atts = JSON.parse(rawAtt);
+            if (Array.isArray(atts)) {
+              let attChanged = false;
+              atts.forEach(a => {
+                if (!a) return;
+                const cName = cleanStr(a.userName || '');
+                // Cari karyawan master berdasarkan nama manusia sah
+                let masterUser = nameToUserMap.get(cName);
+                if (!masterUser && a.userId) {
+                  masterUser = users.find(u => u.id === a.userId);
+                }
+
+                // Jika ditemukan master karyawan: KUNCI NIK & Identitasnya 100%
+                if (masterUser) {
+                  if (a.userName !== masterUser.name || a.userNik !== masterUser.nik || a.userId !== masterUser.id || a.dept !== masterUser.dept) {
+                    a.userName = masterUser.name;
+                    a.userNik = masterUser.nik;
+                    a.userId = masterUser.id;
+                    a.dept = masterUser.dept;
+                    a.outsource = masterUser.outsource || a.outsource || 'Internal';
+                    attChanged = true;
+                  }
+                  // Normalisasi miss scan pada record lama yang sempat tertukar
+                  if (a.date === '2026-10-04' && cName.includes('dinarya')) {
+                    if (a.notes?.includes('Miss Scan') || !a.checkOutTime || (a.checkOutTime && (a.checkOutTime.includes('T13:39') || a.checkOutTime.includes('20:39')))) {
+                      a.checkOutTime = null;
+                      a.notes = 'Miss Scan';
+                      attChanged = true;
+                    }
+                  }
+                } else if (a.userNik) {
+                  // Jika nama di absensi kosong/ID, tapi NIK cocok dengan satu karyawan
+                  const matchByNik = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
+                  if (matchByNik && (!a.userName || isLikelyIdNotName(a.userName))) {
+                    a.userName = matchByNik.name;
+                    a.userId = matchByNik.id;
+                    a.dept = matchByNik.dept;
+                    a.outsource = matchByNik.outsource || 'Internal';
+                    attChanged = true;
+                  }
+                }
+              });
+
+              if (attChanged) {
+                localStorage.setItem(attKey, JSON.stringify(atts));
+                hasAnyChanges = true;
+              }
+            }
+          }
+
+          // Tahap C: Kaskade Paten NIK & Nama ke SELURUH Data Lembur (Overtime)
+          const rawOt = localStorage.getItem(otKey);
+          if (rawOt) {
+            let ots = JSON.parse(rawOt);
+            if (Array.isArray(ots)) {
+              let otChanged = false;
+              ots.forEach(o => {
+                if (!o) return;
+                const cName = cleanStr(o.userName || '');
+                const masterUser = nameToUserMap.get(cName);
+                if (masterUser) {
+                  if (o.userName !== masterUser.name || o.userNik !== masterUser.nik || o.userId !== masterUser.id) {
+                    o.userName = masterUser.name;
+                    o.userNik = masterUser.nik;
+                    o.userId = masterUser.id;
+                    otChanged = true;
+                  }
+                }
+              });
+              if (otChanged) {
+                localStorage.setItem(otKey, JSON.stringify(ots));
+                hasAnyChanges = true;
+              }
+            }
+          }
+
+          // Tahap D: Kaskade Paten NIK & Nama ke SELURUH Data Cuti / Izin (Leaves)
+          const rawLv = localStorage.getItem(lvKey);
+          if (rawLv) {
+            let lvs = JSON.parse(rawLv);
+            if (Array.isArray(lvs)) {
+              let lvChanged = false;
+              lvs.forEach(l => {
+                if (!l) return;
+                const cName = cleanStr(l.userName || '');
+                const masterUser = nameToUserMap.get(cName);
+                if (masterUser) {
+                  if (l.userName !== masterUser.name || l.userNik !== masterUser.nik || l.userId !== masterUser.id) {
+                    l.userName = masterUser.name;
+                    l.userNik = masterUser.nik;
+                    l.userId = masterUser.id;
+                    lvChanged = true;
+                  }
+                }
+              });
+              if (lvChanged) {
+                localStorage.setItem(lvKey, JSON.stringify(lvs));
+                hasAnyChanges = true;
+              }
+            }
           }
         });
-      } catch(e) {}
+
+        // Simpan registry permanen
+        localStorage.setItem('wfm_permanent_nik_name_registry', JSON.stringify(permanentRegistry));
+
+        if (hasAnyChanges) {
+          localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+          localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
+          if (typeof saveFullDatabaseToCloud === 'function') {
+            saveFullDatabaseToCloud(false, true, true);
+          }
+        }
+      } catch(e) {
+        console.warn('lockAndHarmonizeAllEmployeeNIKs error:', e);
+      }
+    }
+
+    // Alias compatibility
+    function repairDinaryaAndFirmanNIKCollision() {
+      lockAndHarmonizeAllEmployeeNIKs();
+    }
+
+    function harmonizeAndResequenceAllNIKs() {
+      lockAndHarmonizeAllEmployeeNIKs();
     }
 
     function sanitizeAttendanceDatabase(warehouse) {
@@ -4489,28 +4723,46 @@
           // 1.5 Standarisasi Miss Scan: Jangan inject jam pulang buatan pada sesi yang tidak tap pulang
           if (a.notes && (a.notes.includes('Selesai Otomatis') || a.notes.includes('Auto-Close Miss Scan'))) {
             a.checkOutTime = null;
-            a.notes = '';
+            a.notes = 'Miss Scan';
             hasChanges = true;
           }
 
-          // 2. Cari user master berdasarkan nama lengkap atau NIK
+          // 2. Cari user master berdasarkan nama lengkap atau ID
           let matchedUser = users.find(u => a.userName && cleanStr(u.name) === cleanStr(a.userName));
-          if (!matchedUser && a.userNik) {
-            matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
-          }
           if (!matchedUser && a.userId) {
             matchedUser = users.find(u => u.id === a.userId);
+          }
+          if (!matchedUser && a.userNik) {
+            const cand = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
+            if (cand && (!a.userName || isLikelyIdNotName(a.userName) || cleanStr(cand.name) === cleanStr(a.userName))) {
+              matchedUser = cand;
+            }
           }
 
           if (matchedUser) {
             const userOS = matchedUser.outsource || 'Internal';
-            if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
-              a.userName = matchedUser.name;
-              a.userNik = matchedUser.nik;
-              a.userId = matchedUser.id;
-              a.dept = matchedUser.dept;
-              a.outsource = userOS;
-              hasChanges = true;
+            // Hanya update jika nama cocok atau belum ada nama manusia sah
+            if (!a.userName || isLikelyIdNotName(a.userName) || cleanStr(matchedUser.name) === cleanStr(a.userName)) {
+              if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
+                a.userName = matchedUser.name;
+                a.userNik = matchedUser.nik;
+                a.userId = matchedUser.id;
+                a.dept = matchedUser.dept;
+                a.outsource = userOS;
+                hasChanges = true;
+              }
+            } else {
+              // Jika nama a.userName valid (misal DINARYA), tapi NIK tidak cocok: perbaiki NIK mengikuti nama
+              const realUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
+              if (realUser) {
+                if (a.userNik !== realUser.nik || a.userId !== realUser.id || a.dept !== realUser.dept) {
+                  a.userNik = realUser.nik;
+                  a.userId = realUser.id;
+                  a.dept = realUser.dept;
+                  a.outsource = realUser.outsource || 'Internal';
+                  hasChanges = true;
+                }
+              }
             }
           }
         });
@@ -9456,10 +9708,11 @@
       const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
 
       // 1. FILTER & URUTKAN SELURUH RIWAYAT PRESENSI KARYAWAN SECARA KRONOLOGIS TERBARU (DESCENDING)
+      // Pencarian KETAT & AMAN: Mencegah NIK tertukar atau satu karyawan menutup sesi karyawan lain
       const userAtts = attendances.filter(a => 
+        (a.userId && a.userId === matchedUser.id) ||
         (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
-        (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase()) ||
-        (a.userId && a.userId === matchedUser.id)
+        (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase() && (!a.userName || cleanStr(a.userName) === cleanStr(matchedUser.name)))
       ).sort((a, b) => {
         const tA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
         const tB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
@@ -9468,20 +9721,32 @@
 
       // 2. IDENTIFIKASI SESI AKTIF (HANYA BERLAKU UNTUK SHIFT BERJALAN < 14 JAM)
       // Mendukung 100% seluruh jenis shift 24 Jam: Pagi (06:00 / 07:00), Siang/Sore (15:00), Malam/Dini Hari (23:00 / 00:00).
-      // Sesi lama yang tidak di-tap pulang (> 14 jam lalu) dibiarkan murni sebagai Miss Scan (checkOutTime tetap null, tanpa jam buatan)
+      // Sesi lama yang tidak di-tap pulang (> 14 jam lalu atau shift kemarin) dibiarkan murni sebagai Miss Scan (checkOutTime tetap null, tanpa jam buatan)
       // dan karyawan BISA LANGSUNG ABSEN MASUK UNTUK SHIFT BARU TANPA TERHAMBAT!
       const openSession = userAtts.find(a => a.checkInTime && !a.checkOutTime);
       let isOpenSessionValid = false;
       let sessionElapsedMs = 0;
       if (openSession) {
         sessionElapsedMs = now.getTime() - new Date(openSession.checkInTime).getTime();
+        const openLocalDate = getLocalDateString(new Date(openSession.checkInTime));
+        const isSameDate = (openSession.date === todayStr || openLocalDate === todayStr);
         isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs < MAX_SHIFT_MS);
+        if (!isSameDate && sessionElapsedMs > 12 * 60 * 60 * 1000) {
+          isOpenSessionValid = false;
+        }
       }
 
       if (selectedAttendanceType === 'check_in') {
         // ==========================================
         // MODE ABSEN MASUK (CHECK_IN) - 24 JAM PENUH
         // ==========================================
+        // Jika ada sesi kemarin yang belum ditutup, pastikan sesi tersebut ditandai murni Miss Scan (checkOutTime: null)
+        if (openSession && !isOpenSessionValid) {
+          openSession.checkOutTime = null;
+          openSession.notes = 'Miss Scan';
+          setWhDB(targetWh, 'attendance', attendances);
+        }
+
         // JIKA MASIH MEMILIKI SESI AKTIF YANG BELUM PULANG (DALAM SHIFT YANG SAMA < 14 JAM):
         if (openSession && isOpenSessionValid) {
           const inTimeStr = new Date(openSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
@@ -9589,7 +9854,7 @@
         // ==========================================
         // MODE ABSEN PULANG (CHECK_OUT) - 24 JAM PENUH
         // ==========================================
-        // KASUS 1: Ada sesi terbuka yang sah (rentang 0 s.d 18 jam)
+        // KASUS 1: Ada sesi terbuka yang sah (rentang 0 s.d 14 jam)
         // MENDUKUNG PENUH SELURUH SHIFT: Shift Malam Lintas Hari (Masuk 23:00 kemarin, Pulang 07:00 hari ini), Shift Dini Hari (Masuk 00:00, Pulang 08:00), Shift Pagi (Masuk 06:00, Pulang 14:00), dst.
         if (openSession && isOpenSessionValid) {
           const diffMs = now.getTime() - new Date(openSession.checkInTime).getTime();
@@ -9643,6 +9908,28 @@
 
           playAttendanceSuccessSound('check_out', matchedUser.name);
           stopScanner();
+        } else if (openSession && !isOpenSessionValid) {
+          // Sesi kemarin adalah Miss Scan murni
+          openSession.checkOutTime = null;
+          openSession.notes = 'Miss Scan';
+          setWhDB(targetWh, 'attendance', attendances);
+          saveFullDatabaseToCloud(false, true);
+
+          showProfessionalAttendanceToast({
+            isWarning: true,
+            title: 'Shift Sebelumnya Miss Scan',
+            subtitle: `Sesi ${matchedUser.name} pada ${openSession.date} tercatat Miss Scan (tidak tap pulang). Silakan pilih tombol [Absen Masuk] untuk shift hari ini.`,
+            name: matchedUser.name,
+            nik: matchedUser.nik,
+            dept: matchedUser.dept || 'Staff',
+            warehouse: targetWh,
+            time: nowFormatted,
+            statusText: 'Miss Scan'
+          });
+          playAttendanceErrorSound('Miss scan kemarin');
+          stopScanner();
+          setTimeout(() => { isScanProcessing = false; }, 2000);
+          return;
         } else {
           // KASUS 2: Tidak ada sesi terbuka (Sudah pulang sebelumnya ATAU Belum masuk)
           const recentAtt = userAtts[0];
@@ -10175,7 +10462,7 @@
               ${(a.notes && a.notes !== 'Tepat Waktu' && a.notes !== 'Terlambat' && a.notes !== '-') ? `<div class="text-[10px] text-slate-500 font-medium mt-1 italic">${a.notes}</div>` : ''}
             </td>
             <td class="p-3.5 font-mono font-bold ${a.checkOutTime ? 'text-slate-900' : 'text-slate-400 italic'}">
-              ${outTime !== '-' ? outTime : 'Belum Absen Pulang'}
+              ${a.checkOutTime ? outTime : (getAttendanceDurationInfo(a).isMissScan ? '<span class="text-rose-600 font-bold not-italic">Miss Scan (-)</span>' : 'Belum Absen Pulang')}
             </td>
           </tr>
         `;
@@ -11537,6 +11824,7 @@
     function renderEmployeeTable() {
       try {
         if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees();
+        if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs();
         if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
         const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         const regularUsers = users.filter(u => !isManagementSystemAccount(u));
@@ -14572,13 +14860,10 @@
           : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-50 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-slate-900"></span>Normal</span>';
         
         let outBadge = '';
-        const isAutoClosedMissScan = rec.notes && (rec.notes.includes('Miss Scan') || rec.notes.includes('Selesai Otomatis'));
-        if (isAutoClosedMissScan) {
-          outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs whitespace-nowrap" title="Shift ditutup otomatis oleh sistem karena karyawan tidak melakukan tap pulang"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Miss Scan (Tutup Otomatis)</span>';
-        } else if (rec.checkOutTime) {
+        if (rec.checkOutTime) {
           outBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs whitespace-nowrap">Sudah Pulang</span>';
         } else if (durInfo.isMissScan) {
-          outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Miss Scan</span>';
+          outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-800 border border-rose-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Miss Scan</span>';
         } else {
           outBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>Sedang Shift</span>';
         }
@@ -14601,8 +14886,8 @@
             <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-700 whitespace-nowrap text-[11px]">${finalOutsource}</td>
             <td class="p-3.5 border-r border-slate-100 uppercase font-mono text-[11px] text-slate-600">${finalDept}</td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-800 font-semibold whitespace-nowrap">${new Date(rec.checkInTime).toLocaleTimeString('id-ID')} WIB</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 whitespace-nowrap">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : (durInfo.isMissScan ? '<span class="text-rose-600 font-semibold italic text-[11px]">Miss Scan</span>' : '<span class="text-amber-600 font-medium italic text-[11px]">Sedang Shift</span>')}</td>
-            <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800 whitespace-nowrap">${durationStr}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700 whitespace-nowrap">${rec.checkOutTime ? new Date(rec.checkOutTime).toLocaleTimeString('id-ID') + ' WIB' : (durInfo.isMissScan ? '<span class="text-rose-600 font-bold italic text-[11px]">Miss Scan (-)</span>' : '<span class="text-amber-600 font-medium italic text-[11px]">Sedang Shift</span>')}</td>
+            <td class="p-3.5 border-r border-slate-100 font-mono font-semibold text-slate-800 whitespace-nowrap">${durInfo.isMissScan ? '<span class="font-bold text-slate-900 font-mono">7 Jam</span> <span class="text-[10px] text-rose-600 font-semibold">(Miss Scan)</span>' : durationStr}</td>
             <td class="p-3.5 border-r border-slate-100">
               <div class="flex flex-col gap-1 items-start">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -17488,6 +17773,12 @@ function testManualSync() {
     try {
       if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') {
         autoPurgeDuplicateAndCorruptEmployees();
+      }
+      if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') {
+        restoreSeparateMelindaAndManagerAccounts();
+      }
+      if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') {
+        lockAndHarmonizeAllEmployeeNIKs();
       }
       if (typeof repairCorruptedEmployeeNames === 'function') {
         repairCorruptedEmployeeNames();
