@@ -4402,6 +4402,13 @@
         });
 
         if (hasChanges) {
+          try {
+            const activeSession = JSON.parse(localStorage.getItem('wfm_active_session') || '{}');
+            if (activeSession && activeSession.id === 'mgr-eko' && cleanStr(activeSession.name) === 'melinda') {
+              activeSession.name = 'Manager';
+              localStorage.setItem('wfm_active_session', JSON.stringify(activeSession));
+            }
+          } catch(e) {}
           localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
           localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
           if (typeof saveFullDatabaseToCloud === 'function') {
@@ -7504,21 +7511,17 @@
         user = (targetWh === 'MAI' ? maiUsers : mbiUsers).find(u => isUserAdmin(u)) || (targetWh === 'MAI' ? SEED_MAI_USERS[0] : SEED_MBI_USERS[0]);
       }
 
-      // 0.5 Keyword cepat Manager (misal: 'melinda', 'eko', 'manager', 'mgr', 'managereko', 'managermelinda', 'mgr001', 'mgreko', 'mgrmelinda')
+      // 0.5 Keyword cepat Manager (misal: 'manager', 'mgr', 'managereko', 'mgr001', 'mgreko')
       if (!user && (
-        cleanInput === 'melinda' || cleanInput.includes('melinda') ||
         cleanInput === 'eko' || cleanInput === 'manager' || cleanInput === 'mgr' ||
         cleanInput === 'managereko' || cleanInput === 'mgr001' || cleanInput === 'mgreko' ||
-        cleanInput === 'managermelinda' || cleanInput === 'mgrmelinda' ||
+        cleanInput === 'managermbi' || cleanInput === 'managermai' ||
         cleanInput.includes('manager')
       )) {
         user = (selectedWh === 'MAI' ? maiUsers : mbiUsers).find(u => isUserManager(u)) || 
                mbiUsers.find(u => isUserManager(u)) || 
                maiUsers.find(u => isUserManager(u)) || 
-               { ...SEED_MANAGER_USER, name: cleanInput.includes('melinda') ? 'Melinda' : latestMgrName, warehouse: selectedWh };
-        if (cleanInput.includes('melinda') && user) {
-          user.name = 'Melinda';
-        }
+               { ...SEED_MANAGER_USER, name: 'Manager', warehouse: selectedWh };
       }
 
       // 1. Exact match (NIK / Nama / Phone / ID / Email / Username)
