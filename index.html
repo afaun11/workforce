@@ -2738,7 +2738,7 @@
               <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
                 <!-- Dropdown Select Akun -->
                 <div class="lg:col-span-2 space-y-2">
-                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Daftar Akun Karyawan &amp; Manajemen:</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Daftar Akun Login Manajemen (Supervisor, Coordinator, Manager &amp; Admin):</label>
                   <select id="perm-account-select" onchange="onPermissionAccountChange()" class="w-full bg-slate-50 hover:bg-white border-2 border-slate-200 focus:border-slate-900 rounded-2xl p-3.5 text-xs font-bold text-slate-900 focus:outline-none transition cursor-pointer shadow-2xs">
                     <!-- Populated via JavaScript -->
                   </select>
@@ -6580,6 +6580,24 @@
     let currentEditingUserNik = null;
     let currentEditingPermissions = {};
 
+    function isLoginManagementAccount(u) {
+      if (!u) return false;
+      if (isUserAdmin(u) || isUserManager(u)) return true;
+      const role = (u.role || '').toLowerCase().trim();
+      const dept = (u.dept || '').toLowerCase().trim();
+      const nik = (u.nik || u.id || '').toString().toUpperCase().trim();
+      const name = (u.name || '').toLowerCase().trim();
+      
+      const isSpv = role === 'supervisor' || role.includes('supervisor') || role === 'spv' || dept.includes('supervisor') || dept.includes('spv') || nik.startsWith('SPV');
+      const isCoord = role === 'coordinator' || role.includes('coordinator') || role.includes('cordinator') || role.includes('koordinator') || dept.includes('coordinator') || dept.includes('cordinator') || dept.includes('koordinator') || nik.startsWith('CRD');
+      const isMgr = role === 'manager' || dept.includes('manager') || nik.startsWith('MGR') || name.includes('manager');
+      const isAdminRole = role === 'admin' || role === 'superadmin' || dept.includes('admin') || nik.startsWith('ADM');
+      const hasExplicitAccount = (u.hasAccount === true && role !== 'staff' && role !== 'scanner');
+      const hasCustomPass = !!(u.password && String(u.password).trim().length > 0 && role !== 'staff' && role !== 'scanner');
+
+      return isSpv || isCoord || isMgr || isAdminRole || hasExplicitAccount || hasCustomPass;
+    }
+
     function populatePermissionAccountDropdown(selectedNik = null) {
       const select = document.getElementById('perm-account-select');
       if (!select) return;
@@ -6588,8 +6606,14 @@
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       
       const map = new Map();
+
+      // Pastikan akun manager sistem bawaan (Eko) terdaftar jika tersedia
+      if (typeof SEED_MANAGER_USER !== 'undefined' && SEED_MANAGER_USER) {
+        map.set(`MBI_${SEED_MANAGER_USER.nik}`, { ...SEED_MANAGER_USER, warehouse: 'MBI' });
+      }
+
       mbiUsers.forEach(u => {
-        if (u) {
+        if (u && isLoginManagementAccount(u)) {
           const userNik = (u.nik || u.id || u.name || '').toString().trim();
           if (userNik) {
             map.set(`MBI_${userNik}`, { ...u, warehouse: 'MBI', nik: u.nik || userNik });
@@ -6597,7 +6621,7 @@
         }
       });
       maiUsers.forEach(u => {
-        if (u) {
+        if (u && isLoginManagementAccount(u)) {
           const userNik = (u.nik || u.id || u.name || '').toString().trim();
           if (userNik) {
             map.set(`MAI_${userNik}`, { ...u, warehouse: 'MAI', nik: u.nik || userNik });
@@ -6617,6 +6641,14 @@
       });
 
       select.innerHTML = '';
+      if (all.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.innerText = '-- Tidak ada akun manajemen (Supervisor/Coordinator/Admin/Manager) --';
+        select.appendChild(opt);
+        return;
+      }
+
       all.forEach(u => {
         const opt = document.createElement('option');
         const uniqueVal = `${u.warehouse}__${u.nik}`;
