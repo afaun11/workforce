@@ -4940,6 +4940,8 @@
         } else if (activeViewId === 'view-idcard') {
           populateDropdownEmployees();
           renderSelectedIDCard();
+        } else if (activeViewId === 'view-permissions') {
+          renderPermissionEditor();
         }
 
         if (!currentUser) {
@@ -6546,7 +6548,7 @@
         perms['perm_sys_cloud_sync'] = false;
         perms['perm_sys_gsheet_backup'] = false;
         perms['perm_sys_audio_settings'] = false;
-        perms['perm_sys_manage_permissions'] = false;
+        perms['perm_sys_manage_permissions'] = true;
         return perms;
       }
 
@@ -6584,10 +6586,20 @@
       
       const map = new Map();
       mbiUsers.forEach(u => {
-        if (u && u.nik) map.set(`MBI_${u.nik}`, { ...u, warehouse: 'MBI' });
+        if (u) {
+          const userNik = (u.nik || u.id || u.name || '').toString().trim();
+          if (userNik) {
+            map.set(`MBI_${userNik}`, { ...u, warehouse: 'MBI', nik: u.nik || userNik });
+          }
+        }
       });
       maiUsers.forEach(u => {
-        if (u && u.nik) map.set(`MAI_${u.nik}`, { ...u, warehouse: 'MAI' });
+        if (u) {
+          const userNik = (u.nik || u.id || u.name || '').toString().trim();
+          if (userNik) {
+            map.set(`MAI_${userNik}`, { ...u, warehouse: 'MAI', nik: u.nik || userNik });
+          }
+        }
       });
 
       const all = Array.from(map.values());
@@ -6611,8 +6623,9 @@
         select.appendChild(opt);
       });
 
-      if (selectedNik) {
-        const matchingOpt = Array.from(select.options).find(o => o.value.endsWith(`__${selectedNik}`) || o.value === selectedNik);
+      const targetSearch = selectedNik || (currentUser ? currentUser.nik : null);
+      if (targetSearch) {
+        const matchingOpt = Array.from(select.options).find(o => o.value.endsWith(`__${targetSearch}`) || o.value.toLowerCase().includes(String(targetSearch).toLowerCase()));
         if (matchingOpt) select.value = matchingOpt.value;
       }
     }
@@ -6644,13 +6657,29 @@
 
     function findUserByWhAndNik(nik, wh = null) {
       const targetWh = wh || activeWarehouse || 'MBI';
+      const cleanTarget = (nik || '').toString().trim().toUpperCase();
       const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let found = users.find(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase() || u.id === nik);
+      
+      let found = users.find(u => 
+        (u.nik && u.nik.toString().trim().toUpperCase() === cleanTarget) || 
+        (u.id && u.id.toString().trim().toUpperCase() === cleanTarget) ||
+        (u.name && cleanStr(u.name) === cleanStr(nik))
+      );
+
       if (!found) {
         const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
-        const otherUsers = getWhDB(otherWh, 'users', []);
-        found = otherUsers.find(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase() || u.id === nik);
+        const otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        found = otherUsers.find(u => 
+          (u.nik && u.nik.toString().trim().toUpperCase() === cleanTarget) || 
+          (u.id && u.id.toString().trim().toUpperCase() === cleanTarget) ||
+          (u.name && cleanStr(u.name) === cleanStr(nik))
+        );
       }
+
+      if (!found && currentUser && ((currentUser.nik && currentUser.nik.toString().trim().toUpperCase() === cleanTarget) || cleanStr(currentUser.name) === cleanStr(nik))) {
+        found = currentUser;
+      }
+
       return found;
     }
 
@@ -6658,13 +6687,11 @@
       const select = document.getElementById('perm-account-select');
       if (!select) return;
 
-      if (!select.options || select.options.length === 0) {
-        populatePermissionAccountDropdown();
-      }
+      populatePermissionAccountDropdown(targetNik || (currentUser ? currentUser.nik : null));
 
       let selectedVal = select.value;
       if (targetNik) {
-        const matchingOpt = Array.from(select.options).find(o => o.value.endsWith(`__${targetNik}`));
+        const matchingOpt = Array.from(select.options).find(o => o.value.endsWith(`__${targetNik}`) || o.value.toLowerCase().includes(String(targetNik).toLowerCase()));
         if (matchingOpt) {
           select.value = matchingOpt.value;
           selectedVal = matchingOpt.value;
@@ -6676,14 +6703,40 @@
         select.value = selectedVal;
       }
 
-      if (!selectedVal) return;
+      let user = null;
+      let userWh = targetWh || activeWarehouse || 'MBI';
 
-      const [wh, nik] = selectedVal.split('__');
-      const user = findUserByWhAndNik(nik, wh);
-      if (!user) return;
+      if (selectedVal && selectedVal.includes('__')) {
+        const [wh, nik] = selectedVal.split('__');
+        user = findUserByWhAndNik(nik, wh);
+        userWh = wh || (user ? user.warehouse : activeWarehouse);
+      }
+
+      if (!user && currentUser) {
+        user = currentUser;
+        userWh = currentUser.warehouse || activeWarehouse || 'MBI';
+      }
+
+      if (!user) {
+        const allUsers = [...getWhDB('MBI', 'users', SEED_MBI_USERS), ...getWhDB('MAI', 'users', SEED_MAI_USERS)];
+        if (allUsers.length > 0) {
+          user = allUsers[0];
+          userWh = user.warehouse || 'MBI';
+        }
+      }
+
+      if (!user) {
+        user = {
+          name: 'Administrator',
+          nik: 'ADM001',
+          dept: 'IT & Management',
+          role: 'admin',
+          warehouse: activeWarehouse || 'MBI'
+        };
+        userWh = activeWarehouse || 'MBI';
+      }
 
       currentEditingUserNik = user.nik;
-      const userWh = user.warehouse || wh || 'MBI';
 
       // Load existing permissions or generate defaults
       const defaults = getDefaultPermissions(user);
@@ -6866,7 +6919,8 @@
     }
 
     async function saveUserPermissions() {
-      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_sys_manage_permissions')) {
+      const isSpv = isUserSupervisor(currentUser) || ((currentUser?.role || '').toLowerCase() === 'supervisor') || ((currentUser?.role || '').toLowerCase() === 'coordinator');
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !isSpv && !hasPermission('perm_sys_manage_permissions')) {
         alert('Akses Ditolak: Anda tidak memiliki wewenang untuk menyimpan pengaturan hak akses akun.');
         return;
       }
@@ -6922,11 +6976,12 @@
       const isScanner = isUserScanner(currentUser);
       const isManager = isUserManager(currentUser);
       const userRole = (currentUser.role || 'staff').toLowerCase().trim();
-      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager;
+      const isSpv = isUserSupervisor(currentUser) || userRole === 'supervisor' || userRole === 'coordinator';
+      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager || isSpv;
 
-      // 0. Menu Hak Akses Akun (Admin, Manager, atau akun yang diizinkan perm_sys_manage_permissions)
+      // 0. Menu Hak Akses Akun (Admin, Manager, Supervisor, atau akun yang diizinkan perm_sys_manage_permissions)
       const navPerm = document.getElementById('nav-permissions');
-      const canManagePerm = isAdmin || isManager || hasPermission('perm_sys_manage_permissions');
+      const canManagePerm = isAdmin || isManager || isSpv || hasPermission('perm_sys_manage_permissions');
       if (navPerm) {
         if (canManagePerm && !isScanner) {
           navPerm.classList.remove('hidden');
@@ -7577,6 +7632,7 @@
       try {
         if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
         if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
+        if (typeof populatePermissionAccountDropdown === 'function') populatePermissionAccountDropdown();
         if (typeof renderOvertimeEmployeeGrid === 'function') renderOvertimeEmployeeGrid();
         if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
         if (typeof renderLeavesTable === 'function') renderLeavesTable();
@@ -7695,14 +7751,15 @@
       const isScanner = isUserScanner(currentUser);
       const isAdmin = isUserAdmin(currentUser);
       const isManager = isUserManager(currentUser);
-      const userRole = (currentUser?.role || 'staff').toLowerCase();
-      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager;
+      const userRole = (currentUser?.role || 'staff').toLowerCase().trim();
+      const isSpv = isUserSupervisor(currentUser) || userRole === 'supervisor' || userRole === 'coordinator';
+      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager || isSpv;
       
       if (isScanner) {
         // Akun Scanner Absensi (MAI & MBI) HANYA boleh membuka menu attendance
         viewName = 'attendance';
       } else if (viewName === 'permissions') {
-        if (!hasPermission('perm_sys_manage_permissions') && !isAdmin && !isManager) {
+        if (!hasPermission('perm_sys_manage_permissions') && !isAdmin && !isManager && !isSpv) {
           alert('Akses Ditolak: Anda tidak memiliki izin untuk mengelola hak akses akun.');
           viewName = isManagement ? 'dashboard' : 'attendance';
         }
