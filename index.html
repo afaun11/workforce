@@ -4846,8 +4846,10 @@
 
         if (cloudMatch) {
           const merged = { ...loc };
-          if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
-            merged.permissions = { ...loc.permissions, ...cloudMatch.permissions };
+          if (loc.permissions && typeof loc.permissions === 'object') {
+            merged.permissions = { ...(cloudMatch.permissions || {}), ...loc.permissions };
+          } else if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
+            merged.permissions = { ...cloudMatch.permissions };
           }
           if (cloudMatch.password && !loc.password) {
             merged.password = cloudMatch.password;
@@ -6716,6 +6718,21 @@
       if (user.permissions && typeof user.permissions[permKey] === 'boolean') {
         return user.permissions[permKey];
       }
+      try {
+        const uWh = (user.warehouse || activeWarehouse || 'MBI').toLowerCase();
+        const uNik = (user.nik || user.id || '').toUpperCase().trim();
+        if (uNik) {
+          const savedPerms = localStorage.getItem(`wfm_perm_${uWh}_${uNik}`);
+          if (savedPerms) {
+            const parsed = JSON.parse(savedPerms);
+            if (parsed && typeof parsed[permKey] === 'boolean') {
+              if (!user.permissions) user.permissions = {};
+              user.permissions[permKey] = parsed[permKey];
+              return parsed[permKey];
+            }
+          }
+        }
+      } catch(e) {}
       const defaults = getDefaultPermissions(user);
       return !!defaults[permKey];
     }
@@ -6869,6 +6886,17 @@
         found = currentUser;
       }
 
+      if (found) {
+        if (!found.permissions || Object.keys(found.permissions).length === 0) {
+          try {
+            const uNik = (found.nik || found.id || '').toUpperCase().trim();
+            const pKey = `wfm_perm_${(wh || found.warehouse || targetWh).toLowerCase()}_${uNik}`;
+            const pSaved = localStorage.getItem(pKey);
+            if (pSaved) found.permissions = JSON.parse(pSaved);
+          } catch(e) {}
+        }
+      }
+
       return found;
     }
 
@@ -6927,13 +6955,22 @@
 
       currentEditingUserNik = user.nik;
 
-      // Load existing permissions or generate defaults
+      // Load existing permissions or saved permissions from backup or generate defaults
       const defaults = getDefaultPermissions(user);
+      let savedPermObj = null;
+      try {
+        const permKey = `wfm_perm_${(userWh || 'MBI').toLowerCase()}_${(user.nik || user.id || '').toUpperCase().trim()}`;
+        const raw = localStorage.getItem(permKey);
+        if (raw) savedPermObj = JSON.parse(raw);
+      } catch(e) {}
+
       currentEditingPermissions = {};
       PERMISSION_DEFINITIONS.forEach(cat => {
         cat.items.forEach(it => {
           if (user.permissions && typeof user.permissions[it.key] === 'boolean') {
             currentEditingPermissions[it.key] = user.permissions[it.key];
+          } else if (savedPermObj && typeof savedPermObj[it.key] === 'boolean') {
+            currentEditingPermissions[it.key] = savedPermObj[it.key];
           } else {
             currentEditingPermissions[it.key] = !!defaults[it.key];
           }
@@ -7140,9 +7177,21 @@
         return;
       }
 
+      const nowIso = new Date().toISOString();
       users[idx].permissions = { ...currentEditingPermissions };
+      users[idx].updatedAt = nowIso;
       setWhDB(actualWh, 'users', users);
       localStorage.setItem(`wfm_${actualWh.toLowerCase()}_users_backup`, JSON.stringify(users));
+      localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+      localStorage.setItem('wfm_master_updated_at', nowIso);
+
+      // Simpan cadangan permanen hak akses per NIK & ID
+      try {
+        const uNik = (users[idx].nik || users[idx].id || '').toUpperCase().trim();
+        if (uNik) {
+          localStorage.setItem(`wfm_perm_${actualWh.toLowerCase()}_${uNik}`, JSON.stringify(currentEditingPermissions));
+        }
+      } catch(e) {}
 
       // Jika akun yang diedit adalah akun yang sedang aktif login
       if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id)) {
@@ -7151,7 +7200,7 @@
         applyRolePermissions();
       }
 
-      // Sync ke Firebase Cloud 24/7
+      // Sync ke Firebase Cloud 24/7 dengan master force upload
       await saveFullDatabaseToCloud(false, true, true);
 
       alert(`✅ Hak Akses Berhasil Disimpan!\n\nAkun: ${users[idx].name} (${users[idx].nik})\nGudang: ${actualWh}\n\nPengaturan hak akses telah aktif seketika dan tersinkronisasi 24/7 ke Cloud Firebase.`);
@@ -7855,6 +7904,19 @@
         currentUser = { ...latestUser };
         currentUser.warehouse = currentUser.warehouse || currentWh || 'MBI';
         activeWarehouse = currentUser.warehouse;
+
+        // Pastikan hak akses tersimpan dimuat ke sesi
+        if (!currentUser.permissions || Object.keys(currentUser.permissions).length === 0) {
+          try {
+            const uNik = (currentUser.nik || currentUser.id || '').toUpperCase().trim();
+            const pKey = `wfm_perm_${currentUser.warehouse.toLowerCase()}_${uNik}`;
+            const pSaved = localStorage.getItem(pKey);
+            if (pSaved) {
+              currentUser.permissions = JSON.parse(pSaved);
+            }
+          } catch(e) {}
+        }
+
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
 
         const authContainer = document.getElementById('auth-container');
