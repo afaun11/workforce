@@ -4101,7 +4101,7 @@
       }
 
       // 2.5 Tempatkan Akun Dedicated Manager (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
-      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || isUserManager(u)));
+      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || (u.dept && u.dept.toLowerCase() === 'management')));
       if (!manager) {
         let defaultName = 'Manager';
         try {
@@ -4134,7 +4134,7 @@
         if (isUserMarkedDeleted(u, deletedKeys)) return false;
         if (u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI') return false;
         if (u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) return false;
-        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || (typeof isUserManager === 'function' && isUserManager(u))) return false;
+        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || (u.dept && u.dept.toLowerCase() === 'management')) return false;
         if (u.nik && (u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
         if (u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
         return true;
@@ -5964,6 +5964,9 @@
       }
 
       // Ensure DB initialized & clean active users from tombstone list
+      if (typeof unmarkDeletedUser === 'function') {
+        unmarkDeletedUser('melinda');
+      }
       if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
@@ -6373,13 +6376,14 @@
       const name = (user.name || '').toLowerCase().trim();
       const clean = cleanStr(name);
       const role = (user.role || '').toLowerCase().trim();
+      const dept = (user.dept || '').toLowerCase().trim();
 
       // Khusus akun sistem bawaan (Admin Utama, Scanner Presensi, dan Manager Utama)
       if (id === 'mbi-admin' || id === 'mai-admin' || id === 'mbi-scanner' || id === 'mai-scanner' || id === 'mgr-eko') return true;
       if (nik === 'ADM001' || nik === 'ADM-MAI' || nik === 'ABSEN-MBI' || nik === 'ABSEN-MAI' || nik === 'MGR001') return true;
       if (role === 'manager' || role === 'admin' || role === 'scanner') return true;
+      if (dept === 'management' && role === 'manager') return true;
       if (clean === 'admingudangmbi' || clean === 'admingudangmai' || clean === 'scannerpresensigudang') return true;
-      if ((clean === 'eko' || clean === 'managereko') && (id === 'mgr-eko' || nik === 'MGR001' || role === 'manager')) return true;
       return false;
     }
 
@@ -6407,9 +6411,7 @@
       const role = (user.role || '').toLowerCase().trim();
       const nik = (user.nik || '').toUpperCase().trim();
       const id = (user.id || '').toLowerCase().trim();
-      const name = (user.name || '').toLowerCase().trim();
       const dept = (user.dept || '').toLowerCase().trim();
-      const clean = cleanStr(name);
       return (
         role === 'manager' ||
         role.includes('manager') ||
@@ -6418,12 +6420,7 @@
         nik === 'MGR001' ||
         nik.startsWith('MGR') ||
         id === 'mgr-eko' ||
-        id.includes('mgr') ||
-        name === 'manager eko' ||
-        name.includes('melinda') ||
-        clean === 'melinda' ||
-        name.includes('manager') ||
-        (clean === 'eko' && (id === 'mgr-eko' || nik === 'MGR001' || role === 'manager'))
+        id.includes('mgr')
       );
     }
 
