@@ -4066,6 +4066,20 @@
       return '9999-99-99';
     }
 
+    function getSavedUserPerms(nik, wh = null) {
+      if (!nik) return null;
+      try {
+        const cleanNik = String(nik).trim().toUpperCase();
+        const targetWh = (wh || activeWarehouse || 'MBI').toLowerCase();
+        const isMgr = (cleanNik === 'MGR001' || cleanNik.startsWith('MGR') || cleanNik === 'MGR-EKO');
+        const raw = localStorage.getItem(`wfm_perm_${targetWh}_${cleanNik}`) ||
+                    localStorage.getItem(`wfm_perm_${cleanNik}`) ||
+                    (isMgr ? (localStorage.getItem('wfm_perm_mgr001') || localStorage.getItem('wfm_perm_mbi_mgr001') || localStorage.getItem('wfm_perm_mai_mgr001')) : null);
+        if (raw) return JSON.parse(raw);
+      } catch(e) {}
+      return null;
+    }
+
     function deduplicateUserList(users, warehouse = 'MBI') {
       if (!Array.isArray(users)) return [];
       const seenNames = new Set();
@@ -4080,6 +4094,9 @@
       admin.role = 'admin';
       admin.hasAccount = true;
       admin.barcodeValue = admin.nik;
+      if (!admin.permissions) {
+        admin.permissions = getSavedUserPerms(admin.nik, warehouse);
+      }
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
       if (admin.id) seenIds.add(admin.id);
@@ -4114,6 +4131,9 @@
         manager.hasAccount = true;
         manager.barcodeValue = manager.nik;
         if (!manager.password) manager.password = 'medika123';
+      }
+      if (!manager.permissions) {
+        manager.permissions = getSavedUserPerms('MGR001', warehouse);
       }
       cleanList.push(manager);
       seenNames.add(cleanStr(manager.name));
@@ -4386,6 +4406,7 @@
                   password: 'medika123',
                   isFirstLogin: false,
                   hasAccount: true,
+                  permissions: u.permissions || getSavedUserPerms('MGR001', wh) || undefined,
                   warehouse: wh
                 };
               }
@@ -6718,21 +6739,12 @@
       if (user.permissions && typeof user.permissions[permKey] === 'boolean') {
         return user.permissions[permKey];
       }
-      try {
-        const uWh = (user.warehouse || activeWarehouse || 'MBI').toLowerCase();
-        const uNik = (user.nik || user.id || '').toUpperCase().trim();
-        if (uNik) {
-          const savedPerms = localStorage.getItem(`wfm_perm_${uWh}_${uNik}`);
-          if (savedPerms) {
-            const parsed = JSON.parse(savedPerms);
-            if (parsed && typeof parsed[permKey] === 'boolean') {
-              if (!user.permissions) user.permissions = {};
-              user.permissions[permKey] = parsed[permKey];
-              return parsed[permKey];
-            }
-          }
-        }
-      } catch(e) {}
+      const savedPerms = getSavedUserPerms(user.nik || user.id, user.warehouse);
+      if (savedPerms && typeof savedPerms[permKey] === 'boolean') {
+        if (!user.permissions) user.permissions = {};
+        user.permissions[permKey] = savedPerms[permKey];
+        return savedPerms[permKey];
+      }
       const defaults = getDefaultPermissions(user);
       return !!defaults[permKey];
     }
@@ -7185,16 +7197,35 @@
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
 
+      const targetNik = (users[idx].nik || users[idx].id || '').toUpperCase().trim();
+      const isMgr = (targetNik === 'MGR001' || targetNik.startsWith('MGR') || users[idx].role === 'manager' || users[idx].id === 'mgr-eko');
+
       // Simpan cadangan permanen hak akses per NIK & ID
       try {
-        const uNik = (users[idx].nik || users[idx].id || '').toUpperCase().trim();
-        if (uNik) {
-          localStorage.setItem(`wfm_perm_${actualWh.toLowerCase()}_${uNik}`, JSON.stringify(currentEditingPermissions));
+        if (targetNik) {
+          localStorage.setItem(`wfm_perm_${actualWh.toLowerCase()}_${targetNik}`, JSON.stringify(currentEditingPermissions));
+          localStorage.setItem(`wfm_perm_${targetNik}`, JSON.stringify(currentEditingPermissions));
+        }
+        if (isMgr) {
+          localStorage.setItem('wfm_perm_mgr001', JSON.stringify(currentEditingPermissions));
+          localStorage.setItem('wfm_perm_mbi_mgr001', JSON.stringify(currentEditingPermissions));
+          localStorage.setItem('wfm_perm_mai_mgr001', JSON.stringify(currentEditingPermissions));
+
+          // Sinkronkan ke database gudang lainnya untuk Manager (General Manager memegang 2 gudang)
+          const otherWh = actualWh === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const otherIdx = otherUsers.findIndex(u => u && (u.nik === 'MGR001' || u.id === 'mgr-eko' || u.role === 'manager'));
+          if (otherIdx !== -1) {
+            otherUsers[otherIdx].permissions = { ...currentEditingPermissions };
+            otherUsers[otherIdx].updatedAt = nowIso;
+            setWhDB(otherWh, 'users', otherUsers);
+            localStorage.setItem(`wfm_${otherWh.toLowerCase()}_users_backup`, JSON.stringify(otherUsers));
+          }
         }
       } catch(e) {}
 
       // Jika akun yang diedit adalah akun yang sedang aktif login
-      if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id)) {
+      if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id || (isMgr && isUserManager(currentUser)))) {
         currentUser.permissions = { ...currentEditingPermissions };
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
         applyRolePermissions();
@@ -7907,14 +7938,10 @@
 
         // Pastikan hak akses tersimpan dimuat ke sesi
         if (!currentUser.permissions || Object.keys(currentUser.permissions).length === 0) {
-          try {
-            const uNik = (currentUser.nik || currentUser.id || '').toUpperCase().trim();
-            const pKey = `wfm_perm_${currentUser.warehouse.toLowerCase()}_${uNik}`;
-            const pSaved = localStorage.getItem(pKey);
-            if (pSaved) {
-              currentUser.permissions = JSON.parse(pSaved);
-            }
-          } catch(e) {}
+          const savedPerms = getSavedUserPerms(currentUser.nik || currentUser.id, currentUser.warehouse);
+          if (savedPerms) {
+            currentUser.permissions = savedPerms;
+          }
         }
 
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
