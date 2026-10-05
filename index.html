@@ -1446,19 +1446,10 @@
                   </div>
 
                   <div id="filter-body-records" class="p-4 space-y-3.5">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
                         <input type="text" id="record-search-input" oninput="renderRecordsTable(true)" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                      </div>
-                      <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Pilih Gudang</label>
-                        <select id="record-filter-warehouse" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                          <option value="CURRENT" selected>Gudang Aktif Saja</option>
-                          <option value="ALL">Semua Gudang (MBI & MAI)</option>
-                          <option value="MBI">Khusus Gudang MBI</option>
-                          <option value="MAI">Khusus Gudang MAI</option>
-                        </select>
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
@@ -1472,11 +1463,11 @@
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Dari Tanggal</label>
-                        <input type="date" id="record-start-date" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <input type="date" id="record-start-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Sampai Tanggal</label>
-                        <input type="date" id="record-end-date" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <input type="date" id="record-end-date" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
                       </div>
                     </div>
 
@@ -1612,15 +1603,15 @@
                     <div class="flex items-center gap-3 flex-wrap">
                       <div class="flex items-center gap-2">
                         <label class="text-xs font-bold text-slate-700">Dari Tanggal:</label>
-                        <input type="date" id="matrix-start-date" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                        <input type="date" id="matrix-start-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                       </div>
                       <div class="flex items-center gap-2">
                         <label class="text-xs font-bold text-slate-700">Sampai Tanggal:</label>
-                        <input type="date" id="matrix-end-date" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
+                        <input type="date" id="matrix-end-date" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:outline-none">
                       </div>
                       <div class="flex items-center gap-2">
                         <label class="text-xs font-bold text-slate-700 whitespace-nowrap">Pilih OS / Vendor:</label>
-                        <select id="matrix-filter-os" onchange="renderMatrixTable()" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 min-w-[170px]">
+                        <select id="matrix-filter-os" class="h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 min-w-[170px]">
                           <option value="ALL">Semua OS / Vendor</option>
                           <option value="ADP">ADP</option>
                           <option value="Staffinc">Staffinc</option>
@@ -4274,7 +4265,15 @@
         cleanList.push(u);
       });
 
-      return cleanList;
+      const systemAccounts = cleanList.filter(u => isManagementSystemAccount(u));
+      const sortedRegular = cleanList.filter(u => !isManagementSystemAccount(u));
+      sortedRegular.sort((a, b) => {
+        const nikA = (a?.nik || a?.id || '').toString().trim().toUpperCase();
+        const nikB = (b?.nik || b?.id || '').toString().trim().toUpperCase();
+        return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+
+      return [...systemAccounts, ...sortedRegular];
     }
 
     // Pembersihan otomatis data karyawan duplikat dan data ghost (nama berupa ID)
@@ -10022,6 +10021,11 @@
     function populateDropdownEmployees(targetNik = null) {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      regularUsers.sort((a, b) => {
+        const nikA = (a?.nik || a?.id || '').toString().trim().toUpperCase();
+        const nikB = (b?.nik || b?.id || '').toString().trim().toUpperCase();
+        return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+      });
       
       const idSelect = document.getElementById('idcard-select-emp');
       const prevSelected = (targetNik || (idSelect ? idSelect.value : '') || '').trim().toUpperCase();
@@ -10059,6 +10063,11 @@
     function filterLeaveEmployeeDropdown(query = '') {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
       const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      regularUsers.sort((a, b) => {
+        const nikA = (a?.nik || a?.id || '').toString().trim().toUpperCase();
+        const nikB = (b?.nik || b?.id || '').toString().trim().toUpperCase();
+        return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+      });
       const leaveSelect = document.getElementById('leave-employee');
       if (!leaveSelect) return;
 
@@ -10971,6 +10980,11 @@
         return;
       }
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS).filter(u => !isManagementSystemAccount(u));
+      users.sort((a, b) => {
+        const nikA = (a?.nik || a?.id || '').toString().trim().toUpperCase();
+        const nikB = (b?.nik || b?.id || '').toString().trim().toUpperCase();
+        return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+      });
       if (!users || users.length === 0) {
         alert('Tidak ada data karyawan di Gudang ' + activeWarehouse);
         return;
@@ -11177,6 +11191,15 @@
         if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
         const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+        
+        // PENGURUTAN TETAP & STABIL (STRICT FIXED NIK ASCENDING):
+        // Memastikan nomor urut 1, 2, 3... selalu urut dan tidak pernah berubah
+        regularUsers.sort((a, b) => {
+          const nikA = (a?.nik || a?.id || '').toString().trim().toUpperCase();
+          const nikB = (b?.nik || b?.id || '').toString().trim().toUpperCase();
+          return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+
         const query = (document.getElementById('emp-search-input')?.value || '').toLowerCase();
         const filtered = regularUsers.filter(u => (u.name && u.name.toLowerCase().includes(query)) || (u.dept && u.dept.toLowerCase().includes(query)) || (u.nik && u.nik.toLowerCase().includes(query)) || (u.email && u.email.toLowerCase().includes(query)));
 
@@ -13966,29 +13989,10 @@
 
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
-      const whFilter = document.getElementById('record-filter-warehouse')?.value || 'CURRENT';
 
-      let users = [];
-      let attendances = [];
-
-      if (whFilter === 'ALL') {
-        const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        users = [...mbiUsers, ...maiUsers];
-        const mbiAtt = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
-        const maiAtt = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
-        attendances = [...mbiAtt, ...maiAtt];
-      } else if (whFilter === 'MBI') {
-        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MBI' }));
-      } else if (whFilter === 'MAI') {
-        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MAI' }));
-      } else {
-        const currentWh = activeWarehouse || 'MBI';
-        users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-        attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
-      }
+      const currentWh = activeWarehouse || 'MBI';
+      const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
 
       // Mapping O(1) Outsource untuk pencarian instan
       const userOSMap = new Map();
@@ -14299,28 +14303,10 @@
       }
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
-      const whFilter = document.getElementById('record-filter-warehouse')?.value || 'CURRENT';
 
-      let users = [];
-      let attendances = [];
-
-      if (whFilter === 'ALL') {
-        users = [...getWhDB('MBI', 'users', SEED_MBI_USERS), ...getWhDB('MAI', 'users', SEED_MAI_USERS)];
-        attendances = [
-          ...getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' })),
-          ...getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }))
-        ];
-      } else if (whFilter === 'MBI') {
-        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MBI' }));
-      } else if (whFilter === 'MAI') {
-        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: 'MAI' }));
-      } else {
-        const currentWh = activeWarehouse || 'MBI';
-        users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-        attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
-      }
+      const currentWh = activeWarehouse || 'MBI';
+      const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
 
       // Mapping O(1) Outsource untuk pencarian instan
       const userOSMap = new Map();
@@ -14423,7 +14409,7 @@
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      const sheetName = whFilter === 'ALL' ? 'Record_Absen_Semua' : `Record_Absen_${whFilter === 'CURRENT' ? activeWarehouse : whFilter}`;
+      const sheetName = `Record_Absen_${activeWarehouse}`;
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
       const searchTag = searchQ ? `_${searchQ.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
       const periodTag = (startStr || endStr) ? `_${startStr || 'awal'}_sd_${endStr || 'akhir'}` : '_semua';
