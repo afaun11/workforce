@@ -1033,6 +1033,10 @@
                   <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                   <span>Hapus Terpilih (<span id="count-selected-emp-badge">0</span>)</span>
                 </button>
+                <button id="btn-purge-ghost-emp" onclick="autoPurgeDuplicateAndCorruptEmployees(true)" class="h-9 px-3.5 bg-white hover:bg-amber-50 hover:text-amber-800 hover:border-amber-300 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Bersihkan Data Ghost / Akun Tak Dikenal & Duplikat">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+                  <span>Bersihkan Ghost</span>
+                </button>
                 <button id="btn-reset-all-emp" onclick="deleteAllEmployees()" class="hidden h-9 px-3.5 bg-white hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5" title="Kosongkan Seluruh Data Karyawan untuk Upload Excel Bersih (Khusus Admin)">
                   <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-500"></i>
                   <span>Reset Semua</span>
@@ -4125,19 +4129,22 @@
 
       // 3. Filter calon karyawan reguler (bukan akun khusus sistem bawaan di atas, bukan tombstone terhapus)
       const deletedKeys = getDeletedUserKeys();
-      const regularCandidates = users.filter(u => {
+      let regularCandidates = users.filter(u => {
         if (!u || typeof u !== 'object') return false;
         if (isUserMarkedDeleted(u, deletedKeys)) return false;
         if (u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI') return false;
         if (u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-'))) return false;
-        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager') return false;
+        if (u.id === 'mgr-eko' || u.nik === 'MGR001' || u.role === 'manager' || (typeof isUserManager === 'function' && isUserManager(u))) return false;
         if (u.nik && (u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
         if (u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
         return true;
       });
 
-      // Cek apakah ada kandidat yang memiliki nama manusia sah
+      // Cek apakah ada kandidat yang memiliki nama manusia sah -> Jika ya, buang SEMUA akun ghost yang namanya berupa kode ID
       const hasValidHumanCandidates = regularCandidates.some(u => isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name));
+      if (hasValidHumanCandidates) {
+        regularCandidates = regularCandidates.filter(u => isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name));
+      }
 
       // Urutan karyawan 100% DIPERTAHANKAN sesuai urutan asli baris Excel / input
       // TANPA pengurutan berdasarkan join date atau NIK agar sistem mengikuti Excel asli
@@ -4285,8 +4292,9 @@
     }
 
     // Pembersihan otomatis data karyawan duplikat dan data ghost (nama berupa ID)
-    function autoPurgeDuplicateAndCorruptEmployees() {
+    function autoPurgeDuplicateAndCorruptEmployees(showAlert = false) {
       try {
+        let totalCleaned = 0;
         ['MBI', 'MAI'].forEach(wh => {
           const storageKey = `wfm_${wh.toLowerCase()}_users`;
           const raw = localStorage.getItem(storageKey);
@@ -4296,16 +4304,31 @@
 
           const cleaned = deduplicateUserList(users, wh);
           if (cleaned.length !== users.length) {
-            console.log(`[AutoPurge] Berhasil membersihkan ${users.length - cleaned.length} data duplikat/ghost di Gudang ${wh}. Dari ${users.length} menjadi ${cleaned.length} akun.`);
+            const diff = users.length - cleaned.length;
+            totalCleaned += diff;
+            console.log(`[AutoPurge] Berhasil membersihkan ${diff} data duplikat/ghost di Gudang ${wh}. Dari ${users.length} menjadi ${cleaned.length} akun.`);
             localStorage.setItem(storageKey, JSON.stringify(cleaned));
             localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(cleaned));
             localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
             localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
-            if (typeof saveFullDatabaseToCloud === 'function') {
-              saveFullDatabaseToCloud(false, true, true);
-            }
           }
         });
+
+        if (totalCleaned > 0) {
+          if (typeof saveFullDatabaseToCloud === 'function') {
+            saveFullDatabaseToCloud(false, true, true);
+          }
+          if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
+          if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
+        }
+
+        if (showAlert) {
+          if (totalCleaned > 0) {
+            alert(`✅ Pembersihan Berhasil!\n\nSebanyak ${totalCleaned} akun ghost / duplikat / korup berhasil dihapus secara permanen.\nDatabase master yang bersih telah diunggah ke Firebase Cloud.`);
+          } else {
+            alert('ℹ️ Data Karyawan Bersih!\n\nTidak ditemukan akun ghost atau data duplikat di sistem.');
+          }
+        }
       } catch (e) {
         console.warn('AutoPurge error:', e);
       }
@@ -4657,9 +4680,24 @@
       localList = (Array.isArray(localList) ? localList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
       cloudList = (Array.isArray(cloudList) ? cloudList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
 
+      // Bersihkan akun ghost yang nama berupa ID jika ada kandidat nama manusia sah
+      const filterGhost = (list) => {
+        const hasHuman = list.some(u => u && !isManagementSystemAccount(u) && isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name));
+        if (hasHuman) {
+          return list.filter(u => {
+            if (!u) return false;
+            if (isManagementSystemAccount(u)) return true;
+            return isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name);
+          });
+        }
+        return list;
+      };
+
+      localList = filterGhost(localList);
+      cloudList = filterGhost(cloudList);
+
       const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
       const isRecentLocalChange = (Date.now() - lastMasterChange < 600000); // 10 menit proteksi master lokal setelah upload/edit
-      const localMasterUpdatedAt = localStorage.getItem('wfm_master_updated_at') || '';
 
       const countRegular = (list) => list.filter(u => u && !isManagementSystemAccount(u)).length;
       let localRegCount = countRegular(localList);
@@ -4672,7 +4710,7 @@
           if (rawBackup) {
             const backupUsers = JSON.parse(rawBackup);
             if (Array.isArray(backupUsers) && countRegular(backupUsers) > 0) {
-              localList = backupUsers.filter(u => !isUserMarkedDeleted(u, deletedKeys));
+              localList = filterGhost(backupUsers.filter(u => !isUserMarkedDeleted(u, deletedKeys)));
               localRegCount = countRegular(localList);
             }
           }
@@ -4698,62 +4736,49 @@
         return deduplicateUserList(localList, wh);
       }
 
-      // PERISAI 4: SMART IDENTITY MERGE (Mencocokkan berdasarkan ID Karyawan & Nama)
-      // Mencegah duplikasi data dan menjamin perubahan ID/NIK selalu tersimpan permanen
+      // PERISAI 4: MASTER LOCAL AUTHORITY DENGAN ATTRIBUTE SYNC
+      // Lokal adalah Master Source of Truth (Acuan Mutlak).
+      // Sinkronkan atribut akun (permissions, password) ke karyawan lokal yang cocok,
+      // DILARANG KERAS menambahkan akun tak dikenal / ghost / orphan dari Cloud!
       const resultList = [];
-      const matchedLocalIndices = new Set();
+      localList.forEach((loc) => {
+        if (!loc || isUserMarkedDeleted(loc, deletedKeys)) return;
+        const normName = cleanStr(loc.name);
+        const normNik = (loc.nik || '').toUpperCase().trim();
+        const locId = (loc.id || '').trim();
 
-      cloudList.forEach(cloudItem => {
-        if (!cloudItem || isUserMarkedDeleted(cloudItem, deletedKeys)) return;
-        // Cari pasangan di localList berdasarkan ID, NIK, atau Nama
-        const localIdx = localList.findIndex((loc, idx) => {
-          if (!loc || matchedLocalIndices.has(idx)) return false;
-          if (cloudItem.id && loc.id && cloudItem.id === loc.id) return true;
-          if (cloudItem.name && loc.name && cleanStr(cloudItem.name) === cleanStr(loc.name)) return true;
-          if (cloudItem.nik && loc.nik && cloudItem.nik.trim().toUpperCase() === loc.nik.trim().toUpperCase()) return true;
+        // Cari record cloud yang cocok
+        const cloudMatch = cloudList.find(c => {
+          if (!c || isUserMarkedDeleted(c, deletedKeys)) return false;
+          if (locId && c.id && c.id === locId) return true;
+          if (normNik && c.nik && c.nik.toUpperCase().trim() === normNik) return true;
+          if (normName && c.name && cleanStr(c.name) === normName) return true;
           return false;
         });
 
-        if (localIdx !== -1) {
-          matchedLocalIndices.add(localIdx);
-          const localItem = localList[localIdx];
-          const localTime = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
-          const cloudTime = cloudItem.updatedAt ? new Date(cloudItem.updatedAt).getTime() : 0;
-
-          // Bandingkan mana yang lebih baru: jika lokal baru diedit atau localTime >= cloudTime, lokal menang
-          let winner = (isRecentLocalChange || localTime >= cloudTime || !cloudItem.updatedAt)
-            ? { ...cloudItem, ...localItem }
-            : { ...localItem, ...cloudItem };
-
-          // PERISAI ANTI-KONTAMINASI NAMA: Lindungi nama asli manusia agar tidak pernah tertimpa kode ID dari Cloud
-          if (typeof isLikelyIdNotName === 'function') {
-            if (isLikelyIdNotName(winner.name)) {
-              if (localItem.name && !isLikelyIdNotName(localItem.name)) {
-                winner.name = localItem.name;
-              } else if (cloudItem.name && !isLikelyIdNotName(cloudItem.name)) {
-                winner.name = cloudItem.name;
-              }
+        if (cloudMatch) {
+          const merged = { ...loc };
+          if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
+            merged.permissions = { ...loc.permissions, ...cloudMatch.permissions };
+          }
+          if (cloudMatch.password && !loc.password) {
+            merged.password = cloudMatch.password;
+          }
+          // Lindungi nama asli manusia
+          if (typeof isLikelyIdNotName === 'function' && isLikelyIdNotName(merged.name)) {
+            if (loc.name && !isLikelyIdNotName(loc.name)) {
+              merged.name = loc.name;
+            } else if (cloudMatch.name && !isLikelyIdNotName(cloudMatch.name)) {
+              merged.name = cloudMatch.name;
             }
           }
-          if (!isUserMarkedDeleted(winner, deletedKeys)) {
-            resultList.push(winner);
-          }
+          resultList.push(merged);
         } else {
-          if (!isUserMarkedDeleted(cloudItem, deletedKeys)) {
-            resultList.push(cloudItem);
-          }
-        }
-      });
-
-      // Tambahkan sisa karyawan lokal yang belum ada di Cloud (karyawan baru lokal)
-      localList.forEach((loc, idx) => {
-        if (loc && !matchedLocalIndices.has(idx) && !isUserMarkedDeleted(loc, deletedKeys)) {
           resultList.push(loc);
         }
       });
 
-      const mergedList = resultList;
-      return deduplicateUserList(mergedList, wh);
+      return deduplicateUserList(resultList, wh);
     }
 
     let lastAppliedCloudUpdatedAt = null;
@@ -5583,7 +5608,7 @@
             const bakUsers = JSON.parse(rawBak);
             if (Array.isArray(bakUsers)) {
               bakUsers.forEach(u => {
-                if (!u || !u.name || isManagementSystemAccount(u) || isLikelyIdNotName(u.name)) return;
+                if (!u || !u.name || isManagementSystemAccount(u) || isLikelyIdNotName(u.name) || !isLikelyHumanName(u.name)) return;
                 const cName = cleanStr(u.name);
                 const cNik = (u.nik || '').toUpperCase().trim();
                 if (!existingNames.has(cName) && (!cNik || !existingNiks.has(cNik))) {
@@ -5609,7 +5634,7 @@
               const atts = JSON.parse(rawAtt);
               if (Array.isArray(atts)) {
                 atts.forEach(a => {
-                  if (!a || !a.userName || isLikelyIdNotName(a.userName)) return;
+                  if (!a || !a.userName || isLikelyIdNotName(a.userName) || !isLikelyHumanName(a.userName)) return;
                   const cName = cleanStr(a.userName);
                   const cNik = (a.userNik || '').toUpperCase().trim();
                   if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
@@ -5653,7 +5678,7 @@
               const ots = JSON.parse(rawOt);
               if (Array.isArray(ots)) {
                 ots.forEach(o => {
-                  if (!o || !o.userName || isLikelyIdNotName(o.userName)) return;
+                  if (!o || !o.userName || isLikelyIdNotName(o.userName) || !isLikelyHumanName(o.userName)) return;
                   const cName = cleanStr(o.userName);
                   const cNik = (o.userNik || '').toUpperCase().trim();
                   if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
@@ -5691,7 +5716,7 @@
               const lvs = JSON.parse(rawLv);
               if (Array.isArray(lvs)) {
                 lvs.forEach(l => {
-                  if (!l || !l.userName || isLikelyIdNotName(l.userName)) return;
+                  if (!l || !l.userName || isLikelyIdNotName(l.userName) || !isLikelyHumanName(l.userName)) return;
                   const cName = cleanStr(l.userName);
                   const cNik = (l.userNik || '').toUpperCase().trim();
                   if (cName === 'admin' || cName.includes('scanner') || cName === 'eko') return;
@@ -5942,9 +5967,11 @@
       if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
       if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
       if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
+      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
       sanitizeEmployeesData();
       repairAndSanitizeAttendanceRecords();
       recoverLostEmployees(true);
+      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
       getWhDB('MBI', 'users', SEED_MBI_USERS);
       getWhDB('MAI', 'users', SEED_MAI_USERS);
       getWhDB('MBI', 'attendance', []);
@@ -7280,6 +7307,16 @@
           } else {
             btnDeleteSelected.classList.add('hidden');
             btnDeleteSelected.classList.remove('inline-flex');
+          }
+        }
+        const btnPurgeGhost = document.getElementById('btn-purge-ghost-emp');
+        if (btnPurgeGhost) {
+          if (isAdmin || hasPermission('perm_emp_delete') || hasPermission('perm_emp_add')) {
+            btnPurgeGhost.classList.remove('hidden');
+            btnPurgeGhost.classList.add('inline-flex');
+          } else {
+            btnPurgeGhost.classList.add('hidden');
+            btnPurgeGhost.classList.remove('inline-flex');
           }
         }
       }
