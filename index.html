@@ -1263,17 +1263,17 @@
 
               </div>
 
-            <!-- Riwayat Scan Absensi Presensi (Otomatis 3 Hari Terakhir) -->
+            <!-- Riwayat Scan Absensi Presensi (Otomatis 2 Hari Terakhir) -->
             <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all duration-200">
               <!-- Header Bar yang Bisa Diklik untuk Buka / Tutup -->
               <button type="button" onclick="toggleTodayScanHistory()" class="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 transition select-none bg-white">
                 <div class="flex items-center gap-3">
                   <div>
                     <div class="flex items-center gap-2 flex-wrap">
-                      <h3 id="scanner-history-title-text" class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi (3 Hari Terakhir)</h3>
+                      <h3 id="scanner-history-title-text" class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi (2 Hari Terakhir)</h3>
                       <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">0 Data</span>
                     </div>
-                    <p class="text-xs text-slate-500 mt-0.5">Menampilkan seluruh scan absensi 3 hari terakhir (klik untuk membuka/menutup)</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Menampilkan seluruh scan absensi 2 hari terakhir (klik untuk membuka/menutup)</p>
                   </div>
                 </div>
                 
@@ -10371,8 +10371,8 @@
 
       const realTodayStr = getLocalDateString(new Date());
       const nowMs = Date.now();
-      // Rentang otomatis 3 hari ke belakang (72 jam)
-      const cutoffMs = nowMs - (3 * 24 * 60 * 60 * 1000);
+      // Rentang otomatis 2 hari ke belakang (48 jam: Hari Ini & Kemarin)
+      const cutoffMs = nowMs - (2 * 24 * 60 * 60 * 1000);
       const cutoffDateStr = getLocalDateString(new Date(cutoffMs));
 
       const targetWh = activeWarehouse || 'MBI';
@@ -10388,7 +10388,7 @@
         // 2. Sedang dalam sesi shift aktif berjalan
         if (!a.checkOutTime && a.checkInTime && (nowMs - new Date(a.checkInTime).getTime() <= 18 * 60 * 60 * 1000)) return true;
 
-        // 3. Masuk dalam rentang 3 hari ke belakang
+        // 3. Masuk dalam rentang 2 hari ke belakang (Kemarin & Hari Ini)
         if (a.date && a.date >= cutoffDateStr) return true;
         if (a.checkInTime && new Date(a.checkInTime).getTime() >= cutoffMs) return true;
         if (a.checkOutTime && new Date(a.checkOutTime).getTime() >= cutoffMs) return true;
@@ -10435,7 +10435,7 @@
       }
 
       // 1. Dirty check data presensi agar tidak me-rebuild DOM jika data tidak berubah sama sekali
-      const attHash = `${targetWh}_3d_${recentAtt.length}_` + recentAtt.map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
+      const attHash = `${targetWh}_2d_${recentAtt.length}_` + recentAtt.map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
       if (container.dataset.lastAttHash === attHash && container.children.length > 0) {
         return; // Data sama persis, pertahankan elemen DOM dan posisi scroll pengguna 100%!
       }
@@ -10447,24 +10447,24 @@
       const prevScrollTop = scrollEl ? scrollEl.scrollTop : 0;
 
       if (recentAtt.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada riwayat scan absensi dalam 3 hari terakhir di Gudang ${targetWh}.</div>`;
+        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada riwayat scan absensi dalam 2 hari terakhir di Gudang ${targetWh}.</div>`;
         return;
       }
 
       let html = `
-        <div class="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-2xs">
-          <table class="w-full text-left text-xs border-collapse">
+        <div class="overflow-x-auto custom-scroll bg-white rounded-2xl border border-slate-200 shadow-2xs">
+          <table class="w-full min-w-[860px] text-left text-xs border-collapse">
             <thead class="bg-slate-100/90 text-slate-700 font-black uppercase text-[11px] border-b border-slate-200">
               <tr>
-                <th class="p-3.5 w-12 text-center">No</th>
-                <th class="p-3.5 min-w-[105px]">Tanggal</th>
-                <th class="p-3.5 min-w-[180px]">Nama Karyawan</th>
-                <th class="p-3.5 min-w-[100px]">NIK</th>
-                <th class="p-3.5 min-w-[110px]">Outsourcing</th>
-                <th class="p-3.5 min-w-[110px]">Departemen</th>
-                <th class="p-3.5 min-w-[110px]">Jam Masuk</th>
-                <th class="p-3.5 min-w-[110px]">Status Masuk</th>
-                <th class="p-3.5 min-w-[130px]">Jam Pulang</th>
+                <th class="p-3.5 w-12 text-center whitespace-nowrap">No</th>
+                <th class="p-3.5 min-w-[105px] whitespace-nowrap">Tanggal</th>
+                <th class="p-3.5 min-w-[190px] whitespace-nowrap">Nama Karyawan</th>
+                <th class="p-3.5 min-w-[110px] whitespace-nowrap">NIK</th>
+                <th class="p-3.5 min-w-[110px] whitespace-nowrap">Outsourcing</th>
+                <th class="p-3.5 min-w-[125px] whitespace-nowrap">Departemen</th>
+                <th class="p-3.5 min-w-[125px] whitespace-nowrap">Jam Masuk</th>
+                <th class="p-3.5 min-w-[125px] text-center whitespace-nowrap">Status Masuk</th>
+                <th class="p-3.5 min-w-[135px] whitespace-nowrap">Jam Pulang</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -10495,27 +10495,27 @@
 
         html += `
           <tr class="hover:bg-slate-50 transition">
-            <td class="p-3.5 text-center font-bold text-slate-400 font-mono">${idx + 1}</td>
+            <td class="p-3.5 text-center font-bold text-slate-400 font-mono whitespace-nowrap">${idx + 1}</td>
             <td class="p-3.5 font-mono font-bold text-slate-700 whitespace-nowrap">${dateFormatted}</td>
-            <td class="p-3.5 font-extrabold text-slate-900 text-sm">
+            <td class="p-3.5 font-extrabold text-slate-900 text-sm whitespace-nowrap">
               <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded-lg bg-slate-900 text-white font-black text-xs flex items-center justify-center shrink-0">
                   ${(a.userName || 'K').charAt(0).toUpperCase()}
                 </div>
-                <span>${a.userName}</span>
+                <span class="whitespace-nowrap">${a.userName}</span>
               </div>
             </td>
-            <td class="p-3.5 font-mono font-bold text-slate-700">${a.userNik}</td>
-            <td class="p-3.5 font-bold text-slate-800">${outsourceName}</td>
-            <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px]">${a.dept || 'STAFF'}</td>
-            <td class="p-3.5 font-mono font-bold text-slate-800">${inTime}</td>
-            <td class="p-3.5">
-              <span class="px-2.5 py-1 rounded-lg text-[10px] font-black ${isLate ? 'bg-slate-200 text-slate-900 border border-slate-300' : 'bg-slate-100 text-slate-800 border border-slate-200'}">
+            <td class="p-3.5 font-mono font-bold text-slate-700 whitespace-nowrap">${a.userNik}</td>
+            <td class="p-3.5 font-bold text-slate-800 whitespace-nowrap">${outsourceName}</td>
+            <td class="p-3.5 font-semibold text-slate-600 uppercase text-[11px] whitespace-nowrap">${a.dept || 'STAFF'}</td>
+            <td class="p-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">${inTime}</td>
+            <td class="p-3.5 text-center whitespace-nowrap">
+              <span class="inline-flex items-center justify-center px-3 py-1 rounded-xl text-xs font-black whitespace-nowrap shadow-2xs ${isLate ? 'bg-amber-50 text-amber-900 border border-amber-300' : 'bg-emerald-50 text-emerald-900 border border-emerald-300'}">
                 ${isLate ? 'Terlambat' : 'Tepat Waktu'}
               </span>
-              ${(a.notes && a.notes !== 'Tepat Waktu' && a.notes !== 'Terlambat' && a.notes !== '-') ? `<div class="text-[10px] text-slate-500 font-medium mt-1 italic">${a.notes}</div>` : ''}
+              ${(a.notes && a.notes !== 'Tepat Waktu' && a.notes !== 'Terlambat' && a.notes !== '-') ? `<div class="text-[10px] text-slate-500 font-medium mt-0.5 italic whitespace-nowrap">${a.notes}</div>` : ''}
             </td>
-            <td class="p-3.5 font-mono font-bold">
+            <td class="p-3.5 font-mono font-bold whitespace-nowrap">
               ${a.checkOutTime ? `<span class="text-slate-900">${outTime}</span>` : (getAttendanceDurationInfo(a).isMissScan ? '<span class="text-rose-600 font-bold not-italic">Miss Scan (-)</span>' : '<span class="text-amber-600 font-bold not-italic">Sedang Shift</span>')}
             </td>
           </tr>
