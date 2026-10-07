@@ -4290,7 +4290,7 @@
         regularEmployees.push(u);
       });
 
-      // 4. Kunci & standarisasi NIK (NILAI MUTLAK UNTUK ID DARI EXCEL)
+      // 4. Kunci & standarisasi NIK (TETAPKAN NIK ASLI MILIK KARYAWAN SECARA MUTLAK)
       const year = new Date().getFullYear().toString().slice(-2);
       const prefix = `${warehouse.toUpperCase()}${year}-`;
       const assignedNiks = new Set([admin.nik.toUpperCase()]);
@@ -4315,20 +4315,18 @@
         }
       });
 
-      // Tetapkan ID secara berurutan sesuai urutan dokumen Excel:
-      // Nilai ID dari Excel dijadikan NILAI MUTLAK milik karyawan tersebut!
+      // Tetapkan ID secara berurutan: NILAI NIK ASLI DIPERTAHANKAN 100% MUTLAK
       regularEmployees.forEach((u) => {
         let rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
         if (rawNik && /^\d+$/.test(rawNik)) {
           rawNik = `${prefix}${String(rawNik).padStart(3, '0')}`;
         }
-        if (rawNik && !assignedNiks.has(rawNik)) {
-          // ID SUDAH ADA DARI EXCEL -> JADIKAN NILAI MUTLAK
+        if (rawNik) {
           assignedNiks.add(rawNik);
           u.nik = rawNik;
           u.barcodeValue = rawNik;
         } else {
-          // HANYA JIKA NIK KOSONG ATAU BENTROK -> buat ID otomatis berurutan dari nomor paling akhir (+1)
+          // HANYA JIKA NIK KOSONG -> buat ID otomatis berurutan dari nomor paling akhir (+1)
           maxNum++;
           let newNik = `${prefix}${String(maxNum).padStart(3, '0')}`;
           while (assignedNiks.has(newNik)) {
@@ -4652,12 +4650,6 @@
     function lockAndHarmonizeAllEmployeeNIKs() {
       try {
         let hasAnyChanges = false;
-        const permanentRegistry = {};
-        try {
-          const rawReg = localStorage.getItem('wfm_permanent_nik_name_registry');
-          if (rawReg) Object.assign(permanentRegistry, JSON.parse(rawReg));
-        } catch(e) {}
-
         ['MBI', 'MAI'].forEach(wh => {
           const userKey = `wfm_${wh.toLowerCase()}_users`;
           const backupKey = `wfm_${wh.toLowerCase()}_users_backup`;
@@ -4670,111 +4662,24 @@
           const year = new Date().getFullYear().toString().slice(-2);
           const prefix = `${wh.toUpperCase()}${year}-`;
 
-          // 1. Kumpulkan seluruh NIK yang sudah digunakan dan pastikan keunikan 100%
-          const assignedNiks = new Set();
-          let maxSeq = 0;
-
-          // Proteksi Khusus untuk Dinarya & Firman agar NIK Dinarya selalu MBI26-118
-          let dinarya = users.find(u => u && cleanStr(u.name).includes('dinarya'));
-          let firman = users.find(u => u && cleanStr(u.name).includes('firman'));
-          if (wh === 'MBI') {
-            if (dinarya) {
-              dinarya.nik = 'MBI26-118';
-              dinarya.barcodeValue = 'MBI26-118';
-              assignedNiks.add('MBI26-118');
-              permanentRegistry[`${wh}_${cleanStr(dinarya.name)}`] = 'MBI26-118';
-            }
-            if (firman && (firman.nik === 'MBI26-118' || !firman.nik)) {
-              firman.nik = '';
-            }
-          }
-
-          // Proteksi Khusus: Muhammad Rizki di MBI selalu MBI26-008 jika ada
-          let mRizki = users.find(u => u && (cleanStr(u.name) === 'muhammadrizki' || cleanStr(u.name) === 'muhamadrizki'));
-          if (wh === 'MBI' && mRizki) {
-            mRizki.nik = 'MBI26-008';
-            mRizki.barcodeValue = 'MBI26-008';
-            assignedNiks.add('MBI26-008');
-            permanentRegistry[`${wh}_${cleanStr(mRizki.name)}`] = 'MBI26-008';
-            // Pastikan tidak ada akun lain selain Muhammad Rizki yang memakai MBI26-008
-            users.forEach(u => {
-              if (u !== mRizki && (u.nik === 'MBI26-008' || u.barcodeValue === 'MBI26-008')) {
-                u.nik = '';
-                u.barcodeValue = '';
-              }
-            });
-          }
-
-          // Hitung nomor urut NIK tertinggi saat ini
+          // Standardisasi format jika ada NIK angka murni (e.g. 1 -> MBI26-001)
+          let whChanged = false;
           users.forEach(u => {
-            if (!u || !u.nik) return;
+            if (!u || isManagementSystemAccount(u) || !u.nik) return;
             const cNik = String(u.nik).trim().toUpperCase();
-            if (cNik.startsWith(prefix)) {
-              const num = parseInt(cNik.replace(prefix, ''), 10);
-              if (!isNaN(num) && num > maxSeq) maxSeq = num;
-            } else if (/^\d+$/.test(cNik)) {
-              const num = parseInt(cNik, 10);
-              if (!isNaN(num) && num > maxSeq) maxSeq = num;
+            if (/^\d+$/.test(cNik)) {
+              u.nik = `${prefix}${String(cNik).padStart(3, '0')}`;
+              u.barcodeValue = u.nik;
+              whChanged = true;
             }
           });
 
-          // Tahap A: Patenkan NIK untuk akun sistem dan seluruh karyawan reguler
-          users.forEach(u => {
-            if (!u) return;
-            if (isManagementSystemAccount(u)) {
-              if (u.nik) assignedNiks.add(u.nik.toUpperCase());
-              return;
-            }
-
-            const cleanName = cleanStr(u.name);
-            if (!cleanName || isLikelyIdNotName(u.name)) return;
-
-            let currentNik = (u.nik ? String(u.nik).trim().toUpperCase() : '');
-            if (currentNik && /^\d+$/.test(currentNik)) {
-              currentNik = `${prefix}${String(currentNik).padStart(3, '0')}`;
-            }
-
-            // Cek apakah karyawan ini sudah pernah dipatenkan NIK-nya di registry
-            const regKey = `${wh}_${cleanName}`;
-            if (!currentNik && permanentRegistry[regKey]) {
-              currentNik = permanentRegistry[regKey];
-            }
-
-            // Jika NIK bentrok dengan karyawan lain yang sudah diproses:
-            if (currentNik && assignedNiks.has(currentNik) && (!dinarya || u !== dinarya) && (!mRizki || u !== mRizki)) {
-              maxSeq++;
-              let cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
-              while (assignedNiks.has(cand)) {
-                maxSeq++;
-                cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
-              }
-              currentNik = cand;
-              hasAnyChanges = true;
-            } else if (!currentNik) {
-              maxSeq++;
-              let cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
-              while (assignedNiks.has(cand)) {
-                maxSeq++;
-                cand = `${prefix}${String(maxSeq).padStart(3, '0')}`;
-              }
-              currentNik = cand;
-              hasAnyChanges = true;
-            }
-
-            assignedNiks.add(currentNik);
-            u.nik = currentNik;
-            u.barcodeValue = currentNik;
-            permanentRegistry[regKey] = currentNik;
-          });
-
-          // Simpan master karyawan yang telah dipatenkan
-          users = deduplicateUserList(users, wh);
-          localStorage.setItem(userKey, JSON.stringify(users));
-          localStorage.setItem(backupKey, JSON.stringify(users));
+          if (whChanged) {
+            hasAnyChanges = true;
+            localStorage.setItem(userKey, JSON.stringify(users));
+            localStorage.setItem(backupKey, JSON.stringify(users));
+          }
         });
-
-        // Simpan registry permanen
-        localStorage.setItem('wfm_permanent_nik_name_registry', JSON.stringify(permanentRegistry));
 
         // Jalankan kaskade penyelarasan riwayat absensi, lembur & cuti
         const realignedCount = realignAllAttendanceRecordsWithMaster();
@@ -4835,42 +4740,27 @@
             hasChanges = true;
           }
 
-          // 2. Cari user master berdasarkan nama lengkap atau ID
-          let matchedUser = users.find(u => a.userName && cleanStr(u.name) === cleanStr(a.userName));
+          // 2. Cari user master: Prioritaskan kecocokan NIK resmi atau ID
+          let matchedUser = null;
+          if (a.userNik) {
+            matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
+          }
           if (!matchedUser && a.userId) {
             matchedUser = users.find(u => u.id === a.userId);
           }
-          if (!matchedUser && a.userNik) {
-            const cand = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
-            if (cand && (!a.userName || isLikelyIdNotName(a.userName) || cleanStr(cand.name) === cleanStr(a.userName))) {
-              matchedUser = cand;
-            }
+          if (!matchedUser && a.userName && !isLikelyIdNotName(a.userName)) {
+            matchedUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
           }
 
           if (matchedUser) {
             const userOS = matchedUser.outsource || 'Internal';
-            // Hanya update jika nama cocok atau belum ada nama manusia sah
-            if (!a.userName || isLikelyIdNotName(a.userName) || cleanStr(matchedUser.name) === cleanStr(a.userName)) {
-              if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
-                a.userName = matchedUser.name;
-                a.userNik = matchedUser.nik;
-                a.userId = matchedUser.id;
-                a.dept = matchedUser.dept;
-                a.outsource = userOS;
-                hasChanges = true;
-              }
-            } else {
-              // Jika nama a.userName valid (misal DINARYA), tapi NIK tidak cocok: perbaiki NIK mengikuti nama
-              const realUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
-              if (realUser) {
-                if (a.userNik !== realUser.nik || a.userId !== realUser.id || a.dept !== realUser.dept) {
-                  a.userNik = realUser.nik;
-                  a.userId = realUser.id;
-                  a.dept = realUser.dept;
-                  a.outsource = realUser.outsource || 'Internal';
-                  hasChanges = true;
-                }
-              }
+            if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
+              a.userName = matchedUser.name;
+              a.userNik = matchedUser.nik;
+              a.userId = matchedUser.id;
+              a.dept = matchedUser.dept;
+              a.outsource = userOS;
+              hasChanges = true;
             }
           }
         });
