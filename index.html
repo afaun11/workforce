@@ -6565,11 +6565,11 @@
       setInterval(() => {
         if (!document.hidden) {
           fetchFullDatabaseFromCloud();
-        } else if (Date.now() - lastBackgroundCheck > 30000) {
+        } else if (Date.now() - lastBackgroundCheck > 60000) {
           lastBackgroundCheck = Date.now();
           fetchFullDatabaseFromCloud();
         }
-      }, 4000);
+      }, 20000);
 
       window.addEventListener('focus', () => { try { fetchFullDatabaseFromCloud(); } catch(e) {} });
       document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { fetchFullDatabaseFromCloud(); } catch(e) {} } });
