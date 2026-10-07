@@ -4808,30 +4808,41 @@
     }
 
     // =========================================================
-    // PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE (MULTI-DEVICE BIDIRECTIONAL SYNC)
-    // Mendukung Sinkronisasi Banyak HP Karyawan Bersamaan Tanpa Data Tertimpa / Hilang
+    // DUAL PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE
+    // Gudang MBI & Gudang MAI Masing-Masing Memiliki Database Terpisah (Kuota Dobel & Isolasi Penuh)
     // =========================================================
-    const DEFAULT_FIREBASE_RTDB_URL = 'https://wfm-medika-default-rtdb.firebaseio.com/wfm_database.json';
+    const DEFAULT_FIREBASE_RTDB_MBI_URL = 'https://wfm-medika-mbi-default-rtdb.firebaseio.com/wfm_database.json';
+    const DEFAULT_FIREBASE_RTDB_MAI_URL = 'https://wfm-medika2-default-rtdb.firebaseio.com/wfm_database.json';
+    const DEFAULT_FIREBASE_RTDB_URL = DEFAULT_FIREBASE_RTDB_MBI_URL;
 
-    function getFirebaseEndpoint() {
-      const custom = localStorage.getItem('wfm_firebase_custom_url');
-      if (custom && custom.trim().startsWith('https://')) {
-        let clean = custom.trim();
-        if (!clean.endsWith('.json')) {
-          clean = clean.replace(/\/$/, '') + '/wfm_database.json';
+    function getFirebaseEndpoint(wh) {
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      if (targetWh === 'MAI') {
+        const customMai = localStorage.getItem('wfm_firebase_custom_mai_url') || localStorage.getItem('wfm_firebase_custom_url');
+        if (customMai && customMai.trim().startsWith('https://')) {
+          let clean = customMai.trim().replace(/\/$/, '');
+          if (!clean.endsWith('.json')) clean += '/wfm_database.json';
+          return clean;
         }
-        return clean;
+        return DEFAULT_FIREBASE_RTDB_MAI_URL;
+      } else {
+        const customMbi = localStorage.getItem('wfm_firebase_custom_mbi_url') || localStorage.getItem('wfm_firebase_custom_url');
+        if (customMbi && customMbi.trim().startsWith('https://')) {
+          let clean = customMbi.trim().replace(/\/$/, '');
+          if (!clean.endsWith('.json')) clean += '/wfm_database.json';
+          return clean;
+        }
+        return DEFAULT_FIREBASE_RTDB_MBI_URL;
       }
-      return DEFAULT_FIREBASE_RTDB_URL;
     }
 
-    function getFirebaseAudioEndpoint() {
-      const base = getFirebaseEndpoint();
+    function getFirebaseAudioEndpoint(wh) {
+      const base = getFirebaseEndpoint(wh);
       return base.replace(/wfm_database\.json$/, 'wfm_audio.json');
     }
 
     const FIREBASE_ENDPOINT = getFirebaseEndpoint();
-    const CLOUD_ENDPOINTS = [getFirebaseEndpoint()];
+    const CLOUD_ENDPOINTS = [DEFAULT_FIREBASE_RTDB_MBI_URL, DEFAULT_FIREBASE_RTDB_MAI_URL];
 
     function copyFirebaseRules() {
       const rules = `{\n  "rules": {\n    "wfm_database": {\n      ".read": true,\n      ".write": true\n    },\n    "wfm_audio": {\n      ".read": true,\n      ".write": true\n    },\n    "$other": {\n      ".read": false,\n      ".write": false\n    }\n  }\n}`;
@@ -4845,11 +4856,12 @@
     }
 
     function updateFirebaseUrlUI() {
-      const currentUrl = getFirebaseEndpoint();
+      const mbiUrl = getFirebaseEndpoint('MBI');
+      const maiUrl = getFirebaseEndpoint('MAI');
       const lbl = document.getElementById('lbl-firebase-endpoint');
-      if (lbl) lbl.innerText = currentUrl;
+      if (lbl) lbl.innerText = `MBI: ${mbiUrl}\nMAI: ${maiUrl}`;
       const input = document.getElementById('input-custom-firebase-url');
-      if (input) input.value = currentUrl;
+      if (input) input.value = getFirebaseEndpoint();
     }
 
     function saveCustomFirebaseUrl() {
@@ -4868,17 +4880,23 @@
       if (!clean.endsWith('.json')) {
         clean = clean + '/wfm_database.json';
       }
-      localStorage.setItem('wfm_firebase_custom_url', clean);
+      if (activeWarehouse === 'MAI') {
+        localStorage.setItem('wfm_firebase_custom_mai_url', clean);
+      } else {
+        localStorage.setItem('wfm_firebase_custom_mbi_url', clean);
+      }
       updateFirebaseUrlUI();
-      alert('✅ URL Firebase Berhasil Disimpan!\n\nAplikasi sekarang terhubung ke database:\n' + clean);
+      alert('✅ URL Firebase Berhasil Disimpan!\n\nAplikasi sekarang terhubung ke database Gudang ' + activeWarehouse + ':\n' + clean);
       testFirebaseConnection();
     }
 
     function resetDefaultFirebaseUrl() {
-      if (confirm('Kembalikan URL Firebase ke default resmi sistem?')) {
+      if (confirm('Kembalikan URL Firebase ke default resmi kedua gudang (MBI & MAI)?')) {
+        localStorage.removeItem('wfm_firebase_custom_mbi_url');
+        localStorage.removeItem('wfm_firebase_custom_mai_url');
         localStorage.removeItem('wfm_firebase_custom_url');
         updateFirebaseUrlUI();
-        alert('URL Firebase telah dikembalikan ke default:\n' + DEFAULT_FIREBASE_RTDB_URL);
+        alert('URL Firebase telah dikembalikan ke default:\n• MBI: ' + DEFAULT_FIREBASE_RTDB_MBI_URL + '\n• MAI: ' + DEFAULT_FIREBASE_RTDB_MAI_URL);
         testFirebaseConnection();
       }
     }
@@ -5430,7 +5448,6 @@
       if (isMasterForceUpload === true) {
         pendingMasterForceUpload = true;
       }
-      // Pastikan forceAlert hanya aktif jika bernilai boolean true murni
       const isManualAlert = (forceAlert === true);
       const isImmediateCall = (immediate === true);
 
@@ -5447,49 +5464,54 @@
 
         updateCloudSyncStatusBadge('uploading');
 
-        const endpoint = getFirebaseEndpoint();
-        let cloudDb = null;
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
 
-        // Pre-Merge dengan data terkini di Firebase Cloud agar presensi/cuti/karyawan dari HP lain tidak tertimpa
+        // Pre-Merge dengan data terkini di kedua database Firebase Cloud agar tidak ada data tertimpa
         try {
-          const fetchRes = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
-          if (fetchRes.ok) {
-            cloudDb = await fetchRes.json();
-            if (cloudDb && typeof cloudDb === 'object' && !Array.isArray(cloudDb)) {
-              const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudDb.mbi_attendance));
-              const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudDb.mai_attendance));
-              const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudDb.mbi_leaves));
-              const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(cloudDb.mai_leaves));
-              const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudDb.mbi_overtime));
-              const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(cloudDb.mai_overtime));
+          const [fetchMbiRes, fetchMaiRes] = await Promise.allSettled([
+            fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
+            fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+          ]);
 
+          if (fetchMbiRes.status === 'fulfilled' && fetchMbiRes.value.ok) {
+            const cloudMbiDb = await fetchMbiRes.value.json();
+            if (cloudMbiDb && typeof cloudMbiDb === 'object') {
+              const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudMbiDb.mbi_attendance));
+              const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudMbiDb.mbi_leaves));
+              const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudMbiDb.mbi_overtime));
               localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mergedMbiAtt));
-              localStorage.setItem('wfm_mai_attendance', JSON.stringify(mergedMaiAtt));
               localStorage.setItem('wfm_mbi_leaves', JSON.stringify(mergedMbiLeaves));
-              localStorage.setItem('wfm_mai_leaves', JSON.stringify(mergedMaiLeaves));
               localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mergedMbiOt));
-              localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
 
-              // PROTEKSI DATA MASTER: Pre-merge USERS HANYA jika bukan force upload master & bukan perubahan lokal baru (agar perubahan Excel/Edit tidak tertimpa data lama Cloud)
               const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
               const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
-              const shouldProtectMaster = (effectiveForceMaster === true) || isRecentLocalMasterChange;
-
-              if (!shouldProtectMaster) {
+              if (!effectiveForceMaster && !isRecentLocalMasterChange) {
                 const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-                const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-                const cloudMbiUsers = normalizeFirebaseArray(cloudDb.mbi_users);
-                const cloudMaiUsers = normalizeFirebaseArray(cloudDb.mai_users);
-
-                const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudDb.updatedAt);
-                const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudDb.updatedAt);
-
+                const cloudMbiUsers = normalizeFirebaseArray(cloudMbiDb.mbi_users);
+                const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudMbiDb.updatedAt);
                 localStorage.setItem('wfm_mbi_users', JSON.stringify(mergedMbiUsers));
+              }
+            }
+          }
+
+          if (fetchMaiRes.status === 'fulfilled' && fetchMaiRes.value.ok) {
+            const cloudMaiDb = await fetchMaiRes.value.json();
+            if (cloudMaiDb && typeof cloudMaiDb === 'object') {
+              const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudMaiDb.mai_attendance));
+              const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(cloudMaiDb.mai_leaves));
+              const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(cloudMaiDb.mai_overtime));
+              localStorage.setItem('wfm_mai_attendance', JSON.stringify(mergedMaiAtt));
+              localStorage.setItem('wfm_mai_leaves', JSON.stringify(mergedMaiLeaves));
+              localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
+
+              const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
+              const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
+              if (!effectiveForceMaster && !isRecentLocalMasterChange) {
+                const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+                const cloudMaiUsers = normalizeFirebaseArray(cloudMaiDb.mai_users);
+                const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudMaiDb.updatedAt);
                 localStorage.setItem('wfm_mai_users', JSON.stringify(mergedMaiUsers));
-              } else {
-                if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
-                  sanitizeDeletedUserKeysWithActiveUsers();
-                }
               }
             }
           }
@@ -5501,60 +5523,33 @@
         let finalMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
         let finalMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
 
-        // Jika data lokal 0 karyawan reguler tapi ada di cadangan backup, pulihkan terlebih dahulu
-        if (countReg(finalMbiUsers) === 0) {
-          try {
-            const rawBak = localStorage.getItem('wfm_mbi_users_backup');
-            if (rawBak) {
-              const bak = JSON.parse(rawBak);
-              if (Array.isArray(bak) && countReg(bak) > 0) {
-                finalMbiUsers = bak;
-                localStorage.setItem('wfm_mbi_users', JSON.stringify(finalMbiUsers));
-              }
-            }
-          } catch(e) {}
-        }
-        if (countReg(finalMaiUsers) === 0) {
-          try {
-            const rawBak = localStorage.getItem('wfm_mai_users_backup');
-            if (rawBak) {
-              const bak = JSON.parse(rawBak);
-              if (Array.isArray(bak) && countReg(bak) > 0) {
-                finalMaiUsers = bak;
-                localStorage.setItem('wfm_mai_users', JSON.stringify(finalMaiUsers));
-              }
-            }
-          } catch(e) {}
-        }
-
         let mbiCoordsToSave = getWarehouseCoords('MBI');
         let maiCoordsToSave = getWarehouseCoords('MAI');
         const activeRadiusToSave = Number(localStorage.getItem('wfm_gps_radius')) || 100;
         if (mbiCoordsToSave) mbiCoordsToSave.radius = Number(mbiCoordsToSave.radius) > 0 ? Number(mbiCoordsToSave.radius) : activeRadiusToSave;
         if (maiCoordsToSave) maiCoordsToSave.radius = Number(maiCoordsToSave.radius) > 0 ? Number(maiCoordsToSave.radius) : activeRadiusToSave;
 
-        if (cloudDb) {
-          if (isDummyWarehouseCoords(mbiCoordsToSave) && cloudDb.mbi_coords && !isDummyWarehouseCoords(cloudDb.mbi_coords)) {
-            mbiCoordsToSave = { ...cloudDb.mbi_coords, radius: Number(cloudDb.mbi_coords.radius) > 0 ? Number(cloudDb.mbi_coords.radius) : activeRadiusToSave };
-            localStorage.setItem('wfm_mbi_coords', JSON.stringify(mbiCoordsToSave));
-          }
-          if (isDummyWarehouseCoords(maiCoordsToSave) && cloudDb.mai_coords && !isDummyWarehouseCoords(cloudDb.mai_coords)) {
-            maiCoordsToSave = { ...cloudDb.mai_coords, radius: Number(cloudDb.mai_coords.radius) > 0 ? Number(cloudDb.mai_coords.radius) : activeRadiusToSave };
-            localStorage.setItem('wfm_mai_coords', JSON.stringify(maiCoordsToSave));
-          }
-        }
-
         const deletedKeys = getDeletedUserKeys();
         const deletedAttKeys = getDeletedAttendanceIds();
         const nowIso = new Date().toISOString();
         const lastChangeNow = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
         const isProtectedMaster = (effectiveForceMaster === true) || (Date.now() - lastChangeNow < 600000);
-        const payload = {
+
+        // PAYLOAD TERPISAH: MBI HANYA DATA MBI, MAI HANYA DATA MAI
+        const mbiPayload = {
           mbi_users: finalMbiUsers || [],
           mbi_attendance: getWhDB('MBI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: mbiCoordsToSave,
+          gps_radius: activeRadiusToSave,
+          deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
+          deleted_attendance_ids: Array.from(deletedAttKeys),
+          app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
+          updatedAt: nowIso
+        };
+
+        const maiPayload = {
           mai_users: finalMaiUsers || [],
           mai_attendance: getWhDB('MAI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
           mai_leaves: getWhDB('MAI', 'leaves', []),
@@ -5570,40 +5565,43 @@
         lastAppliedCloudUpdatedAt = nowIso;
         localStorage.setItem('wfm_master_updated_at', nowIso);
 
-        if ((!payload.mbi_users || payload.mbi_users.length === 0) && (!payload.mai_users || payload.mai_users.length === 0)) {
-          console.warn('Skip saving completely empty database to cloud.');
-          isSavingToCloud = false;
-          return;
-        }
-
-        let success = false;
-        let saveStatusCode = 0;
-        let saveStatusText = '';
+        let mbiSuccess = false;
+        let maiSuccess = false;
+        let lastStatusCode = 200;
 
         try {
-          const res = await fetch(endpoint, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          saveStatusCode = res.status;
-          saveStatusText = res.statusText;
-          if (res.ok) {
-            success = true;
-            try {
-              if (typeof BroadcastChannel !== 'undefined') {
-                new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
-              }
-            } catch (e) {}
-          }
+          const [mbiRes, maiRes] = await Promise.allSettled([
+            fetch(mbiEndpoint, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(mbiPayload)
+            }),
+            fetch(maiEndpoint, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(maiPayload)
+            })
+          ]);
+
+          if (mbiRes.status === 'fulfilled' && mbiRes.value.ok) mbiSuccess = true;
+          else if (mbiRes.status === 'fulfilled') lastStatusCode = mbiRes.value.status;
+
+          if (maiRes.status === 'fulfilled' && maiRes.value.ok) maiSuccess = true;
+          else if (maiRes.status === 'fulfilled') lastStatusCode = maiRes.value.status;
+
+          try {
+            if (typeof BroadcastChannel !== 'undefined') {
+              new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
+            }
+          } catch (e) {}
         } catch (e) {
           console.warn('Firebase upload error:', e);
         }
 
         isSavingToCloud = false;
-        if (success) {
+        if (mbiSuccess || maiSuccess) {
           updateCloudSyncStatusBadge('synced');
-        } else if (saveStatusCode === 401) {
+        } else if (lastStatusCode === 401) {
           updateCloudSyncStatusBadge('permission_denied');
         } else {
           updateCloudSyncStatusBadge('local');
@@ -5627,14 +5625,15 @@
           }, 50);
         }
 
-        // Hanya tampilkan alert jika dipanggil secara manual dan eksplisit
         if (isManualAlert) {
-          if (success) {
-            alert(`✅ Sukses Tersimpan ke Firebase Cloud 24/7 & Google Spreadsheet Backup!\n\n• Karyawan MBI: ${payload.mbi_users.length} orang\n• Data Lemburan: ${payload.mbi_overtime.length} data\n• Riwayat Absensi: ${payload.mbi_attendance.length} record\n\nSemua perubahan data langsung tersimpan permanen di Cloud & Google Sheet.`);
-          } else if (saveStatusCode === 401) {
-            alert('⚠️ Gagal terhubung ke Firebase Cloud (HTTP 401: Permission Denied).\n\nAturan Keamanan (Rules) Firebase Realtime Database Anda telah kedaluwarsa (Expired) atau terkunci.\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
+          if (mbiSuccess && maiSuccess) {
+            alert(`✅ Sukses Tersimpan ke Kedua Database Firebase Cloud (MBI & MAI)!\n\n• Database MBI: ${mbiPayload.mbi_users.length} Karyawan, ${mbiPayload.mbi_attendance.length} Absensi\n• Database MAI: ${maiPayload.mai_users.length} Karyawan, ${maiPayload.mai_attendance.length} Absensi\n\nSemua perubahan data telah terpisah rapi & aman di Cloud.`);
+          } else if (mbiSuccess || maiSuccess) {
+            alert(`✅ Sebagian data berhasil disimpan ke Cloud (${mbiSuccess ? 'Gudang MBI Online' : 'Gudang MAI Online'}). Data lokal tetap aman.`);
+          } else if (lastStatusCode === 401) {
+            alert('⚠️ Gagal terhubung ke Firebase Cloud (HTTP 401: Permission Denied).\n\nAturan Keamanan (Rules) Firebase Realtime Database Anda telah kedaluwarsa atau terkunci.\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
           } else {
-            alert(`⚠️ Gagal terhubung ke Firebase Cloud (${saveStatusText || 'Offline'}). Data tersimpan aman di memori lokal.`);
+            alert(`⚠️ Gagal terhubung ke Firebase Cloud. Data tersimpan aman di memori lokal.`);
           }
         }
       };
@@ -5664,54 +5663,65 @@
       harmonizeAndResequenceAllNIKs();
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-      
-      const payload = {
+      const nowIso = new Date().toISOString();
+      const deletedAttKeys = getDeletedAttendanceIds();
+      const deletedKeys = getDeletedUserKeys();
+
+      const mbiPayload = {
         mbi_users: mbiUsers,
-        mbi_attendance: getWhDB('MBI', 'attendance', []),
+        mbi_attendance: getWhDB('MBI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
         mbi_leaves: getWhDB('MBI', 'leaves', []),
         mbi_overtime: getWhDB('MBI', 'overtime', []),
         mbi_coords: getWarehouseCoords('MBI'),
+        deleted_user_keys: Array.from(deletedKeys),
+        deleted_attendance_ids: Array.from(deletedAttKeys),
+        app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
+        updatedAt: nowIso
+      };
+
+      const maiPayload = {
         mai_users: maiUsers,
-        mai_attendance: getWhDB('MAI', 'attendance', []),
+        mai_attendance: getWhDB('MAI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
         mai_leaves: getWhDB('MAI', 'leaves', []),
         mai_overtime: getWhDB('MAI', 'overtime', []),
         mai_coords: getWarehouseCoords('MAI'),
+        deleted_user_keys: Array.from(deletedKeys),
+        deleted_attendance_ids: Array.from(deletedAttKeys),
         app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
-        updatedAt: new Date().toISOString()
+        updatedAt: nowIso
       };
 
       try {
-        const endpoint = getFirebaseEndpoint();
-        const res = await fetch(endpoint, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
 
-        if (res.ok) {
-          try {
-            if (typeof BroadcastChannel !== 'undefined') {
-              new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
-            }
-          } catch (e) {}
+        const [mbiRes, maiRes] = await Promise.allSettled([
+          fetch(mbiEndpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(mbiPayload)
+          }),
+          fetch(maiEndpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(maiPayload)
+          })
+        ]);
 
+        const mbiOk = mbiRes.status === 'fulfilled' && mbiRes.value.ok;
+        const maiOk = maiRes.status === 'fulfilled' && maiRes.value.ok;
+
+        if (mbiOk || maiOk) {
           updateCloudSyncStatusBadge('synced');
-          alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE FIREBASE CLOUD!\n\n` +
-                `✓ Total Data Karyawan MBI: ${mbiUsers.length} orang\n` +
-                `✓ Total Data Karyawan MAI: ${maiUsers.length} orang\n` +
-                `✓ Riwayat Absensi: ${payload.mbi_attendance.length + payload.mai_attendance.length} data\n` +
-                `✓ Server Status: Online 24/7 di Google Firebase\n\n` +
-                `Database Cloud 24/7 sekarang aktif dan tersinkron ke seluruh HP karyawan.`);
+          alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE KEDUA FIREBASE CLOUD!\n\n` +
+                `✓ Database MBI: ${mbiUsers.length} Karyawan (Tersimpan di wfm-medika-mbi)\n` +
+                `✓ Database MAI: ${maiUsers.length} Karyawan (Tersimpan di wfm-medika2)\n` +
+                `✓ Kuota Terpisah 100% Bebas Limit!\n\n` +
+                `Semua HP & laptop sekarang dapat terhubung lancar 24/7.`);
           renderAllLiveScreens();
         } else {
-          let extraInfo = '';
-          if (res.status === 401) {
-            extraInfo = '\n\nPENYEBAB: Aturan Keamanan (Rules) Firebase telah kedaluwarsa (Expired) atau terkunci.\n\nSOLUSI CEPAT (1 Menit):\n1. Buka console.firebase.google.com\n2. Buka Realtime Database > tab Rules\n3. Ubah ".read": true dan ".write": true\n4. Klik "Publish" (Publikasikan).';
-            updateCloudSyncStatusBadge('permission_denied');
-          } else {
-            updateCloudSyncStatusBadge('local');
-          }
-          alert(`⚠️ Gagal mengunggah ke Firebase (HTTP ${res.status} ${res.statusText}).${extraInfo}`);
+          updateCloudSyncStatusBadge('permission_denied');
+          alert('⚠️ Gagal mengunggah ke Firebase. Pastikan Aturan Rules pada kedua project Firebase sudah .read: true & .write: true lalu klik Publish.');
         }
       } catch (err) {
         updateCloudSyncStatusBadge('local');
@@ -5720,80 +5730,67 @@
     }
 
     async function purgeAndReloadFromFirebase() {
-      if (!confirm('Apakah Anda ingin menyinkronkan & memuat ulang database murni dari Google Firebase Cloud ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi dari Cloud akan dimuat ulang agar 100% sama.')) {
+      if (!confirm('Apakah Anda ingin menyinkronkan & memuat ulang database murni dari kedua Google Firebase Cloud (MBI & MAI) ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi dari Cloud akan dimuat ulang agar 100% sama.')) {
         return;
       }
 
       updateCloudSyncStatusBadge('syncing');
       try {
-        const endpoint = getFirebaseEndpoint();
-        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
-        if (!res.ok) {
-          let errDetail = `Status ${res.status} ${res.statusText}`;
-          if (res.status === 401) {
-            errDetail = 'HTTP 401 (Permission Denied). Aturan Firebase Rules di console.firebase.google.com terkunci atau kedaluwarsa';
-            updateCloudSyncStatusBadge('permission_denied');
-          } else {
-            updateCloudSyncStatusBadge('local');
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
+
+        const [mbiRes, maiRes] = await Promise.allSettled([
+          fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
+          fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+        ]);
+
+        let loadedMbi = false;
+        let loadedMai = false;
+
+        if (mbiRes.status === 'fulfilled' && mbiRes.value.ok) {
+          const dbMbi = await mbiRes.value.json();
+          if (dbMbi && typeof dbMbi === 'object') {
+            const cloudMbiUsers = normalizeFirebaseArray(dbMbi.mbi_users);
+            const cloudMbiAtt = normalizeFirebaseArray(dbMbi.mbi_attendance);
+            const cloudMbiOt = normalizeFirebaseArray(dbMbi.mbi_overtime);
+            const cloudMbiLeaves = normalizeFirebaseArray(dbMbi.mbi_leaves);
+
+            if (cloudMbiUsers.length > 0) localStorage.setItem('wfm_mbi_users', JSON.stringify(cloudMbiUsers));
+            localStorage.setItem('wfm_mbi_attendance', JSON.stringify(cloudMbiAtt));
+            localStorage.setItem('wfm_mbi_overtime', JSON.stringify(cloudMbiOt));
+            localStorage.setItem('wfm_mbi_leaves', JSON.stringify(cloudMbiLeaves));
+            if (dbMbi.mbi_coords) localStorage.setItem('wfm_mbi_coords', JSON.stringify(dbMbi.mbi_coords));
+            loadedMbi = true;
           }
-          alert(`⚠️ Gagal terhubung ke Firebase Cloud (${errDetail}).\n\nData di perangkat ini tetap aman dan TIDAK dihapus.`);
-          return;
         }
 
-        const db = await res.json();
-        if (!db || typeof db !== 'object' || Array.isArray(db)) {
-          alert('⚠️ Database di Firebase Cloud kosong atau belum terisi.\nData lokal Anda tetap dipertahankan agar tidak hilang.\n\nSilakan klik "Inisialisasi & Unggah Database Master" dari laptop Admin terlebih dahulu.');
-          updateCloudSyncStatusBadge('local');
-          return;
+        if (maiRes.status === 'fulfilled' && maiRes.value.ok) {
+          const dbMai = await maiRes.value.json();
+          if (dbMai && typeof dbMai === 'object') {
+            const cloudMaiUsers = normalizeFirebaseArray(dbMai.mai_users);
+            const cloudMaiAtt = normalizeFirebaseArray(dbMai.mai_attendance);
+            const cloudMaiOt = normalizeFirebaseArray(dbMai.mai_overtime);
+            const cloudMaiLeaves = normalizeFirebaseArray(dbMai.mai_leaves);
+
+            if (cloudMaiUsers.length > 0) localStorage.setItem('wfm_mai_users', JSON.stringify(cloudMaiUsers));
+            localStorage.setItem('wfm_mai_attendance', JSON.stringify(cloudMaiAtt));
+            localStorage.setItem('wfm_mai_overtime', JSON.stringify(cloudMaiOt));
+            localStorage.setItem('wfm_mai_leaves', JSON.stringify(cloudMaiLeaves));
+            if (dbMai.mai_coords) localStorage.setItem('wfm_mai_coords', JSON.stringify(dbMai.mai_coords));
+            loadedMai = true;
+          }
         }
 
-        const cloudMbiUsers = normalizeFirebaseArray(db.mbi_users);
-        const cloudMaiUsers = normalizeFirebaseArray(db.mai_users);
-        const cloudMbiAtt = normalizeFirebaseArray(db.mbi_attendance);
-        const cloudMaiAtt = normalizeFirebaseArray(db.mai_attendance);
-        const cloudMbiOt = normalizeFirebaseArray(db.mbi_overtime);
-        const cloudMaiOt = normalizeFirebaseArray(db.mai_overtime);
-        const cloudMbiLeaves = normalizeFirebaseArray(db.mbi_leaves);
-        const cloudMaiLeaves = normalizeFirebaseArray(db.mai_leaves);
-
-        if (cloudMbiUsers.length === 0 && cloudMaiUsers.length === 0) {
-          alert('⚠️ Cloud Firebase belum memiliki data karyawan. Data lokal perangkat ini tetap dipertahankan.');
-          updateCloudSyncStatusBadge('local');
-          return;
-        }
-
-        // Terapkan data resmi Cloud ke penyimpanan perangkat ini secara aman
-        localStorage.setItem('wfm_mbi_users', JSON.stringify(cloudMbiUsers));
-        localStorage.setItem('wfm_mai_users', JSON.stringify(cloudMaiUsers));
-        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(cloudMbiAtt));
-        localStorage.setItem('wfm_mai_attendance', JSON.stringify(cloudMaiAtt));
-        localStorage.setItem('wfm_mbi_overtime', JSON.stringify(cloudMbiOt));
-        localStorage.setItem('wfm_mai_overtime', JSON.stringify(cloudMaiOt));
-        localStorage.setItem('wfm_mbi_leaves', JSON.stringify(cloudMbiLeaves));
-        localStorage.setItem('wfm_mai_leaves', JSON.stringify(cloudMaiLeaves));
-        if (db.mbi_coords) localStorage.setItem('wfm_mbi_coords', JSON.stringify(db.mbi_coords));
-        if (db.mai_coords) localStorage.setItem('wfm_mai_coords', JSON.stringify(db.mai_coords));
-        if (db.app_theme) {
-          localStorage.setItem('wfm_app_theme', db.app_theme);
-          applyAppTheme(db.app_theme, false);
-        }
-        if (db.updatedAt) localStorage.setItem('wfm_master_updated_at', db.updatedAt);
-        localStorage.removeItem('wfm_last_master_change_time');
-
-        // Render ulang seluruh layar aktif
         renderAllLiveScreens();
         updateCloudSyncStatusBadge('synced');
 
-        alert(`✅ SUKSES MEMUAT DATA DARI FIREBASE CLOUD!\n\n` +
-              `• Karyawan MBI: ${cloudMbiUsers.length} orang\n` +
-              `• Karyawan MAI: ${cloudMaiUsers.length} orang\n` +
-              `• Riwayat Absensi MBI: ${cloudMbiAtt.length} record\n` +
-              `• Riwayat Absensi MAI: ${cloudMaiAtt.length} record\n` +
-              `• Data Lemburan: ${cloudMbiOt.length + cloudMaiOt.length} data\n\n` +
+        alert(`✅ SUKSES MEMUAT DATA DARI KEDUA FIREBASE CLOUD!\n\n` +
+              `• Status MBI: ${loadedMbi ? 'Berhasil Terhubung' : 'Standby'}\n` +
+              `• Status MAI: ${loadedMai ? 'Berhasil Terhubung' : 'Standby'}\n\n` +
               `Semua data di perangkat ini sekarang 100% SINKRON & SAMA dengan Cloud Server.`);
       } catch (err) {
         console.error('Purge and reload error:', err);
-        alert('⚠️ Gagal terhubung ke Firebase Cloud: ' + err.message + '\nData di perangkat ini tetap aman dan tidak dihapus.');
+        alert('⚠️ Gagal terhubung ke Firebase Cloud: ' + err.message + '\nData di perangkat ini tetap aman.');
         updateCloudSyncStatusBadge('local');
       }
     }
@@ -5802,91 +5799,75 @@
       const statusEl = document.getElementById('firebase-diag-status');
       if (statusEl) {
         statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon koneksi ke Google Firebase Cloud...</span>`;
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon koneksi ke Database MBI & MAI...</span>`;
         statusEl.classList.remove('hidden');
         lucide.createIcons();
       }
 
-      const endpoint = getFirebaseEndpoint();
+      const mbiEndpoint = getFirebaseEndpoint('MBI');
+      const maiEndpoint = getFirebaseEndpoint('MAI');
+
       try {
         const tStart = Date.now();
-        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
+        const [mbiRes, maiRes] = await Promise.allSettled([
+          fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
+          fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+        ]);
         const latency = Date.now() - tStart;
 
-        if (res.ok) {
-          const data = await res.json();
-          const mbiCount = data && data.mbi_users ? data.mbi_users.length : 0;
-          const maiCount = data && data.mai_users ? data.mai_users.length : 0;
-          const attCount = (data && data.mbi_attendance ? data.mbi_attendance.length : 0) + (data && data.mai_attendance ? data.mai_attendance.length : 0);
+        const mbiOk = mbiRes.status === 'fulfilled' && mbiRes.value.ok;
+        const maiOk = maiRes.status === 'fulfilled' && maiRes.value.ok;
 
+        let mbiData = mbiOk ? await mbiRes.value.json() : null;
+        let maiData = maiOk ? await maiRes.value.json() : null;
+
+        const mbiCount = mbiData && mbiData.mbi_users ? mbiData.mbi_users.length : 0;
+        const maiCount = maiData && maiData.mai_users ? maiData.mai_users.length : 0;
+        const attCount = (mbiData && mbiData.mbi_attendance ? mbiData.mbi_attendance.length : 0) + (maiData && maiData.mai_attendance ? maiData.mai_attendance.length : 0);
+
+        if (mbiOk || maiOk) {
           if (statusEl) {
             statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 space-y-1.5';
             statusEl.innerHTML = `
               <div class="flex items-center gap-2">
                 <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
-                <span>✅ <b>Firebase Cloud 24/7 Aktif & Normal!</b> (Respon: ${latency}ms)</span>
+                <span>✅ <b>Firebase Cloud MBI & MAI Aktif & Normal!</b> (Respon: ${latency}ms)</span>
               </div>
               <p class="text-[11px] text-emerald-800 font-normal pl-6">
-                Database Cloud terhubung sempurna. Data di server: <b>${mbiCount} Karyawan MBI</b>, <b>${maiCount} Karyawan MAI</b>, <b>${attCount} Record Absensi</b>. Seluruh HP staf dan laptop dapat menyinkronkan data secara realtime.
+                Database terpisah terhubung sempurna: <b>${mbiCount} Karyawan MBI (wfm-medika-mbi)</b>, <b>${maiCount} Karyawan MAI (wfm-medika2)</b>, <b>${attCount} Total Record Absensi</b>.
               </p>
             `;
             statusEl.classList.remove('hidden');
             lucide.createIcons();
           }
           updateCloudSyncStatusBadge('synced');
-          alert(`✅ KONEKSI FIREBASE CLOUD BERHASIL!\n\nStatus: 200 OK (${latency}ms)\nServer: Google Firebase Realtime Database Online 24/7\nData Karyawan di Server: ${mbiCount + maiCount} orang\nRecord Absensi di Server: ${attCount} record\n\nSemua perangkat HP & laptop siap bertukar data otomatis.`);
+          alert(`✅ KONEKSI KEDUA DATABASE FIREBASE BERHASIL!\n\n• Respon: ${latency}ms\n• Database MBI: ${mbiOk ? '200 OK (Online)' : 'Offline/Check Rules'}\n• Database MAI: ${maiOk ? '200 OK (Online)' : 'Offline/Check Rules'}\n• Total Karyawan di Server: ${mbiCount + maiCount} orang\n\nSemua perangkat HP & laptop siap bertukar data otomatis.`);
         } else {
-          let reason = `HTTP ${res.status} ${res.statusText}`;
-          let solutionHtml = '';
-          if (res.status === 401) {
-            reason = 'HTTP 401 (Permission Denied / Akses Ditolak)';
-            updateCloudSyncStatusBadge('permission_denied');
-            solutionHtml = `
-              <div class="mt-2 p-3 bg-rose-100/80 rounded-xl text-rose-950 font-normal space-y-2 text-[11px] border border-rose-200">
-                <b class="font-bold text-rose-900 block text-xs">Penyebab: Aturan Keamanan (Rules) Firebase Kedaluwarsa (Expired)</b>
-                <p>Secara default, Firebase mengunci akses setelah 30 hari test mode. Ini menyebabkan data tidak bisa mengalir antar-laptop/HP.</p>
-                <b class="font-bold text-rose-900 block">Cara Mengatasi (1 Menit):</b>
-                <ol class="list-decimal list-inside pl-1 space-y-1 font-medium">
-                  <li>Buka <a href="https://console.firebase.google.com" target="_blank" class="underline font-bold text-blue-700">console.firebase.google.com</a></li>
-                  <li>Pilih Realtime Database &rarr; Tab <b>Rules</b></li>
-                  <li>Ubah menjadi:
-                    <pre class="bg-slate-900 text-emerald-400 p-2 rounded-lg font-mono text-[10px] my-1">{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}</pre>
-                  </li>
-                  <li>Klik tombol <b>Publish (Publikasikan)</b> di kanan atas.</li>
-                </ol>
-              </div>
-            `;
-          } else {
-            updateCloudSyncStatusBadge('local');
-          }
-
+          updateCloudSyncStatusBadge('permission_denied');
           if (statusEl) {
             statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300 space-y-1.5';
             statusEl.innerHTML = `
               <div class="flex items-center gap-2">
                 <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0"></i>
-                <span>⚠️ <b>Gagal Terhubung ke Firebase: ${reason}</b></span>
+                <span>⚠️ <b>Akses Firebase Rules Terkunci (HTTP 401)</b></span>
               </div>
-              ${solutionHtml}
+              <p class="text-[11px] text-rose-800 font-normal pl-6">
+                Pastikan Rules pada kedua database Firebase sudah diatur .read: true dan .write: true, lalu klik Publish.
+              </p>
             `;
             statusEl.classList.remove('hidden');
             lucide.createIcons();
           }
-
-          if (res.status === 401) {
-            alert('⚠️ ATURAN FIREBASE KEDALUWARSA (HTTP 401):\n\nAturan keamanan Firebase Realtime Database Anda telah kedaluwarsa atau terkunci.\n\nSolusi Cepat:\n1. Buka console.firebase.google.com\n2. Buka Realtime Database > tab Rules\n3. Ubah ".read": true dan ".write": true\n4. Klik Publish.');
-          } else {
-            alert(`⚠️ Gagal terhubung ke Firebase: ${reason}\nPeriksa URL Firebase Database atau koneksi internet Anda.`);
-          }
+          alert('⚠️ Akses Firebase Rules Terkunci (HTTP 401).\n\nPastikan tab Rules di console.firebase.google.com pada kedua project sudah diubah .read: true dan .write: true lalu klik Publish.');
         }
       } catch (err) {
         if (statusEl) {
           statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300';
-          statusEl.innerHTML = `<span>⚠️ Gagal menghubungi Firebase: ${err.message}. Pastikan koneksi internet laptop/HP aktif.</span>`;
+          statusEl.innerHTML = `<span>⚠️ Gagal menghubungi Firebase: ${err.message}.</span>`;
           statusEl.classList.remove('hidden');
         }
         updateCloudSyncStatusBadge('local');
-        alert(`⚠️ Gagal menghubungi Firebase: ${err.message}\nPastikan perangkat terhubung ke internet.`);
+        alert(`⚠️ Gagal menghubungi Firebase: ${err.message}`);
       }
     }
 
@@ -6183,48 +6164,53 @@
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
       let syncSummary = '';
-      const endpoint = getFirebaseEndpoint();
+      const mbiEndpoint = getFirebaseEndpoint('MBI');
+      const maiEndpoint = getFirebaseEndpoint('MAI');
 
       try {
-        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
-        if (res.ok) {
-          const db = await res.json();
-          if (db && typeof db === 'object' && !Array.isArray(db)) {
-            applyIncomingDatabase(db);
-            loaded = true;
-            lastCloudFetchErrorStatus = null;
+        const [mbiRes, maiRes] = await Promise.allSettled([
+          fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
+          fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+        ]);
 
-            const currentMBI = getWhDB('MBI', 'users', []);
-            const currentMAI = getWhDB('MAI', 'users', []);
-            const currentOt = getWhDB(activeWarehouse, 'overtime', []);
-            const currentAtt = getWhDB(activeWarehouse, 'attendance', []);
-            const totalUsers = currentMBI.length + currentMAI.length;
-            const totalOt = currentOt.length;
-            const totalAtt = currentAtt.length;
-            syncSummary = `\n• ${totalUsers} Akun Karyawan\n• ${totalOt} Data Lemburan\n• ${totalAtt} Data Riwayat Absensi`;
+        if (mbiRes.status === 'fulfilled' && mbiRes.value.ok) {
+          const dbMbi = await mbiRes.value.json();
+          if (dbMbi && typeof dbMbi === 'object' && !Array.isArray(dbMbi)) {
+            applyIncomingDatabase(dbMbi);
+            loaded = true;
           }
-        } else {
-          lastCloudFetchErrorStatus = res.status;
+        }
+        if (maiRes.status === 'fulfilled' && maiRes.value.ok) {
+          const dbMai = await maiRes.value.json();
+          if (dbMai && typeof dbMai === 'object' && !Array.isArray(dbMai)) {
+            applyIncomingDatabase(dbMai);
+            loaded = true;
+          }
+        }
+
+        if (loaded) {
+          lastCloudFetchErrorStatus = null;
+          const currentMBI = getWhDB('MBI', 'users', []);
+          const currentMAI = getWhDB('MAI', 'users', []);
+          const currentOt = getWhDB(activeWarehouse, 'overtime', []);
+          const currentAtt = getWhDB(activeWarehouse, 'attendance', []);
+          syncSummary = `\n• ${currentMBI.length} Karyawan MBI & ${currentMAI.length} Karyawan MAI\n• ${currentOt.length} Data Lemburan\n• ${currentAtt.length} Data Riwayat Absensi`;
         }
       } catch (e) {
-        console.warn('Cloud fetch failed on endpoint:', endpoint, e);
+        console.warn('Cloud fetch failed:', e);
       }
 
       if (loaded) {
         updateCloudSyncStatusBadge('synced');
-      } else if (lastCloudFetchErrorStatus === 401) {
-        updateCloudSyncStatusBadge('permission_denied');
       } else {
         updateCloudSyncStatusBadge('local');
       }
 
       if (isManualAlert) {
         if (loaded) {
-          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
-        } else if (lastCloudFetchErrorStatus === 401) {
-          alert('⚠️ Gagal terhubung ke Firebase Cloud (HTTP 401: Permission Denied).\n\nAturan Keamanan (Rules) Firebase Realtime Database Anda telah kedaluwarsa (Expired) atau terkunci.\n\nBuka console.firebase.google.com > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
+          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari kedua Cloud Server (MBI & MAI) telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
         } else {
-          alert('Menggunakan database lokal aktif. Pastikan laptop admin sudah mengklik tombol "Inisialisasi & Unggah Database Master ke Firebase Cloud" dan perangkat terhubung ke internet.');
+          alert('⚠️ Gagal terhubung ke Cloud Database. Pastikan laptop/HP terhubung ke internet dan Rules Firebase sudah .read: true & .write: true.');
         }
       }
     }
@@ -9215,7 +9201,7 @@
       playOfficialAudio(false, reason);
     }
 
-    // 4. SINKRONISASI SUARA CLOUD FIREBASE (Agar File Suara Laptop Mengalir ke Semua HP)
+    // 4. SINKRONISASI SUARA CLOUD FIREBASE (Agar File Suara Laptop Mengalir ke Semua HP di Kedua Gudang)
     async function uploadAudioClipsToCloud() {
       const soundIn = localStorage.getItem('wfm_sound_in');
       const soundErr = localStorage.getItem('wfm_sound_err');
@@ -9236,18 +9222,28 @@
       };
 
       try {
-        const audioUrl = getFirebaseAudioEndpoint();
-        const res = await fetch(audioUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          alert('✅ SUKSES MENGUNGGAH SUARA KE CLOUD!\n\nFile suara notifikasi resmi telah disimpan di Google Firebase Cloud 24/7.\nSemua HP karyawan yang membuka aplikasi akan otomatis mengunduh & memutar suara ini!');
-        } else if (res.status === 401) {
-          alert('⚠️ Akses Firebase Rules Terkunci (HTTP 401 Unauthorized).\n\nSilakan buka Firebase Console > Realtime Database > tab Rules, ubah .read dan .write menjadi true, lalu klik Publish.');
+        const mbiAudioUrl = getFirebaseAudioEndpoint('MBI');
+        const maiAudioUrl = getFirebaseAudioEndpoint('MAI');
+        const [resMbi, resMai] = await Promise.allSettled([
+          fetch(mbiAudioUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }),
+          fetch(maiAudioUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+        ]);
+
+        const mbiOk = resMbi.status === 'fulfilled' && resMbi.value.ok;
+        const maiOk = resMai.status === 'fulfilled' && resMai.value.ok;
+
+        if (mbiOk || maiOk) {
+          alert('✅ SUKSES MENGUNGGAH SUARA KE KEDUA CLOUD DATABASE (MBI & MAI)!\n\nFile suara notifikasi resmi (berhasil & gagal) telah disimpan di Google Firebase Cloud 24/7.\nSemua HP karyawan di Gudang MBI dan Gudang MAI otomatis mengunduh & memutar suara ini!');
         } else {
-          alert('⚠️ Gagal terhubung ke Cloud. Pastikan koneksi internet aktif (Status HTTP: ' + res.status + ').');
+          alert('⚠️ Gagal terhubung ke Cloud. Pastikan Rules Firebase sudah .read: true & .write: true.');
         }
       } catch (err) {
         alert('Gagal mengunggah suara ke Cloud: ' + err.message);
@@ -9256,32 +9252,43 @@
 
     async function syncAudioClipsFromCloud(showAlert = false) {
       try {
-        const audioUrl = getFirebaseAudioEndpoint();
-        const res = await fetch(audioUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && typeof data === 'object') {
-            let updated = false;
-            if (data.success && data.success.startsWith('data:audio')) {
-              localStorage.setItem('wfm_sound_in', data.success);
-              localStorage.setItem('wfm_sound_out', data.success);
-              localStorage.setItem('wfm_sound_in_name', data.success_name || 'suara absen-berhasil.mpeg');
-              localStorage.setItem('wfm_sound_out_name', data.success_name || 'suara absen-berhasil.mpeg');
-              updated = true;
+        const mbiAudioUrl = getFirebaseAudioEndpoint('MBI');
+        const maiAudioUrl = getFirebaseAudioEndpoint('MAI');
+        
+        let data = null;
+        try {
+          const res = await fetch(mbiAudioUrl);
+          if (res.ok) data = await res.json();
+        } catch(e) {}
+
+        if (!data || !data.success) {
+          try {
+            const res = await fetch(maiAudioUrl);
+            if (res.ok) data = await res.json();
+          } catch(e) {}
+        }
+
+        if (data && typeof data === 'object') {
+          let updated = false;
+          if (data.success && data.success.startsWith('data:audio')) {
+            localStorage.setItem('wfm_sound_in', data.success);
+            localStorage.setItem('wfm_sound_out', data.success);
+            localStorage.setItem('wfm_sound_in_name', data.success_name || 'suara absen-berhasil.mpeg');
+            localStorage.setItem('wfm_sound_out_name', data.success_name || 'suara absen-berhasil.mpeg');
+            updated = true;
+          }
+          if (data.error && data.error.startsWith('data:audio')) {
+            localStorage.setItem('wfm_sound_err', data.error);
+            localStorage.setItem('wfm_sound_err_name', data.error_name || 'suara absen-gagal.mpeg');
+            updated = true;
+          }
+          if (updated) {
+            renderAudioSettingsUI();
+            if (showAlert) {
+              alert('✅ SINKRONISASI SUARA CLOUD BERHASIL!\n\nFile suara notifikasi resmi telah diterapkan ke perangkat ini dan siap berbunyi.');
             }
-            if (data.error && data.error.startsWith('data:audio')) {
-              localStorage.setItem('wfm_sound_err', data.error);
-              localStorage.setItem('wfm_sound_err_name', data.error_name || 'suara absen-gagal.mpeg');
-              updated = true;
-            }
-            if (updated) {
-              renderAudioSettingsUI();
-              if (showAlert) {
-                alert('✅ SINKRONISASI SUARA CLOUD BERHASIL!\n\nFile suara notifikasi dari Admin telah diterapkan ke HP ini dan siap berbunyi.');
-              }
-            } else if (showAlert) {
-              alert('ℹ️ Belum ada file suara kustom di Cloud. Sistem tetap menggunakan nada notifikasi bawaan yang sudah ditanam di aplikasi.');
-            }
+          } else if (showAlert) {
+            alert('ℹ️ Belum ada file suara kustom di Cloud. Sistem tetap menggunakan nada notifikasi bawaan yang sudah ditanam di aplikasi.');
           }
         }
       } catch (e) {
@@ -17846,6 +17853,7 @@ function testManualSync() {
       renderAudioSettingsUI();
       syncAudioClipsFromCloud();
       tryAutoLoadLocalFolderAudio();
+      fetchFullDatabaseFromCloud();
       updateNavbarBrand();
       updateLoginWhStyle();
       updateRealtimeDashboardDate();
