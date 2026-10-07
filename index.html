@@ -1264,17 +1264,17 @@
 
               </div>
 
-            <!-- Riwayat Scan Absensi Presensi (Otomatis 2 Hari Terakhir) -->
+            <!-- Riwayat Scan Absensi Presensi (Hari Ini) -->
             <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all duration-200">
               <!-- Header Bar yang Bisa Diklik untuk Buka / Tutup -->
               <button type="button" onclick="toggleTodayScanHistory()" class="w-full p-4 sm:p-5 flex items-center justify-between gap-3 text-left hover:bg-slate-50 transition select-none bg-white">
                 <div class="flex items-center gap-3">
                   <div>
                     <div class="flex items-center gap-2 flex-wrap">
-                      <h3 id="scanner-history-title-text" class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi (2 Hari Terakhir)</h3>
+                      <h3 id="scanner-history-title-text" class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi Hari Ini</h3>
                       <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">0 Data</span>
                     </div>
-                    <p class="text-xs text-slate-500 mt-0.5">Menampilkan seluruh scan absensi 2 hari terakhir (klik untuk membuka/menutup)</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Menampilkan seluruh scan absensi hari ini (klik untuk membuka/menutup)</p>
                   </div>
                 </div>
                 
@@ -10575,9 +10575,6 @@
 
       const realTodayStr = getLocalDateString(new Date());
       const nowMs = Date.now();
-      // Rentang otomatis 2 hari ke belakang (48 jam: Hari Ini & Kemarin)
-      const cutoffMs = nowMs - (2 * 24 * 60 * 60 * 1000);
-      const cutoffDateStr = getLocalDateString(new Date(cutoffMs));
 
       const targetWh = activeWarehouse || 'MBI';
       const attendances = getWhDB(targetWh, 'attendance', []);
@@ -10589,13 +10586,8 @@
         // 1. Masuk atau Pulang hari ini
         if (a.date === realTodayStr || checkInLocal === realTodayStr || checkOutLocal === realTodayStr) return true;
 
-        // 2. Sedang dalam sesi shift aktif berjalan
+        // 2. Sedang dalam sesi shift aktif berjalan (masuk shift lintas hari tapi belum tap pulang)
         if (!a.checkOutTime && a.checkInTime && (nowMs - new Date(a.checkInTime).getTime() <= 18 * 60 * 60 * 1000)) return true;
-
-        // 3. Masuk dalam rentang 2 hari ke belakang (Kemarin & Hari Ini)
-        if (a.date && a.date >= cutoffDateStr) return true;
-        if (a.checkInTime && new Date(a.checkInTime).getTime() >= cutoffMs) return true;
-        if (a.checkOutTime && new Date(a.checkOutTime).getTime() >= cutoffMs) return true;
 
         return false;
       });
@@ -10639,7 +10631,7 @@
       }
 
       // 1. Dirty check data presensi agar tidak me-rebuild DOM jika data tidak berubah sama sekali
-      const attHash = `${targetWh}_2d_${recentAtt.length}_` + recentAtt.map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
+      const attHash = `${targetWh}_today_${recentAtt.length}_` + recentAtt.map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
       if (container.dataset.lastAttHash === attHash && container.children.length > 0) {
         return; // Data sama persis, pertahankan elemen DOM dan posisi scroll pengguna 100%!
       }
@@ -10651,7 +10643,7 @@
       const prevScrollTop = scrollEl ? scrollEl.scrollTop : 0;
 
       if (recentAtt.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada riwayat scan absensi dalam 2 hari terakhir di Gudang ${targetWh}.</div>`;
+        container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada riwayat scan absensi hari ini di Gudang ${targetWh}.</div>`;
         return;
       }
 
