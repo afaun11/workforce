@@ -484,41 +484,61 @@
       <div id="auth-alert" class="hidden mx-6 mt-4 p-3.5 rounded-2xl text-xs flex flex-col gap-1 font-semibold leading-relaxed"></div>
 
       <!-- FORM LOGIN & QUICK ACCESS AKUN ABSENSI -->
-      <div id="form-login-box" class="p-6 space-y-5">
+      <div id="form-login-box" class="p-6 space-y-4">
         
         <!-- BAGIAN 1: AKSES SATU AKUN ABSENSI HP (UNTUK SEMUA KARYAWAN SCAN KARTU) -->
-        <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5">
           <div>
             <h3 class="font-extrabold text-xs text-slate-900">Mode Akun Scanner Presensi</h3>
             <p class="text-[10px] text-slate-500 font-medium">Satu akun resmi untuk pos pemindaian kartu ID karyawan</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 pt-1">
+          <div class="grid grid-cols-2 gap-2">
             <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center">
-              Scanner Gudang MBI
+              Scanner MBI
             </button>
             <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center">
-              Scanner Gudang MAI
+              Scanner MAI
             </button>
           </div>
         </div>
 
-        <div class="relative flex py-1 items-center">
+        <!-- BAGIAN 2: LOGIN CEPAT ADMIN & MANAGER -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+          <div class="flex items-center justify-between">
+            <h3 class="font-extrabold text-xs text-slate-900">Login Cepat Manajemen</h3>
+            <span class="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">1-Klik Masuk</span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5 pt-0.5">
+            <button type="button" onclick="quickLoginAdmin('MBI')" class="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl font-bold text-[11px] transition shadow-2xs text-center">
+              Admin MBI
+            </button>
+            <button type="button" onclick="quickLoginAdmin('MAI')" class="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl font-bold text-[11px] transition shadow-2xs text-center">
+              Admin MAI
+            </button>
+            <button type="button" onclick="quickLoginManager()" class="py-2 px-2 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl font-bold text-[11px] transition shadow-2xs text-center">
+              Manager
+            </button>
+          </div>
+        </div>
+
+        <div class="relative flex py-0.5 items-center">
           <div class="flex-grow border-t border-slate-200"></div>
-          <span class="flex-shrink mx-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Atau Login Portal Manajemen</span>
+          <span class="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atau Masukkan NIK / Password</span>
           <div class="flex-grow border-t border-slate-200"></div>
         </div>
 
-        <!-- BAGIAN 2: LOGIN PORTAL MANAJEMEN (ADMIN, SPV, COORD) -->
-        <form onsubmit="handleLogin(event)" class="space-y-4">
+        <!-- BAGIAN 3: LOGIN FORM MANUAL -->
+        <form onsubmit="handleLogin(event)" class="space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Gudang</label>
+            <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Gudang</label>
             <div class="grid grid-cols-2 gap-2">
-              <label id="lbl-login-mbi" class="cursor-pointer p-2.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs">
+              <label id="lbl-login-mbi" class="cursor-pointer p-2 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs">
                 <input type="radio" name="login-warehouse" value="MBI" checked onchange="updateLoginWhStyle()" class="sr-only">
                 <span>Gudang MBI</span>
               </label>
-              <label id="lbl-login-mai" class="cursor-pointer p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
+              <label id="lbl-login-mai" class="cursor-pointer p-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs">
                 <input type="radio" name="login-warehouse" value="MAI" onchange="updateLoginWhStyle()" class="sr-only">
                 <span>Gudang MAI</span>
               </label>
@@ -526,17 +546,22 @@
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">NIK / Username</label>
-            <input type="text" id="login-identifier" required placeholder="Masukkan NIK atau Username" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium">
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">NIK / Username</label>
+              <button type="button" onclick="openAccountLookupModal()" class="text-[11px] font-bold text-teal-700 hover:text-teal-900 hover:underline inline-flex items-center gap-1">
+                🔍 Cari NIK Saya
+              </button>
+            </div>
+            <input type="text" id="login-identifier" required placeholder="Masukkan NIK (cth: MBI26-001 / ADM001)" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium">
           </div>
 
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
-            <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+            <input type="password" id="login-password" required placeholder="Masukkan password (default: medika123)" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
 
-          <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-sm font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20">
-            Masuk Portal Manajemen
+          <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20">
+            Masuk Portal
           </button>
         </form>
       </div>
@@ -7976,6 +8001,21 @@
       }
       activeWarehouse = warehouse;
       loginUserSession(scannerUser);
+    }
+
+    function quickLoginAdmin(warehouse = 'MBI') {
+      const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let adminUser = users.find(u => isUserAdmin(u)) || (warehouse === 'MAI' ? SEED_MAI_USERS[0] : SEED_MBI_USERS[0]);
+      activeWarehouse = warehouse;
+      loginUserSession(adminUser);
+    }
+
+    function quickLoginManager() {
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      let mgrUser = mbiUsers.find(u => isUserManager(u)) || maiUsers.find(u => isUserManager(u)) || SEED_MANAGER_USER;
+      activeWarehouse = mgrUser.warehouse || 'MBI';
+      loginUserSession(mgrUser);
     }
 
     // =========================================================
