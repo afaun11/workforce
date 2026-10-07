@@ -490,30 +490,22 @@
       <!-- FORM LOGIN -->
       <div id="form-login-box" class="p-6 space-y-4">
         
-        <!-- AKSES CEPAT PORTAL & SCANNER -->
+        <!-- AKSES CEPAT SCANNER GUDANG -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="font-extrabold text-xs text-slate-900">Akses Cepat Portal & Scanner</h3>
+            <h3 class="font-extrabold text-xs text-slate-900">Akses Cepat Scanner Gudang</h3>
             <span class="text-[10px] font-bold text-slate-500">1-Klik Masuk</span>
           </div>
-          <p class="text-[10px] text-slate-500 font-medium">Pilih akses cepat untuk masuk langsung tanpa repot mengetik</p>
+          <p class="text-[10px] text-slate-500 font-medium">Pilih gudang untuk langsung membuka mode scanner absensi</p>
 
           <div class="grid grid-cols-2 gap-2 pt-0.5">
-            <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
+            <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
               <i data-lucide="scan-line" class="w-3.5 h-3.5"></i>
               <span>Scanner MBI</span>
             </button>
-            <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
+            <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
               <i data-lucide="scan-line" class="w-3.5 h-3.5"></i>
               <span>Scanner MAI</span>
-            </button>
-            <button type="button" onclick="quickLoginAdmin('MBI')" class="py-2 px-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
-              <i data-lucide="shield" class="w-3.5 h-3.5 text-slate-700"></i>
-              <span>Admin MBI</span>
-            </button>
-            <button type="button" onclick="quickLoginAdmin('MAI')" class="py-2 px-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
-              <i data-lucide="shield" class="w-3.5 h-3.5 text-slate-700"></i>
-              <span>Admin MAI</span>
             </button>
           </div>
         </div>
@@ -554,13 +546,10 @@
           </button>
         </form>
 
-        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-          <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 transition cursor-pointer">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>Update Data Terbaru ⚡</span>
-          </button>
-          <button type="button" onclick="openAccountLookupModal()" class="text-slate-500 hover:text-slate-800 font-medium cursor-pointer">
-            Lupa NIK? Cari Akun
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-center text-[11px]">
+          <button type="button" onclick="openAccountLookupModal()" class="text-slate-500 hover:text-slate-800 font-medium cursor-pointer flex items-center gap-1">
+            <i data-lucide="search" class="w-3.5 h-3.5"></i>
+            <span>Lupa NIK? Cari Akun</span>
           </button>
         </div>
       </div>
