@@ -30,6 +30,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <script>
+    // Global Safe Shims for CDN Libraries
+    if (typeof window.lucide === 'undefined') {
+      window.lucide = { createIcons: function(){} };
+    }
     function handleLogoError(imgEl, fallbackId) {
       const candidates = [
         'logo-wfm.png.jpeg',
@@ -4812,6 +4816,15 @@
       const cleanedDefault = key === 'users' && Array.isArray(defaultVal) ? deduplicateUserList(defaultVal, warehouse) : (defaultVal !== undefined ? defaultVal : []);
       localStorage.setItem(storageKey, JSON.stringify(cleanedDefault));
       return cleanedDefault;
+    }
+
+    function setWhDB(warehouse, key, val) {
+      try {
+        const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
+        localStorage.setItem(storageKey, JSON.stringify(val));
+      } catch(e) {
+        console.error('setWhDB error:', e);
+      }
     }
 
     // =========================================================
