@@ -5221,13 +5221,22 @@
           if (cloudMatch.nik) matchedCloudNiks.add(String(cloudMatch.nik).toUpperCase().trim());
           if (cloudMatch.name) matchedCloudNames.add(cleanStr(cloudMatch.name));
 
-          const merged = { ...loc };
+          const merged = { ...loc, ...cloudMatch };
+          if (cloudMatch.name && isLikelyHumanName(cloudMatch.name)) {
+            merged.name = cloudMatch.name;
+          }
+          if (cloudMatch.nik) {
+            merged.nik = cloudMatch.nik.toUpperCase().trim();
+            merged.barcodeValue = cloudMatch.nik.toUpperCase().trim();
+          }
           if (loc.permissions && typeof loc.permissions === 'object') {
             merged.permissions = { ...(cloudMatch.permissions || {}), ...loc.permissions };
           } else if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
             merged.permissions = { ...cloudMatch.permissions };
           }
-          if (cloudMatch.password && !loc.password) {
+          if (loc.password) {
+            merged.password = loc.password;
+          } else if (cloudMatch.password) {
             merged.password = cloudMatch.password;
           }
           if (cloudMatch.phone && (!loc.phone || loc.phone === '-')) {
@@ -5235,14 +5244,6 @@
           }
           if (cloudMatch.email && !loc.email) {
             merged.email = cloudMatch.email;
-          }
-          // Lindungi nama asli manusia
-          if (typeof isLikelyIdNotName === 'function' && isLikelyIdNotName(merged.name)) {
-            if (loc.name && !isLikelyIdNotName(loc.name)) {
-              merged.name = loc.name;
-            } else if (cloudMatch.name && !isLikelyIdNotName(cloudMatch.name)) {
-              merged.name = cloudMatch.name;
-            }
           }
           resultList.push(merged);
         } else {
@@ -5323,8 +5324,27 @@
       const currMbiLeaves = localStorage.getItem('wfm_mbi_leaves') || '';
       const currMaiLeaves = localStorage.getItem('wfm_mai_leaves') || '';
 
-      let cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), normalizeFirebaseArray(db.mbi_users), 'MBI', cloudUpdatedAt);
-      let cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), normalizeFirebaseArray(db.mai_users), 'MAI', cloudUpdatedAt);
+      const cloudMbiRaw = normalizeFirebaseArray(db.mbi_users);
+      const cloudMaiRaw = normalizeFirebaseArray(db.mai_users);
+
+      const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
+      const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
+
+      // ADOPSI LANGSUNG DATA MASTER CLOUD DI SEMUA HP & PERANGKAT LAIN:
+      // Menjamin seluruh HP/laptop scanner selalu memiliki mapping NIK & Nama 100% sama dengan Admin!
+      let cleanMbiUsers;
+      if (!isRecentLocalMasterChange && Array.isArray(cloudMbiRaw) && cloudMbiRaw.some(u => u && !isManagementSystemAccount(u))) {
+        cleanMbiUsers = deduplicateUserList(cloudMbiRaw, 'MBI');
+      } else {
+        cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), cloudMbiRaw, 'MBI', cloudUpdatedAt);
+      }
+
+      let cleanMaiUsers;
+      if (!isRecentLocalMasterChange && Array.isArray(cloudMaiRaw) && cloudMaiRaw.some(u => u && !isManagementSystemAccount(u))) {
+        cleanMaiUsers = deduplicateUserList(cloudMaiRaw, 'MAI');
+      } else {
+        cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), cloudMaiRaw, 'MAI', cloudUpdatedAt);
+      }
 
       cleanMbiUsers.forEach(u => {
         if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
@@ -5403,15 +5423,32 @@
         }
       }
 
-      if (!hasUsersChanged && !hasAttChanged && !hasOtChanged && !hasLeavesChanged && !hasCoordsChanged) {
-        return;
-      }
-
       if (hasUsersChanged) {
         localStorage.setItem('wfm_mbi_users', newMbiUsers);
         localStorage.setItem('wfm_mai_users', newMaiUsers);
         localStorage.setItem('wfm_mbi_users_backup', newMbiUsers);
         localStorage.setItem('wfm_mai_users_backup', newMaiUsers);
+
+        // Update permanent registry di HP / perangkat ini dengan NIK master Cloud
+        try {
+          const permObj = {};
+          cleanMbiUsers.forEach(u => {
+            if (u && u.name && u.nik && !isLikelyIdNotName(u.name)) {
+              permObj[`MBI_${cleanStr(u.name)}`] = u.nik.toUpperCase().trim();
+            }
+          });
+          cleanMaiUsers.forEach(u => {
+            if (u && u.name && u.nik && !isLikelyIdNotName(u.name)) {
+              permObj[`MAI_${cleanStr(u.name)}`] = u.nik.toUpperCase().trim();
+            }
+          });
+          localStorage.setItem('wfm_permanent_nik_name_registry', JSON.stringify(permObj));
+        } catch(e) {}
+
+        // Selaraskan riwayat presensi di HP / perangkat ini
+        if (typeof realignAllAttendanceRecordsWithMaster === 'function') {
+          realignAllAttendanceRecordsWithMaster();
+        }
 
         if (currentUser) {
           const myWh = currentUser.warehouse || activeWarehouse || 'MBI';
@@ -5424,6 +5461,7 @@
           }
         }
       }
+
       if (hasAttChanged) {
         localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
         localStorage.setItem('wfm_mai_attendance', newMaiAtt);
