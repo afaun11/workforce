@@ -6164,28 +6164,60 @@
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
       let syncSummary = '';
+      
       const mbiEndpoint = getFirebaseEndpoint('MBI');
       const maiEndpoint = getFirebaseEndpoint('MAI');
+      const mbiUpdatedUrl = mbiEndpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+      const maiUpdatedUrl = maiEndpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+
+      const localMbiUpdated = localStorage.getItem('wfm_mbi_master_updated_at') || '';
+      const localMaiUpdated = localStorage.getItem('wfm_mai_master_updated_at') || '';
 
       try {
-        const [mbiRes, maiRes] = await Promise.allSettled([
-          fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
-          fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+        // 1. SMART DELTA CHECK: Cek timestamp ringan (hanya 30 bytes) sebelum mengunduh data besar
+        const [checkMbiRes, checkMaiRes] = await Promise.allSettled([
+          fetch(mbiUpdatedUrl + '?t=' + Date.now(), { cache: 'no-store' }),
+          fetch(maiUpdatedUrl + '?t=' + Date.now(), { cache: 'no-store' })
         ]);
 
-        if (mbiRes.status === 'fulfilled' && mbiRes.value.ok) {
-          const dbMbi = await mbiRes.value.json();
-          if (dbMbi && typeof dbMbi === 'object' && !Array.isArray(dbMbi)) {
-            applyIncomingDatabase(dbMbi);
-            loaded = true;
-          }
+        const cloudMbiTimestamp = (checkMbiRes.status === 'fulfilled' && checkMbiRes.value.ok) ? await checkMbiRes.value.json() : null;
+        const cloudMaiTimestamp = (checkMaiRes.status === 'fulfilled' && checkMaiRes.value.ok) ? await checkMaiRes.value.json() : null;
+
+        const needMbiFetch = isManualAlert || !cloudMbiTimestamp || (typeof cloudMbiTimestamp === 'string' && cloudMbiTimestamp !== localMbiUpdated);
+        const needMaiFetch = isManualAlert || !cloudMaiTimestamp || (typeof cloudMaiTimestamp === 'string' && cloudMaiTimestamp !== localMaiUpdated);
+
+        const fetchPromises = [];
+        if (needMbiFetch) {
+          fetchPromises.push(
+            fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+              .then(r => r.ok ? r.json() : null)
+              .then(db => ({ wh: 'MBI', db, ts: cloudMbiTimestamp }))
+          );
         }
-        if (maiRes.status === 'fulfilled' && maiRes.value.ok) {
-          const dbMai = await maiRes.value.json();
-          if (dbMai && typeof dbMai === 'object' && !Array.isArray(dbMai)) {
-            applyIncomingDatabase(dbMai);
-            loaded = true;
-          }
+        if (needMaiFetch) {
+          fetchPromises.push(
+            fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
+              .then(r => r.ok ? r.json() : null)
+              .then(db => ({ wh: 'MAI', db, ts: cloudMaiTimestamp }))
+          );
+        }
+
+        if (fetchPromises.length > 0) {
+          const results = await Promise.allSettled(fetchPromises);
+          results.forEach(res => {
+            if (res.status === 'fulfilled' && res.value && res.value.db) {
+              applyIncomingDatabase(res.value.db);
+              if (res.value.wh === 'MBI') {
+                localStorage.setItem('wfm_mbi_master_updated_at', res.value.ts || res.value.db.updatedAt || new Date().toISOString());
+              } else {
+                localStorage.setItem('wfm_mai_master_updated_at', res.value.ts || res.value.db.updatedAt || new Date().toISOString());
+              }
+              loaded = true;
+            }
+          });
+        } else {
+          // Data di server sudah sama persis (0 KB diunduh, kuota 100% aman)
+          loaded = true;
         }
 
         if (loaded) {
@@ -6197,7 +6229,7 @@
           syncSummary = `\n• ${currentMBI.length} Karyawan MBI & ${currentMAI.length} Karyawan MAI\n• ${currentOt.length} Data Lemburan\n• ${currentAtt.length} Data Riwayat Absensi`;
         }
       } catch (e) {
-        console.warn('Cloud fetch failed:', e);
+        console.warn('Smart delta fetch error:', e);
       }
 
       if (loaded) {
@@ -6398,12 +6430,18 @@
       updateRegisteredCoordsDisplay();
       setAttendanceType('check_in');
 
-      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Realtime 2.5 Detik + SSE LiveStream)
+      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Smart Delta Sync + SSE LiveStream)
       fetchFullDatabaseFromCloud();
       initFirebaseLiveStream();
+      let lastBackgroundCheck = Date.now();
       setInterval(() => {
-        fetchFullDatabaseFromCloud();
-      }, 2500);
+        if (!document.hidden) {
+          fetchFullDatabaseFromCloud();
+        } else if (Date.now() - lastBackgroundCheck > 30000) {
+          lastBackgroundCheck = Date.now();
+          fetchFullDatabaseFromCloud();
+        }
+      }, 4000);
 
       window.addEventListener('focus', () => {
         fetchFullDatabaseFromCloud();
