@@ -8638,112 +8638,120 @@
     }
 
     function switchView(viewName) {
-      const isScanner = isUserScanner(currentUser);
-      const isAdmin = isUserAdmin(currentUser);
-      const isManager = isUserManager(currentUser);
-      const userRole = (currentUser?.role || 'staff').toLowerCase().trim();
-      const isSpv = isUserSupervisor(currentUser) || userRole === 'supervisor' || userRole === 'coordinator';
-      const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager || isSpv;
-      
-      if (isScanner) {
-        // Akun Scanner Absensi (MAI & MBI) HANYA boleh membuka menu attendance
-        viewName = 'attendance';
-      } else if (viewName === 'permissions') {
-        if (!isAdmin && !hasPermission('perm_sys_manage_permissions')) {
-          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengelola hak akses akun.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
+      try {
+        const isScanner = isUserScanner(currentUser);
+        const isAdmin = isUserAdmin(currentUser);
+        const isManager = isUserManager(currentUser);
+        const userRole = (currentUser?.role || 'staff').toLowerCase().trim();
+        const isSpv = isUserSupervisor(currentUser) || userRole === 'supervisor' || userRole === 'coordinator';
+        const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isManager || isSpv;
+        
+        if (isScanner) {
+          viewName = 'attendance';
+        } else if (viewName === 'permissions') {
+          if (!isAdmin && !hasPermission('perm_sys_manage_permissions')) {
+            alert('Akses Ditolak: Anda tidak memiliki izin untuk mengelola hak akses akun.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (viewName === 'github' || viewName === 'cloud') {
+          if (!isAdmin && !hasPermission('perm_sys_cloud_sync')) {
+            alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses dengan izin Cloud Database.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (viewName === 'employees') {
+          if (!isAdmin && !hasPermission('perm_emp_view') && !hasPermission('perm_emp_add')) {
+            alert('Akses Ditolak: Anda tidak memiliki izin untuk membuka menu Data Karyawan.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (viewName === 'leaves') {
+          if (!isAdmin && !hasPermission('perm_submit_leave_staff') && !hasPermission('perm_approve_leave_spv') && !hasPermission('perm_approve_leave_mgr')) {
+            alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Form Pengajuan Sakit/Cuti.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (viewName === 'overtime') {
+          if (!isAdmin && !hasPermission('perm_submit_batch_ot') && !hasPermission('perm_approve_ot_spv') && !hasPermission('perm_approve_ot_mgr') && !hasPermission('perm_rep_ot')) {
+            alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Input & Rekap Lembur.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (viewName === 'reports-group') {
+          if (!isAdmin && !hasPermission('perm_rep_records') && !hasPermission('perm_rep_matrix') && !hasPermission('perm_rep_workhours') && !hasPermission('perm_rep_leaves') && !hasPermission('perm_rep_ot')) {
+            alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Laporan & Rekap Absensi.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (viewName === 'idcard') {
+          if (!isAdmin && !hasPermission('perm_idcard_single') && !hasPermission('perm_idcard_batch_a4') && !hasPermission('perm_idcard_qr_location')) {
+            alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Kartu ID Karyawan.');
+            viewName = isManagement ? 'dashboard' : 'attendance';
+          }
+        } else if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
+          viewName = 'attendance';
         }
-      } else if (viewName === 'github' || viewName === 'cloud') {
-        if (!isAdmin && !hasPermission('perm_sys_cloud_sync')) {
-          alert('Akses Ditolak: Fitur Database Cloud 24/7 hanya dapat diakses dengan izin Cloud Database.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
-        }
-      } else if (viewName === 'employees') {
-        if (!isAdmin && !hasPermission('perm_emp_view') && !hasPermission('perm_emp_add')) {
-          alert('Akses Ditolak: Anda tidak memiliki izin untuk membuka menu Data Karyawan.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
-        }
-      } else if (viewName === 'leaves') {
-        if (!isAdmin && !hasPermission('perm_submit_leave_staff') && !hasPermission('perm_approve_leave_spv') && !hasPermission('perm_approve_leave_mgr')) {
-          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Form Pengajuan Sakit/Cuti.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
-        }
-      } else if (viewName === 'overtime') {
-        if (!isAdmin && !hasPermission('perm_submit_batch_ot') && !hasPermission('perm_approve_ot_spv') && !hasPermission('perm_approve_ot_mgr') && !hasPermission('perm_rep_ot')) {
-          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Input & Rekap Lembur.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
-        }
-      } else if (viewName === 'reports-group') {
-        if (!isAdmin && !hasPermission('perm_rep_records') && !hasPermission('perm_rep_matrix') && !hasPermission('perm_rep_workhours') && !hasPermission('perm_rep_leaves') && !hasPermission('perm_rep_ot')) {
-          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses Laporan & Rekap Absensi.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
-        }
-      } else if (viewName === 'idcard') {
-        if (!isAdmin && !hasPermission('perm_idcard_single') && !hasPermission('perm_idcard_batch_a4') && !hasPermission('perm_idcard_qr_location')) {
-          alert('Akses Ditolak: Anda tidak memiliki izin untuk mengakses menu Kartu ID Karyawan.');
-          viewName = isManagement ? 'dashboard' : 'attendance';
-        }
-      } else if (!isManagement && viewName !== 'attendance' && viewName !== 'settings') {
-        viewName = 'attendance';
-      }
 
-      document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.sidebar-link').forEach(el => {
-        el.classList.remove('is-active');
-        el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5';
-      });
+        document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.sidebar-link').forEach(el => {
+          el.classList.remove('is-active');
+          el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5';
+        });
 
-      // Pastikan seluruh section menu dan tombol tersembunyi sesuai role & permissions
-      applyRolePermissions();
+        const activeView = document.getElementById('view-' + viewName) || document.getElementById('view-dashboard') || document.getElementById('view-attendance');
+        if (activeView) activeView.classList.remove('hidden');
 
-      const activeView = document.getElementById('view-' + viewName);
-      if (activeView) activeView.classList.remove('hidden');
-
-      const activeNav = document.getElementById('nav-' + viewName);
-      if (activeNav) {
-        activeNav.classList.add('is-active');
-        activeNav.className = 'sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5';
-      }
-
-      if (viewName === 'permissions') {
-        renderPermissionEditor();
-      }
-      if (viewName === 'attendance') {
-        setAttendanceType('check_in');
-        renderScannerTodayRecords();
-        switchScanMethod('camera');
-        updateRegisteredCoordsDisplay();
-        if (typeof fetchFullDatabaseFromCloud === 'function') {
-          fetchFullDatabaseFromCloud();
+        const activeNav = document.getElementById('nav-' + viewName);
+        if (activeNav) {
+          activeNav.classList.add('is-active');
+          activeNav.className = 'sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5';
         }
-        preloadGPSLocation();
-      }
-      if (viewName === 'employees') renderEmployeeTable();
-      if (viewName === 'reports-group') {
-        const targetTab = activeReportTab || 'records';
-        switchReportTab(targetTab);
-      }
-      if (viewName === 'leaves') renderLeavesTable();
-      if (viewName === 'overtime') {
-        renderOvertimeEmployeeGrid();
-        renderOvertimeTable();
-        calculateOvertimeNominal();
-      }
-      if (viewName === 'idcard') {
-        populateDropdownEmployees();
-        renderSelectedIDCard();
-        updateRegisteredCoordsDisplay();
-      }
-      if (viewName === 'settings') renderAccountSettingsForm();
-      if (viewName === 'github') renderGitHubConfig();
-      if (viewName === 'attendance') resetVerificationState();
 
-      if (viewName !== 'attendance') {
-        stopScanner();
-      }
+        try { applyRolePermissions(); } catch(e) {}
 
-      refreshAllDashboardData();
-      lucide.createIcons();
+        if (viewName === 'permissions') {
+          try { renderPermissionEditor(); } catch(e) {}
+        }
+        if (viewName === 'attendance') {
+          try { setAttendanceType('check_in'); } catch(e) {}
+          try { renderScannerTodayRecords(); } catch(e) {}
+          try { switchScanMethod('camera'); } catch(e) {}
+          try { updateRegisteredCoordsDisplay(); } catch(e) {}
+          try { if (typeof fetchFullDatabaseFromCloud === 'function') fetchFullDatabaseFromCloud(); } catch(e) {}
+          try { preloadGPSLocation(); } catch(e) {}
+        }
+        if (viewName === 'employees') { try { renderEmployeeTable(); } catch(e) {} }
+        if (viewName === 'reports-group') {
+          try {
+            const targetTab = activeReportTab || 'records';
+            switchReportTab(targetTab);
+          } catch(e) {}
+        }
+        if (viewName === 'leaves') { try { renderLeavesTable(); } catch(e) {} }
+        if (viewName === 'overtime') {
+          try {
+            renderOvertimeEmployeeGrid();
+            renderOvertimeTable();
+            calculateOvertimeNominal();
+          } catch(e) {}
+        }
+        if (viewName === 'idcard') {
+          try {
+            populateDropdownEmployees();
+            renderSelectedIDCard();
+            updateRegisteredCoordsDisplay();
+          } catch(e) {}
+        }
+        if (viewName === 'settings') { try { renderAccountSettingsForm(); } catch(e) {} }
+        if (viewName === 'github') { try { renderGitHubConfig(); } catch(e) {} }
+        if (viewName === 'attendance') { try { resetVerificationState(); } catch(e) {} }
+
+        if (viewName !== 'attendance') {
+          try { stopScanner(); } catch(e) {}
+        }
+
+        try { refreshAllDashboardData(); } catch(e) {}
+        try { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons(); } catch(e) {}
+      } catch (err) {
+        console.warn('switchView error:', err);
+        const fallbackView = document.getElementById('view-' + viewName) || document.getElementById('view-dashboard') || document.getElementById('view-attendance');
+        if (fallbackView) fallbackView.classList.remove('hidden');
+      }
     }
 
     function updateRealtimeDashboardDate() {
