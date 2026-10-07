@@ -6522,74 +6522,81 @@
     }
 
     window.onload = () => {
-      lucide.createIcons();
-      if (typeof updateGSheetSyncBadge === 'function') {
-        updateGSheetSyncBadge();
-      }
-      if (typeof updateFirebaseUrlUI === 'function') {
-        updateFirebaseUrlUI();
-      }
+      try { updateLoginWhStyle(); } catch(e) {}
+      try { updateNavbarBrand(); } catch(e) {}
+      try { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons(); } catch(e) {}
+      try { if (typeof updateGSheetSyncBadge === 'function') updateGSheetSyncBadge(); } catch(e) {}
+      try { if (typeof updateFirebaseUrlUI === 'function') updateFirebaseUrlUI(); } catch(e) {}
 
       // Ensure DB initialized & clean active users from tombstone list
-      if (typeof unmarkDeletedUser === 'function') {
-        unmarkDeletedUser('melinda');
+      try {
+        if (typeof unmarkDeletedUser === 'function') unmarkDeletedUser('melinda');
+        if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
+        if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
+        if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
+        if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
+        if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts();
+        if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs();
+        if (typeof realignAllAttendanceRecordsWithMaster === 'function') realignAllAttendanceRecordsWithMaster();
+        if (typeof sanitizeEmployeesData === 'function') sanitizeEmployeesData();
+        if (typeof repairAndSanitizeAttendanceRecords === 'function') repairAndSanitizeAttendanceRecords();
+      } catch(e) {
+        console.warn('DB sanitize warning:', e);
       }
-      if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
-      if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
-      if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
-      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
-      if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts();
-      if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs();
-      if (typeof realignAllAttendanceRecordsWithMaster === 'function') realignAllAttendanceRecordsWithMaster();
-      sanitizeEmployeesData();
-      repairAndSanitizeAttendanceRecords();
-      getWhDB('MBI', 'users', SEED_MBI_USERS);
-      getWhDB('MAI', 'users', SEED_MAI_USERS);
-      getWhDB('MBI', 'attendance', []);
-      getWhDB('MAI', 'attendance', []);
-      getWhDB('MBI', 'overtime', []);
-      migrateAllUsersNIK();
 
-      const now = new Date();
-      const realToday = getLocalDateString(now);
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
-      
-      const firstDayStr = `${year}-${month}-01`;
-      const lastDayStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
-      const effectiveStartForRecords = firstDayStr;
-      const effectiveEndForRecords = realToday;
+      try {
+        getWhDB('MBI', 'users', SEED_MBI_USERS);
+        getWhDB('MAI', 'users', SEED_MAI_USERS);
+        getWhDB('MBI', 'attendance', []);
+        getWhDB('MAI', 'attendance', []);
+        getWhDB('MBI', 'overtime', []);
+        if (typeof migrateAllUsersNIK === 'function') migrateAllUsersNIK();
+      } catch(e) {}
 
-      document.getElementById('matrix-start-date').value = firstDayStr;
-      document.getElementById('matrix-end-date').value = lastDayStr;
-      document.getElementById('record-start-date').value = effectiveStartForRecords;
-      document.getElementById('record-end-date').value = effectiveEndForRecords;
-      if (document.getElementById('report-leave-start')) document.getElementById('report-leave-start').value = firstDayStr;
-      if (document.getElementById('report-leave-end')) document.getElementById('report-leave-end').value = lastDayStr;
-      if (document.getElementById('report-ot-start')) document.getElementById('report-ot-start').value = effectiveStartForRecords;
-      if (document.getElementById('report-ot-end')) document.getElementById('report-ot-end').value = effectiveEndForRecords;
-      document.getElementById('ot-filter-start').value = effectiveStartForRecords;
-      document.getElementById('ot-filter-end').value = effectiveEndForRecords;
-      document.getElementById('ot-date').value = realToday;
-      document.getElementById('leave-start-date').value = realToday;
-      document.getElementById('leave-end-date').value = realToday;
+      try {
+        const now = new Date();
+        const realToday = getLocalDateString(now);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+        
+        const firstDayStr = `${year}-${month}-01`;
+        const lastDayStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+        const effectiveStartForRecords = firstDayStr;
+        const effectiveEndForRecords = realToday;
 
-      updateRealtimeDashboardDate();
-      setInterval(() => {
-        const d = new Date();
-        const el = document.getElementById('live-clock');
-        if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        setVal('matrix-start-date', firstDayStr);
+        setVal('matrix-end-date', lastDayStr);
+        setVal('record-start-date', effectiveStartForRecords);
+        setVal('record-end-date', effectiveEndForRecords);
+        setVal('report-leave-start', firstDayStr);
+        setVal('report-leave-end', lastDayStr);
+        setVal('report-ot-start', effectiveStartForRecords);
+        setVal('report-ot-end', effectiveEndForRecords);
+        setVal('ot-filter-start', effectiveStartForRecords);
+        setVal('ot-filter-end', effectiveEndForRecords);
+        setVal('ot-date', realToday);
+        setVal('leave-start-date', realToday);
+        setVal('leave-end-date', realToday);
+
         updateRealtimeDashboardDate();
-      }, 1000);
+        setInterval(() => {
+          const d = new Date();
+          const el = document.getElementById('live-clock');
+          if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
+          updateRealtimeDashboardDate();
+        }, 1000);
+      } catch(e) {}
 
-      renderLocationQRCode();
-      updateRegisteredCoordsDisplay();
-      setAttendanceType('check_in');
+      try { renderLocationQRCode(); } catch(e) {}
+      try { updateRegisteredCoordsDisplay(); } catch(e) {}
+      try { setAttendanceType('check_in'); } catch(e) {}
 
-      // Sinkronkan data otomatis murni dari Google Firebase Cloud Server (Smart Delta Sync + SSE LiveStream)
-      fetchFullDatabaseFromCloud();
-      initFirebaseLiveStream();
+      // Sinkronkan data otomatis dari Google Firebase Cloud Server
+      try { fetchFullDatabaseFromCloud(); } catch(e) {}
+      try { initFirebaseLiveStream(); } catch(e) {}
+      
       let lastBackgroundCheck = Date.now();
       setInterval(() => {
         if (!document.hidden) {
@@ -6600,48 +6607,32 @@
         }
       }, 4000);
 
-      window.addEventListener('focus', () => {
-        fetchFullDatabaseFromCloud();
-      });
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-          fetchFullDatabaseFromCloud();
-        }
-      });
+      window.addEventListener('focus', () => { try { fetchFullDatabaseFromCloud(); } catch(e) {} });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { fetchFullDatabaseFromCloud(); } catch(e) {} } });
       window.addEventListener('storage', (e) => {
         if (e.key && e.key.startsWith('wfm_')) {
-          renderAllLiveScreens();
+          try { renderAllLiveScreens(); } catch(err) {}
         }
       });
 
       if (typeof BroadcastChannel !== 'undefined') {
-        const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
-        syncBc.onmessage = () => {
-          fetchFullDatabaseFromCloud();
-        };
+        try {
+          const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
+          syncBc.onmessage = () => { try { fetchFullDatabaseFromCloud(); } catch(e) {} };
+        } catch(e) {}
       }
 
-      initSidebarState();
-      initAppFont();
-      initAppTheme();
+      try { initSidebarState(); } catch(e) {}
+      try { initAppFont(); } catch(e) {}
+      try { initAppTheme(); } catch(e) {}
+      try { updateLoginWhStyle(); } catch(e) {}
 
       const savedUser = localStorage.getItem('wfm_active_session');
       if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser);
-          const role = (parsed?.role || '').toLowerCase();
-          const isAllowed = ['admin', 'superadmin', 'supervisor', 'coordinator', 'cordinator', 'scanner', 'manager'].includes(role) || 
-                            parsed?.nik?.startsWith('ADM') || 
-                            parsed?.nik?.startsWith('ABSEN') || 
-                            parsed?.nik?.startsWith('SPV') ||
-                            parsed?.nik?.startsWith('MGR') ||
-                            isUserAdmin(parsed) ||
-                            isUserManager(parsed) ||
-                            isUserScanner(parsed);
-          if (isAllowed) {
+          if (parsed && (parsed.nik || parsed.id)) {
             loginUserSession(parsed);
-          } else {
-            localStorage.removeItem('wfm_active_session');
           }
         } catch (e) {
           localStorage.removeItem('wfm_active_session');
@@ -6941,6 +6932,8 @@
         loginTitle.innerText = isMBI ? 'Medika Bina Investama' : 'Medika Akses Investama';
       }
     }
+
+    try { updateLoginWhStyle(); } catch(e) {}
 
 
     function isManagementSystemAccount(user) {
@@ -18410,34 +18403,24 @@ function testManualSync() {
     }
 
     // Inisialisasi otomatis status Google Sheet, Audio Setting, Pembersihan Duplikat & Sinkronisasi Suara saat halaman dimuat
-    try {
-      if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') {
-        autoPurgeDuplicateAndCorruptEmployees();
-      }
-      if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') {
-        restoreSeparateMelindaAndManagerAccounts();
-      }
-      if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') {
-        lockAndHarmonizeAllEmployeeNIKs();
-      }
-      if (typeof repairCorruptedEmployeeNames === 'function') {
-        repairCorruptedEmployeeNames();
-      }
-      if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') {
-        autoMigrateAndPersistAllEmployeeOS();
-      }
-      getGoogleSheetWebhookUrl();
-      updateGSheetSyncBadge();
-      preloadGPSLocation();
-      renderAudioSettingsUI();
-      syncAudioClipsFromCloud();
-      tryAutoLoadLocalFolderAudio();
-      fetchFullDatabaseFromCloud();
-      updateNavbarBrand();
-      updateLoginWhStyle();
-      updateRealtimeDashboardDate();
-      setInterval(updateRealtimeDashboardDate, 1000);
+    try { if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(); } catch(e) {}
+    try { if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts(); } catch(e) {}
+    try { if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs(); } catch(e) {}
+    try { if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames(); } catch(e) {}
+    try { if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS(); } catch(e) {}
+    try { getGoogleSheetWebhookUrl(); } catch(e) {}
+    try { updateGSheetSyncBadge(); } catch(e) {}
+    try { preloadGPSLocation(); } catch(e) {}
+    try { renderAudioSettingsUI(); } catch(e) {}
+    try { syncAudioClipsFromCloud(); } catch(e) {}
+    try { tryAutoLoadLocalFolderAudio(); } catch(e) {}
+    try { fetchFullDatabaseFromCloud(); } catch(e) {}
+    try { updateNavbarBrand(); } catch(e) {}
+    try { updateLoginWhStyle(); } catch(e) {}
+    try { updateRealtimeDashboardDate(); } catch(e) {}
+    try { setInterval(updateRealtimeDashboardDate, 1000); } catch(e) {}
 
+    try {
       const savedSession = localStorage.getItem('wfm_active_session');
       if (savedSession) {
         try {
@@ -18447,6 +18430,9 @@ function testManualSync() {
           }
         } catch (e) {}
       }
+    } catch(e) {}
+    
+    try {
       if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
       }
