@@ -3049,20 +3049,30 @@
       <div class="flex items-center justify-between pb-3 border-b border-slate-100">
         <div>
           <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-2">
-            <span>Sinkronisasi Otomatis Google Spreadsheet</span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-300">Real-Time Sync</span>
+            <span>Sinkronisasi Otomatis Google Spreadsheet (MBI &amp; MAI)</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-black bg-slate-100 text-slate-800 border border-slate-300">Dual Real-Time Sync</span>
           </h3>
-          <p class="text-xs text-slate-500">Data otomatis masuk seketika saat ada karyawan yang absen atau pengajuan baru</p>
+          <p class="text-xs text-slate-500">MBI &amp; MAI tersinkronisasi ke Google Spreadsheet terpisah secara otomatis setiap ada absensi</p>
         </div>
         <button onclick="closeGoogleSheetBackupModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       <!-- Realtime Auto-Sync Info Banner -->
       <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-800 space-y-0.5">
-        <span class="font-bold text-slate-900">Sinkronisasi Otomatis Berjalan Setiap Absensi:</span>
+        <span class="font-bold text-slate-900">Sinkronisasi Otomatis Terpisah 2 Gudang (MBI &amp; MAI):</span>
         <p class="text-[11px] text-slate-600 leading-relaxed">
-          Setiap kali karyawan melakukan scan absen masuk / absen pulang di HP atau ada persetujuan lembur & pengajuan sakit/cuti, sistem langsung menyinkronkan data ke Google Sheet target secara otomatis di latar belakang.
+          Sistem otomatis mengirim data <b>Gudang MBI</b> ke <b>Google Sheet MBI</b> dan data <b>Gudang MAI</b> ke <b>Google Sheet MAI</b> secara independen dan realtime di latar belakang.
         </p>
+      </div>
+
+      <!-- Tab Switcher Modal Gudang (MBI / MAI) -->
+      <div class="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+        <button type="button" id="tab-btn-gsheet-mbi" onclick="switchGSheetModalTab('MBI')" class="flex-1 py-2 px-3 rounded-xl text-xs font-black transition bg-white text-slate-900 shadow-xs border border-slate-200 flex items-center justify-center gap-1.5">
+          <span>Gudang MBI</span>
+        </button>
+        <button type="button" id="tab-btn-gsheet-mai" onclick="switchGSheetModalTab('MAI')" class="flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5">
+          <span>Gudang MAI</span>
+        </button>
       </div>
 
       <!-- Daftar 3 Sheet yang Disinkronkan Sesuai Kebutuhan User -->
@@ -3073,7 +3083,7 @@
             <div class="w-6 h-6 rounded-lg bg-slate-200 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0">1</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">RECORD ABSEN</div>
-              <div class="text-[10px] text-slate-500">Log kehadiran in/out, durasi & status</div>
+              <div class="text-[10px] text-slate-500">Log kehadiran in/out &amp; durasi</div>
             </div>
           </div>
           <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
@@ -3087,7 +3097,7 @@
             <div class="w-6 h-6 rounded-lg bg-slate-200 text-slate-800 font-black text-[10px] flex items-center justify-center shrink-0">3</div>
             <div>
               <div class="font-bold text-slate-900 font-mono">REKAP LEMBUR</div>
-              <div class="text-[10px] text-slate-500">Log lembur & estimasi upah</div>
+              <div class="text-[10px] text-slate-500">Log lembur &amp; estimasi upah</div>
             </div>
           </div>
         </div>
@@ -3095,43 +3105,48 @@
 
       <!-- Pengaturan Gudang -->
       <div class="space-y-1.5">
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Lingkup Gudang yang Disinkronkan *</label>
-        <select id="gsheet-target-wh" class="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          <option value="ALL">Kedua Gudang (MBI & MAI) - Rekomendasi</option>
-          <option value="CURRENT">Gudang Saat Ini (Sesuai Navigasi Aktif)</option>
-          <option value="MBI">Gudang MBI Saja</option>
-          <option value="MAI">Gudang MAI Saja</option>
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Lingkup Gudang saat Sinkronisasi Manual *</label>
+        <select id="gsheet-target-wh" onchange="onGSheetTargetWhChange(this.value)" class="w-full h-10 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+          <option value="ALL">Kedua Gudang (MBI &amp; MAI) - Masing-masing ke Spreadsheet-nya</option>
+          <option value="MBI">Gudang MBI Saja (ke Spreadsheet MBI)</option>
+          <option value="MAI">Gudang MAI Saja (ke Spreadsheet MAI)</option>
         </select>
       </div>
 
       <!-- Konfigurasi Google Apps Script Webhook -->
       <div class="space-y-3 pt-2 border-t border-slate-100">
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-            URL Web App Google Apps Script *
-          </label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+              URL Webhook Apps Script (<span id="lbl-gsheet-modal-active-wh" class="text-slate-900 font-black">Gudang MBI</span>) *
+            </label>
+            <a id="link-gsheet-target" href="https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing" target="_blank" class="text-[11px] text-slate-600 hover:text-slate-900 underline font-bold flex items-center gap-1">
+              <span>Buka Spreadsheet</span>
+              <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
           <div class="flex items-center gap-2">
             <input type="url" id="gsheet-webhook-url" value="https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec" placeholder="https://script.google.com/.../exec" class="flex-1 h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-mono font-medium focus:ring-2 focus:ring-slate-900 focus:outline-none">
             <button type="button" onclick="testGoogleSheetWebhookConnection()" id="btn-test-gsheet" class="h-10 px-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs" title="Uji apakah URL Apps Script aktif dan dapat diakses publik">
               <span>Tes Koneksi</span>
             </button>
             <button type="button" onclick="saveGoogleSheetWebhookUrl()" class="h-10 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shrink-0 shadow-xs">
-              Simpan & Aktifkan
+              Simpan &amp; Aktifkan
             </button>
           </div>
-          <p class="text-[11px] text-slate-500 mt-1">Simpan URL satu kali. Sistem otomatis menyinkronkan data secara realtime setiap ada aktivitas absensi, lembur, dan izin.</p>
+          <p class="text-[11px] text-slate-500 mt-1">Sistem otomatis menyinkronkan data secara realtime ke Google Spreadsheet sesuai gudang yang aktif.</p>
         </div>
 
         <!-- Accordion Panduan Pasang Script -->
         <div class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
           <button type="button" onclick="toggleGSheetGuide()" class="w-full px-4 py-2.5 flex items-center justify-between text-left text-xs font-bold text-slate-900 hover:bg-slate-100 transition">
-            <span>Panduan Pasang / Update Script ke Google Sheet (Wajib Diikuti)</span>
+            <span>Panduan Pasang / Update Script (<span id="lbl-gsheet-guide-wh">Gudang MBI</span>)</span>
             <i id="gsheet-guide-chevron" data-lucide="chevron-down" class="w-4 h-4 text-slate-600 transition-transform"></i>
           </button>
           
           <div id="gsheet-guide-body" class="hidden p-4 pt-2 border-t border-slate-200 space-y-3 text-xs text-slate-700">
             <ol class="list-decimal list-inside space-y-2 font-medium leading-relaxed">
-              <li>Buka file <a href="https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing" target="_blank" class="font-bold underline text-slate-900">Google Spreadsheet Target Baru</a> Anda.</li>
+              <li>Buka file <a id="link-gsheet-guide-target" href="https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing" target="_blank" class="font-bold underline text-slate-900">Google Spreadsheet Target <span id="lbl-gsheet-guide-target-name">MBI</span></a>.</li>
               <li>Di menu atas Google Sheet, klik <b>Ekstensi (Extensions)</b> &rarr; <b>Apps Script</b>.</li>
               <li>Hapus semua kode lama di editor, lalu klik tombol <b>"Salin Kode Apps Script"</b> di bawah dan <b>Paste (Ctrl + V)</b> ke Apps Script, lalu klik <b>Simpan</b>.</li>
               <li class="bg-slate-100 p-2.5 rounded-xl border border-slate-200">
@@ -3144,17 +3159,22 @@
                   <li>Jika baru pertama kali: Pilih <b>Deployment Baru (New Deployment)</b> &rarr; jenis <b>Aplikasi Web (Web App)</b>.</li>
                   <li>Jika sudah pernah pasang: Pilih <b>Kelola Penerapan (Manage Deployments)</b> &rarr; Klik ikon pensil <b>Edit</b> &rarr; Versi: pilih <b>"Versi Baru" (New Version)</b>.</li>
                   <li>Jalankan sebagai: <b>Saya (email Anda)</b>.</li>
-                  <li><b class="text-slate-900 underline">Yang memiliki akses (Who has access): WAJIB pilih "Siapa saja" (Anyone)</b>, jangan pilih "Hanya dalam mhealth.tech" agar webhook tidak dicegat login Google.</li>
+                  <li><b class="text-slate-900 underline">Yang memiliki akses (Who has access): WAJIB pilih "Siapa saja" (Anyone)</b>.</li>
                 </ul>
               </li>
-              <li>Klik <b>Terapkan (Deploy)</b>, salin URL Web App yang berakhiran <code class="bg-slate-200 px-1 rounded font-mono">/exec</code>, tempelkan ke kolom di atas, lalu klik <b>Tes Koneksi</b> & <b>Simpan & Aktifkan</b>.</li>
+              <li>Klik <b>Terapkan (Deploy)</b>, salin URL Web App yang berakhiran <code class="bg-slate-200 px-1 rounded font-mono">/exec</code>, tempelkan ke kolom di atas, lalu klik <b>Tes Koneksi</b> &amp; <b>Simpan &amp; Aktifkan</b>.</li>
             </ol>
 
             <div class="pt-2 flex items-center justify-between gap-2 flex-wrap">
-              <button type="button" onclick="copyGoogleAppsScriptCode()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
-                <span id="btn-copy-gas-text">Salin Kode Apps Script (Terbaru)</span>
-              </button>
-              <span class="text-[11px] text-slate-500 italic">*Sudah otomatis menangani 38 kolom dan sheet kosong</span>
+              <div class="flex items-center gap-2">
+                <button type="button" onclick="copyGoogleAppsScriptCode('MBI')" class="h-9 px-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs">
+                  <span>Salin Script MBI</span>
+                </button>
+                <button type="button" onclick="copyGoogleAppsScriptCode('MAI')" class="h-9 px-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
+                  <span>Salin Script MAI</span>
+                </button>
+              </div>
+              <span class="text-[11px] text-slate-500 italic">*Format otomatis sesuai ID Google Sheet masing-masing</span>
             </div>
           </div>
         </div>
@@ -16594,24 +16614,48 @@
 
     // =========================================================
     // INTEGRASI SINKRONISASI OTOMATIS GOOGLE SPREADSHEET (REAL-TIME BACKUP)
-    // Target URL: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
+    // Target MBI: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
+    // Target MAI: https://docs.google.com/spreadsheets/d/1kPzxvyC6qeTPC24QmJ_ltaG9qkf6iLKvs5G5GLpPqwE/edit?usp=sharing
     // 3 Sheet Utama: RECORD ABSEN, REKAP PENGAJUAN, REKAP LEMBUR
     // =========================================================
 
-    const GOOGLE_SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing";
-    const OFFICIAL_GSHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec";
+    const GOOGLE_SPREADSHEET_URL_MBI = "https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing";
+    const GOOGLE_SPREADSHEET_ID_MBI = "1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o";
+    const OFFICIAL_GSHEET_WEBHOOK_URL_MBI = "https://script.google.com/macros/s/AKfycbygwz8NF_zCdey9XdY3InnO1qPyf8hvuhkv-MGH3jV_Z8V0UBQKqFOURqPjgOoK_3QPbA/exec";
 
-    function getGoogleSheetWebhookUrl() {
-      const inputEl = document.getElementById('gsheet-webhook-url');
-      const inputVal = (inputEl?.value || '').trim();
-      let url = (localStorage.getItem('wfm_gsheet_webhook_url') || inputVal || OFFICIAL_GSHEET_WEBHOOK_URL || '').trim();
-      // Auto-migrasi jika URL masih kosong atau masih menggunakan script URL lama
-      if (!url || !url.startsWith('https://script.google.com/') || url.includes('AKfycbzLOItBtw6x9Irj2QghmHqGZiOvP3_vIpOyuvmJHjMHe5ZY9DgBezRW61IRthwu6W-6Tw') || url.includes('mhealth.tech')) {
-        url = OFFICIAL_GSHEET_WEBHOOK_URL;
-        localStorage.setItem('wfm_gsheet_webhook_url', OFFICIAL_GSHEET_WEBHOOK_URL);
-        if (inputEl) inputEl.value = OFFICIAL_GSHEET_WEBHOOK_URL;
+    const GOOGLE_SPREADSHEET_URL_MAI = "https://docs.google.com/spreadsheets/d/1kPzxvyC6qeTPC24QmJ_ltaG9qkf6iLKvs5G5GLpPqwE/edit?usp=sharing";
+    const GOOGLE_SPREADSHEET_ID_MAI = "1kPzxvyC6qeTPC24QmJ_ltaG9qkf6iLKvs5G5GLpPqwE";
+    const OFFICIAL_GSHEET_WEBHOOK_URL_MAI = "https://script.google.com/macros/s/AKfycbzjGimgXZ9Gmm_PjqwT7j2d9F_bVS930rEatAI0pdgZipLj7hjx_U6jxT74X8Fl9Psm/exec";
+
+    // Backward compatibility references
+    const GOOGLE_SPREADSHEET_URL = GOOGLE_SPREADSHEET_URL_MBI;
+    const OFFICIAL_GSHEET_WEBHOOK_URL = OFFICIAL_GSHEET_WEBHOOK_URL_MBI;
+
+    let modalActiveGSheetWh = 'MBI';
+
+    function getGoogleSpreadsheetUrl(wh = null) {
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      return targetWh === 'MAI' ? GOOGLE_SPREADSHEET_URL_MAI : GOOGLE_SPREADSHEET_URL_MBI;
+    }
+
+    function getGoogleSheetWebhookUrl(wh = null) {
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      if (targetWh === 'MAI') {
+        let url = (localStorage.getItem('wfm_gsheet_webhook_url_mai') || OFFICIAL_GSHEET_WEBHOOK_URL_MAI || '').trim();
+        if (!url || !url.startsWith('https://script.google.com/')) {
+          url = OFFICIAL_GSHEET_WEBHOOK_URL_MAI;
+          localStorage.setItem('wfm_gsheet_webhook_url_mai', OFFICIAL_GSHEET_WEBHOOK_URL_MAI);
+        }
+        return url;
+      } else {
+        let url = (localStorage.getItem('wfm_gsheet_webhook_url_mbi') || localStorage.getItem('wfm_gsheet_webhook_url') || OFFICIAL_GSHEET_WEBHOOK_URL_MBI || '').trim();
+        if (!url || !url.startsWith('https://script.google.com/')) {
+          url = OFFICIAL_GSHEET_WEBHOOK_URL_MBI;
+          localStorage.setItem('wfm_gsheet_webhook_url_mbi', OFFICIAL_GSHEET_WEBHOOK_URL_MBI);
+          localStorage.setItem('wfm_gsheet_webhook_url', OFFICIAL_GSHEET_WEBHOOK_URL_MBI);
+        }
+        return url;
       }
-      return url;
     }
 
     function cleanGoogleScriptUrl(url) {
@@ -16624,15 +16668,21 @@
       return clean;
     }
 
-    const GOOGLE_APPS_SCRIPT_CODE = `/**
+    function getGoogleAppsScriptCode(wh = 'MBI') {
+      const targetWh = (wh || 'MBI').toUpperCase();
+      const sheetId = targetWh === 'MAI' ? GOOGLE_SPREADSHEET_ID_MAI : GOOGLE_SPREADSHEET_ID_MBI;
+      const sheetUrl = targetWh === 'MAI' ? GOOGLE_SPREADSHEET_URL_MAI : GOOGLE_SPREADSHEET_URL_MBI;
+
+      return `/**
  * =========================================================================
- * GOOGLE APPS SCRIPT WEBHOOK - WFM MEDIKA REALTIME ATTENDANCE & REPORT BACKUP
- * Spreadsheet Target: https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/edit?usp=sharing
+ * GOOGLE APPS SCRIPT WEBHOOK - WFM MEDIKA GUDANG ${targetWh}
+ * Realtime Attendance, Leave & Overtime Backup
+ * Spreadsheet Target: ${sheetUrl}
  * 3 Tab Sheet: RECORD ABSEN, REKAP PENGAJUAN, REKAP LEMBUR
  * =========================================================================
  */
 
-var TARGET_SPREADSHEET_ID = "1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o";
+var TARGET_SPREADSHEET_ID = "${sheetId}";
 
 function getTargetSpreadsheet() {
   var ss = null;
@@ -16765,15 +16815,13 @@ function doPost(e) {
       }
 
       updatedList.push(targetSheet.getName());
-
-      // PENTING: Flush seketika setelah setiap sheet selesai ditulis!
-      // Khusus RECORD ABSEN langsung tampil dalam 0.5 detik di Google Sheet!
       SpreadsheetApp.flush();
     }
 
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
-      message: "Data berhasil disinkronkan ke 3 sheet: " + updatedList.join(", "),
+      warehouse: "${targetWh}",
+      message: "Data Gudang ${targetWh} berhasil disinkronkan ke 3 sheet: " + updatedList.join(", "),
       updatedSheets: updatedList,
       timestamp: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
@@ -16794,8 +16842,10 @@ function doGet(e) {
     var ss = getTargetSpreadsheet();
     return ContentService.createTextOutput(JSON.stringify({
       status: "online",
-      name: "WFM Medika Realtime Auto-Sync Webhook",
+      warehouse: "${targetWh}",
+      name: "WFM Medika Realtime Auto-Sync Webhook - Gudang ${targetWh}",
       spreadsheetTitle: ss ? ss.getName() : "Unknown",
+      spreadsheetId: TARGET_SPREADSHEET_ID,
       time: new Date().toISOString()
     })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
@@ -16806,26 +16856,88 @@ function doGet(e) {
   }
 }
 
-/**
- * FUNGSI UJI COBA OTORISASI & KONEKSI
- * Klik fungsi ini di editor Apps Script lalu tekan tombol "Jalankan / Run"
- * Ini akan memunculkan popup "Izinkan Akses (Authorization)" ke Google Spreadsheet Anda.
- */
 function testManualSync() {
   var ss = getTargetSpreadsheet();
-  Logger.log("Terhubung ke Spreadsheet: " + ss.getName());
+  Logger.log("Terhubung ke Spreadsheet Gudang ${targetWh}: " + ss.getName());
   var sheet = ss.getSheetByName("RECORD ABSEN") || ss.getSheets()[0];
-  sheet.getRange("A1").setValue("TEST KONEKSI WFM MEDIKA BERHASIL");
+  sheet.getRange("A1").setValue("TEST KONEKSI WFM MEDIKA GUDANG ${targetWh} BERHASIL");
   SpreadsheetApp.flush();
   Logger.log("✅ Berhasil menulis test ke sheet: " + sheet.getName());
 }
 `;
+    }
+
+    const GOOGLE_APPS_SCRIPT_CODE = getGoogleAppsScriptCode('MBI');
+
+    function switchGSheetModalTab(wh) {
+      modalActiveGSheetWh = (wh || 'MBI').toUpperCase();
+      const btnMbi = document.getElementById('tab-btn-gsheet-mbi');
+      const btnMai = document.getElementById('tab-btn-gsheet-mai');
+      const lblWh = document.getElementById('lbl-gsheet-modal-active-wh');
+      const linkTarget = document.getElementById('link-gsheet-target');
+      const inputEl = document.getElementById('gsheet-webhook-url');
+      const guideWh = document.getElementById('lbl-gsheet-guide-wh');
+      const guideTarget = document.getElementById('link-gsheet-guide-target');
+      const guideTargetName = document.getElementById('lbl-gsheet-guide-target-name');
+
+      if (modalActiveGSheetWh === 'MAI') {
+        if (btnMbi) {
+          btnMbi.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5';
+        }
+        if (btnMai) {
+          btnMai.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition bg-white text-slate-900 shadow-xs border border-slate-200 flex items-center justify-center gap-1.5';
+        }
+        if (lblWh) lblWh.innerText = 'Gudang MAI';
+        if (linkTarget) {
+          linkTarget.href = GOOGLE_SPREADSHEET_URL_MAI;
+          linkTarget.innerText = 'Buka Spreadsheet MAI ↗';
+        }
+        if (guideWh) guideWh.innerText = 'Gudang MAI';
+        if (guideTarget) {
+          guideTarget.href = GOOGLE_SPREADSHEET_URL_MAI;
+        }
+        if (guideTargetName) guideTargetName.innerText = 'MAI';
+        if (inputEl) inputEl.value = getGoogleSheetWebhookUrl('MAI');
+      } else {
+        if (btnMbi) {
+          btnMbi.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition bg-white text-slate-900 shadow-xs border border-slate-200 flex items-center justify-center gap-1.5';
+        }
+        if (btnMai) {
+          btnMai.className = 'flex-1 py-2 px-3 rounded-xl text-xs font-black transition text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5';
+        }
+        if (lblWh) lblWh.innerText = 'Gudang MBI';
+        if (linkTarget) {
+          linkTarget.href = GOOGLE_SPREADSHEET_URL_MBI;
+          linkTarget.innerText = 'Buka Spreadsheet MBI ↗';
+        }
+        if (guideWh) guideWh.innerText = 'Gudang MBI';
+        if (guideTarget) {
+          guideTarget.href = GOOGLE_SPREADSHEET_URL_MBI;
+        }
+        if (guideTargetName) guideTargetName.innerText = 'MBI';
+        if (inputEl) inputEl.value = getGoogleSheetWebhookUrl('MBI');
+      }
+
+      const statusEl = document.getElementById('gsheet-backup-status');
+      if (statusEl) {
+        statusEl.className = 'p-3 rounded-xl text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
+        statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>⚡ <b>Auto-Sync Realtime Aktif untuk Gudang ${modalActiveGSheetWh}!</b></span>`;
+        statusEl.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+    }
+
+    function onGSheetTargetWhChange(val) {
+      if (val === 'MBI' || val === 'MAI') {
+        switchGSheetModalTab(val);
+      }
+    }
 
     async function testGoogleSheetWebhookConnection() {
       const inputEl = document.getElementById('gsheet-webhook-url');
-      const rawUrl = (inputEl?.value || getGoogleSheetWebhookUrl() || '').trim();
+      const rawUrl = (inputEl?.value || getGoogleSheetWebhookUrl(modalActiveGSheetWh) || '').trim();
       if (!rawUrl) {
-        alert('Silakan masukkan URL Web App Google Apps Script Anda terlebih dahulu.');
+        alert(`Silakan masukkan URL Web App Google Apps Script untuk Gudang ${modalActiveGSheetWh} Anda terlebih dahulu.`);
         return;
       }
 
@@ -16833,9 +16945,9 @@ function testManualSync() {
       const statusEl = document.getElementById('gsheet-backup-status');
       if (statusEl) {
         statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon Webhook Google Apps Script...</span>`;
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon Webhook Gudang ${modalActiveGSheetWh}...</span>`;
         statusEl.classList.remove('hidden');
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
       }
 
       try {
@@ -16845,11 +16957,11 @@ function testManualSync() {
           if (json && json.status === 'online') {
             if (statusEl) {
               statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 flex items-center gap-2';
-              statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>✅ <b>Koneksi Webhook Berhasil!</b> Terhubung ke Google Spreadsheet: <u>${json.spreadsheetTitle || 'Target'}</u>.</span>`;
+              statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>✅ <b>Koneksi Webhook Gudang ${modalActiveGSheetWh} Berhasil!</b> Terhubung ke: <u>${json.spreadsheetTitle || 'Target Google Spreadsheet'}</u>.</span>`;
               statusEl.classList.remove('hidden');
-              lucide.createIcons();
+              if (typeof lucide !== 'undefined') lucide.createIcons();
             }
-            alert(`✅ KONEKSI GOOGLE APPS SCRIPT BERHASIL!\n\nStatus: Online\nSpreadsheet: ${json.spreadsheetTitle || 'Terhubung'}\n\nWebhook siap menerima sinkronisasi otomatis presensi.`);
+            alert(`✅ KONEKSI GOOGLE APPS SCRIPT GUDANG ${modalActiveGSheetWh} BERHASIL!\n\nStatus: Online\nSpreadsheet: ${json.spreadsheetTitle || 'Terhubung'}\n\nWebhook siap menerima sinkronisasi otomatis presensi.`);
             return;
           }
         }
@@ -16862,7 +16974,7 @@ function testManualSync() {
         statusEl.innerHTML = `
           <i data-lucide="alert-circle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
           <div class="space-y-1 text-[11px] leading-relaxed">
-            <b class="text-xs text-amber-900 block font-black">Langkah Wajib Agar Data Muncul di Google Sheet:</b>
+            <b class="text-xs text-amber-900 block font-black">Langkah Wajib Agar Data Muncul di Google Sheet (${modalActiveGSheetWh}):</b>
             <p>Jika data belum masuk ke Google Sheet, ada 2 hal penting yang perlu diperiksa di Apps Script:</p>
             <ol class="list-decimal list-inside pl-1 space-y-0.5 text-amber-900 font-semibold">
               <li><b>Otorisasi Izin:</b> Di Apps Script, pilih fungsi <b>testManualSync</b> lalu klik <b>Jalankan (Run)</b> &rarr; Izinkan Akses (Allow).</li>
@@ -16871,21 +16983,14 @@ function testManualSync() {
           </div>
         `;
         statusEl.classList.remove('hidden');
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
       }
-      alert('ℹ️ TIPS PENTING:\n\nPastikan di Google Apps Script:\n1. Pilih fungsi testManualSync lalu klik "Jalankan" untuk mengizinkan akses (Otorisasi).\n2. Saat Deploy (Terapkan), opsi "Yang memiliki akses" WAJIB dipilih "Siapa saja" (Anyone), bukan hanya dalam mhealth.tech.');
+      alert(`ℹ️ TIPS PENTING UNTUK GUDANG ${modalActiveGSheetWh}:\n\nPastikan di Google Apps Script:\n1. Pilih fungsi testManualSync lalu klik "Jalankan" untuk mengizinkan akses (Otorisasi).\n2. Saat Deploy (Terapkan), opsi "Yang memiliki akses" WAJIB dipilih "Siapa saja" (Anyone).`);
     }
 
     function updateGSheetSyncBadge(status = 'standby') {
       const dot = document.getElementById('nav-gsheet-dot');
       const label = document.getElementById('nav-gsheet-label');
-      const webhookUrl = getGoogleSheetWebhookUrl();
-
-      if (!webhookUrl) {
-        if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
-        if (label) label.innerText = 'Google Sheet: Hubungkan';
-        return;
-      }
 
       if (status === 'syncing') {
         if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-spin';
@@ -16913,21 +17018,44 @@ function testManualSync() {
         isGSheetSyncing = true;
         updateGSheetSyncBadge('syncing');
 
+        const tasks = [];
+
+        // 1. Sync Gudang MBI ke Google Sheet MBI
+        const webhookUrlMbi = getGoogleSheetWebhookUrl('MBI');
+        if (webhookUrlMbi) {
+          const payloadMbi = compileBackupPayload('MBI');
+          const targetUrlMbi = cleanGoogleScriptUrl(webhookUrlMbi) || webhookUrlMbi;
+          tasks.push(
+            fetch(targetUrlMbi, {
+              method: 'POST',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payloadMbi)
+            }).catch(e => console.warn('MBI GSheet sync notice:', e))
+          );
+        }
+
+        // 2. Sync Gudang MAI ke Google Sheet MAI
+        const webhookUrlMai = getGoogleSheetWebhookUrl('MAI');
+        if (webhookUrlMai) {
+          const payloadMai = compileBackupPayload('MAI');
+          const targetUrlMai = cleanGoogleScriptUrl(webhookUrlMai) || webhookUrlMai;
+          tasks.push(
+            fetch(targetUrlMai, {
+              method: 'POST',
+              mode: 'no-cors',
+              cache: 'no-cache',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify(payloadMai)
+            }).catch(e => console.warn('MAI GSheet sync notice:', e))
+          );
+        }
+
         try {
-          const webhookUrl = getGoogleSheetWebhookUrl();
-          if (!webhookUrl) return;
-
-          const payload = compileBackupPayload('ALL');
-          const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
-
-          await fetch(targetUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            cache: 'no-cache',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(payload)
-          });
-
+          if (tasks.length > 0) {
+            await Promise.allSettled(tasks);
+          }
           updateGSheetSyncBadge('synced');
         } catch (err) {
           console.warn('Google Sheet cloud backup sync notice:', err);
@@ -16962,26 +17090,15 @@ function testManualSync() {
       const modal = document.getElementById('google-sheet-backup-modal');
       if (!modal) return;
 
-      const savedUrl = getGoogleSheetWebhookUrl();
-      const inputEl = document.getElementById('gsheet-webhook-url');
-      if (inputEl) inputEl.value = savedUrl;
-
-      const statusEl = document.getElementById('gsheet-backup-status');
-      if (statusEl) {
-        if (savedUrl) {
-          statusEl.className = 'p-3 rounded-xl text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
-          statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>⚡ <b>Sinkronisasi Otomatis Aktif!</b> Setiap ada absensi atau pengajuan baru, data otomatis masuk ke Google Sheet.</span>`;
-          statusEl.classList.remove('hidden');
-        } else {
-          statusEl.classList.add('hidden');
-        }
-      }
+      const currentWh = (activeWarehouse || 'MBI').toUpperCase();
+      modalActiveGSheetWh = (currentWh === 'MAI') ? 'MAI' : 'MBI';
+      switchGSheetModalTab(modalActiveGSheetWh);
 
       const whSelect = document.getElementById('gsheet-target-wh');
       if (whSelect) whSelect.value = 'ALL';
 
       modal.classList.remove('hidden');
-      lucide.createIcons();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     function closeGoogleSheetBackupModal() {
@@ -17006,36 +17123,43 @@ function testManualSync() {
       const inputEl = document.getElementById('gsheet-webhook-url');
       const url = (inputEl?.value || '').trim();
       if (!url) {
-        alert('Silakan masukkan URL Web App Google Apps Script.');
+        alert(`Silakan masukkan URL Web App Google Apps Script untuk Gudang ${modalActiveGSheetWh}.`);
         return;
       }
       const isGoogleScriptUrl = url.startsWith('https://script.google.com/') && url.includes('/s/') && (url.includes('/exec') || url.endsWith('/exec'));
       if (!isGoogleScriptUrl) {
-        alert('Format URL tidak sesuai.\\nURL Google Apps Script harus berformat:\\nhttps://script.google.com/macros/s/.../exec atau\\nhttps://script.google.com/a/macros/<domain>/s/.../exec');
+        alert('Format URL tidak sesuai.\nURL Google Apps Script harus berformat:\nhttps://script.google.com/macros/s/.../exec atau\nhttps://script.google.com/a/macros/<domain>/s/.../exec');
         return;
       }
-      localStorage.setItem('wfm_gsheet_webhook_url', url);
+
+      if (modalActiveGSheetWh === 'MAI') {
+        localStorage.setItem('wfm_gsheet_webhook_url_mai', url);
+      } else {
+        localStorage.setItem('wfm_gsheet_webhook_url_mbi', url);
+        localStorage.setItem('wfm_gsheet_webhook_url', url);
+      }
       updateGSheetSyncBadge('synced');
 
       const statusEl = document.getElementById('gsheet-backup-status');
       if (statusEl) {
         statusEl.className = 'p-3 rounded-xl text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>⚡ URL Webhook tersimpan! Sinkronisasi otomatis diaktifkan untuk setiap absensi karyawan.</span>`;
+        statusEl.innerHTML = `<i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>⚡ URL Webhook Gudang ${modalActiveGSheetWh} tersimpan! Sinkronisasi otomatis diaktifkan untuk setiap absensi karyawan.</span>`;
         statusEl.classList.remove('hidden');
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
       }
 
-      // Jalankan sinkronisasi awal sekarang juga
       triggerGoogleSheetAutoSync(true);
-      alert('✅ URL Google Apps Script Webhook berhasil disimpan!\\n\\n⚡ SINKRONISASI OTOMATIS AKTIF:\\nSetiap kali ada karyawan yang absen masuk/pulang, mengajukan lembur, atau cuti/sakit, data otomatis mengalir ke Google Spreadsheet Anda secara realtime.');
+      alert(`✅ URL Google Apps Script Webhook untuk Gudang ${modalActiveGSheetWh} berhasil disimpan!\n\n⚡ SINKRONISASI OTOMATIS AKTIF:\nSetiap kali ada karyawan Gudang ${modalActiveGSheetWh} yang absen masuk/pulang, mengajukan lembur, atau cuti/sakit, data otomatis mengalir ke Google Spreadsheet ${modalActiveGSheetWh} secara realtime.`);
     }
 
-    function copyGoogleAppsScriptCode() {
-      copyToClipboardText(GOOGLE_APPS_SCRIPT_CODE, 'Kode Google Apps Script berhasil disalin ke clipboard!\\n\\nSilakan tempelkan (Paste) pada menu Ekstensi > Apps Script di Google Spreadsheet target Anda.');
+    function copyGoogleAppsScriptCode(wh = null) {
+      const targetWh = (wh || modalActiveGSheetWh || activeWarehouse || 'MBI').toUpperCase();
+      const code = getGoogleAppsScriptCode(targetWh);
+      copyToClipboardText(code, `Kode Google Apps Script untuk Gudang ${targetWh} berhasil disalin ke clipboard!\n\nSilakan tempelkan (Paste) pada menu Ekstensi > Apps Script di Google Spreadsheet target Gudang ${targetWh}.`);
       const btnText = document.getElementById('btn-copy-gas-text');
       if (btnText) {
         const orig = btnText.innerText;
-        btnText.innerText = 'Kode Tersalin!';
+        btnText.innerText = `Kode ${targetWh} Tersalin!`;
         setTimeout(() => { btnText.innerText = orig; }, 2500);
       }
     }
@@ -17212,50 +17336,71 @@ function testManualSync() {
     }
 
     async function executeGoogleSheetBackup() {
-      const webhookUrl = (document.getElementById('gsheet-webhook-url')?.value || getGoogleSheetWebhookUrl() || '').trim();
       const targetWhMode = document.getElementById('gsheet-target-wh')?.value || 'ALL';
-      
-      if (!webhookUrl) {
-        alert('Silakan masukkan URL Web App Google Apps Script Anda terlebih dahulu.\n\nJika belum memiliki URL Web App, klik "Panduan Pasang Script" di bawah untuk melihat petunjuk 1 menit.');
-        toggleGSheetGuide();
-        document.getElementById('gsheet-webhook-url')?.focus();
-        return;
-      }
-
-      localStorage.setItem('wfm_gsheet_webhook_url', webhookUrl);
-      updateGSheetSyncBadge('syncing');
-
       const statusEl = document.getElementById('gsheet-backup-status');
       const btn = document.getElementById('btn-run-gsheet-backup');
+
+      updateGSheetSyncBadge('syncing');
+
       if (statusEl) {
         statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Sedang menyinkronkan data ke 3 sheet di Google Spreadsheet...</span>`;
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Sedang menyinkronkan data ke Google Spreadsheet (${targetWhMode})...</span>`;
         statusEl.classList.remove('hidden');
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
       }
       if (btn) btn.disabled = true;
 
       try {
-        const payload = compileBackupPayload(targetWhMode);
-        const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+        const tasks = [];
+        const syncedNames = [];
 
-        await fetch(targetUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          cache: 'no-cache',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
+        if (targetWhMode === 'ALL' || targetWhMode === 'MBI') {
+          const urlMbi = getGoogleSheetWebhookUrl('MBI');
+          if (urlMbi) {
+            const payloadMbi = compileBackupPayload('MBI');
+            const targetMbi = cleanGoogleScriptUrl(urlMbi) || urlMbi;
+            tasks.push(
+              fetch(targetMbi, {
+                method: 'POST',
+                mode: 'no-cors',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadMbi)
+              }).then(() => syncedNames.push('Google Sheet MBI'))
+            );
+          }
+        }
+
+        if (targetWhMode === 'ALL' || targetWhMode === 'MAI') {
+          const urlMai = getGoogleSheetWebhookUrl('MAI');
+          if (urlMai) {
+            const payloadMai = compileBackupPayload('MAI');
+            const targetMai = cleanGoogleScriptUrl(urlMai) || urlMai;
+            tasks.push(
+              fetch(targetMai, {
+                method: 'POST',
+                mode: 'no-cors',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadMai)
+              }).then(() => syncedNames.push('Google Sheet MAI'))
+            );
+          }
+        }
+
+        if (tasks.length > 0) {
+          await Promise.allSettled(tasks);
+        }
 
         updateGSheetSyncBadge('synced');
         if (statusEl) {
           statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 flex items-center gap-2';
-          statusEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span><b>Sinkronisasi Sukses!</b> Data telah masuk ke 3 sheet Google Spreadsheet.</span>`;
+          statusEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span><b>Sinkronisasi Sukses!</b> Data telah masuk ke ${syncedNames.join(' & ')}.</span>`;
           statusEl.classList.remove('hidden');
-          lucide.createIcons();
+          if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        alert('✅ SINKRONISASI KE GOOGLE SPREADSHEET BERHASIL!\n\nSeluruh data presensi & laporan telah diperbarui ke tab:\n• RECORD ABSEN\n• REKAP PENGAJUAN\n• REKAP LEMBUR\n\n⚡ Sistem sekarang otomatis menyinkronkan setiap ada karyawan yang scan absen masuk/pulang.');
+        alert(`✅ SINKRONISASI KE GOOGLE SPREADSHEET BERHASIL!\n\nSeluruh data presensi & laporan telah diperbarui ke ${syncedNames.join(' dan ')}.\n\n⚡ Sistem sekarang otomatis menyinkronkan setiap ada karyawan yang scan absen masuk/pulang.`);
       } catch (err) {
         console.warn('Backup fetch notice (data transmitted):', err);
         updateGSheetSyncBadge('synced');
@@ -17263,7 +17408,7 @@ function testManualSync() {
           statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 flex items-center gap-2';
           statusEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-600 shrink-0"></i> <span>Data telah dikirim ke Google Spreadsheet. Silakan periksa tab sheet Anda.</span>`;
           statusEl.classList.remove('hidden');
-          lucide.createIcons();
+          if (typeof lucide !== 'undefined') lucide.createIcons();
         }
         alert('✅ Data absensi telah dikirim ke Google Spreadsheet!\n\nSilakan periksa tab sheet Anda di Google Spreadsheet.');
       } finally {
