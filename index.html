@@ -486,12 +486,13 @@
       <!-- FORM LOGIN -->
       <div id="form-login-box" class="p-6 space-y-4">
         
-        <!-- AKSES SATU AKUN ABSENSI HP / POS SCANNER CEPAT -->
+        <!-- AKSES CEPAT PORTAL & SCANNER -->
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
           <div class="flex items-center justify-between">
-            <h3 class="font-extrabold text-xs text-slate-900">Mode Akun Scanner Presensi</h3>
+            <h3 class="font-extrabold text-xs text-slate-900">Akses Cepat Portal & Scanner</h3>
+            <span class="text-[10px] font-bold text-slate-500">1-Klik Masuk</span>
           </div>
-          <p class="text-[10px] text-slate-500 font-medium">Masuk langsung ke layar pemindaian kartu ID barcode karyawan</p>
+          <p class="text-[10px] text-slate-500 font-medium">Pilih akses cepat untuk masuk langsung tanpa repot mengetik</p>
 
           <div class="grid grid-cols-2 gap-2 pt-0.5">
             <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
@@ -502,16 +503,24 @@
               <i data-lucide="scan-line" class="w-3.5 h-3.5"></i>
               <span>Scanner MAI</span>
             </button>
+            <button type="button" onclick="quickLoginAdmin('MBI')" class="py-2 px-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-slate-700"></i>
+              <span>Admin MBI</span>
+            </button>
+            <button type="button" onclick="quickLoginAdmin('MAI')" class="py-2 px-3 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-slate-700"></i>
+              <span>Admin MAI</span>
+            </button>
           </div>
         </div>
 
         <div class="relative flex py-0.5 items-center">
           <div class="flex-grow border-t border-slate-200"></div>
-          <span class="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atau Login Akun</span>
+          <span class="flex-shrink mx-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atau Login NIK Mandiri</span>
           <div class="flex-grow border-t border-slate-200"></div>
         </div>
 
-        <form onsubmit="handleLogin(event)" class="space-y-3.5">
+        <form onsubmit="handleLogin(event); return false;" class="space-y-3.5">
           <div>
             <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">PILIH GUDANG</label>
             <div class="grid grid-cols-2 gap-2">
@@ -528,16 +537,16 @@
 
           <div>
             <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">NIK / USERNAME</label>
-            <input type="text" id="login-identifier" required placeholder="Masukkan NIK atau Username" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium">
+            <input type="text" id="login-identifier" required placeholder="Masukkan NIK atau Username" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin(event);}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none font-medium">
           </div>
 
           <div>
             <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD</label>
-            <input type="password" id="login-password" placeholder="Masukkan password (opsional / default: medika123)" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <input type="password" id="login-password" placeholder="Masukkan password (opsional / default: medika123)" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin(event);}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
 
-          <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20">
-            Masuk Portal
+          <button type="button" onclick="handleLogin(event)" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20 cursor-pointer flex items-center justify-center gap-2">
+            <span>Masuk Portal</span>
           </button>
         </form>
       </div>
@@ -7928,13 +7937,13 @@
 
       let user = null;
 
-      // 0. Keyword cepat admin (misal: 'admin', 'admin mbi', 'admin mai', 'administrator', 'adm001', 'admmai')
-      if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput === 'adminmbi' || cleanInput === 'adminmai' || cleanInput === 'adm001' || cleanInput === 'admma') {
+      // 0. Keyword cepat admin (misal: 'admin', 'admin mbi', 'admin mai', 'administrator', 'adm001', 'admmai', 'adm-mai', 'adm')
+      if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput === 'adminmbi' || cleanInput === 'adminmai' || cleanInput === 'adm001' || cleanInput === 'admmai' || cleanInput === 'admma' || cleanInput === 'adm' || cleanInput.startsWith('admin') || cleanInput.startsWith('adm00')) {
         const targetWh = cleanInput.includes('mai') ? 'MAI' : (cleanInput.includes('mbi') ? 'MBI' : selectedWh);
         user = (targetWh === 'MAI' ? maiUsers : mbiUsers).find(u => isUserAdmin(u)) || (targetWh === 'MAI' ? SEED_MAI_USERS[0] : SEED_MBI_USERS[0]);
       }
 
-      // 0.5 Keyword cepat Manager (misal: 'manager', 'mgr', 'managereko', 'mgr001', 'mgreko')
+      // 0.5 Keyword cepat Manager (misal: 'manager', 'mgr', 'eko', 'managereko', 'mgr001', 'mgreko')
       if (!user && (
         cleanInput === 'eko' || cleanInput === 'manager' || cleanInput === 'mgr' ||
         cleanInput === 'managereko' || cleanInput === 'mgr001' || cleanInput === 'mgreko' ||
@@ -7947,35 +7956,50 @@
                { ...SEED_MANAGER_USER, name: 'Manager', warehouse: selectedWh };
       }
 
-      // 1. Exact match (NIK / Nama / Phone / ID / Email / Username)
+      // 1. Exact match (NIK / Nama / Phone / ID / Email / Username / Barcode)
       if (!user) {
         user = allUsers.find(u => 
-          cleanStr(u.nik) === cleanInput || 
-          cleanStr(u.name) === cleanInput ||
-          cleanStr(u.id) === cleanInput ||
-          (u.email && cleanStr(u.email) === cleanInput) ||
-          (u.email && cleanStr(u.email.split('@')[0]) === cleanInput) ||
-          (u.phone && cleanStr(u.phone) === cleanInput)
+          u && (
+            cleanStr(u.nik) === cleanInput || 
+            cleanStr(u.name) === cleanInput ||
+            cleanStr(u.id) === cleanInput ||
+            (u.barcodeValue && cleanStr(u.barcodeValue) === cleanInput) ||
+            (u.email && cleanStr(u.email) === cleanInput) ||
+            (u.email && cleanStr(u.email.split('@')[0]) === cleanInput) ||
+            (u.phone && cleanStr(u.phone) === cleanInput)
+          )
         );
       }
 
+      // 1.5 Match Akhiran NIK (misal user ketik nomor urut '001', '1', '26-001' untuk MBI26-001 / MAI26-001)
+      if (!user && cleanInput.length >= 1) {
+        user = allUsers.find(u => {
+          if (!u || !u.nik) return false;
+          const uCleanNik = cleanStr(u.nik);
+          return uCleanNik.endsWith(cleanInput) || uCleanNik === `${selectedWh.toLowerCase()}26${cleanInput.padStart(3, '0')}`;
+        });
+      }
+
       // 2. Partial word match
-      if (!user && cleanInput.length >= 3) {
+      if (!user && cleanInput.length >= 2) {
         user = allUsers.find(u => 
-          cleanStr(u.name).includes(cleanInput) || 
-          cleanInput.includes(cleanStr(u.name)) ||
-          cleanStr(u.nik).includes(cleanInput) ||
-          cleanStr(u.id).includes(cleanInput) ||
-          (u.email && cleanStr(u.email).includes(cleanInput))
+          u && (
+            cleanStr(u.name).includes(cleanInput) || 
+            cleanInput.includes(cleanStr(u.name)) ||
+            (u.nik && cleanStr(u.nik).includes(cleanInput)) ||
+            (u.id && cleanStr(u.id).includes(cleanInput)) ||
+            (u.email && cleanStr(u.email).includes(cleanInput))
+          )
         );
       }
 
       // 3. Multi-word individual match
       if (!user) {
-        const words = rawInputId.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const words = rawInputId.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
         if (words.length > 0) {
           user = allUsers.find(u => {
-            const uName = (u.name || '').toLowerCase();
+            if (!u || !u.name) return false;
+            const uName = u.name.toLowerCase();
             return words.some(w => uName.includes(w));
           });
         }
@@ -7984,7 +8008,7 @@
       if (!user) {
         if (alertEl) {
           alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          alertEl.innerHTML = `<span>Akun / NIK <b>"${rawInputId}"</b> tidak ditemukan!</span><br><span class="text-[11px] font-normal text-slate-600">Pastikan NIK atau username yang dimasukkan sudah benar dan terdaftar di data karyawan.</span>`;
+          alertEl.innerHTML = `<span>Akun / NIK <b>"${rawInputId}"</b> tidak ditemukan!</span><br><span class="text-[11px] font-normal text-slate-600">Gunakan NIK Karyawan (contoh: <code class="font-bold text-slate-800">ADM001</code>, <code class="font-bold text-slate-800">MBI26-001</code>, atau nama lengkap).</span>`;
           alertEl.classList.remove('hidden');
         }
         return;
@@ -8287,10 +8311,12 @@
         const appContainer = document.getElementById('app-container');
         if (authContainer) {
           authContainer.classList.add('hidden');
+          authContainer.classList.remove('flex');
           authContainer.style.display = 'none';
         }
         if (appContainer) {
           appContainer.classList.remove('hidden');
+          appContainer.classList.add('flex');
           appContainer.style.display = 'flex';
         }
 
@@ -8367,10 +8393,12 @@
         const appContainer = document.getElementById('app-container');
         if (authContainer) {
           authContainer.classList.add('hidden');
+          authContainer.classList.remove('flex');
           authContainer.style.display = 'none';
         }
         if (appContainer) {
           appContainer.classList.remove('hidden');
+          appContainer.classList.add('flex');
           appContainer.style.display = 'flex';
         }
         try { switchView('dashboard'); } catch (e) {}
@@ -8386,10 +8414,12 @@
       const appContainer = document.getElementById('app-container');
       if (appContainer) {
         appContainer.classList.add('hidden');
+        appContainer.classList.remove('flex');
         appContainer.style.display = 'none';
       }
       if (authContainer) {
         authContainer.classList.remove('hidden');
+        authContainer.classList.add('flex');
         authContainer.style.display = 'flex';
       }
       try { stopScanner(); } catch(e) {}
