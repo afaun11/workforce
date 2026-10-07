@@ -533,7 +533,7 @@
 
           <div>
             <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD</label>
-            <input type="password" id="login-password" required placeholder="Masukkan password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <input type="password" id="login-password" placeholder="Masukkan password (opsional / default: medika123)" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
 
           <button type="submit" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20">
@@ -7891,7 +7891,7 @@
 
       if (!rawInputId) {
         if (alertEl) {
-          alertEl.className = 'mx-6 mt-4 p-3 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
           alertEl.innerHTML = '<span>Silakan masukkan NIK atau Username Anda.</span>';
           alertEl.classList.remove('hidden');
         }
@@ -7900,11 +7900,10 @@
 
       const selectedWh = document.querySelector('input[name="login-warehouse"]:checked')?.value || activeWarehouse || 'MBI';
 
-      // Ambil user dari kedua database gudang, prioritaskan gudang yang dipilih di tombol radio
+      // Ambil user dari database lokal dan sertakan akun master cadangan
       const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
 
-      // Pastikan akun manager terdaftar di lookup pool
       let latestMgrName = 'Manager';
       try {
         const session = JSON.parse(localStorage.getItem('wfm_active_session') || '{}');
@@ -7918,7 +7917,7 @@
 
       const currentWhUsers = selectedWh === 'MAI' ? maiUsers : mbiUsers;
       const otherWhUsers = selectedWh === 'MAI' ? mbiUsers : maiUsers;
-      const allUsers = [...currentWhUsers, ...otherWhUsers, mgrMbi, mgrMai];
+      const allUsers = [...currentWhUsers, ...otherWhUsers, ...SEED_MBI_USERS, ...SEED_MAI_USERS, mgrMbi, mgrMai];
 
       // Jika input adalah kata kunci akun scanner absen
       if (cleanInput === 'absen' || cleanInput === 'scanner' || cleanInput.startsWith('absen') || cleanInput.startsWith('scanner')) {
@@ -7929,8 +7928,8 @@
 
       let user = null;
 
-      // 0. Keyword cepat admin (misal: 'admin', 'admin mbi', 'admin mai', 'administrator')
-      if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput === 'adminmbi' || cleanInput === 'adminmai') {
+      // 0. Keyword cepat admin (misal: 'admin', 'admin mbi', 'admin mai', 'administrator', 'adm001', 'admmai')
+      if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput === 'adminmbi' || cleanInput === 'adminmai' || cleanInput === 'adm001' || cleanInput === 'admma') {
         const targetWh = cleanInput.includes('mai') ? 'MAI' : (cleanInput.includes('mbi') ? 'MBI' : selectedWh);
         user = (targetWh === 'MAI' ? maiUsers : mbiUsers).find(u => isUserAdmin(u)) || (targetWh === 'MAI' ? SEED_MAI_USERS[0] : SEED_MBI_USERS[0]);
       }
@@ -7992,7 +7991,7 @@
       }
 
       // Cek status aktif/nonaktif akun karyawan (kecuali akun manajemen sistem)
-      if (!isManagementSystemAccount(user) && (user.status === 'inactive' || user.isActive === false)) {
+      if (!isManagementSystemAccount(user) && user.status === 'inactive') {
         if (alertEl) {
           alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
           alertEl.innerHTML = `<span>Akun Karyawan <b>"${user.name}"</b> (NIK: ${user.nik || user.id}) berstatus <span class="text-rose-600 font-black">NONAKTIF</span>.</span><br><span class="text-[11px] font-normal text-slate-600">Silakan hubungi Tim HRD / Admin Gudang untuk mengaktifkan kembali akun Anda.</span>`;
@@ -8025,7 +8024,7 @@
       if (!isPasswordCorrect) {
         if (alertEl) {
           alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          alertEl.innerHTML = `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password yang sudah dibuat atau password default: <code class="font-bold text-teal-700">medika123</code> / <code class="font-bold text-teal-700">password123</code></span>`;
+          alertEl.innerHTML = `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password default: <code class="font-bold text-teal-700">medika123</code> / <code class="font-bold text-teal-700">password123</code></span>`;
           alertEl.classList.remove('hidden');
         }
         return;
