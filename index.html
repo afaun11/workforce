@@ -490,7 +490,6 @@
         <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
           <div class="flex items-center justify-between">
             <h3 class="font-extrabold text-xs text-slate-900">Mode Akun Scanner Presensi</h3>
-            <span class="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">1-Klik Buka</span>
           </div>
           <p class="text-[10px] text-slate-500 font-medium">Masuk langsung ke layar pemindaian kartu ID barcode karyawan</p>
 
@@ -6281,47 +6280,38 @@
 
     let lastCloudFetchErrorStatus = null;
 
-    async function fetchFullDatabaseFromCloud(forceAlert = false) {
+    async function fetchFullDatabaseFromCloud(forceAlert = false, targetWarehouse = null) {
       const isManualAlert = (forceAlert === true);
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
       let syncSummary = '';
       
-      const mbiEndpoint = getFirebaseEndpoint('MBI');
-      const maiEndpoint = getFirebaseEndpoint('MAI');
-      const mbiUpdatedUrl = mbiEndpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
-      const maiUpdatedUrl = maiEndpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
-
-      const localMbiUpdated = localStorage.getItem('wfm_mbi_master_updated_at') || '';
-      const localMaiUpdated = localStorage.getItem('wfm_mai_master_updated_at') || '';
+      const whList = targetWarehouse ? [targetWarehouse.toUpperCase()] : (isManualAlert ? ['MBI', 'MAI'] : [(activeWarehouse || 'MBI').toUpperCase()]);
 
       try {
-        // 1. SMART DELTA CHECK: Cek timestamp ringan (hanya 30 bytes) sebelum mengunduh data besar
-        const [checkMbiRes, checkMaiRes] = await Promise.allSettled([
-          fetch(mbiUpdatedUrl + '?t=' + Date.now(), { cache: 'no-store' }),
-          fetch(maiUpdatedUrl + '?t=' + Date.now(), { cache: 'no-store' })
-        ]);
-
-        const cloudMbiTimestamp = (checkMbiRes.status === 'fulfilled' && checkMbiRes.value.ok) ? await checkMbiRes.value.json() : null;
-        const cloudMaiTimestamp = (checkMaiRes.status === 'fulfilled' && checkMaiRes.value.ok) ? await checkMaiRes.value.json() : null;
-
-        const needMbiFetch = isManualAlert || !cloudMbiTimestamp || (typeof cloudMbiTimestamp === 'string' && cloudMbiTimestamp !== localMbiUpdated);
-        const needMaiFetch = isManualAlert || !cloudMaiTimestamp || (typeof cloudMaiTimestamp === 'string' && cloudMaiTimestamp !== localMaiUpdated);
-
         const fetchPromises = [];
-        if (needMbiFetch) {
-          fetchPromises.push(
-            fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
-              .then(r => r.ok ? r.json() : null)
-              .then(db => ({ wh: 'MBI', db, ts: cloudMbiTimestamp }))
-          );
-        }
-        if (needMaiFetch) {
-          fetchPromises.push(
-            fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
-              .then(r => r.ok ? r.json() : null)
-              .then(db => ({ wh: 'MAI', db, ts: cloudMaiTimestamp }))
-          );
+
+        for (const wh of whList) {
+          const endpoint = getFirebaseEndpoint(wh);
+          const updatedUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+          const localUpdated = localStorage.getItem(`wfm_${wh.toLowerCase()}_master_updated_at`) || '';
+
+          try {
+            // SMART DELTA CHECK: Cek timestamp ringan (hanya 30 bytes)
+            const checkRes = await fetch(updatedUrl + '?t=' + Date.now(), { cache: 'no-store' });
+            const cloudTimestamp = checkRes.ok ? await checkRes.json() : null;
+            const needFetch = isManualAlert || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
+
+            if (needFetch) {
+              fetchPromises.push(
+                fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
+                  .then(r => r.ok ? r.json() : null)
+                  .then(db => ({ wh, db, ts: cloudTimestamp }))
+              );
+            }
+          } catch(errDelta) {
+            console.warn(`Delta check error for ${wh}:`, errDelta);
+          }
         }
 
         if (fetchPromises.length > 0) {
@@ -6362,7 +6352,7 @@
 
       if (isManualAlert) {
         if (loaded) {
-          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari kedua Cloud Server (MBI & MAI) telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
+          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
         } else {
           alert('⚠️ Gagal terhubung ke Cloud Database. Pastikan laptop/HP terhubung ke internet dan Rules Firebase sudah .read: true & .write: true.');
         }
@@ -6370,14 +6360,21 @@
     }
 
     let firebaseEventSource = null;
-    function initFirebaseLiveStream() {
+    let currentStreamWh = null;
+    function initFirebaseLiveStream(wh = null) {
       if (typeof EventSource === 'undefined') return;
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      if (firebaseEventSource && currentStreamWh === targetWh) {
+        return; // Sudah tersambung ke gudang ini
+      }
       try {
         if (firebaseEventSource) {
           firebaseEventSource.close();
+          firebaseEventSource = null;
         }
+        currentStreamWh = targetWh;
         // Firebase Realtime Database SSE Stream untuk update instan tanpa jeda
-        firebaseEventSource = new EventSource(getFirebaseEndpoint());
+        firebaseEventSource = new EventSource(getFirebaseEndpoint(targetWh));
         firebaseEventSource.addEventListener('put', (e) => {
           try {
             const parsed = JSON.parse(e.data);
@@ -6385,14 +6382,14 @@
               if (parsed.path === '/') {
                 applyIncomingDatabase(parsed.data);
               } else {
-                fetchFullDatabaseFromCloud();
+                fetchFullDatabaseFromCloud(false, targetWh);
               }
             }
           } catch (err) {}
         });
         firebaseEventSource.addEventListener('patch', (e) => {
           try {
-            fetchFullDatabaseFromCloud();
+            fetchFullDatabaseFromCloud(false, targetWh);
           } catch (err) {}
         });
         firebaseEventSource.onerror = () => {
@@ -7957,6 +7954,8 @@
         if (!scannerUser.password) scannerUser.password = 'medika123';
       }
       activeWarehouse = warehouse;
+      try { initFirebaseLiveStream(warehouse); } catch(e) {}
+      try { fetchFullDatabaseFromCloud(false, warehouse); } catch(e) {}
       loginUserSession(scannerUser);
     }
 
@@ -8504,6 +8503,8 @@
         return;
       }
       activeWarehouse = wh;
+      try { initFirebaseLiveStream(wh); } catch(e) {}
+      try { fetchFullDatabaseFromCloud(false, wh); } catch(e) {}
       updateNavbarBrand(wh);
       updateWhSwitcherButtons();
       refreshAllDashboardData();
