@@ -5247,19 +5247,19 @@
       const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
 
       // ADOPSI LANGSUNG DATA MASTER CLOUD DI SEMUA HP & PERANGKAT LAIN:
-      // Menjamin seluruh HP/laptop scanner selalu memiliki mapping NIK & Nama 100% sama dengan Admin!
+      // Menjamin seluruh HP/laptop scanner selalu memiliki data NIK & Nama 100% sama dengan Admin tanpa bentrok data lama!
       let cleanMbiUsers;
-      if (!isRecentLocalMasterChange && Array.isArray(cloudMbiRaw) && cloudMbiRaw.some(u => u && !isManagementSystemAccount(u))) {
+      if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0 && !isRecentLocalMasterChange) {
         cleanMbiUsers = deduplicateUserList(cloudMbiRaw, 'MBI');
       } else {
-        cleanMbiUsers = mergeUserArrays(getWhDB('MBI', 'users', SEED_MBI_USERS), cloudMbiRaw, 'MBI', cloudUpdatedAt);
+        cleanMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
       }
 
       let cleanMaiUsers;
-      if (!isRecentLocalMasterChange && Array.isArray(cloudMaiRaw) && cloudMaiRaw.some(u => u && !isManagementSystemAccount(u))) {
+      if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0 && !isRecentLocalMasterChange) {
         cleanMaiUsers = deduplicateUserList(cloudMaiRaw, 'MAI');
       } else {
-        cleanMaiUsers = mergeUserArrays(getWhDB('MAI', 'users', SEED_MAI_USERS), cloudMaiRaw, 'MAI', cloudUpdatedAt);
+        cleanMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
       }
 
       cleanMbiUsers.forEach(u => {
@@ -5512,22 +5512,13 @@
 
           if (fetchMbiRes.status === 'fulfilled' && fetchMbiRes.value.ok) {
             const cloudMbiDb = await fetchMbiRes.value.json();
-            if (cloudMbiDb && typeof cloudMbiDb === 'object') {
+              // Merge riwayat presensi, izin, lembur saja (tanpa mencampuradukkan data karyawan lama)
               const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudMbiDb.mbi_attendance));
               const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudMbiDb.mbi_leaves));
               const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudMbiDb.mbi_overtime));
               localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mergedMbiAtt));
               localStorage.setItem('wfm_mbi_leaves', JSON.stringify(mergedMbiLeaves));
               localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mergedMbiOt));
-
-              const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-              const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
-              if (!effectiveForceMaster && !isRecentLocalMasterChange) {
-                const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-                const cloudMbiUsers = normalizeFirebaseArray(cloudMbiDb.mbi_users);
-                const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudMbiDb.updatedAt);
-                localStorage.setItem('wfm_mbi_users', JSON.stringify(mergedMbiUsers));
-              }
             }
           }
 
@@ -5540,15 +5531,6 @@
               localStorage.setItem('wfm_mai_attendance', JSON.stringify(mergedMaiAtt));
               localStorage.setItem('wfm_mai_leaves', JSON.stringify(mergedMaiLeaves));
               localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
-
-              const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-              const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
-              if (!effectiveForceMaster && !isRecentLocalMasterChange) {
-                const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-                const cloudMaiUsers = normalizeFirebaseArray(cloudMaiDb.mai_users);
-                const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudMaiDb.updatedAt);
-                localStorage.setItem('wfm_mai_users', JSON.stringify(mergedMaiUsers));
-              }
             }
           }
         } catch (eMerge) {
