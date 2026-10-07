@@ -1061,9 +1061,20 @@
                 </div>
                 <div class="flex items-center gap-2 flex-wrap">
                   <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                    <button type="button" onclick="filterEmployeeStatusTab('all')" id="btn-emp-tab-all" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-900 text-white shadow-2xs transition">Semua</button>
-                    <button type="button" onclick="filterEmployeeStatusTab('active')" id="btn-emp-tab-active" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">🟢 Aktif</button>
-                    <button type="button" onclick="filterEmployeeStatusTab('inactive')" id="btn-emp-tab-inactive" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">🔴 Nonaktif</button>
+                    <button type="button" onclick="filterEmployeeStatusTab('all')" id="btn-emp-tab-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs transition inline-flex items-center gap-1.5">
+                      <span>Semua</span>
+                      <span id="tab-count-all" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-700 text-slate-200 font-bold">0</span>
+                    </button>
+                    <button type="button" onclick="filterEmployeeStatusTab('active')" id="btn-emp-tab-active" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition inline-flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      <span>Aktif</span>
+                      <span id="tab-count-active" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-700 font-bold">0</span>
+                    </button>
+                    <button type="button" onclick="filterEmployeeStatusTab('inactive')" id="btn-emp-tab-inactive" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition inline-flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                      <span>Nonaktif</span>
+                      <span id="tab-count-inactive" class="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-700 font-bold">0</span>
+                    </button>
                   </div>
                   <span id="emp-total-badge" class="text-xs font-bold px-3 py-1.5 bg-slate-100 text-slate-800 rounded-xl border border-slate-300">
                     Total: 0 Karyawan
@@ -1079,7 +1090,7 @@
                       <th class="p-3.5 border-r border-slate-200 w-10 text-center">
                         <input type="checkbox" id="emp-master-check" onchange="toggleSelectAllEmployees(this.checked)" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-500 border-slate-300 cursor-pointer">
                       </th>
-                      <th class="p-3.5 border-r border-slate-200">No</th>
+                      <th class="p-3.5 border-r border-slate-200 text-center w-12">No</th>
                       <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
                       <th class="p-3.5 border-r border-slate-200">Departemen</th>
                       <th class="p-3.5 border-r border-slate-200">Outsource</th>
@@ -1088,7 +1099,7 @@
                       <th class="p-3.5 border-r border-slate-200">JOIN DATE</th>
                       <th class="p-3.5 border-r border-slate-200">Posisi</th>
                       <th class="p-3.5 border-r border-slate-200 text-center">Status</th>
-                      <th class="p-3.5 text-right min-w-[240px]">Aksi</th>
+                      <th class="p-3.5 text-right min-w-[220px]">Aksi</th>
                     </tr>
                   </thead>
                   <tbody id="emp-table-body" class="divide-y divide-slate-100">
@@ -12119,9 +12130,13 @@
         const btn = document.getElementById(`btn-emp-tab-${t}`);
         if (btn) {
           if (activeEmpFilterTab === t) {
-            btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-900 text-white shadow-2xs transition';
+            btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs transition inline-flex items-center gap-1.5';
+            const badge = btn.querySelector('span:last-child');
+            if (badge) badge.className = 'px-1.5 py-0.2 rounded-full text-[10px] bg-slate-700 text-slate-200 font-bold';
           } else {
-            btn.className = 'px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition';
+            btn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition inline-flex items-center gap-1.5';
+            const badge = btn.querySelector('span:last-child');
+            if (badge) badge.className = 'px-1.5 py-0.2 rounded-full text-[10px] bg-slate-200 text-slate-700 font-bold';
           }
         }
       });
@@ -12139,6 +12154,18 @@
         const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         const regularUsers = users.filter(u => !isManagementSystemAccount(u));
         
+        // Update live counters in status tabs
+        const totalCount = regularUsers.length;
+        const activeCount = regularUsers.filter(u => u.status !== 'inactive').length;
+        const inactiveCount = regularUsers.filter(u => u.status === 'inactive').length;
+
+        const badgeAll = document.getElementById('tab-count-all');
+        const badgeAct = document.getElementById('tab-count-active');
+        const badgeInact = document.getElementById('tab-count-inactive');
+        if (badgeAll) badgeAll.innerText = totalCount;
+        if (badgeAct) badgeAct.innerText = activeCount;
+        if (badgeInact) badgeInact.innerText = inactiveCount;
+
         // PENGURUTAN TETAP & STABIL (STRICT FIXED NIK ASCENDING):
         // Memastikan nomor urut 1, 2, 3... selalu urut dan tidak pernah berubah
         regularUsers.sort((a, b) => {
@@ -12184,48 +12211,49 @@
             const osVal = (typeof escapeHTML === 'function') ? escapeHTML(emp.outsource || 'Internal') : (emp.outsource || 'Internal');
             const isAct = (emp.status !== 'inactive');
             const statusBadge = isAct 
-              ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 whitespace-nowrap">🟢 Aktif</span>' 
-              : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-300 whitespace-nowrap">🔴 Nonaktif</span>';
+              ? '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Aktif</span>' 
+              : '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/80 shadow-2xs whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Nonaktif</span>';
 
             const toggleStatusBtn = isAct
-              ? `<button onclick="toggleEmployeeStatus('${emp.nik}', 'inactive')" title="Nonaktifkan Karyawan" class="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-800 hover:border-amber-300 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
+              ? `<button onclick="toggleEmployeeStatus('${emp.nik}', 'inactive')" title="Nonaktifkan Karyawan" class="h-7 px-2 bg-white hover:bg-amber-50 text-amber-700 hover:border-amber-300 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
                   <i data-lucide="user-x" class="w-3 h-3 text-amber-600"></i>
                   <span>Nonaktifkan</span>
                 </button>`
-              : `<button onclick="toggleEmployeeStatus('${emp.nik}', 'active')" title="Aktifkan Kembali Karyawan" class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-800 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
+              : `<button onclick="toggleEmployeeStatus('${emp.nik}', 'active')" title="Aktifkan Kembali Karyawan" class="h-7 px-2 bg-white hover:bg-emerald-50 text-emerald-700 hover:border-emerald-300 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
                   <i data-lucide="user-check" class="w-3 h-3 text-emerald-600"></i>
                   <span>Aktifkan</span>
                 </button>`;
 
             tr.innerHTML = `
-              <td class="p-3.5 border-r border-slate-100 text-center">
+              <td class="p-3 border-r border-slate-100 text-center">
                 <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
               </td>
-              <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
-              <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${displayName}<br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
-              <td class="p-3.5 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
-              <td class="p-3.5 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
-              <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
-              <td class="p-3.5 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
-              <td class="p-3.5 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
-              <td class="p-3.5 border-r border-slate-100">
+              <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold text-center">${idx + 1}</td>
+              <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${displayName}<br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
+              <td class="p-3 border-r border-slate-100 font-medium text-slate-700 uppercase font-mono text-[11px]">${emp.dept}</td>
+              <td class="p-3 border-r border-slate-100"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
+              <td class="p-3 border-r border-slate-100 font-mono text-slate-700">${emp.phone || '-'}</td>
+              <td class="p-3 border-r border-slate-100 font-mono text-[11px] text-slate-600">${emp.email || '-'}</td>
+              <td class="p-3 border-r border-slate-100 font-semibold text-slate-800">${emp.joinDate || '-'}</td>
+              <td class="p-3 border-r border-slate-100">
                 <span class="px-2.5 py-0.5 rounded text-[10px] font-bold ${roleBadgeClass}">${(emp.role || 'staff').toUpperCase()}</span>
               </td>
-              <td class="p-3.5 border-r border-slate-100 text-center">
+              <td class="p-3 border-r border-slate-100 text-center">
                 ${statusBadge}
               </td>
-              <td class="p-3.5 text-right">
-                <div class="flex items-center justify-end gap-1.5 flex-wrap">
-                  <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
-                    Edit
+              <td class="p-3 text-right">
+                <div class="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+                  <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="h-7 px-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
+                    <i data-lucide="edit-3" class="w-3 h-3 text-slate-500"></i>
+                    <span>Edit</span>
                   </button>
-                  <button onclick="renderIDCardAndShow('${emp.nik}')" class="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs">
-                    ID Card
+                  <button onclick="renderIDCardAndShow('${emp.nik}')" title="Cetak ID Card Barcode" class="h-7 px-2 bg-white hover:bg-blue-50 text-blue-700 hover:border-blue-200 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
+                    <i data-lucide="credit-card" class="w-3 h-3 text-blue-500"></i>
+                    <span>ID Card</span>
                   </button>
                   ${toggleStatusBtn}
-                  <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="px-2.5 py-1 bg-white hover:bg-rose-50 text-rose-700 hover:text-rose-800 border border-rose-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
-                    <i data-lucide="trash-2" class="w-3 h-3 text-rose-600"></i>
-                    <span>Hapus</span>
+                  <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="h-7 w-7 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg transition shadow-2xs inline-flex items-center justify-center">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                   </button>
                 </div>
               </td>
