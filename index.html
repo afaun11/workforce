@@ -3517,6 +3517,32 @@
   <!-- JAVASCRIPT ENGINE (BULLETPROOF EXCEL & FUZZY LOGIN) -->
   <!-- ========================================================= -->
   <script>
+    // Database Storage Helper (Gudang MBI & MAI)
+    function getWhDB(warehouse, collection, defaultValue = []) {
+      const targetWh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toLowerCase();
+      const storageKey = `wfm_${targetWh}_${collection}`;
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed !== null && parsed !== undefined) return parsed;
+        }
+      } catch (e) {
+        console.warn(`Error reading ${storageKey}:`, e);
+      }
+      return defaultValue;
+    }
+
+    function setWhDB(warehouse, collection, data) {
+      const targetWh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toLowerCase();
+      const storageKey = `wfm_${targetWh}_${collection}`;
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      } catch (e) {
+        console.warn(`Error writing ${storageKey}:`, e);
+      }
+    }
+
     // Helper standardisasi string (lowercase & alfanumerik saja)
     function cleanStr(str) {
       if (str === null || str === undefined) return '';
@@ -5534,6 +5560,7 @@
 
           if (fetchMbiRes.status === 'fulfilled' && fetchMbiRes.value.ok) {
             const cloudMbiDb = await fetchMbiRes.value.json();
+            if (cloudMbiDb && typeof cloudMbiDb === 'object') {
               // Merge riwayat presensi, izin, lembur saja (tanpa mencampuradukkan data karyawan lama)
               const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudMbiDb.mbi_attendance));
               const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudMbiDb.mbi_leaves));
