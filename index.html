@@ -553,6 +553,16 @@
             <span>Masuk Portal</span>
           </button>
         </form>
+
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+          <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1.5 transition cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Update Data Terbaru ⚡</span>
+          </button>
+          <button type="button" onclick="openAccountLookupModal()" class="text-slate-500 hover:text-slate-800 font-medium cursor-pointer">
+            Lupa NIK? Cari Akun
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -5288,57 +5298,104 @@
       const currMbiLeaves = localStorage.getItem('wfm_mbi_leaves') || '';
       const currMaiLeaves = localStorage.getItem('wfm_mai_leaves') || '';
 
-      const cloudMbiRaw = normalizeFirebaseArray(db.mbi_users);
-      const cloudMaiRaw = normalizeFirebaseArray(db.mai_users);
+      let hasUsersChanged = false;
+      let hasAttChanged = false;
+      let hasOtChanged = false;
+      let hasLeavesChanged = false;
 
-      const lastMasterChange = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
-      const isRecentLocalMasterChange = (Date.now() - lastMasterChange < 600000);
-
-      // ADOPSI LANGSUNG DATA MASTER CLOUD DI SEMUA HP & PERANGKAT LAIN:
-      // Menjamin seluruh HP/laptop scanner selalu memiliki data NIK & Nama 100% sama dengan Admin tanpa bentrok data lama!
-      let cleanMbiUsers;
-      if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0 && !isRecentLocalMasterChange) {
-        cleanMbiUsers = deduplicateUserList(cloudMbiRaw, 'MBI');
-      } else {
-        cleanMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      // PROSES DATA GUDANG MBI (JIKA DIKIRIM DARI SERVER MBI)
+      if (db.mbi_users !== undefined || db.mbi_attendance !== undefined || db.mbi_overtime !== undefined || db.mbi_leaves !== undefined) {
+        if (db.mbi_users !== undefined) {
+          const cloudMbiRaw = normalizeFirebaseArray(db.mbi_users);
+          if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
+            const cleanMbiUsers = deduplicateUserList(cloudMbiRaw, 'MBI');
+            cleanMbiUsers.forEach(u => {
+              if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+                u.name = 'Scanner Presensi Gudang';
+              }
+            });
+            const newMbiUsers = JSON.stringify(cleanMbiUsers);
+            if (currMbiUsers !== newMbiUsers) {
+              localStorage.setItem('wfm_mbi_users', newMbiUsers);
+              localStorage.setItem('wfm_mbi_users_backup', newMbiUsers);
+              hasUsersChanged = true;
+            }
+          }
+        }
+        if (db.mbi_attendance !== undefined) {
+          const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(db.mbi_attendance));
+          const newMbiAtt = JSON.stringify(mergedMbiAtt);
+          if (currMbiAtt !== newMbiAtt) {
+            localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
+            hasAttChanged = true;
+          }
+        }
+        if (db.mbi_overtime !== undefined) {
+          const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(db.mbi_overtime));
+          const newMbiOt = JSON.stringify(mergedMbiOt);
+          if (currMbiOt !== newMbiOt) {
+            localStorage.setItem('wfm_mbi_overtime', newMbiOt);
+            hasOtChanged = true;
+          }
+        }
+        if (db.mbi_leaves !== undefined) {
+          const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(db.mbi_leaves));
+          const newMbiLeaves = JSON.stringify(mergedMbiLeaves);
+          if (currMbiLeaves !== newMbiLeaves) {
+            localStorage.setItem('wfm_mbi_leaves', newMbiLeaves);
+            hasLeavesChanged = true;
+          }
+        }
       }
 
-      let cleanMaiUsers;
-      if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0 && !isRecentLocalMasterChange) {
-        cleanMaiUsers = deduplicateUserList(cloudMaiRaw, 'MAI');
-      } else {
-        cleanMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      // PROSES DATA GUDANG MAI (JIKA DIKIRIM DARI SERVER MAI)
+      if (db.mai_users !== undefined || db.mai_attendance !== undefined || db.mai_overtime !== undefined || db.mai_leaves !== undefined) {
+        if (db.mai_users !== undefined) {
+          const cloudMaiRaw = normalizeFirebaseArray(db.mai_users);
+          if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0) {
+            const cleanMaiUsers = deduplicateUserList(cloudMaiRaw, 'MAI');
+            cleanMaiUsers.forEach(u => {
+              if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+                u.name = 'Scanner Presensi Gudang';
+              }
+            });
+            const newMaiUsers = JSON.stringify(cleanMaiUsers);
+            if (currMaiUsers !== newMaiUsers) {
+              localStorage.setItem('wfm_mai_users', newMaiUsers);
+              localStorage.setItem('wfm_mai_users_backup', newMaiUsers);
+              hasUsersChanged = true;
+            }
+          }
+        }
+        if (db.mai_attendance !== undefined) {
+          const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(db.mai_attendance));
+          const newMaiAtt = JSON.stringify(mergedMaiAtt);
+          if (currMaiAtt !== newMaiAtt) {
+            localStorage.setItem('wfm_mai_attendance', newMaiAtt);
+            hasAttChanged = true;
+          }
+        }
+        if (db.mai_overtime !== undefined) {
+          const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(db.mai_overtime));
+          const newMaiOt = JSON.stringify(mergedMaiOt);
+          if (currMaiOt !== newMaiOt) {
+            localStorage.setItem('wfm_mai_overtime', newMaiOt);
+            hasOtChanged = true;
+          }
+        }
+        if (db.mai_leaves !== undefined) {
+          const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(db.mai_leaves));
+          const newMaiLeaves = JSON.stringify(mergedMaiLeaves);
+          if (currMaiLeaves !== newMaiLeaves) {
+            localStorage.setItem('wfm_mai_leaves', newMaiLeaves);
+            hasLeavesChanged = true;
+          }
+        }
       }
-
-      cleanMbiUsers.forEach(u => {
-        if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
-          u.name = 'Scanner Presensi Gudang';
-        }
-      });
-      const newMbiUsers = JSON.stringify(cleanMbiUsers);
-
-      cleanMaiUsers.forEach(u => {
-        if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
-          u.name = 'Scanner Presensi Gudang';
-        }
-      });
-      const newMaiUsers = JSON.stringify(cleanMaiUsers);
-
-      const newMbiAtt = JSON.stringify(mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(db.mbi_attendance)));
-      const newMaiAtt = JSON.stringify(mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(db.mai_attendance)));
-      const newMbiOt = JSON.stringify(mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(db.mbi_overtime)));
-      const newMaiOt = JSON.stringify(mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(db.mai_overtime)));
-      const newMbiLeaves = JSON.stringify(mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(db.mbi_leaves)));
-      const newMaiLeaves = JSON.stringify(mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(db.mai_leaves)));
-
-      const hasUsersChanged = (currMbiUsers !== newMbiUsers || currMaiUsers !== newMaiUsers);
-      const hasAttChanged = (currMbiAtt !== newMbiAtt || currMaiAtt !== newMaiAtt);
-      const hasOtChanged = (currMbiOt !== newMbiOt || currMaiOt !== newMaiOt);
-      const hasLeavesChanged = (currMbiLeaves !== newMbiLeaves || currMaiLeaves !== newMaiLeaves);
 
       let hasCoordsChanged = false;
       const lastGpsChange = parseInt(localStorage.getItem('wfm_last_gps_change_time') || '0', 10);
-      const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 600000); // 10 menit proteksi lokal setelah management ubah radius/titik
+      const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 600000);
 
       if (!isRecentLocalGpsChange) {
         if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
@@ -5388,20 +5445,18 @@
       }
 
       if (hasUsersChanged) {
-        localStorage.setItem('wfm_mbi_users', newMbiUsers);
-        localStorage.setItem('wfm_mai_users', newMaiUsers);
-        localStorage.setItem('wfm_mbi_users_backup', newMbiUsers);
-        localStorage.setItem('wfm_mai_users_backup', newMaiUsers);
+        const curMbi = getWhDB('MBI', 'users', []);
+        const curMai = getWhDB('MAI', 'users', []);
 
         // Update permanent registry di HP / perangkat ini dengan NIK master Cloud
         try {
           const permObj = {};
-          cleanMbiUsers.forEach(u => {
+          curMbi.forEach(u => {
             if (u && u.name && u.nik && !isLikelyIdNotName(u.name)) {
               permObj[`MBI_${cleanStr(u.name)}`] = u.nik.toUpperCase().trim();
             }
           });
-          cleanMaiUsers.forEach(u => {
+          curMai.forEach(u => {
             if (u && u.name && u.nik && !isLikelyIdNotName(u.name)) {
               permObj[`MAI_${cleanStr(u.name)}`] = u.nik.toUpperCase().trim();
             }
@@ -5416,7 +5471,7 @@
 
         if (currentUser) {
           const myWh = currentUser.warehouse || activeWarehouse || 'MBI';
-          const myUsers = myWh === 'MAI' ? cleanMaiUsers : cleanMbiUsers;
+          const myUsers = myWh === 'MAI' ? curMai : curMbi;
           const me = myUsers.find(u => (u.nik && u.nik === currentUser.nik) || (u.id && u.id === currentUser.id) || (u.name && cleanStr(u.name) === cleanStr(currentUser.name)));
           if (me) {
             currentUser.permissions = me.permissions || currentUser.permissions;
@@ -5424,19 +5479,6 @@
             applyRolePermissions();
           }
         }
-      }
-
-      if (hasAttChanged) {
-        localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
-        localStorage.setItem('wfm_mai_attendance', newMaiAtt);
-      }
-      if (hasOtChanged) {
-        localStorage.setItem('wfm_mbi_overtime', newMbiOt);
-        localStorage.setItem('wfm_mai_overtime', newMaiOt);
-      }
-      if (hasLeavesChanged) {
-        localStorage.setItem('wfm_mbi_leaves', newMbiLeaves);
-        localStorage.setItem('wfm_mai_leaves', newMaiLeaves);
       }
 
       // Render ulang layar aktif secara selektif & cepat
@@ -6232,7 +6274,7 @@
       let loaded = false;
       let syncSummary = '';
       
-      const whList = targetWarehouse ? [targetWarehouse.toUpperCase()] : (isManualAlert ? ['MBI', 'MAI'] : [(activeWarehouse || 'MBI').toUpperCase()]);
+      const whList = targetWarehouse ? [targetWarehouse.toUpperCase()] : ['MBI', 'MAI'];
 
       try {
         const fetchPromises = [];
@@ -6305,42 +6347,41 @@
       }
     }
 
-    let firebaseEventSource = null;
-    let currentStreamWh = null;
+    let firebaseEventSourceMBI = null;
+    let firebaseEventSourceMAI = null;
     function initFirebaseLiveStream(wh = null) {
       if (typeof EventSource === 'undefined') return;
-      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      if (firebaseEventSource && currentStreamWh === targetWh) {
-        return; // Sudah tersambung ke gudang ini
-      }
       try {
-        if (firebaseEventSource) {
-          firebaseEventSource.close();
-          firebaseEventSource = null;
-        }
-        currentStreamWh = targetWh;
-        // Firebase Realtime Database SSE Stream untuk update instan tanpa jeda
-        firebaseEventSource = new EventSource(getFirebaseEndpoint(targetWh));
-        firebaseEventSource.addEventListener('put', (e) => {
-          try {
-            const parsed = JSON.parse(e.data);
-            if (parsed && parsed.data) {
-              if (parsed.path === '/') {
-                applyIncomingDatabase(parsed.data);
-              } else {
-                fetchFullDatabaseFromCloud(false, targetWh);
+        if (!firebaseEventSourceMBI) {
+          firebaseEventSourceMBI = new EventSource(getFirebaseEndpoint('MBI'));
+          firebaseEventSourceMBI.addEventListener('put', (e) => {
+            try {
+              const parsed = JSON.parse(e.data);
+              if (parsed && parsed.data) {
+                if (parsed.path === '/') applyIncomingDatabase(parsed.data);
+                else fetchFullDatabaseFromCloud(false, 'MBI');
               }
-            }
-          } catch (err) {}
-        });
-        firebaseEventSource.addEventListener('patch', (e) => {
-          try {
-            fetchFullDatabaseFromCloud(false, targetWh);
-          } catch (err) {}
-        });
-        firebaseEventSource.onerror = () => {
-          // Browser otomatis menangani reconnect SSE
-        };
+            } catch (err) {}
+          });
+          firebaseEventSourceMBI.addEventListener('patch', (e) => {
+            try { fetchFullDatabaseFromCloud(false, 'MBI'); } catch (err) {}
+          });
+        }
+        if (!firebaseEventSourceMAI) {
+          firebaseEventSourceMAI = new EventSource(getFirebaseEndpoint('MAI'));
+          firebaseEventSourceMAI.addEventListener('put', (e) => {
+            try {
+              const parsed = JSON.parse(e.data);
+              if (parsed && parsed.data) {
+                if (parsed.path === '/') applyIncomingDatabase(parsed.data);
+                else fetchFullDatabaseFromCloud(false, 'MAI');
+              }
+            } catch (err) {}
+          });
+          firebaseEventSourceMAI.addEventListener('patch', (e) => {
+            try { fetchFullDatabaseFromCloud(false, 'MAI'); } catch (err) {}
+          });
+        }
       } catch (err) {
         console.warn('Firebase LiveStream error:', err);
       }
