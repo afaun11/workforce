@@ -4257,6 +4257,20 @@
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+            if (u.status === 'inactive' || existing.status === 'inactive' || u.isActive === false || existing.isActive === false) {
+              const uTime = u.updatedAt ? new Date(u.updatedAt).getTime() : 0;
+              const exTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+              if (uTime > exTime) {
+                existing.status = u.status || (u.isActive === false ? 'inactive' : 'active');
+                existing.isActive = (existing.status !== 'inactive');
+                existing.updatedAt = u.updatedAt;
+              } else if (exTime > uTime) {
+                // Keep existing status
+              } else {
+                existing.status = 'inactive';
+                existing.isActive = false;
+              }
+            }
           }
           return; // DUPLIKAT IDENTIK -> MERGE & SKIP
         }
@@ -4268,6 +4282,20 @@
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+            if (u.status === 'inactive' || existing.status === 'inactive' || u.isActive === false || existing.isActive === false) {
+              const uTime = u.updatedAt ? new Date(u.updatedAt).getTime() : 0;
+              const exTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+              if (uTime > exTime) {
+                existing.status = u.status || (u.isActive === false ? 'inactive' : 'active');
+                existing.isActive = (existing.status !== 'inactive');
+                existing.updatedAt = u.updatedAt;
+              } else if (exTime > uTime) {
+                // Keep existing status
+              } else {
+                existing.status = 'inactive';
+                existing.isActive = false;
+              }
+            }
             return; // DUPLIKAT NIK & NAMA SAMA -> MERGE & SKIP
           }
           // JIKA DUA ORANG MANUSIA BERBEDA (misal DINARYA & FIRMAN): JANGAN DI-MERGE / DIBUANG!
@@ -4317,6 +4345,10 @@
         if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
           u.joinDate = typeof formatExcelDate === 'function' ? formatExcelDate(u.joinDate) : u.joinDate;
         }
+
+        // Pastikan status aktif/nonaktif tervalidasi dengan benar
+        u.status = (u.status === 'inactive' || u.isActive === false) ? 'inactive' : 'active';
+        u.isActive = (u.status === 'active');
 
         regularEmployees.push(u);
       });
@@ -5269,6 +5301,28 @@
             merged.nik = cloudMatch.nik.toUpperCase().trim();
             merged.barcodeValue = cloudMatch.nik.toUpperCase().trim();
           }
+
+          // Sinkronisasi status aktif/nonaktif berdasarkan timestamp terbaru atau prioritas status nonaktif
+          const locTime = loc.updatedAt ? new Date(loc.updatedAt).getTime() : 0;
+          const cloudTime = cloudMatch.updatedAt ? new Date(cloudMatch.updatedAt).getTime() : 0;
+          if (cloudTime > locTime) {
+            merged.status = cloudMatch.status || (cloudMatch.isActive === false ? 'inactive' : 'active');
+            merged.isActive = (merged.status !== 'inactive');
+            merged.updatedAt = cloudMatch.updatedAt;
+          } else if (locTime > cloudTime) {
+            merged.status = loc.status || (loc.isActive === false ? 'inactive' : 'active');
+            merged.isActive = (merged.status !== 'inactive');
+            merged.updatedAt = loc.updatedAt;
+          } else {
+            if (cloudMatch.status === 'inactive' || loc.status === 'inactive' || cloudMatch.isActive === false || loc.isActive === false) {
+              merged.status = 'inactive';
+              merged.isActive = false;
+            } else {
+              merged.status = 'active';
+              merged.isActive = true;
+            }
+          }
+
           if (loc.permissions && typeof loc.permissions === 'object') {
             merged.permissions = { ...(cloudMatch.permissions || {}), ...loc.permissions };
           } else if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
@@ -5374,7 +5428,8 @@
         if (db.mbi_users !== undefined) {
           const cloudMbiRaw = normalizeFirebaseArray(db.mbi_users);
           if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
-            const cleanMbiUsers = deduplicateUserList(cloudMbiRaw, 'MBI');
+            const localMbiUsers = getWhDB('MBI', 'users', []);
+            const cleanMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiRaw, 'MBI', db.updatedAt);
             cleanMbiUsers.forEach(u => {
               if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
                 u.name = 'Scanner Presensi Gudang';
@@ -5419,7 +5474,8 @@
         if (db.mai_users !== undefined) {
           const cloudMaiRaw = normalizeFirebaseArray(db.mai_users);
           if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0) {
-            const cleanMaiUsers = deduplicateUserList(cloudMaiRaw, 'MAI');
+            const localMaiUsers = getWhDB('MAI', 'users', []);
+            const cleanMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiRaw, 'MAI', db.updatedAt);
             cleanMaiUsers.forEach(u => {
               if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
                 u.name = 'Scanner Presensi Gudang';
@@ -5669,25 +5725,41 @@
           if (fetchMbiRes.status === 'fulfilled' && fetchMbiRes.value.ok) {
             const cloudMbiDb = await fetchMbiRes.value.json();
             if (cloudMbiDb && typeof cloudMbiDb === 'object') {
-              // Merge riwayat presensi, izin, lembur saja (tanpa mencampuradukkan data karyawan lama)
+              // Smart-merge master karyawan agar status aktif/nonaktif dan karyawan baru tidak tertimpa
+              const cloudMbiUsers = normalizeFirebaseArray(cloudMbiDb.mbi_users);
+              if (cloudMbiUsers.length > 0) {
+                const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+                const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudMbiDb.updatedAt);
+                setWhDB('MBI', 'users', mergedMbiUsers);
+                localStorage.setItem('wfm_mbi_users_backup', JSON.stringify(mergedMbiUsers));
+              }
+
               const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudMbiDb.mbi_attendance));
               const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudMbiDb.mbi_leaves));
               const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudMbiDb.mbi_overtime));
-              localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mergedMbiAtt));
-              localStorage.setItem('wfm_mbi_leaves', JSON.stringify(mergedMbiLeaves));
-              localStorage.setItem('wfm_mbi_overtime', JSON.stringify(mergedMbiOt));
+              setWhDB('MBI', 'attendance', mergedMbiAtt);
+              setWhDB('MBI', 'leaves', mergedMbiLeaves);
+              setWhDB('MBI', 'overtime', mergedMbiOt);
             }
           }
 
           if (fetchMaiRes.status === 'fulfilled' && fetchMaiRes.value.ok) {
             const cloudMaiDb = await fetchMaiRes.value.json();
             if (cloudMaiDb && typeof cloudMaiDb === 'object') {
+              const cloudMaiUsers = normalizeFirebaseArray(cloudMaiDb.mai_users);
+              if (cloudMaiUsers.length > 0) {
+                const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+                const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudMaiDb.updatedAt);
+                setWhDB('MAI', 'users', mergedMaiUsers);
+                localStorage.setItem('wfm_mai_users_backup', JSON.stringify(mergedMaiUsers));
+              }
+
               const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudMaiDb.mai_attendance));
               const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(cloudMaiDb.mai_leaves));
               const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(cloudMaiDb.mai_overtime));
-              localStorage.setItem('wfm_mai_attendance', JSON.stringify(mergedMaiAtt));
-              localStorage.setItem('wfm_mai_leaves', JSON.stringify(mergedMaiLeaves));
-              localStorage.setItem('wfm_mai_overtime', JSON.stringify(mergedMaiOt));
+              setWhDB('MAI', 'attendance', mergedMaiAtt);
+              setWhDB('MAI', 'leaves', mergedMaiLeaves);
+              setWhDB('MAI', 'overtime', mergedMaiOt);
             }
           }
         } catch (eMerge) {
