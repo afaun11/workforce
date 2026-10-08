@@ -3509,32 +3509,6 @@
   <!-- JAVASCRIPT ENGINE (BULLETPROOF EXCEL & FUZZY LOGIN) -->
   <!-- ========================================================= -->
   <script>
-    // Database Storage Helper (Gudang MBI & MAI)
-    function getWhDB(warehouse, collection, defaultValue = []) {
-      const targetWh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toLowerCase();
-      const storageKey = `wfm_${targetWh}_${collection}`;
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed !== null && parsed !== undefined) return parsed;
-        }
-      } catch (e) {
-        console.warn(`Error reading ${storageKey}:`, e);
-      }
-      return defaultValue;
-    }
-
-    function setWhDB(warehouse, collection, data) {
-      const targetWh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toLowerCase();
-      const storageKey = `wfm_${targetWh}_${collection}`;
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(data));
-      } catch (e) {
-        console.warn(`Error writing ${storageKey}:`, e);
-      }
-    }
-
     // Helper standardisasi string (lowercase & alfanumerik saja)
     function cleanStr(str) {
       if (str === null || str === undefined) return '';
@@ -4929,10 +4903,30 @@
       return cleanedDefault;
     }
 
-    function setWhDB(warehouse, key, val) {
+    let isApplyingFromCloud = false;
+
+    function setWhDB(warehouse, key, val, skipCloudSave = false) {
       try {
-        const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
+        const targetWh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toLowerCase();
+        const storageKey = `wfm_${targetWh}_${key}`;
         localStorage.setItem(storageKey, JSON.stringify(val));
+        if (isApplyingFromCloud || skipCloudSave) return;
+        if (key === 'users') {
+          localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+          if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
+            sanitizeDeletedUserKeysWithActiveUsers();
+          }
+          if (typeof saveFullDatabaseToCloud === 'function') {
+            saveFullDatabaseToCloud(false, false, true);
+          }
+        } else {
+          if (typeof saveFullDatabaseToCloud === 'function') {
+            saveFullDatabaseToCloud();
+          }
+        }
+        if (typeof triggerGoogleSheetAutoSync === 'function') {
+          triggerGoogleSheetAutoSync();
+        }
       } catch(e) {
         console.error('setWhDB error:', e);
       }
@@ -5377,8 +5371,9 @@
     let lastAppliedCloudUpdatedAt = null;
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
-
-      // Sinkronkan daftar user yang dihapus dari Cloud dengan proteksi akun aktif
+      isApplyingFromCloud = true;
+      try {
+        // Sinkronkan daftar user yang dihapus dari Cloud dengan proteksi akun aktif
       if (Array.isArray(db.deleted_user_keys)) {
         const localKeys = getDeletedUserKeys();
         const activeLocalUsers = [...getWhDB('MBI', 'users', []), ...getWhDB('MAI', 'users', [])];
@@ -5612,6 +5607,9 @@
           syncGoogleSheetDirectly();
         }
       }
+      } finally {
+        isApplyingFromCloud = false;
+      }
     }
 
     // PENGHEMAT KINERJA: HANYA PERBARUI PANEL LAYAR YANG SEDANG AKTIF DILIHAT PENGGUNA
@@ -5691,6 +5689,8 @@
     let isSavingToCloud = false;
     let hasPendingCloudSave = false;
     let pendingMasterForceUpload = false;
+    let lastSentMbiPayloadHash = '';
+    let lastSentMaiPayloadHash = '';
 
     async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false) {
       if (isMasterForceUpload === true) {
@@ -5717,6 +5717,7 @@
 
         // Pre-Merge dengan data terkini di kedua database Firebase Cloud agar tidak ada data tertimpa
         try {
+          isApplyingFromCloud = true;
           const [fetchMbiRes, fetchMaiRes] = await Promise.allSettled([
             fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
             fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
@@ -5730,16 +5731,16 @@
               if (cloudMbiUsers.length > 0) {
                 const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
                 const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudMbiDb.updatedAt);
-                setWhDB('MBI', 'users', mergedMbiUsers);
+                setWhDB('MBI', 'users', mergedMbiUsers, true);
                 localStorage.setItem('wfm_mbi_users_backup', JSON.stringify(mergedMbiUsers));
               }
 
               const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudMbiDb.mbi_attendance));
               const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudMbiDb.mbi_leaves));
               const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudMbiDb.mbi_overtime));
-              setWhDB('MBI', 'attendance', mergedMbiAtt);
-              setWhDB('MBI', 'leaves', mergedMbiLeaves);
-              setWhDB('MBI', 'overtime', mergedMbiOt);
+              setWhDB('MBI', 'attendance', mergedMbiAtt, true);
+              setWhDB('MBI', 'leaves', mergedMbiLeaves, true);
+              setWhDB('MBI', 'overtime', mergedMbiOt, true);
             }
           }
 
@@ -5750,20 +5751,22 @@
               if (cloudMaiUsers.length > 0) {
                 const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
                 const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudMaiDb.updatedAt);
-                setWhDB('MAI', 'users', mergedMaiUsers);
+                setWhDB('MAI', 'users', mergedMaiUsers, true);
                 localStorage.setItem('wfm_mai_users_backup', JSON.stringify(mergedMaiUsers));
               }
 
               const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudMaiDb.mai_attendance));
               const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(cloudMaiDb.mai_leaves));
               const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(cloudMaiDb.mai_overtime));
-              setWhDB('MAI', 'attendance', mergedMaiAtt);
-              setWhDB('MAI', 'leaves', mergedMaiLeaves);
-              setWhDB('MAI', 'overtime', mergedMaiOt);
+              setWhDB('MAI', 'attendance', mergedMaiAtt, true);
+              setWhDB('MAI', 'leaves', mergedMaiLeaves, true);
+              setWhDB('MAI', 'overtime', mergedMaiOt, true);
             }
           }
         } catch (eMerge) {
           console.warn('Pre-save merge fetch skipped/offline:', eMerge);
+        } finally {
+          isApplyingFromCloud = false;
         }
 
         const countReg = (arr) => (arr || []).filter(u => u && !isManagementSystemAccount(u)).length;
@@ -5782,8 +5785,8 @@
         const lastChangeNow = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
         const isProtectedMaster = (effectiveForceMaster === true) || (Date.now() - lastChangeNow < 600000);
 
-        // PAYLOAD TERPISAH: MBI HANYA DATA MBI, MAI HANYA DATA MAI
-        const mbiPayload = {
+        // PAYLOAD TERPISAH: MBI HANYA DATA MBI, MAI HANYA DATA MAI (STRUKTUR DATA MURNI UNTUK HASHING)
+        const mbiDataPure = {
           mbi_users: finalMbiUsers || [],
           mbi_attendance: getWhDB('MBI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
@@ -5792,11 +5795,10 @@
           gps_radius: activeRadiusToSave,
           deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
           deleted_attendance_ids: Array.from(deletedAttKeys),
-          app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
-          updatedAt: nowIso
+          app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
 
-        const maiPayload = {
+        const maiDataPure = {
           mai_users: finalMaiUsers || [],
           mai_attendance: getWhDB('MAI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
           mai_leaves: getWhDB('MAI', 'leaves', []),
@@ -5805,36 +5807,70 @@
           gps_radius: activeRadiusToSave,
           deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
           deleted_attendance_ids: Array.from(deletedAttKeys),
-          app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
-          updatedAt: nowIso
+          app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
+
+        const currentMbiHash = JSON.stringify(mbiDataPure);
+        const currentMaiHash = JSON.stringify(maiDataPure);
+
+        const shouldUploadMbi = isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash;
+        const shouldUploadMai = isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash;
+
+        // JIKA TIDAK ADA PERUBAHAN DATA: HEMAT KUOTA FIREBASE (0 REQUEST / 0 KB DIKIRIM)
+        if (!shouldUploadMbi && !shouldUploadMai) {
+          isSavingToCloud = false;
+          updateCloudSyncStatusBadge('synced');
+          return;
+        }
+
+        const mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
+        const maiPayload = { ...maiDataPure, updatedAt: nowIso };
 
         lastAppliedCloudUpdatedAt = nowIso;
         localStorage.setItem('wfm_master_updated_at', nowIso);
 
-        let mbiSuccess = false;
-        let maiSuccess = false;
+        let mbiSuccess = !shouldUploadMbi;
+        let maiSuccess = !shouldUploadMai;
         let lastStatusCode = 200;
 
         try {
-          const [mbiRes, maiRes] = await Promise.allSettled([
-            fetch(mbiEndpoint, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(mbiPayload)
-            }),
-            fetch(maiEndpoint, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(maiPayload)
-            })
-          ]);
+          const fetchList = [];
+          if (shouldUploadMbi) {
+            fetchList.push(
+              fetch(mbiEndpoint, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(mbiPayload)
+              }).then(r => ({ target: 'MBI', ok: r.ok, status: r.status }))
+            );
+          }
+          if (shouldUploadMai) {
+            fetchList.push(
+              fetch(maiEndpoint, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(maiPayload)
+              }).then(r => ({ target: 'MAI', ok: r.ok, status: r.status }))
+            );
+          }
 
-          if (mbiRes.status === 'fulfilled' && mbiRes.value.ok) mbiSuccess = true;
-          else if (mbiRes.status === 'fulfilled') lastStatusCode = mbiRes.value.status;
-
-          if (maiRes.status === 'fulfilled' && maiRes.value.ok) maiSuccess = true;
-          else if (maiRes.status === 'fulfilled') lastStatusCode = maiRes.value.status;
+          const results = await Promise.allSettled(fetchList);
+          results.forEach(item => {
+            if (item.status === 'fulfilled') {
+              if (item.value.ok) {
+                if (item.value.target === 'MBI') {
+                  mbiSuccess = true;
+                  lastSentMbiPayloadHash = currentMbiHash;
+                }
+                if (item.value.target === 'MAI') {
+                  maiSuccess = true;
+                  lastSentMaiPayloadHash = currentMaiHash;
+                }
+              } else {
+                lastStatusCode = item.value.status;
+              }
+            }
+          });
 
           try {
             if (typeof BroadcastChannel !== 'undefined') {
@@ -6525,23 +6561,6 @@
       }
     }
 
-    function setWhDB(warehouse, key, val) {
-      const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
-      localStorage.setItem(storageKey, JSON.stringify(val));
-      if (key === 'users') {
-        localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
-        if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') {
-          sanitizeDeletedUserKeysWithActiveUsers();
-        }
-        saveFullDatabaseToCloud(false, false, true);
-      } else {
-        saveFullDatabaseToCloud();
-      }
-      if (typeof triggerGoogleSheetAutoSync === 'function') {
-        triggerGoogleSheetAutoSync();
-      }
-    }
-
     function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
       const wh = warehouse || activeWarehouse || 'MBI';
       const year = new Date().getFullYear().toString().slice(-2); // "26"
@@ -6687,11 +6706,11 @@
       setInterval(() => {
         if (!document.hidden) {
           fetchFullDatabaseFromCloud();
-        } else if (Date.now() - lastBackgroundCheck > 60000) {
+        } else if (Date.now() - lastBackgroundCheck > 120000) {
           lastBackgroundCheck = Date.now();
           fetchFullDatabaseFromCloud();
         }
-      }, 20000);
+      }, 120000);
 
       window.addEventListener('focus', () => { try { fetchFullDatabaseFromCloud(); } catch(e) {} });
       document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { fetchFullDatabaseFromCloud(); } catch(e) {} } });
