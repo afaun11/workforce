@@ -4166,12 +4166,18 @@
       const cleanList = [];
 
       // 1. Tempatkan Admin Utama Sistem di awal
-      const admin = users.find(u => u.id === 'mbi-admin' || u.id === 'mai-admin' || u.nik === 'ADM001' || u.nik === 'ADM-MAI' || cleanStr(u.name) === 'admingudangmbi' || cleanStr(u.name) === 'admingudangmai') || (warehouse === 'MBI' ? { ...SEED_MBI_USERS[0] } : { ...SEED_MAI_USERS[0] });
+      const foundAdmin = users.find(u => u && (u.id === 'mbi-admin' || u.id === 'mai-admin' || (u.nik && (u.nik.toUpperCase() === 'ADM001' || u.nik.toUpperCase() === 'ADM-MAI')) || cleanStr(u.name) === 'admingudangmbi' || cleanStr(u.name) === 'admingudangmai'));
+      const seedAdmin = (warehouse === 'MBI' ? { ...SEED_MBI_USERS[0] } : { ...SEED_MAI_USERS[0] });
+      const admin = foundAdmin ? { ...foundAdmin } : { ...seedAdmin };
       admin.nik = warehouse === 'MBI' ? 'ADM001' : 'ADM-MAI';
       admin.dept = 'Administrator';
       admin.role = 'admin';
       admin.hasAccount = true;
       admin.barcodeValue = admin.nik;
+      admin.name = (foundAdmin && foundAdmin.name && foundAdmin.name.trim() !== '') ? foundAdmin.name : seedAdmin.name;
+      if (foundAdmin && foundAdmin.phone) admin.phone = foundAdmin.phone;
+      if (foundAdmin && foundAdmin.email) admin.email = foundAdmin.email;
+      if (foundAdmin && foundAdmin.password) admin.password = foundAdmin.password;
       if (!admin.permissions) {
         admin.permissions = getSavedUserPerms(admin.nik, warehouse);
       }
@@ -4196,20 +4202,19 @@
       }
 
       // 2.5 Tempatkan Akun Dedicated Manager (Bisa Buka 2 Gudang, Approver Final, Tanpa ID Card)
-      let manager = users.find(u => (u.id === 'mgr-eko' || u.nik === 'MGR001' || (u.role === 'manager' && (u.id === 'mgr-eko' || u.nik === 'MGR001'))));
-      if (!manager) {
-        manager = { ...SEED_MANAGER_USER, name: 'Manager', warehouse };
-      } else {
-        manager.id = 'mgr-eko';
-        manager.nik = 'MGR001';
-        const isManagerNameMelinda = cleanStr(manager.name) === 'melinda';
-        manager.name = (!isManagerNameMelinda && manager.name && manager.name.trim() !== '') ? manager.name : 'Manager';
-        manager.dept = 'Management';
-        manager.role = 'manager';
-        manager.hasAccount = true;
-        manager.barcodeValue = manager.nik;
-        if (!manager.password) manager.password = 'medika123';
-      }
+      let foundManager = users.find(u => u && (u.id === 'mgr-eko' || (u.nik && u.nik.toUpperCase() === 'MGR001') || (u.role === 'manager' && (u.id === 'mgr-eko' || u.nik === 'MGR001'))));
+      let manager = foundManager ? { ...foundManager } : { ...SEED_MANAGER_USER, name: 'Manager', warehouse };
+      manager.id = 'mgr-eko';
+      manager.nik = 'MGR001';
+      manager.name = (foundManager && foundManager.name && foundManager.name.trim() !== '') ? foundManager.name : 'Manager';
+      manager.dept = 'Management';
+      manager.role = 'manager';
+      manager.hasAccount = true;
+      manager.barcodeValue = manager.nik;
+      if (foundManager && foundManager.phone) manager.phone = foundManager.phone;
+      if (foundManager && foundManager.email) manager.email = foundManager.email;
+      if (foundManager && foundManager.password) manager.password = foundManager.password;
+      if (!manager.password) manager.password = 'medika123';
       if (!manager.permissions) {
         manager.permissions = getSavedUserPerms('MGR001', warehouse);
       }
@@ -4339,8 +4344,11 @@
         } else {
           u.dept = u.dept || 'Warehouse Staff';
           u.role = 'staff';
-          u.hasAccount = false;
-          u.password = '';
+          if (u.password && u.password.trim() !== '') {
+            u.hasAccount = true;
+          } else {
+            u.hasAccount = !!u.hasAccount;
+          }
         }
 
         if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
@@ -5314,26 +5322,49 @@
           if (cloudMatch.nik) matchedCloudNiks.add(String(cloudMatch.nik).toUpperCase().trim());
           if (cloudMatch.name) matchedCloudNames.add(cleanStr(cloudMatch.name));
 
-          const merged = { ...loc, ...cloudMatch };
-          if (cloudMatch.name && isLikelyHumanName(cloudMatch.name)) {
-            merged.name = cloudMatch.name;
+          const locTime = loc.updatedAt ? new Date(loc.updatedAt).getTime() : 0;
+          const cloudTime = cloudMatch.updatedAt ? new Date(cloudMatch.updatedAt).getTime() : 0;
+          const isLocalNewer = (locTime > cloudTime);
+          const isCloudNewer = (cloudTime > locTime);
+
+          const merged = isLocalNewer ? { ...cloudMatch, ...loc } : { ...loc, ...cloudMatch };
+
+          if (isLocalNewer) {
+            merged.name = loc.name || cloudMatch.name;
+            merged.phone = loc.phone || cloudMatch.phone;
+            merged.email = loc.email || cloudMatch.email;
+            if (loc.password) merged.password = loc.password;
+            merged.updatedAt = loc.updatedAt;
+          } else if (isCloudNewer) {
+            if (cloudMatch.name && isLikelyHumanName(cloudMatch.name)) {
+              merged.name = cloudMatch.name;
+            }
+            if (cloudMatch.phone) merged.phone = cloudMatch.phone;
+            if (cloudMatch.email) merged.email = cloudMatch.email;
+            if (cloudMatch.password) merged.password = cloudMatch.password;
+            merged.updatedAt = cloudMatch.updatedAt;
+          } else {
+            merged.name = (loc.name && isLikelyHumanName(loc.name)) ? loc.name : (cloudMatch.name || loc.name);
+            merged.phone = (loc.phone && loc.phone !== '-') ? loc.phone : (cloudMatch.phone || loc.phone);
+            merged.email = (loc.email && loc.email !== '-') ? loc.email : (cloudMatch.email || loc.email);
+            merged.password = loc.password || cloudMatch.password;
           }
-          if (cloudMatch.nik) {
+
+          if (cloudMatch.nik && !loc.nik) {
             merged.nik = cloudMatch.nik.toUpperCase().trim();
             merged.barcodeValue = cloudMatch.nik.toUpperCase().trim();
+          } else if (loc.nik) {
+            merged.nik = loc.nik.toUpperCase().trim();
+            merged.barcodeValue = loc.nik.toUpperCase().trim();
           }
 
           // Sinkronisasi status aktif/nonaktif berdasarkan timestamp terbaru atau prioritas status nonaktif
-          const locTime = loc.updatedAt ? new Date(loc.updatedAt).getTime() : 0;
-          const cloudTime = cloudMatch.updatedAt ? new Date(cloudMatch.updatedAt).getTime() : 0;
-          if (cloudTime > locTime) {
+          if (isCloudNewer) {
             merged.status = cloudMatch.status || (cloudMatch.isActive === false ? 'inactive' : 'active');
             merged.isActive = (merged.status !== 'inactive');
-            merged.updatedAt = cloudMatch.updatedAt;
-          } else if (locTime > cloudTime) {
+          } else if (isLocalNewer) {
             merged.status = loc.status || (loc.isActive === false ? 'inactive' : 'active');
             merged.isActive = (merged.status !== 'inactive');
-            merged.updatedAt = loc.updatedAt;
           } else {
             if (cloudMatch.status === 'inactive' || loc.status === 'inactive' || cloudMatch.isActive === false || loc.isActive === false) {
               merged.status = 'inactive';
@@ -5348,17 +5379,6 @@
             merged.permissions = { ...(cloudMatch.permissions || {}), ...loc.permissions };
           } else if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
             merged.permissions = { ...cloudMatch.permissions };
-          }
-          if (loc.password) {
-            merged.password = loc.password;
-          } else if (cloudMatch.password) {
-            merged.password = cloudMatch.password;
-          }
-          if (cloudMatch.phone && (!loc.phone || loc.phone === '-')) {
-            merged.phone = cloudMatch.phone;
-          }
-          if (cloudMatch.email && !loc.email) {
-            merged.email = cloudMatch.email;
           }
           resultList.push(merged);
         } else {
@@ -14492,7 +14512,7 @@
       lucide.createIcons();
     }
 
-    function handleSaveAccountSettings(e) {
+    async function handleSaveAccountSettings(e) {
       e.preventDefault();
       if (!currentUser) return;
 
@@ -14538,10 +14558,16 @@
       if (idx !== -1) {
         const oldName = users[idx].name;
         const oldNik = users[idx].nik;
+        const nowIso = new Date().toISOString();
+
+        unmarkDeletedUser(newName);
+        if (oldName) unmarkDeletedUser(oldName);
+        if (oldNik) unmarkDeletedUser(oldNik);
 
         users[idx].name = newName;
         users[idx].phone = newPhone;
         users[idx].email = newEmail;
+        users[idx].updatedAt = nowIso;
         if (p1) {
           users[idx].password = p1;
           users[idx].isFirstLogin = false;
@@ -14551,6 +14577,7 @@
         currentUser.name = newName;
         currentUser.phone = newPhone;
         currentUser.email = newEmail;
+        currentUser.updatedAt = nowIso;
         if (p1) {
           currentUser.password = p1;
           currentUser.isFirstLogin = false;
@@ -14567,6 +14594,7 @@
             otherUsers[otherIdx].name = newName;
             otherUsers[otherIdx].phone = newPhone;
             otherUsers[otherIdx].email = newEmail;
+            otherUsers[otherIdx].updatedAt = nowIso;
             if (p1) {
               otherUsers[otherIdx].password = p1;
               otherUsers[otherIdx].isFirstLogin = false;
@@ -14575,41 +14603,54 @@
           } else if (isUserManager(currentUser)) {
             otherUsers.push({
               ...users[idx],
-              warehouse: otherWh
+              warehouse: otherWh,
+              updatedAt: nowIso
             });
             setWhDB(otherWh, 'users', otherUsers);
           }
         }
 
+        // Kunci timestamp perubahan master data agar tidak tertimpa cloud lama
+        localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+        localStorage.setItem('wfm_master_updated_at', nowIso);
+        localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, nowIso);
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
-        saveFullDatabaseToCloud();
 
         // Jika nama berubah, sinkronkan ke riwayat absensi, leaves, overtime
         if (oldName !== newName) {
           let att = getWhDB(wh, 'attendance', []);
+          let attChanged = false;
           att.forEach(a => {
             if (a.userNik === oldNik || a.userId === currentUser.id || a.userName === oldName) {
               a.userName = newName;
+              attChanged = true;
             }
           });
-          setWhDB(wh, 'attendance', att);
+          if (attChanged) setWhDB(wh, 'attendance', att);
 
           let lvs = getWhDB(wh, 'leaves', []);
+          let lvsChanged = false;
           lvs.forEach(l => {
             if (l.userNik === oldNik || l.userName === oldName) {
               l.userName = newName;
+              lvsChanged = true;
             }
           });
-          setWhDB(wh, 'leaves', lvs);
+          if (lvsChanged) setWhDB(wh, 'leaves', lvs);
 
           let ots = getWhDB(wh, 'overtime', []);
+          let otsChanged = false;
           ots.forEach(o => {
             if (o.userNik === oldNik || o.userId === currentUser.id || o.userName === oldName) {
               o.userName = newName;
+              otsChanged = true;
             }
           });
-          setWhDB(wh, 'overtime', ots);
+          if (otsChanged) setWhDB(wh, 'overtime', ots);
         }
+
+        // Simpan langsung ke Firebase Cloud seketika dengan status Master Force Upload
+        await saveFullDatabaseToCloud(false, true, true);
 
         // Update DOM Top Navbar
         const navName = document.getElementById('nav-user-name');
