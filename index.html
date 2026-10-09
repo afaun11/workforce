@@ -9130,22 +9130,6 @@
           const accuracy = Math.round(pos.coords.accuracy || 0);
           const accuracyBuffer = Math.min(accuracy, 100);
 
-          // Cek koordinat dummy
-          if (isDummyWarehouseCoords(targetCoords)) {
-            setWarehouseCoords(whToUse, userLat, userLng, maxRadius);
-            latestCachedGPS = {
-              valid: true,
-              distance: 0,
-              maxRadius: maxRadius,
-              accuracy: accuracy,
-              lat: userLat,
-              lng: userLng,
-              wh: whToUse,
-              timestamp: Date.now()
-            };
-            return;
-          }
-
           const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
           const effectiveAllowedRadius = maxRadius + accuracyBuffer;
           const effectiveDistance = Math.max(0, rawDistActive - accuracyBuffer);
@@ -9205,26 +9189,6 @@
             const accuracy = Math.round(pos.coords.accuracy || 0);
             const accuracyBuffer = Math.min(accuracy, 100);
 
-            // Cek jika koordinat gudang masih default Monas / dummy
-            if (isDummyWarehouseCoords(targetCoords)) {
-              setWarehouseCoords(whToUse, userLat, userLng, maxRadius);
-              const autoRes = {
-                valid: true,
-                distance: 0,
-                maxRadius: maxRadius,
-                effectiveAllowedRadius: maxRadius + accuracyBuffer,
-                accuracy: accuracy,
-                lat: userLat,
-                lng: userLng,
-                wh: whToUse,
-                timestamp: Date.now(),
-                error: null
-              };
-              latestCachedGPS = autoRes;
-              resolve(autoRes);
-              return;
-            }
-
             const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
             const effectiveAllowedRadius = maxRadius + accuracyBuffer;
             const effectiveDistance = Math.max(0, rawDistActive - accuracyBuffer);
@@ -9240,7 +9204,7 @@
               lng: userLng,
               wh: whToUse,
               timestamp: Date.now(),
-              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi Gudang ${whToUse}! Jarak ke titik gudang: ${rawDistActive}m (Batas toleransi: ${effectiveAllowedRadius}m termasuk akurasi HP ±${accuracy}m). Dekatkan HP ke area Gudang ${whToUse} atau daftarkan titik GPS HP ini di menu Pengaturan.`
+              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi Gudang ${whToUse}! Jarak ke titik gudang: ${rawDistActive}m (Batas toleransi: ${effectiveAllowedRadius}m termasuk akurasi HP ±${accuracy}m). Dekatkan HP ke area Gudang ${whToUse} atau sesuaikan radius jika diperlukan.`
             };
 
             if (isValid) {
