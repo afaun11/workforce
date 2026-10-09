@@ -5744,60 +5744,6 @@
         const mbiEndpoint = getFirebaseEndpoint('MBI');
         const maiEndpoint = getFirebaseEndpoint('MAI');
 
-        // Pre-Merge dengan data terkini di kedua database Firebase Cloud agar tidak ada data tertimpa
-        try {
-          isApplyingFromCloud = true;
-          const [fetchMbiRes, fetchMaiRes] = await Promise.allSettled([
-            fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
-            fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
-          ]);
-
-          if (fetchMbiRes.status === 'fulfilled' && fetchMbiRes.value.ok) {
-            const cloudMbiDb = await fetchMbiRes.value.json();
-            if (cloudMbiDb && typeof cloudMbiDb === 'object') {
-              // Smart-merge master karyawan agar status aktif/nonaktif dan karyawan baru tidak tertimpa
-              const cloudMbiUsers = normalizeFirebaseArray(cloudMbiDb.mbi_users);
-              if (cloudMbiUsers.length > 0) {
-                const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-                const mergedMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiUsers, 'MBI', cloudMbiDb.updatedAt);
-                setWhDB('MBI', 'users', mergedMbiUsers, true);
-                localStorage.setItem('wfm_mbi_users_backup', JSON.stringify(mergedMbiUsers));
-              }
-
-              const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(cloudMbiDb.mbi_attendance));
-              const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(cloudMbiDb.mbi_leaves));
-              const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(cloudMbiDb.mbi_overtime));
-              setWhDB('MBI', 'attendance', mergedMbiAtt, true);
-              setWhDB('MBI', 'leaves', mergedMbiLeaves, true);
-              setWhDB('MBI', 'overtime', mergedMbiOt, true);
-            }
-          }
-
-          if (fetchMaiRes.status === 'fulfilled' && fetchMaiRes.value.ok) {
-            const cloudMaiDb = await fetchMaiRes.value.json();
-            if (cloudMaiDb && typeof cloudMaiDb === 'object') {
-              const cloudMaiUsers = normalizeFirebaseArray(cloudMaiDb.mai_users);
-              if (cloudMaiUsers.length > 0) {
-                const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-                const mergedMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiUsers, 'MAI', cloudMaiDb.updatedAt);
-                setWhDB('MAI', 'users', mergedMaiUsers, true);
-                localStorage.setItem('wfm_mai_users_backup', JSON.stringify(mergedMaiUsers));
-              }
-
-              const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(cloudMaiDb.mai_attendance));
-              const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(cloudMaiDb.mai_leaves));
-              const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(cloudMaiDb.mai_overtime));
-              setWhDB('MAI', 'attendance', mergedMaiAtt, true);
-              setWhDB('MAI', 'leaves', mergedMaiLeaves, true);
-              setWhDB('MAI', 'overtime', mergedMaiOt, true);
-            }
-          }
-        } catch (eMerge) {
-          console.warn('Pre-save merge fetch skipped/offline:', eMerge);
-        } finally {
-          isApplyingFromCloud = false;
-        }
-
         const countReg = (arr) => (arr || []).filter(u => u && !isManagementSystemAccount(u)).length;
         let finalMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
         let finalMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
@@ -6554,41 +6500,12 @@
     let firebaseEventSourceMBI = null;
     let firebaseEventSourceMAI = null;
     function initFirebaseLiveStream(wh = null) {
-      if (typeof EventSource === 'undefined') return;
+      // Dinonaktifkan demi penghematan kuota Firebase (Menghemat >95% bandwidth download).
+      // Sinkronisasi data antar perangkat ditangani secara hemat oleh Smart Timestamp Delta Check (30 Byte) & BroadcastChannel.
       try {
-        if (!firebaseEventSourceMBI) {
-          firebaseEventSourceMBI = new EventSource(getFirebaseEndpoint('MBI'));
-          firebaseEventSourceMBI.addEventListener('put', (e) => {
-            try {
-              const parsed = JSON.parse(e.data);
-              if (parsed && parsed.data) {
-                if (parsed.path === '/') applyIncomingDatabase(parsed.data);
-                else fetchFullDatabaseFromCloud(false, 'MBI');
-              }
-            } catch (err) {}
-          });
-          firebaseEventSourceMBI.addEventListener('patch', (e) => {
-            try { fetchFullDatabaseFromCloud(false, 'MBI'); } catch (err) {}
-          });
-        }
-        if (!firebaseEventSourceMAI) {
-          firebaseEventSourceMAI = new EventSource(getFirebaseEndpoint('MAI'));
-          firebaseEventSourceMAI.addEventListener('put', (e) => {
-            try {
-              const parsed = JSON.parse(e.data);
-              if (parsed && parsed.data) {
-                if (parsed.path === '/') applyIncomingDatabase(parsed.data);
-                else fetchFullDatabaseFromCloud(false, 'MAI');
-              }
-            } catch (err) {}
-          });
-          firebaseEventSourceMAI.addEventListener('patch', (e) => {
-            try { fetchFullDatabaseFromCloud(false, 'MAI'); } catch (err) {}
-          });
-        }
-      } catch (err) {
-        console.warn('Firebase LiveStream error:', err);
-      }
+        if (firebaseEventSourceMBI) { firebaseEventSourceMBI.close(); firebaseEventSourceMBI = null; }
+        if (firebaseEventSourceMAI) { firebaseEventSourceMAI.close(); firebaseEventSourceMAI = null; }
+      } catch (err) {}
     }
 
     function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
@@ -6728,22 +6645,16 @@
       try { updateRegisteredCoordsDisplay(); } catch(e) {}
       try { setAttendanceType('check_in'); } catch(e) {}
 
-      // Sinkronkan data otomatis dari Google Firebase Cloud Server (Force Fresh Sync saat pertama buka app)
+      // Sinkronkan data otomatis dari Google Firebase Cloud Server (Fresh Load saat pertama buka app)
       try { fetchFullDatabaseFromCloud(false, null, true); } catch(e) {}
-      try { initFirebaseLiveStream(); } catch(e) {}
       
-      let lastBackgroundCheck = Date.now();
+      // Smart Delta Check hemat kuota di latar belakang (Jeda 5 menit, hanya mengecek 30 Byte timestamp)
       setInterval(() => {
         if (!document.hidden) {
-          fetchFullDatabaseFromCloud();
-        } else if (Date.now() - lastBackgroundCheck > 120000) {
-          lastBackgroundCheck = Date.now();
-          fetchFullDatabaseFromCloud();
+          fetchFullDatabaseFromCloud(false, null, false);
         }
-      }, 120000);
+      }, 300000);
 
-      window.addEventListener('focus', () => { try { fetchFullDatabaseFromCloud(); } catch(e) {} });
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) { try { fetchFullDatabaseFromCloud(); } catch(e) {} } });
       window.addEventListener('storage', (e) => {
         if (e.key && e.key.startsWith('wfm_')) {
           try { renderAllLiveScreens(); } catch(err) {}
@@ -6753,7 +6664,7 @@
       if (typeof BroadcastChannel !== 'undefined') {
         try {
           const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
-          syncBc.onmessage = () => { try { fetchFullDatabaseFromCloud(); } catch(e) {} };
+          syncBc.onmessage = () => { try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {} };
         } catch(e) {}
       }
 
@@ -8864,7 +8775,6 @@
           try { renderScannerTodayRecords(); } catch(e) {}
           try { switchScanMethod('camera'); } catch(e) {}
           try { updateRegisteredCoordsDisplay(); } catch(e) {}
-          try { if (typeof fetchFullDatabaseFromCloud === 'function') fetchFullDatabaseFromCloud(); } catch(e) {}
           try { preloadGPSLocation(); } catch(e) {}
         }
         if (viewName === 'employees') { try { renderEmployeeTable(); } catch(e) {} }
@@ -10998,9 +10908,6 @@
     // KAMERA SCANNER (BUKA & TUTUP) - MULTI-DEVICE IPHONE & ANDROID
     // =========================================================
     async function startScanner() {
-      if (typeof fetchFullDatabaseFromCloud === 'function') {
-        fetchFullDatabaseFromCloud();
-      }
       // 1. Tampilkan container video, sembunyikan standby
       const videoWrapper = document.getElementById('camera-video-wrapper');
       const standbyWrapper = document.getElementById('camera-standby-wrapper');
@@ -18645,7 +18552,6 @@ function testManualSync() {
     try { renderAudioSettingsUI(); } catch(e) {}
     try { syncAudioClipsFromCloud(); } catch(e) {}
     try { tryAutoLoadLocalFolderAudio(); } catch(e) {}
-    try { fetchFullDatabaseFromCloud(); } catch(e) {}
     try { updateNavbarBrand(); } catch(e) {}
     try { updateLoginWhStyle(); } catch(e) {}
     try { updateRealtimeDashboardDate(); } catch(e) {}
