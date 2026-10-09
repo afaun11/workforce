@@ -8566,6 +8566,9 @@
         } catch (renderErr) {
           console.warn('Non-blocking render error after login:', renderErr);
         }
+
+        // Jalankan pengawas inaktivitas 2 jam (Khusus Admin/Manager/Staff, Pos Scanner tetap 24 Jam)
+        try { startInactivityTracker(); } catch (e) {}
       } catch (fatalErr) {
         console.error('Fatal login error:', fatalErr);
         const authContainer = document.getElementById('auth-container');
@@ -8584,10 +8587,65 @@
       }
     }
 
+    // =========================================================
+    // FITUR AUTO-LOGOUT 2 JAM INACTIVITY (NON-SCANNER)
+    // =========================================================
+    const INACTIVITY_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 Jam
+    let inactivityTimer = null;
+    let lastUserActivityTimestamp = Date.now();
+
+    function recordUserInteraction() {
+      lastUserActivityTimestamp = Date.now();
+      try {
+        localStorage.setItem('wfm_last_user_interaction', String(lastUserActivityTimestamp));
+      } catch(e) {}
+    }
+
+    function startInactivityTracker() {
+      stopInactivityTracker();
+      if (!currentUser || isUserScanner(currentUser)) {
+        return; // Pos Scanner Presensi Bebas Auto-Logout (Standby 24 Jam Penuh)
+      }
+      recordUserInteraction();
+
+      window.addEventListener('mousemove', recordUserInteraction, { passive: true });
+      window.addEventListener('mousedown', recordUserInteraction, { passive: true });
+      window.addEventListener('keydown', recordUserInteraction, { passive: true });
+      window.addEventListener('touchstart', recordUserInteraction, { passive: true });
+      window.addEventListener('scroll', recordUserInteraction, { passive: true });
+
+      inactivityTimer = setInterval(() => {
+        if (!currentUser || isUserScanner(currentUser)) {
+          stopInactivityTracker();
+          return;
+        }
+        const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
+        const lastActivity = Math.max(lastUserActivityTimestamp, isNaN(lastSaved) ? 0 : lastSaved);
+        if (Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS) {
+          console.warn('[Security Shield] Sesi login Admin/Manager otomatis berakhir karena tidak ada aktivitas selama 2 jam.');
+          handleLogout();
+        }
+      }, 60000);
+    }
+
+    function stopInactivityTracker() {
+      if (inactivityTimer) {
+        clearInterval(inactivityTimer);
+        inactivityTimer = null;
+      }
+      window.removeEventListener('mousemove', recordUserInteraction);
+      window.removeEventListener('mousedown', recordUserInteraction);
+      window.removeEventListener('keydown', recordUserInteraction);
+      window.removeEventListener('touchstart', recordUserInteraction);
+      window.removeEventListener('scroll', recordUserInteraction);
+    }
+
     function handleLogout() {
+      stopInactivityTracker();
       currentUser = null;
       try {
         localStorage.removeItem('wfm_active_session');
+        localStorage.removeItem('wfm_last_user_interaction');
       } catch(e) {}
       const authContainer = document.getElementById('auth-container');
       const appContainer = document.getElementById('app-container');
@@ -18563,7 +18621,15 @@ function testManualSync() {
         try {
           const userObj = JSON.parse(savedSession);
           if (userObj && (userObj.nik || userObj.id)) {
-            loginUserSession(userObj);
+            const isScanner = isUserScanner(userObj);
+            const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
+            const isExpired = !isScanner && lastSaved > 0 && (Date.now() - lastSaved >= 2 * 60 * 60 * 1000);
+            if (isExpired) {
+              localStorage.removeItem('wfm_active_session');
+              localStorage.removeItem('wfm_last_user_interaction');
+            } else {
+              loginUserSession(userObj);
+            }
           }
         } catch (e) {}
       }
