@@ -3648,16 +3648,15 @@
 
     function getWarehouseCoords(wh = activeWarehouse) {
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       let ownCoords = null;
 
       try {
         const saved = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_coords`);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
-            const r = Number(parsed.radius) > 0 ? Number(parsed.radius) : globalRad;
-            ownCoords = { lat: parsed.lat, lng: parsed.lng, radius: r, name: `Gudang ${targetWh}` };
+          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number' && !isNaN(parsed.lat) && !isNaN(parsed.lng)) {
+            const whRad = Number(parsed.radius) > 0 ? Number(parsed.radius) : (Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || 100);
+            ownCoords = { lat: parsed.lat, lng: parsed.lng, radius: whRad, name: `Gudang ${targetWh}` };
           }
         }
       } catch(e) {}
@@ -3665,7 +3664,8 @@
       // Masing-masing gudang (MBI & MAI) 100% TERPISAH & INDEPENDEN
       if (ownCoords) return ownCoords;
       const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 100, name: `Gudang ${targetWh}` };
-      return { lat: def.lat, lng: def.lng, radius: globalRad || def.radius || 100, name: def.name };
+      const fallbackRad = Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || def.radius || 100;
+      return { lat: def.lat, lng: def.lng, radius: fallbackRad, name: def.name };
     }
 
     function setWarehouseCoords(wh, lat, lng, radius = null) {
@@ -3673,20 +3673,29 @@
         console.warn('[GPS Shield] Percobaan perubahan koordinat GPS ditolak karena bukan peran Admin/Management');
         return getWarehouseCoords(wh);
       }
-      const targetWh = wh || activeWarehouse || 'MBI';
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
       const current = getWarehouseCoords(targetWh);
-      const defaultRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
-      const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || defaultRad);
-      const validRadius = Number(rad) > 0 ? Number(rad) : defaultRad;
+      const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || 100);
+      const validRadius = (Number(rad) > 0) ? Number(rad) : 100;
+      const parsedLat = parseFloat(lat);
+      const parsedLng = parseFloat(lng);
+
+      if (isNaN(parsedLat) || isNaN(parsedLng)) {
+        console.warn('[GPS Shield] Format koordinat tidak valid');
+        return current;
+      }
+
       const coords = { 
-        lat: parseFloat(lat), 
-        lng: parseFloat(lng), 
+        lat: parsedLat, 
+        lng: parsedLng, 
         radius: validRadius, 
         name: `Gudang ${targetWh}`, 
         updatedAt: new Date().toISOString() 
       };
+
       // Simpan HANYA ke storage gudang target yang bersangkutan (MBI atau MAI terpisah)
       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(coords));
+      localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(validRadius));
       localStorage.setItem('wfm_gps_radius', String(validRadius));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
       saveFullDatabaseToCloud(false, true, true);
@@ -3702,18 +3711,16 @@
       }
       const r = parseInt(radius, 10);
       if (isNaN(r) || r <= 0) return;
-      const currentWh = activeWarehouse || 'MBI';
-      localStorage.setItem('wfm_gps_radius', String(r));
-      localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
-
-      // Update HANYA untuk gudang aktif saat ini (tidak mengubah gudang lain)
+      const currentWh = (activeWarehouse || 'MBI').toUpperCase();
+      
+      // Update HANYA radius gudang aktif saat ini TANPA mengubah titik koordinat Latitude & Longitude
       const c = getWarehouseCoords(currentWh);
       setWarehouseCoords(currentWh, c.lat, c.lng, r);
 
       updateRegisteredCoordsDisplay();
       await saveFullDatabaseToCloud(false, true, true);
 
-      alert(`✅ Jarak radius validasi GPS Gudang ${currentWh} berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf di Gudang ${currentWh} kini maksimal ${r} Meter.\n• Perubahan otomatis berlaku ke seluruh HP scanner dan sistem.`);
+      alert(`✅ Jarak radius validasi GPS Gudang ${currentWh} berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf di Gudang ${currentWh} kini maksimal ${r} Meter.\n• Titik koordinat gudang tetap aman dan tidak berubah.`);
     }
 
     function updateRegisteredCoordsDisplay() {
@@ -5515,33 +5522,35 @@
       const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 600000);
 
       if (!isRecentLocalGpsChange) {
-        if (db.mbi_coords && typeof db.mbi_coords.lat === 'number') {
+        if (db.mbi_coords && typeof db.mbi_coords.lat === 'number' && typeof db.mbi_coords.lng === 'number') {
           const localMbi = getWarehouseCoords('MBI');
           const incomingIsDummy = isDummyWarehouseCoords(db.mbi_coords);
           const localIsDummy = isDummyWarehouseCoords(localMbi);
           if (!incomingIsDummy || localIsDummy) {
-            const cloudMbiRad = Number(db.mbi_coords.radius) || Number(db.gps_radius) || Number(localStorage.getItem('wfm_gps_radius')) || 100;
+            const cloudMbiRad = Number(db.mbi_coords.radius) || Number(db.gps_radius) || 100;
             const isDiff = (localMbi.radius !== cloudMbiRad) || 
-                           (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.00001) || 
-                           (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.00001);
+                           (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.000001) || 
+                           (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.000001);
             if (isDiff) {
               localStorage.setItem('wfm_mbi_coords', JSON.stringify({ ...db.mbi_coords, radius: cloudMbiRad }));
+              localStorage.setItem('wfm_gps_radius_mbi', String(cloudMbiRad));
               if (activeWarehouse === 'MBI') localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
               hasCoordsChanged = true;
             }
           }
         }
-        if (db.mai_coords && typeof db.mai_coords.lat === 'number') {
+        if (db.mai_coords && typeof db.mai_coords.lat === 'number' && typeof db.mai_coords.lng === 'number') {
           const localMai = getWarehouseCoords('MAI');
           const incomingIsDummy = isDummyWarehouseCoords(db.mai_coords);
           const localIsDummy = isDummyWarehouseCoords(localMai);
           if (!incomingIsDummy || localIsDummy) {
-            const cloudMaiRad = Number(db.mai_coords.radius) || Number(db.gps_radius) || Number(localStorage.getItem('wfm_gps_radius')) || 100;
+            const cloudMaiRad = Number(db.mai_coords.radius) || Number(db.gps_radius) || 100;
             const isDiff = (localMai.radius !== cloudMaiRad) || 
-                           (Math.abs(localMai.lat - db.mai_coords.lat) > 0.00001) || 
-                           (Math.abs(localMai.lng - db.mai_coords.lng) > 0.00001);
+                           (Math.abs(localMai.lat - db.mai_coords.lat) > 0.000001) || 
+                           (Math.abs(localMai.lng - db.mai_coords.lng) > 0.000001);
             if (isDiff) {
               localStorage.setItem('wfm_mai_coords', JSON.stringify({ ...db.mai_coords, radius: cloudMaiRad }));
+              localStorage.setItem('wfm_gps_radius_mai', String(cloudMaiRad));
               if (activeWarehouse === 'MAI') localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
               hasCoordsChanged = true;
             }
@@ -5773,11 +5782,10 @@
         let finalMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
         let finalMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
 
-        let mbiCoordsToSave = getWarehouseCoords('MBI');
-        let maiCoordsToSave = getWarehouseCoords('MAI');
-        const activeRadiusToSave = Number(localStorage.getItem('wfm_gps_radius')) || 100;
-        if (mbiCoordsToSave) mbiCoordsToSave.radius = Number(mbiCoordsToSave.radius) > 0 ? Number(mbiCoordsToSave.radius) : activeRadiusToSave;
-        if (maiCoordsToSave) maiCoordsToSave.radius = Number(maiCoordsToSave.radius) > 0 ? Number(maiCoordsToSave.radius) : activeRadiusToSave;
+        const mbiCoordsToSave = getWarehouseCoords('MBI');
+        const maiCoordsToSave = getWarehouseCoords('MAI');
+        const mbiRadToSave = Number(mbiCoordsToSave?.radius) > 0 ? Number(mbiCoordsToSave.radius) : 100;
+        const maiRadToSave = Number(maiCoordsToSave?.radius) > 0 ? Number(maiCoordsToSave.radius) : 100;
 
         const deletedKeys = getDeletedUserKeys();
         const deletedAttKeys = getDeletedAttendanceIds();
@@ -5792,7 +5800,7 @@
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: mbiCoordsToSave,
-          gps_radius: activeRadiusToSave,
+          gps_radius: mbiRadToSave,
           deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
           deleted_attendance_ids: Array.from(deletedAttKeys),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
@@ -5804,7 +5812,7 @@
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: maiCoordsToSave,
-          gps_radius: activeRadiusToSave,
+          gps_radius: maiRadToSave,
           deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
           deleted_attendance_ids: Array.from(deletedAttKeys),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
