@@ -10136,10 +10136,44 @@
         return;
       }
 
-      const targetWh = matchedUser.warehouse || activeWarehouse || 'MBI';
-      const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-      
+      // Validasi Ketat Penempatan Gudang (Cross-Warehouse Protection)
+      // Mencegah karyawan Gudang MBI absen di Scanner Gudang MAI, dan sebaliknya
+      const scannerWh = (activeWarehouse || 'MBI').toUpperCase();
+      let userWh = (matchedUser.warehouse || '').toUpperCase();
+      if (!userWh && matchedUser.nik) {
+        const cleanNikUpper = matchedUser.nik.toUpperCase();
+        if (cleanNikUpper.startsWith('MAI')) userWh = 'MAI';
+        else if (cleanNikUpper.startsWith('MBI')) userWh = 'MBI';
+      }
+      if (!userWh) {
+        const isMaiUser = maiUsers.some(u => u && ((u.nik && matchedUser.nik && u.nik.toUpperCase() === matchedUser.nik.toUpperCase()) || u.id === matchedUser.id));
+        userWh = isMaiUser ? 'MAI' : 'MBI';
+      }
+
       const nowFormatted = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
+      if (!isManagementSystemAccount(matchedUser) && userWh !== scannerWh) {
+        const gunCard = document.getElementById('last-gun-success-card');
+        if (gunCard) gunCard.classList.add('hidden');
+        showProfessionalAttendanceToast({
+          isError: true,
+          title: 'Beda Gudang Penempatan',
+          subtitle: `Kartu presensi "${matchedUser.name}" (${matchedUser.nik || matchedUser.id}) terdaftar di Gudang ${userWh}. Tidak dapat absen di Scanner Gudang ${scannerWh}. Silakan absen di Pos Scanner Gudang ${userWh}.`,
+          name: matchedUser.name,
+          nik: matchedUser.nik || matchedUser.id,
+          dept: matchedUser.dept || 'Staff',
+          warehouse: userWh,
+          time: nowFormatted,
+          statusText: `Khusus Gudang ${userWh}`
+        });
+        playAttendanceErrorSound('Beda gudang penempatan');
+        stopScanner();
+        setTimeout(() => { isScanProcessing = false; }, 2500);
+        return;
+      }
+
+      const targetWh = scannerWh;
+      const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
 
       // 1. FILTER & URUTKAN SELURUH RIWAYAT PRESENSI KARYAWAN SECARA KRONOLOGIS TERBARU (DESCENDING)
       // Pencarian KETAT & AMAN: Mencegah NIK tertukar atau satu karyawan menutup sesi karyawan lain
