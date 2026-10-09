@@ -8587,7 +8587,7 @@
           console.warn('Non-blocking render error after login:', renderErr);
         }
 
-        // Jalankan pengawas inaktivitas 2 jam (Khusus Admin/Manager/Staff, Pos Scanner tetap 24 Jam)
+        // Jalankan pengawas inaktivitas 45 menit (Khusus Admin/Manager/Staff, Pos Scanner tetap 24 Jam)
         try { startInactivityTracker(); } catch (e) {}
       } catch (fatalErr) {
         console.error('Fatal login error:', fatalErr);
@@ -8608,9 +8608,9 @@
     }
 
     // =========================================================
-    // FITUR AUTO-LOGOUT 2 JAM INACTIVITY (NON-SCANNER)
+    // FITUR AUTO-LOGOUT 45 MENIT INACTIVITY (NON-SCANNER)
     // =========================================================
-    const INACTIVITY_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 Jam
+    const INACTIVITY_TIMEOUT_MS = 45 * 60 * 1000; // 45 Menit
     let inactivityTimer = null;
     let lastUserActivityTimestamp = Date.now();
 
@@ -8642,7 +8642,7 @@
         const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
         const lastActivity = Math.max(lastUserActivityTimestamp, isNaN(lastSaved) ? 0 : lastSaved);
         if (Date.now() - lastActivity >= INACTIVITY_TIMEOUT_MS) {
-          console.warn('[Security Shield] Sesi login Admin/Manager otomatis berakhir karena tidak ada aktivitas selama 2 jam.');
+          console.warn('[Security Shield] Sesi login Admin/Manager otomatis berakhir karena tidak ada aktivitas selama 45 menit.');
           handleLogout();
         }
       }, 60000);
@@ -18628,7 +18628,7 @@ function testManualSync() {
           if (userObj && (userObj.nik || userObj.id)) {
             const isScanner = isUserScanner(userObj);
             const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
-            const isExpired = !isScanner && lastSaved > 0 && (Date.now() - lastSaved >= 2 * 60 * 60 * 1000);
+            const isExpired = !isScanner && lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
             if (isExpired) {
               localStorage.removeItem('wfm_active_session');
               localStorage.removeItem('wfm_last_user_interaction');
