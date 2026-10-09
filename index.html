@@ -3624,13 +3624,15 @@
 
     const OFFICIAL_WAREHOUSE_MAPS_URL = "https://maps.app.goo.gl/rDZysrj5TJ1NmdGD7?g_st=aw";
     
+    // KOORDINAT RESMI PERMANEN MASING-MASING GUDANG
     const DEFAULT_COORDS = {
-      MBI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MBI' },
-      MAI: { lat: -6.2088, lng: 106.8456, radius: 100, name: 'Gudang MAI' }
+      MBI: { lat: -6.263295, lng: 106.877066, radius: 100, name: 'Gudang MBI' },
+      MAI: { lat: -6.217808, lng: 106.889398, radius: 100, name: 'Gudang MAI' }
     };
 
     function isDummyWarehouseCoords(coords) {
       if (!coords || typeof coords.lat !== 'number' || typeof coords.lng !== 'number') return true;
+      // Deteksi koordinat dummy lama Jakarta Pusat (-6.2088, 106.8456)
       return Math.abs(coords.lat - (-6.2088)) < 0.001 && Math.abs(coords.lng - 106.8456) < 0.001;
     }
 
@@ -3655,17 +3657,24 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number' && !isNaN(parsed.lat) && !isNaN(parsed.lng)) {
-            const whRad = Number(parsed.radius) > 0 ? Number(parsed.radius) : (Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || 100);
-            ownCoords = { lat: parsed.lat, lng: parsed.lng, radius: whRad, name: `Gudang ${targetWh}` };
+            // Abaikan jika masih memuat koordinat dummy lama
+            if (!isDummyWarehouseCoords(parsed)) {
+              const whRad = Number(parsed.radius) > 0 ? Number(parsed.radius) : (Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || 100);
+              ownCoords = { lat: parsed.lat, lng: parsed.lng, radius: whRad, name: `Gudang ${targetWh}` };
+            }
           }
         }
       } catch(e) {}
 
-      // Masing-masing gudang (MBI & MAI) 100% TERPISAH & INDEPENDEN
+      // Masing-masing gudang (MBI & MAI) 100% TERPISAH & INDEPENDEN DENGAN KOORDINAT PERMANEN
       if (ownCoords) return ownCoords;
-      const def = DEFAULT_COORDS[targetWh] || { lat: -6.2088, lng: 106.8456, radius: 100, name: `Gudang ${targetWh}` };
+      const def = DEFAULT_COORDS[targetWh] || { lat: -6.263295, lng: 106.877066, radius: 100, name: `Gudang ${targetWh}` };
       const fallbackRad = Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || def.radius || 100;
-      return { lat: def.lat, lng: def.lng, radius: fallbackRad, name: def.name };
+      const finalCoords = { lat: def.lat, lng: def.lng, radius: fallbackRad, name: def.name };
+      try {
+        localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(finalCoords));
+      } catch(e) {}
+      return finalCoords;
     }
 
     function setWarehouseCoords(wh, lat, lng, radius = null) {
