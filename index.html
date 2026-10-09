@@ -3790,10 +3790,9 @@
         (pos) => {
           const userLat = pos.coords.latitude;
           const userLng = pos.coords.longitude;
-          const accuracy = Math.round(pos.coords.accuracy || 0);
           const dist = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-          const accuracyBuffer = Math.min(accuracy, 100);
-          const effectiveRadius = activeRadius + accuracyBuffer;
+          const fixedTolerance = 10; // Toleransi Tetap 10 Meter
+          const effectiveRadius = activeRadius + fixedTolerance;
           const isValid = isTargetDummy || (dist <= effectiveRadius);
 
           let msg = `📍 HASIL PENGECEKAN JARAK GPS:\n\n`;
@@ -3804,13 +3803,13 @@
             msg += `• Titik Gudang ${activeWarehouse}: ${targetCoords.lat.toFixed(6)}, ${targetCoords.lng.toFixed(6)}\n`;
           }
           msg += `• Batas Radius Resmi: ${activeRadius} Meter\n`;
-          msg += `• Akurasi Sinyal HP: ±${accuracy} meter (Toleransi: ${effectiveRadius}m)\n`;
+          msg += `• Toleransi Jarak Tambahan: +${fixedTolerance} Meter (Batas Maksimal: ${effectiveRadius} Meter)\n`;
           msg += `• Jarak Fisik ke Gudang: ${isTargetDummy ? '0 m (Default)' : `${dist} meter`}\n\n`;
 
           if (isValid) {
             msg += `✅ STATUS: DALAM RADIUS (BISA SCAN ABSEN)\nPosisi Anda memenuhi syarat untuk melakukan presensi di Gudang ${activeWarehouse}.`;
           } else {
-            msg += `⛔ STATUS: DI LUAR RADIUS (LEBIH ${dist - effectiveRadius} METER)\nAnda berada di luar batas toleransi ${activeRadius} meter dari Gudang ${activeWarehouse}. Silakan mendekat ke area gudang untuk melakukan scan presensi.`;
+            msg += `⛔ STATUS: DI LUAR RADIUS (LEBIH ${dist - effectiveRadius} METER)\nAnda berada di luar batas maksimal ${effectiveRadius} meter dari Gudang ${activeWarehouse}. Silakan mendekat ke area gudang untuk melakukan scan presensi.`;
           }
 
           alert(msg);
@@ -9148,12 +9147,10 @@
           const userLat = pos.coords.latitude;
           const userLng = pos.coords.longitude;
           const accuracy = Math.round(pos.coords.accuracy || 0);
-          const accuracyBuffer = Math.min(accuracy, 100);
 
           const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-          const effectiveAllowedRadius = maxRadius + accuracyBuffer;
-          const effectiveDistance = Math.max(0, rawDistActive - accuracyBuffer);
-          const isValid = (rawDistActive <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
+          const effectiveAllowedRadius = maxRadius + 10; // Toleransi Jarak Tetap +10 Meter
+          const isValid = (rawDistActive <= effectiveAllowedRadius);
 
           if (isValid) {
             latestCachedGPS = {
@@ -9207,12 +9204,10 @@
             const userLat = pos.coords.latitude;
             const userLng = pos.coords.longitude;
             const accuracy = Math.round(pos.coords.accuracy || 0);
-            const accuracyBuffer = Math.min(accuracy, 100);
 
             const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-            const effectiveAllowedRadius = maxRadius + accuracyBuffer;
-            const effectiveDistance = Math.max(0, rawDistActive - accuracyBuffer);
-            const isValid = (rawDistActive <= effectiveAllowedRadius) || (effectiveDistance <= maxRadius);
+            const effectiveAllowedRadius = maxRadius + 10; // Toleransi Jarak Tetap +10 Meter
+            const isValid = (rawDistActive <= effectiveAllowedRadius);
 
             const res = {
               valid: isValid,
@@ -9224,7 +9219,7 @@
               lng: userLng,
               wh: whToUse,
               timestamp: Date.now(),
-              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi Gudang ${whToUse}! Jarak ke titik gudang: ${rawDistActive}m (Batas toleransi: ${effectiveAllowedRadius}m termasuk akurasi HP ±${accuracy}m). Dekatkan HP ke area Gudang ${whToUse} atau sesuaikan radius jika diperlukan.`
+              error: isValid ? null : `Gagal Absen: Posisi Anda berada di luar radius resmi Gudang ${whToUse}! Jarak Anda ke titik gudang: ${rawDistActive} meter (Batas toleransi maksimal: ${effectiveAllowedRadius} meter). Dekatkan HP ke area Gudang ${whToUse} untuk melakukan presensi.`
             };
 
             if (isValid) {
