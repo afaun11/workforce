@@ -1675,7 +1675,7 @@
                 </div>
 
                 <div class="overflow-x-auto custom-scroll border border-slate-300 rounded-2xl">
-                  <table id="table-matrix-display" class="w-full text-center text-xs border-collapse border border-slate-300">
+                  <table id="table-matrix-display" class="w-full text-center text-xs border-separate border-spacing-0 border border-slate-300">
                     <thead id="matrix-thead" class="bg-slate-100 text-slate-900 font-bold border-b border-slate-300">
                       <!-- Rendered by JS -->
                     </thead>
@@ -16095,18 +16095,18 @@
 
         let headerHTML = `
           <tr class="border-b border-slate-300">
-            <th rowspan="2" class="p-2 border-r border-slate-300 w-12 bg-slate-100 text-slate-800 font-black">No</th>
-            <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
-            <th rowspan="2" class="p-2 border-r border-slate-300 min-w-[95px] bg-slate-100 text-slate-800 font-black">Outsourcing</th>
+            <th rowspan="2" class="sticky left-0 z-30 p-2 border-r border-b border-slate-300 w-12 min-w-[48px] max-w-[48px] bg-slate-100 text-slate-800 font-black">No</th>
+            <th rowspan="2" class="sticky left-12 z-30 p-2 border-r border-b border-slate-300 w-52 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
+            <th rowspan="2" class="sticky left-[248px] z-30 p-2 border-r border-b border-slate-300 w-28 min-w-[100px] bg-slate-100 text-slate-800 font-black shadow-[3px_0_6px_rgba(0,0,0,0.06)]">Outsourcing</th>
         `;
 
         monthGroups.forEach((g, gIdx) => {
           const bgClass = gIdx % 2 === 0 ? 'bg-slate-200 text-slate-900' : 'bg-slate-100 text-slate-800';
-          headerHTML += `<th colspan="${g.dates.length}" class="p-2 border-r border-slate-300 font-extrabold uppercase text-xs tracking-wider ${bgClass}">${g.name}</th>`;
+          headerHTML += `<th colspan="${g.dates.length}" class="p-2 border-r border-b border-slate-300 font-extrabold uppercase text-xs tracking-wider ${bgClass}">${g.name}</th>`;
         });
 
         headerHTML += `
-            <th rowspan="2" class="p-2 min-w-[90px] bg-slate-200 text-slate-900 font-black">Total Hadir</th>
+            <th rowspan="2" class="p-2 border-b border-slate-300 min-w-[90px] bg-slate-200 text-slate-900 font-black">Total Hadir</th>
           </tr>
           <tr class="border-b border-slate-300 text-[10px]">
         `;
@@ -16114,7 +16114,7 @@
         dateList.forEach(d => {
           const dayNum = d.getDate();
           const dayName = DAY_NAMES[d.getDay()];
-          headerHTML += `<th class="p-1 border-r border-slate-300 min-w-[28px] font-bold">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
+          headerHTML += `<th class="p-1 border-r border-b border-slate-300 min-w-[28px] font-bold bg-slate-100">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
         });
         headerHTML += `</tr>`;
         thead.innerHTML = headerHTML;
@@ -16184,10 +16184,10 @@
             const osVal = user.outsource || 'Internal';
             const nikDisplay = user.nik ? `<span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span>` : '';
             let rowHTML = `
-              <tr class="hover:bg-slate-50 transition border-b border-slate-200">
-                <td class="p-2 border-r border-slate-200 font-mono text-slate-500 font-bold">${uIdx + 1}</td>
-                <td class="p-2 border-r border-slate-200 text-left font-bold text-slate-900">${escapeHTML(user.name)} ${nikDisplay}</td>
-                <td class="p-2 border-r border-slate-200 text-center"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-800">${escapeHTML(osVal)}</span></td>
+              <tr class="group hover:bg-slate-50 transition border-b border-slate-200">
+                <td class="sticky left-0 z-10 p-2 border-r border-b border-slate-200 font-mono text-slate-500 font-bold bg-white group-hover:bg-slate-50 w-12 min-w-[48px] max-w-[48px]">${uIdx + 1}</td>
+                <td class="sticky left-12 z-10 p-2 border-r border-b border-slate-200 text-left font-bold text-slate-900 bg-white group-hover:bg-slate-50 w-52 min-w-[200px] truncate">${escapeHTML(user.name)} ${nikDisplay}</td>
+                <td class="sticky left-[248px] z-10 p-2 border-r border-b border-slate-200 text-center bg-white group-hover:bg-slate-50 w-28 min-w-[100px] shadow-[3px_0_6px_rgba(0,0,0,0.06)]"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-800">${escapeHTML(osVal)}</span></td>
             `;
 
             const uNik = user.nik ? user.nik.toUpperCase() : '';
@@ -16201,24 +16201,24 @@
 
               if (isAtt) {
                 totalHariKerja += 1;
-                rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
+                rowHTML += `<td class="p-1 border-r border-b border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
               } else {
                 const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
                                   (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
                                   (uId && leaveMap.get(`${uId}__${dStr}`));
                 if (leaveType === 'sakit') {
-                  rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
+                  rowHTML += `<td class="p-1 border-r border-b border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
                 } else if (leaveType === 'izin') {
-                  rowHTML += `<td class="p-1 border-r border-slate-200"></td>`;
+                  rowHTML += `<td class="p-1 border-r border-b border-slate-200"></td>`;
                 } else if (leaveType) {
-                  rowHTML += `<td class="p-1 border-r border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
+                  rowHTML += `<td class="p-1 border-r border-b border-slate-200 font-black text-slate-800 bg-slate-100">AL</td>`;
                 } else {
-                  rowHTML += `<td class="p-1 border-r border-slate-200 text-slate-300 font-bold">-</td>`;
+                  rowHTML += `<td class="p-1 border-r border-b border-slate-200 text-slate-300 font-bold">-</td>`;
                 }
               }
             });
 
-            rowHTML += `<td class="p-2 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
+            rowHTML += `<td class="p-2 border-b border-slate-200 font-black text-slate-900 bg-slate-100">${totalHariKerja}</td></tr>`;
             rowsHTML.push(rowHTML);
           });
         }
