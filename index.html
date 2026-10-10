@@ -188,6 +188,43 @@
     .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
     .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
+    /* Freeze Panes (Bekukan Kolom Matriks seperti Excel) */
+    .matrix-col-no {
+      position: sticky !important;
+      left: 0px !important;
+      width: 44px !important;
+      min-width: 44px !important;
+      max-width: 44px !important;
+      z-index: 10;
+    }
+    .matrix-col-name {
+      position: sticky !important;
+      left: 44px !important;
+      width: 220px !important;
+      min-width: 220px !important;
+      max-width: 220px !important;
+      z-index: 10;
+    }
+    .matrix-col-os {
+      position: sticky !important;
+      left: 264px !important;
+      width: 100px !important;
+      min-width: 100px !important;
+      max-width: 100px !important;
+      z-index: 10;
+      box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+    }
+    th.matrix-col-no, th.matrix-col-name, th.matrix-col-os {
+      z-index: 30 !important;
+      background-color: #f1f5f9 !important;
+    }
+    td.matrix-col-no, td.matrix-col-name, td.matrix-col-os {
+      background-color: #ffffff !important;
+    }
+    tr:hover td.matrix-col-no, tr:hover td.matrix-col-name, tr:hover td.matrix-col-os {
+      background-color: #f8fafc !important;
+    }
+
     /* Collapsible Sidebar Styles */
     #app-sidebar {
       transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
@@ -16095,9 +16132,9 @@
 
         let headerHTML = `
           <tr class="border-b border-slate-300">
-            <th rowspan="2" class="sticky left-0 z-30 p-2 border-r border-b border-slate-300 w-12 min-w-[48px] max-w-[48px] bg-slate-100 text-slate-800 font-black">No</th>
-            <th rowspan="2" class="sticky left-12 z-30 p-2 border-r border-b border-slate-300 w-52 min-w-[200px] text-left bg-slate-100 text-slate-800 font-black">Nama Karyawan</th>
-            <th rowspan="2" class="sticky left-[248px] z-30 p-2 border-r border-b border-slate-300 w-28 min-w-[100px] bg-slate-100 text-slate-800 font-black shadow-[3px_0_6px_rgba(0,0,0,0.06)]">Outsourcing</th>
+            <th rowspan="2" class="matrix-col-no p-2 border-r border-b border-slate-300 text-slate-800 font-black text-center">No</th>
+            <th rowspan="2" class="matrix-col-name p-2 border-r border-b border-slate-300 text-slate-800 font-black text-left">Nama Karyawan</th>
+            <th rowspan="2" class="matrix-col-os p-2 border-r border-b border-slate-300 text-slate-800 font-black text-center">Outsourcing</th>
         `;
 
         monthGroups.forEach((g, gIdx) => {
@@ -16114,7 +16151,7 @@
         dateList.forEach(d => {
           const dayNum = d.getDate();
           const dayName = DAY_NAMES[d.getDay()];
-          headerHTML += `<th class="p-1 border-r border-b border-slate-300 min-w-[28px] font-bold bg-slate-100">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
+          headerHTML += `<th class="p-1 border-r border-b border-slate-300 min-w-[32px] font-bold bg-slate-100">${dayNum}<br><span class="font-normal text-[9px] text-slate-600">${dayName}</span></th>`;
         });
         headerHTML += `</tr>`;
         thead.innerHTML = headerHTML;
@@ -16185,9 +16222,9 @@
             const nikDisplay = user.nik ? `<span class="text-[10px] text-slate-400 font-mono">(${user.nik})</span>` : '';
             let rowHTML = `
               <tr class="group hover:bg-slate-50 transition border-b border-slate-200">
-                <td class="sticky left-0 z-10 p-2 border-r border-b border-slate-200 font-mono text-slate-500 font-bold bg-white group-hover:bg-slate-50 w-12 min-w-[48px] max-w-[48px]">${uIdx + 1}</td>
-                <td class="sticky left-12 z-10 p-2 border-r border-b border-slate-200 text-left font-bold text-slate-900 bg-white group-hover:bg-slate-50 w-52 min-w-[200px] truncate">${escapeHTML(user.name)} ${nikDisplay}</td>
-                <td class="sticky left-[248px] z-10 p-2 border-r border-b border-slate-200 text-center bg-white group-hover:bg-slate-50 w-28 min-w-[100px] shadow-[3px_0_6px_rgba(0,0,0,0.06)]"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-800">${escapeHTML(osVal)}</span></td>
+                <td class="matrix-col-no p-2 border-r border-b border-slate-200 font-mono text-slate-500 font-bold text-center">${uIdx + 1}</td>
+                <td class="matrix-col-name p-2 border-r border-b border-slate-200 text-left font-bold text-slate-900"><div class="truncate" title="${escapeHTML(user.name)}">${escapeHTML(user.name)} ${nikDisplay}</div></td>
+                <td class="matrix-col-os p-2 border-r border-b border-slate-200 text-center"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-800">${escapeHTML(osVal)}</span></td>
             `;
 
             const uNik = user.nik ? user.nik.toUpperCase() : '';
