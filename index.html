@@ -6667,12 +6667,22 @@
       // Sinkronkan data otomatis dari Google Firebase Cloud Server (Fresh Load saat pertama buka app)
       try { fetchFullDatabaseFromCloud(false, null, true); } catch(e) {}
       
-      // Smart Delta Check hemat kuota di latar belakang (Jeda 5 menit, hanya mengecek 30 Byte timestamp)
+      // Smart Delta Check hemat kuota di latar belakang (Jeda 10 detik, hanya mengecek 30 Byte timestamp)
       setInterval(() => {
         if (!document.hidden) {
           fetchFullDatabaseFromCloud(false, null, false);
         }
-      }, 300000);
+      }, 10000);
+
+      // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
+        }
+      });
+      window.addEventListener('focus', () => {
+        try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
+      });
 
       window.addEventListener('storage', (e) => {
         if (e.key && e.key.startsWith('wfm_')) {
@@ -10025,9 +10035,11 @@
     function processAttendanceScan(nikCode) {
       const now = new Date();
       const todayStr = getLocalDateString(now);
-      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-      const allUsers = [...mbiUsers, ...maiUsers];
+      const currentWh = (activeWarehouse || 'MBI').toUpperCase();
+      const primaryUsers = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const otherWh = (currentWh === 'MBI') ? 'MAI' : 'MBI';
+      const secondaryUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const allUsers = [...primaryUsers, ...secondaryUsers];
 
       const rawCode = (nikCode || '').trim();
       let scannedNik = rawCode;
@@ -10046,26 +10058,37 @@
         extractedNik = nikMatch[0].toUpperCase();
       }
 
-      // 2. Cari berdasarkan NIK resmi sama persis (Prioritas Utama)
-      let matchedUser = allUsers.find(u => u.nik && (
-        u.nik.toUpperCase() === scannedNik.toUpperCase() ||
-        (extractedNik && u.nik.toUpperCase() === extractedNik) ||
-        cleanStr(u.nik) === cleanStr(scannedNik)
+      // 2. Cari berdasarkan NIK / Barcode Value sama persis di gudang aktif (Prioritas Tertinggi)
+      let matchedUser = primaryUsers.find(u => u && (
+        (u.nik && u.nik.toUpperCase() === scannedNik.toUpperCase()) ||
+        (u.barcodeValue && String(u.barcodeValue).toUpperCase() === scannedNik.toUpperCase()) ||
+        (extractedNik && u.nik && u.nik.toUpperCase() === extractedNik) ||
+        (u.nik && cleanStr(u.nik) === cleanStr(scannedNik))
       ));
 
-      // 3. Jika ada nama di barcode/QR, cari berdasarkan Nama
+      // 3. Jika belum ditemukan di gudang aktif, cari di gudang lainnya
+      if (!matchedUser) {
+        matchedUser = secondaryUsers.find(u => u && (
+          (u.nik && u.nik.toUpperCase() === scannedNik.toUpperCase()) ||
+          (u.barcodeValue && String(u.barcodeValue).toUpperCase() === scannedNik.toUpperCase()) ||
+          (extractedNik && u.nik && u.nik.toUpperCase() === extractedNik) ||
+          (u.nik && cleanStr(u.nik) === cleanStr(scannedNik))
+        ));
+      }
+
+      // 4. Jika ada nama di barcode/QR, cari berdasarkan Nama
       if (!matchedUser && scannedName) {
-        matchedUser = allUsers.find(u => cleanStr(u.name) === cleanStr(scannedName));
+        matchedUser = allUsers.find(u => u && cleanStr(u.name) === cleanStr(scannedName));
       }
 
-      // 4. Cari berdasarkan Nama Lengkap dari teks barcode mentah
+      // 5. Cari berdasarkan Nama Lengkap dari teks barcode mentah
       if (!matchedUser) {
-        matchedUser = allUsers.find(u => cleanStr(u.name) === cleanStr(rawCode));
+        matchedUser = allUsers.find(u => u && cleanStr(u.name) === cleanStr(rawCode));
       }
 
-      // 5. Cari berdasarkan ID internal
+      // 6. Cari berdasarkan ID internal
       if (!matchedUser) {
-        matchedUser = allUsers.find(u => u.id === rawCode);
+        matchedUser = allUsers.find(u => u && u.id === rawCode);
       }
 
       if (!matchedUser) {
