@@ -493,12 +493,61 @@
     .view-panel table thead th,
     #emp-table-body,
     #table-matrix-display thead,
-    #table-matrix-display thead th {
+    #table-matrix-display thead th:not(.matrix-col-no):not(.matrix-col-name):not(.matrix-col-os) {
       position: static !important;
       top: auto !important;
       bottom: auto !important;
       z-index: auto !important;
       transform: none !important;
+    }
+
+    /* ========================================================= */
+    /* FREEZE PANES MATRIX (BEKUKAN KOLOM NO, NAMA, OS SEPERTI EXCEL) */
+    /* Kolom No, Nama Karyawan, dan Outsourcing tetap diam saat tanggal digeser ke kanan/kiri */
+    /* ========================================================= */
+    #table-matrix-display {
+      border-collapse: separate !important;
+      border-spacing: 0 !important;
+    }
+    #table-matrix-display .matrix-col-no {
+      position: sticky !important;
+      left: 0px !important;
+      width: 44px !important;
+      min-width: 44px !important;
+      max-width: 44px !important;
+      z-index: 20 !important;
+      background-color: #ffffff !important;
+    }
+    #table-matrix-display .matrix-col-name {
+      position: sticky !important;
+      left: 44px !important;
+      width: 220px !important;
+      min-width: 220px !important;
+      max-width: 220px !important;
+      z-index: 20 !important;
+      background-color: #ffffff !important;
+    }
+    #table-matrix-display .matrix-col-os {
+      position: sticky !important;
+      left: 264px !important;
+      width: 100px !important;
+      min-width: 100px !important;
+      max-width: 100px !important;
+      z-index: 20 !important;
+      background-color: #ffffff !important;
+      box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+    }
+    #table-matrix-display thead th.matrix-col-no,
+    #table-matrix-display thead th.matrix-col-name,
+    #table-matrix-display thead th.matrix-col-os {
+      position: sticky !important;
+      z-index: 35 !important;
+      background-color: #f1f5f9 !important;
+    }
+    #table-matrix-display tbody tr:hover td.matrix-col-no,
+    #table-matrix-display tbody tr:hover td.matrix-col-name,
+    #table-matrix-display tbody tr:hover td.matrix-col-os {
+      background-color: #f8fafc !important;
     }
   </style>
 </head>
@@ -8279,21 +8328,34 @@
       }
 
       // Validasi Password:
-      // Izinkan jika password cocok dengan data tersimpan ATAU cocok dengan password default
+      // Jika akun memiliki password khusus yang sudah diubah, WAJIB memasukkan password baru yang cocok
+      // Jika akun masih default, izinkan password default medika123 / password123
       const storedPass = (user.password || '').trim();
-      const isPasswordCorrect = !storedPass || 
-                                !inputPass ||
-                                (storedPass && inputPass === storedPass) || 
-                                (inputPass === 'medika123') || 
-                                (inputPass === 'password123') ||
-                                (inputPass === 'admin') ||
-                                (inputPass === 'admin123') ||
-                                (inputPass === '123456');
+      let isPasswordCorrect = false;
+
+      if (!storedPass) {
+        // Akun staf biasa tanpa password / akun scanner
+        isPasswordCorrect = true;
+      } else {
+        // Akun memiliki password (Admin, SPV, Coord, Manager, atau Staff yang telah dibuatkan kata sandi)
+        if (inputPass && inputPass === storedPass) {
+          isPasswordCorrect = true;
+        } else if (storedPass === 'password123' || storedPass === 'medika123') {
+          // Hanya berlaku JIKA akun memang masih menggunakan password default pabrik (belum pernah diganti)
+          if (inputPass === 'password123' || inputPass === 'medika123' || inputPass === 'admin' || inputPass === 'admin123') {
+            isPasswordCorrect = true;
+          }
+        }
+      }
 
       if (!isPasswordCorrect) {
         if (alertEl) {
           alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          alertEl.innerHTML = `<span>Password untuk <b>${user.name}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password default: <code class="font-bold text-teal-700">medika123</code> / <code class="font-bold text-teal-700">password123</code></span>`;
+          if (storedPass && storedPass !== 'password123' && storedPass !== 'medika123') {
+            alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan password baru yang telah Anda perbarui.</span>`;
+          } else {
+            alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password default: <code class="font-bold text-teal-700">medika123</code> / <code class="font-bold text-teal-700">password123</code></span>`;
+          }
           alertEl.classList.remove('hidden');
         }
         return;
@@ -8321,13 +8383,33 @@
 
       const warehouse = pendingUserForPasswordChange.warehouse || 'MBI';
       const users = getWhDB(warehouse, 'users', warehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const idx = users.findIndex(u => u.nik === pendingUserForPasswordChange.nik);
+      const idx = users.findIndex(u => (pendingUserForPasswordChange.nik && u.nik === pendingUserForPasswordChange.nik) || (pendingUserForPasswordChange.id && u.id === pendingUserForPasswordChange.id));
 
       if (idx !== -1) {
+        const nowIso = new Date().toISOString();
         users[idx].password = p1;
         users[idx].isFirstLogin = false;
+        users[idx].updatedAt = nowIso;
         setWhDB(warehouse, 'users', users);
         pendingUserForPasswordChange = users[idx];
+        localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+        localStorage.setItem('wfm_master_updated_at', nowIso);
+        localStorage.setItem(`wfm_${warehouse.toLowerCase()}_master_updated_at`, nowIso);
+
+        // Jika Admin atau Manager, sinkronkan juga ke warehouse lain
+        if (isUserManager(pendingUserForPasswordChange) || isUserAdmin(pendingUserForPasswordChange)) {
+          const otherWh = warehouse === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const otherIdx = otherUsers.findIndex(u => (pendingUserForPasswordChange.nik && u.nik === pendingUserForPasswordChange.nik) || (pendingUserForPasswordChange.id && u.id === pendingUserForPasswordChange.id) || (isUserManager(pendingUserForPasswordChange) && isUserManager(u)));
+          if (otherIdx !== -1) {
+            otherUsers[otherIdx].password = p1;
+            otherUsers[otherIdx].isFirstLogin = false;
+            otherUsers[otherIdx].updatedAt = nowIso;
+            setWhDB(otherWh, 'users', otherUsers);
+          }
+        }
+
+        try { saveFullDatabaseToCloud(false, true, true); } catch(e) {}
       }
 
       document.getElementById('first-login-modal').classList.add('hidden');
@@ -13245,12 +13327,33 @@
       const idx = users.findIndex(u => u.nik === currentUser.nik || u.id === currentUser.id);
 
       if (idx !== -1) {
+        const nowIso = new Date().toISOString();
         users[idx].password = p1;
         users[idx].isFirstLogin = false;
+        users[idx].updatedAt = nowIso;
         currentUser.password = p1;
         currentUser.isFirstLogin = false;
+        currentUser.updatedAt = nowIso;
         setWhDB(wh, 'users', users);
+        localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
+        localStorage.setItem('wfm_master_updated_at', nowIso);
+        localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, nowIso);
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+
+        // Jika Admin atau Manager, sinkronkan juga ke warehouse lain
+        if (isUserManager(currentUser) || isUserAdmin(currentUser)) {
+          const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const otherIdx = otherUsers.findIndex(u => u.nik === currentUser.nik || u.id === currentUser.id || (isUserManager(currentUser) && isUserManager(u)));
+          if (otherIdx !== -1) {
+            otherUsers[otherIdx].password = p1;
+            otherUsers[otherIdx].isFirstLogin = false;
+            otherUsers[otherIdx].updatedAt = nowIso;
+            setWhDB(otherWh, 'users', otherUsers);
+          }
+        }
+
+        try { saveFullDatabaseToCloud(false, true, true); } catch(e) {}
         closeChangePasswordSettingModal();
         alert('Kata sandi akun Anda berhasil diubah!\nUntuk login berikutnya, wajib gunakan kata sandi baru ini.');
       }
