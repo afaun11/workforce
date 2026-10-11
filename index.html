@@ -7364,6 +7364,44 @@
       return !!defaults[permKey];
     }
 
+    function canAccessMultiWarehouse(user = currentUser) {
+      if (!user) return false;
+      const role = (user.role || '').toLowerCase().trim();
+      if (role === 'scanner' || user.nik === 'ABSEN-MBI' || user.nik === 'ABSEN-MAI') return false;
+
+      // Cek apakah akun memiliki izin ganti gudang / multi gudang
+      const hasSwitchPerm = hasPermission('perm_wh_switch', user);
+      const hasMbiPerm = hasPermission('perm_wh_mbi', user);
+      const hasMaiPerm = hasPermission('perm_wh_mai', user);
+
+      // Jika izin switch secara spesifik diset FALSE pada user permissions
+      if (user.permissions && user.permissions.perm_wh_switch === false) {
+        return false;
+      }
+
+      // Jika user memiliki izin switch dan akses gudang aktif
+      if (hasSwitchPerm && (hasMbiPerm || hasMaiPerm)) {
+        return true;
+      }
+
+      // Jika user memiliki izin akses ke KEDUA gudang MBI dan MAI
+      if (hasMbiPerm && hasMaiPerm) {
+        return true;
+      }
+
+      // Default Manager (General Manager mengelola seluruh gudang jika tidak dimatikan)
+      if (isUserManager(user)) {
+        return hasSwitchPerm !== false;
+      }
+
+      // Default Admin Master (hanya jika perm_wh_switch tidak false)
+      if (isUserAdmin(user)) {
+        return hasSwitchPerm !== false && (hasMbiPerm || hasMaiPerm || hasSwitchPerm);
+      }
+
+      return false;
+    }
+
     let currentEditingUserNik = null;
     let currentEditingPermissions = {};
 
@@ -8103,10 +8141,10 @@
         }
       }
 
-      // 4. Switcher Warehouse (Berdasarkan permission perm_wh_switch atau Admin/Manager)
+      // 4. Switcher Warehouse (Hanya muncul jika diizinkan akses multi-gudang MBI & MAI)
       const whSwitcher = document.getElementById('wh-switcher-box');
       if (whSwitcher) {
-        if ((hasPermission('perm_wh_switch') || isAdmin || isManager) && !isScanner) {
+        if (canAccessMultiWarehouse(currentUser)) {
           whSwitcher.classList.remove('hidden');
           whSwitcher.classList.add('flex');
         } else {
@@ -8811,8 +8849,8 @@
     }
 
     function switchActiveWarehouse(wh) {
-      if (currentUser && !hasPermission('perm_wh_switch') && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
-        alert('Akses terkunci pada Gudang ' + currentUser.warehouse + '. Anda tidak memiliki izin ganti gudang.');
+      if (!canAccessMultiWarehouse(currentUser)) {
+        alert('Akses terkunci pada Gudang ' + (currentUser ? currentUser.warehouse : activeWarehouse) + '. Akun Anda tidak memiliki izin untuk berpindah gudang.');
         return;
       }
       if (wh === 'MBI' && !hasPermission('perm_wh_mbi')) {
