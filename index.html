@@ -3755,27 +3755,21 @@
 
     function getWarehouseCoords(wh = activeWarehouse) {
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      let ownCoords = null;
+      const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398, radius: 100, name: 'Gudang MAI' } : { lat: -6.263295, lng: 106.877066, radius: 100, name: 'Gudang MBI' });
+      let whRad = def.radius || 100;
 
       try {
         const saved = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_coords`);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed && typeof parsed.lat === 'number' && typeof parsed.lng === 'number' && !isNaN(parsed.lat) && !isNaN(parsed.lng)) {
-            // Abaikan jika masih memuat koordinat dummy atau tertukar dengan gudang lain
-            if (!isCorruptWarehouseCoords(parsed, targetWh)) {
-              const whRad = Number(parsed.radius) > 0 ? Number(parsed.radius) : (Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || 100);
-              ownCoords = { lat: parsed.lat, lng: parsed.lng, radius: whRad, name: `Gudang ${targetWh}` };
-            }
-          }
+          if (parsed && Number(parsed.radius) > 0) whRad = Number(parsed.radius);
         }
+        const storedRad = Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || Number(localStorage.getItem('wfm_gps_radius'));
+        if (storedRad > 0) whRad = storedRad;
       } catch(e) {}
 
-      // Masing-masing gudang (MBI & MAI) 100% TERPISAH & INDEPENDEN DENGAN KOORDINAT RESMI PERMANEN
-      if (ownCoords) return ownCoords;
-      const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398, radius: 100, name: 'Gudang MAI' } : { lat: -6.263295, lng: 106.877066, radius: 100, name: 'Gudang MBI' });
-      const fallbackRad = Number(localStorage.getItem(`wfm_gps_radius_${targetWh.toLowerCase()}`)) || def.radius || 100;
-      const finalCoords = { lat: def.lat, lng: def.lng, radius: fallbackRad, name: def.name };
+      // HARD-LOCK: Titik Latitude & Longitude MBI & MAI TERKUNCI MATI 100% PADA TITIK RESMI GOOGLE MAPS
+      const finalCoords = { lat: def.lat, lng: def.lng, radius: whRad, name: def.name };
       try {
         localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(finalCoords));
       } catch(e) {}
@@ -3783,27 +3777,17 @@
     }
 
     function setWarehouseCoords(wh, lat, lng, radius = null) {
-      if (currentUser && !isUserAuthorizedToManageGPS(currentUser)) {
-        console.warn('[GPS Shield] Percobaan perubahan koordinat GPS ditolak karena bukan peran Admin/Management');
-        return getWarehouseCoords(wh);
-      }
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      const current = getWarehouseCoords(targetWh);
-      const rad = (radius !== null && radius !== undefined) ? Number(radius) : (current.radius || 100);
+      const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398, radius: 100, name: 'Gudang MAI' } : { lat: -6.263295, lng: 106.877066, radius: 100, name: 'Gudang MBI' });
+      const rad = (radius !== null && radius !== undefined) ? Number(radius) : 100;
       const validRadius = (Number(rad) > 0) ? Number(rad) : 100;
-      const parsedLat = parseFloat(lat);
-      const parsedLng = parseFloat(lng);
 
-      if (isNaN(parsedLat) || isNaN(parsedLng)) {
-        console.warn('[GPS Shield] Format koordinat tidak valid');
-        return current;
-      }
-
+      // Titik Latitude & Longitude selalu terkunci ke titik resmi baku, hanya radius yang dinamis
       const coords = { 
-        lat: parsedLat, 
-        lng: parsedLng, 
+        lat: def.lat, 
+        lng: def.lng, 
         radius: validRadius, 
-        name: `Gudang ${targetWh}`, 
+        name: def.name, 
         updatedAt: new Date().toISOString() 
       };
 
@@ -3812,7 +3796,7 @@
       localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(validRadius));
       localStorage.setItem('wfm_gps_radius', String(validRadius));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
-      saveFullDatabaseToCloud(false, true, true);
+      try { saveFullDatabaseToCloud(false, true, true); } catch(e) {}
       updateRegisteredCoordsDisplay();
       return coords;
     }
@@ -5682,38 +5666,24 @@
       const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 600000);
 
       if (!isRecentLocalGpsChange) {
-        if (db.mbi_coords && typeof db.mbi_coords.lat === 'number' && typeof db.mbi_coords.lng === 'number') {
+        if (db.mbi_coords) {
+          const cloudMbiRad = Number(db.mbi_coords.radius) || Number(db.gps_radius) || 100;
           const localMbi = getWarehouseCoords('MBI');
-          const incomingIsCorrupt = isCorruptWarehouseCoords(db.mbi_coords, 'MBI');
-          const localIsCorrupt = isCorruptWarehouseCoords(localMbi, 'MBI');
-          if (!incomingIsCorrupt || localIsCorrupt) {
-            const cloudMbiRad = Number(db.mbi_coords.radius) || Number(db.gps_radius) || 100;
-            const isDiff = (localMbi.radius !== cloudMbiRad) || 
-                           (Math.abs(localMbi.lat - db.mbi_coords.lat) > 0.000001) || 
-                           (Math.abs(localMbi.lng - db.mbi_coords.lng) > 0.000001);
-            if (isDiff) {
-              localStorage.setItem('wfm_mbi_coords', JSON.stringify({ ...db.mbi_coords, radius: cloudMbiRad }));
-              localStorage.setItem('wfm_gps_radius_mbi', String(cloudMbiRad));
-              if (activeWarehouse === 'MBI') localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
-              hasCoordsChanged = true;
-            }
+          if (localMbi.radius !== cloudMbiRad) {
+            localStorage.setItem('wfm_mbi_coords', JSON.stringify({ lat: DEFAULT_COORDS.MBI.lat, lng: DEFAULT_COORDS.MBI.lng, radius: cloudMbiRad, name: 'Gudang MBI' }));
+            localStorage.setItem('wfm_gps_radius_mbi', String(cloudMbiRad));
+            if (activeWarehouse === 'MBI') localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
+            hasCoordsChanged = true;
           }
         }
-        if (db.mai_coords && typeof db.mai_coords.lat === 'number' && typeof db.mai_coords.lng === 'number') {
+        if (db.mai_coords) {
+          const cloudMaiRad = Number(db.mai_coords.radius) || Number(db.gps_radius) || 100;
           const localMai = getWarehouseCoords('MAI');
-          const incomingIsCorrupt = isCorruptWarehouseCoords(db.mai_coords, 'MAI');
-          const localIsCorrupt = isCorruptWarehouseCoords(localMai, 'MAI');
-          if (!incomingIsCorrupt || localIsCorrupt) {
-            const cloudMaiRad = Number(db.mai_coords.radius) || Number(db.gps_radius) || 100;
-            const isDiff = (localMai.radius !== cloudMaiRad) || 
-                           (Math.abs(localMai.lat - db.mai_coords.lat) > 0.000001) || 
-                           (Math.abs(localMai.lng - db.mai_coords.lng) > 0.000001);
-            if (isDiff) {
-              localStorage.setItem('wfm_mai_coords', JSON.stringify({ ...db.mai_coords, radius: cloudMaiRad }));
-              localStorage.setItem('wfm_gps_radius_mai', String(cloudMaiRad));
-              if (activeWarehouse === 'MAI') localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
-              hasCoordsChanged = true;
-            }
+          if (localMai.radius !== cloudMaiRad) {
+            localStorage.setItem('wfm_mai_coords', JSON.stringify({ lat: DEFAULT_COORDS.MAI.lat, lng: DEFAULT_COORDS.MAI.lng, radius: cloudMaiRad, name: 'Gudang MAI' }));
+            localStorage.setItem('wfm_gps_radius_mai', String(cloudMaiRad));
+            if (activeWarehouse === 'MAI') localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
+            hasCoordsChanged = true;
           }
         }
       }
@@ -18852,7 +18822,7 @@ function testManualSync() {
     try { if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames(); } catch(e) {}
     try { if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS(); } catch(e) {}
     try { getGoogleSheetWebhookUrl(); } catch(e) {}
-    try { updateGSheetSyncBadge(); } catch(e) {}
+    try { getWarehouseCoords('MBI'); getWarehouseCoords('MAI'); updateRegisteredCoordsDisplay(); } catch(e) {}
     try { preloadGPSLocation(); } catch(e) {}
     try { renderAudioSettingsUI(); } catch(e) {}
     try { syncAudioClipsFromCloud(); } catch(e) {}
