@@ -3144,13 +3144,21 @@
           </select>
         </div>
 
-        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-800 font-semibold">
-          ✓ Staf hanya bisa absen jika berada dalam jarak radius yang dipilih dari titik koordinat ini.
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-800 font-semibold space-y-1">
+          <div>✓ Staf hanya bisa absen jika berada dalam jarak radius yang dipilih dari titik koordinat ini.</div>
+          <div class="text-[10px] text-slate-500 font-normal">Titik resmi baku: <b>MBI (-6.263295, 106.877066)</b> & <b>MAI (-6.217808, 106.889398)</b>.</div>
+        </div>
+
+        <div class="pt-1">
+          <button type="button" onclick="restoreOfficialWarehouseGPS(activeWarehouse)" class="w-full py-2.5 bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-xs rounded-xl border border-teal-300 transition flex items-center justify-center gap-1.5 shadow-2xs">
+            <i data-lucide="map-pin" class="w-4 h-4 text-teal-600"></i>
+            <span>Kembalikan ke Titik Resmi Baku (Google Maps)</span>
+          </button>
         </div>
 
         <div class="flex items-center gap-2 pt-2">
-          <button type="button" onclick="closeManualGPSModal()" class="flex-1 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition">Batal</button>
-          <button type="submit" class="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">Simpan Pengaturan</button>
+          <button type="button" onclick="closeManualGPSModal()" class="flex-1 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 transition">Batal</button>
+          <button type="submit" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition shadow-xs">Simpan Pengaturan</button>
         </div>
       </form>
     </div>
@@ -3907,6 +3915,26 @@
       );
     }
 
+    function restoreOfficialWarehouseGPS(wh = activeWarehouse) {
+      if (!isUserAuthorizedToManageGPS()) {
+        alert('⛔ Akses Ditolak: Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki hak akses untuk mengelola titik GPS gudang.');
+        return;
+      }
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398, radius: 100, name: 'Gudang MAI' } : { lat: -6.263295, lng: 106.877066, radius: 100, name: 'Gudang MBI' });
+      const current = getWarehouseCoords(targetWh);
+      const curRadius = Number(current.radius) > 0 ? Number(current.radius) : (def.radius || 100);
+
+      const latInput = document.getElementById('gps-input-lat');
+      const lngInput = document.getElementById('gps-input-lng');
+      if (latInput) latInput.value = def.lat;
+      if (lngInput) lngInput.value = def.lng;
+
+      setWarehouseCoords(targetWh, def.lat, def.lng, curRadius);
+      updateRegisteredCoordsDisplay();
+      alert(`✅ Titik GPS Gudang ${targetWh} berhasil dikembalikan ke Koordinat Resmi Baku:\n\n• Latitude: ${def.lat}\n• Longitude: ${def.lng}\n• Radius: ${curRadius} Meter\n\nTitik resmi ini telah dikunci permanen dan disinkronkan ke Cloud.`);
+    }
+
     function calibrateCurrentWarehouseGPS() {
       if (!isUserAuthorizedToManageGPS()) {
         alert('⛔ Akses Ditolak: Hanya Admin, Coordinator, Supervisor, dan Manager yang memiliki hak akses untuk mendaftarkan titik lokasi resmi gudang.');
@@ -3916,21 +3944,27 @@
         alert('Fitur GPS tidak didukung di browser ini.');
         return;
       }
-      const current = getWarehouseCoords(activeWarehouse);
-      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 30;
+      const targetWh = (activeWarehouse || 'MBI').toUpperCase();
+      const current = getWarehouseCoords(targetWh);
+      const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398 } : { lat: -6.263295, lng: 106.877066 });
+      const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
       const curRadius = Number(current.radius) > 0 ? Number(current.radius) : globalRad;
-      if (!confirm(`Daftarkan posisi GPS HP/perangkat Anda saat ini sebagai titik lokasi resmi Gudang ${activeWarehouse} (Radius ${curRadius} Meter)?\n\nPastikan Anda sedang berada di area gudang.`)) {
-        return;
-      }
 
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           const accuracy = Math.round(pos.coords.accuracy || 0);
-          setWarehouseCoords(activeWarehouse, lat, lng, curRadius);
+          const distToOfficial = getDistanceMeters(lat, lng, def.lat, def.lng);
 
-          alert(`✅ SUKSES MENDAFTARKAN TITIK GUDANG ${activeWarehouse}!\n\n• Latitude: ${lat.toFixed(6)}\n• Longitude: ${lng.toFixed(6)}\n• Radius Validasi: ${curRadius} Meter\n• Akurasi HP: ±${accuracy} meter\n\nTitik lokasi ini telah disimpan dan otomatis tersinkron ke Cloud & seluruh HP staf.`);
+          // Proteksi cerdas: Jika terpaut jauh dari titik resmi (misal dari laptop atau GPS melenceng)
+          if (distToOfficial > 250) {
+            const confirmed = confirm(`⚠️ PERINGATAN KALIBRASI TITIK GUDANG ${targetWh}:\n\nPosisi GPS perangkat Anda (${lat.toFixed(6)}, ${lng.toFixed(6)}) terdeteksi berjarak ${Math.round(distToOfficial)} meter dari Titik Resmi Baku Gudang ${targetWh}.\n\nJika Anda sedang membuka web dari Laptop/PC atau sinyal GPS sedang meleset, mendaftarkan titik ini akan menggeser lokasi gudang dan membuat karyawan lain gagal absen.\n\nApakah Anda YAKIN ingin tetap menimpa titik resmi Gudang ${targetWh}?`);
+            if (!confirmed) return;
+          }
+
+          setWarehouseCoords(targetWh, lat, lng, curRadius);
+          alert(`✅ SUKSES MENDAFTARKAN TITIK GUDANG ${targetWh}!\n\n• Latitude: ${lat.toFixed(6)}\n• Longitude: ${lng.toFixed(6)}\n• Radius Validasi: ${curRadius} Meter\n• Akurasi HP: ±${accuracy} meter\n\nTitik lokasi ini telah disimpan dan otomatis tersinkron ke Cloud & seluruh HP staf.`);
         },
         (err) => {
           alert('Gagal membaca GPS: ' + err.message + '\nPastikan izin lokasi browser HP aktif.');
@@ -3949,7 +3983,7 @@
       document.getElementById('gps-input-lat').value = c.lat;
       document.getElementById('gps-input-lng').value = c.lng;
       const radSelect = document.getElementById('gps-input-radius');
-      if (radSelect) radSelect.value = String(c.radius || 30);
+      if (radSelect) radSelect.value = String(c.radius || 100);
       document.getElementById('manual-gps-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -3966,16 +4000,17 @@
       }
       const lat = parseFloat(document.getElementById('gps-input-lat').value);
       const lng = parseFloat(document.getElementById('gps-input-lng').value);
-      const radiusVal = parseInt(document.getElementById('gps-input-radius')?.value || '30', 10);
+      const radiusVal = parseInt(document.getElementById('gps-input-radius')?.value || '100', 10);
       if (isNaN(lat) || isNaN(lng)) {
         alert('Format koordinat tidak valid.');
         return;
       }
+      const targetWh = (activeWarehouse || 'MBI').toUpperCase();
       localStorage.setItem('wfm_gps_radius', String(radiusVal));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
-      setWarehouseCoords(activeWarehouse, lat, lng, radiusVal);
+      setWarehouseCoords(targetWh, lat, lng, radiusVal);
       closeManualGPSModal();
-      alert(`✅ Koordinat & Radius Gudang ${activeWarehouse} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}\nRadius Validasi: ${radiusVal} Meter`);
+      alert(`✅ Koordinat & Radius Gudang ${targetWh} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}\nRadius Validasi: ${radiusVal} Meter`);
     }
 
     const SEED_MBI_USERS = [
