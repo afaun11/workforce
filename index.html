@@ -14086,6 +14086,7 @@
           // =========================================================
           let colIdx_idSystem = -1;
           let colIdx_nik = -1;
+          let colIdx_no = -1;
           let colIdx_name = -1;
           let colIdx_dept = -1;
           let colIdx_outsource = -1;
@@ -14106,6 +14107,11 @@
             // 2. NIK / ID Karyawan (WAJIB TIDAK MENGANDUNG KATA 'NAMA' ATAU 'NAME')
             if ((h === 'nik' || h === 'id' || h === 'nip' || h.includes('nik karyawan') || h.includes('id karyawan') || h.includes('employee id') || h.includes('emp id') || h.includes('id_karyawan') || h.includes('nik/id') || h.includes('id/nik') || h === 'no id' || h === 'kode' || h.includes('nomor induk') || h.includes('no induk') || h.includes('no. induk') || h.includes('kode karyawan') || h.includes('barcode') || h.includes('id pegawai') || h.includes('no karyawan') || h.includes('nomor karyawan') || h.includes('no. karyawan') || h.includes('no pegawai') || h.includes('nomor pegawai')) && !h.includes('nama') && !h.includes('name')) {
               colIdx_nik = colIdx;
+              return;
+            }
+            // 2.5 Kolom No Urut / Nomor (No, No., No Urut, Nomor) sebagai nomor NIK
+            if (h === 'no' || h === 'no.' || h === 'nomor' || h === 'no urut' || h === 'no. urut' || h === '#' || h === 'urut') {
+              colIdx_no = colIdx;
               return;
             }
             // 3. Nama Karyawan (WAJIB TIDAK MENGANDUNG KATA 'SYSTEM' ATAU 'DATABASE')
@@ -14149,6 +14155,11 @@
               return;
             }
           });
+
+          // Jika kolom NIK belum ada, gunakan kolom No / Nomor Urut sebagai NIK
+          if (colIdx_nik === -1 && colIdx_no !== -1) {
+            colIdx_nik = colIdx_no;
+          }
 
           // Tahap 2: Fallback Cerdas jika nama atau NIK belum terdeteksi (sampling isi sel baris data asli)
           const startSample = headerRowIdx >= 0 ? headerRowIdx + 1 : 0;
