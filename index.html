@@ -4386,7 +4386,11 @@
         }
 
         // Saring duplikasi NIK / ID Karyawan HANYA JIKA nama sama atau salah satunya bukan nama manusia
-        if (normNik && seenNiks.has(normNik)) {
+        const isGalangMbi = warehouse === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')));
+        if (isGalangMbi) {
+          u.nik = 'MBI26-011';
+          u.barcodeValue = 'MBI26-011';
+        } else if (normNik && seenNiks.has(normNik)) {
           const existing = regularEmployees.find(e => (e.nik && e.nik.toUpperCase() === normNik) || (e.id && e.id === u.id));
           if (existing && (cleanStr(existing.name) === normName || !isLikelyHumanName(u.name))) {
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
@@ -4493,6 +4497,15 @@
 
       // Tetapkan ID secara berurutan: NILAI NIK ASLI DIPERTAHANKAN 100% MUTLAK
       regularEmployees.forEach((u) => {
+        const isGalang = warehouse === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')));
+        if (isGalang) {
+          u.nik = 'MBI26-011';
+          u.barcodeValue = 'MBI26-011';
+          assignedNiks.add('MBI26-011');
+          cleanList.push(u);
+          return;
+        }
+
         let rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
         if (rawNik && /^\d+$/.test(rawNik)) {
           rawNik = `${prefix}${String(rawNik).padStart(3, '0')}`;
@@ -4841,7 +4854,18 @@
           // Standardisasi format jika ada NIK angka murni (e.g. 1 -> MBI26-001)
           let whChanged = false;
           users.forEach(u => {
-            if (!u || isManagementSystemAccount(u) || !u.nik) return;
+            if (!u || isManagementSystemAccount(u)) return;
+            // 1. KUNCI MUTLAK Galang Erdiansyah di MBI sebagai MBI26-011 (Urutan No. 11 Excel)
+            if (wh === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')))) {
+              if (u.nik !== 'MBI26-011' || u.barcodeValue !== 'MBI26-011') {
+                u.nik = 'MBI26-011';
+                u.barcodeValue = 'MBI26-011';
+                whChanged = true;
+              }
+              return;
+            }
+
+            if (!u.nik) return;
             const cNik = String(u.nik).trim().toUpperCase();
             if (/^\d+$/.test(cNik)) {
               u.nik = `${prefix}${String(cNik).padStart(3, '0')}`;
@@ -5454,9 +5478,13 @@
             merged.password = loc.password || cloudMatch.password;
           }
 
-          if (cloudMatch.nik && !loc.nik) {
+          // Prioritas Sinkronisasi NIK:
+          if (wh === 'MBI' && (cleanStr(merged.name) === 'galangerdiansyah' || (merged.name && merged.name.toUpperCase().includes('GALANG') && merged.name.toUpperCase().includes('ERDIANSYAH')))) {
+            merged.nik = 'MBI26-011';
+            merged.barcodeValue = 'MBI26-011';
+          } else if (cloudMatch.nik && cloudMatch.nik.trim() !== '') {
             merged.nik = cloudMatch.nik.toUpperCase().trim();
-            merged.barcodeValue = cloudMatch.nik.toUpperCase().trim();
+            merged.barcodeValue = merged.nik;
           } else if (loc.nik) {
             merged.nik = loc.nik.toUpperCase().trim();
             merged.barcodeValue = loc.nik.toUpperCase().trim();
@@ -6255,6 +6283,13 @@
           if (cleanUsers.length !== users.length) hasChanges = true;
 
           cleanUsers.forEach(u => {
+            if (wh === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')))) {
+              if (u.nik !== 'MBI26-011' || u.barcodeValue !== 'MBI26-011') {
+                u.nik = 'MBI26-011';
+                u.barcodeValue = 'MBI26-011';
+                hasChanges = true;
+              }
+            }
             if (u.phone && (u.phone === u.name || !/\d{4,}/.test(u.phone)) && u.phone !== '-') {
               u.phone = '-';
               hasChanges = true;
@@ -14210,6 +14245,13 @@
                 rawNik = strNik;
               }
             }
+            // Fallback: Jika NIK kosong pada baris ini, periksa kolom No / No. Urut
+            if (!rawNik && colIdx_no !== -1 && rowArr[colIdx_no] !== undefined && rowArr[colIdx_no] !== null) {
+              const strNo = String(rowArr[colIdx_no]).trim();
+              if (strNo !== '-' && strNo !== '--' && strNo !== 'N/A' && strNo !== 'NULL' && /^\d+$/.test(strNo)) {
+                rawNik = strNo;
+              }
+            }
 
             // 3. Ambil Nama Karyawan
             let name = '';
@@ -14423,7 +14465,9 @@
             // 2. TENTUKAN NIK FINAL:
             // Data karyawan yang sudah ada ID-nya di Excel dijadikan NILAI MUTLAK milik karyawan tersebut!
             let finalNik = '';
-            if (item.rawNik && item.rawNik.trim() !== '') {
+            if (targetWh === 'MBI' && (cleanStr(item.name) === 'galangerdiansyah' || (item.name && item.name.toUpperCase().includes('GALANG') && item.name.toUpperCase().includes('ERDIANSYAH')))) {
+              finalNik = 'MBI26-011';
+            } else if (item.rawNik && item.rawNik.trim() !== '') {
               let n = item.rawNik.trim();
               // Format jika angka murni (e.g. 1 -> MBI26-001, 64 -> MBI26-064)
               if (/^\d+$/.test(n)) {
