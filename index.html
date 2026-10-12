@@ -2398,19 +2398,50 @@
                   </p>
                 </div>
 
-                <!-- Endpoint URL & Custom Firebase Config -->
-                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
+                <!-- Endpoint URL & Custom Firebase Config (MBI & MAI Terpisah) -->
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 text-xs">
                   <div class="flex items-center justify-between text-xs font-bold text-slate-900">
-                    <span class="flex items-center gap-1.5"><i data-lucide="link" class="w-4 h-4 text-teal-600"></i> Endpoint URL Firebase Cloud</span>
-                    <button type="button" onclick="resetDefaultFirebaseUrl()" class="text-[11px] text-slate-500 hover:text-slate-900 underline font-semibold">Reset ke Bawaan</button>
+                    <span class="flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4 text-teal-600"></i> Pengaturan Database Terpisah (MBI &amp; MAI)</span>
+                    <button type="button" onclick="resetDefaultFirebaseUrl('ALL')" class="text-[11px] text-slate-500 hover:text-slate-900 underline font-semibold">Reset Semua ke Bawaan</button>
                   </div>
-                  <div class="flex gap-2">
-                    <input type="text" id="input-custom-firebase-url" placeholder="https://wfm-medika-default-rtdb.firebaseio.com/" class="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900">
-                    <button type="button" onclick="saveCustomFirebaseUrl()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0">
-                      Simpan URL
-                    </button>
+                  
+                  <!-- Setting MBI -->
+                  <div class="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                    <div class="flex items-center justify-between">
+                      <span class="font-extrabold text-slate-800 text-[11px] flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                        Database Gudang MBI (Medika Bina Investama)
+                      </span>
+                      <button type="button" onclick="resetDefaultFirebaseUrl('MBI')" class="text-[10px] text-slate-500 hover:text-slate-900 underline font-medium">Reset MBI</button>
+                    </div>
+                    <div class="flex gap-2">
+                      <input type="text" id="input-custom-firebase-mbi-url" placeholder="https://wfm-medika-mbi-new-default-rtdb.firebaseio.com/" class="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900">
+                      <button type="button" onclick="saveCustomFirebaseUrl('MBI')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0">
+                        Simpan MBI
+                      </button>
+                    </div>
                   </div>
-                  <p class="text-[11px] text-slate-500">Anda dapat mengubah atau menghubungkan ke project Firebase baru kapan saja cukup dengan menempelkan URL-nya di sini.</p>
+
+                  <!-- Setting MAI -->
+                  <div class="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                    <div class="flex items-center justify-between">
+                      <span class="font-extrabold text-slate-800 text-[11px] flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        Database Gudang MAI (Medika Akses Investama)
+                      </span>
+                      <button type="button" onclick="resetDefaultFirebaseUrl('MAI')" class="text-[10px] text-slate-500 hover:text-slate-900 underline font-medium">Reset MAI</button>
+                    </div>
+                    <div class="flex gap-2">
+                      <input type="text" id="input-custom-firebase-mai-url" placeholder="https://wfm-medika2-default-rtdb.firebaseio.com/" class="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900">
+                      <button type="button" onclick="saveCustomFirebaseUrl('MAI')" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0">
+                        Simpan MAI
+                      </button>
+                    </div>
+                  </div>
+
+                  <p class="text-[11px] text-slate-500 leading-relaxed">
+                    Database Gudang MBI dan MAI berjalan 100% mandiri pada server masing-masing, sehingga data absensi dan data karyawan tidak akan pernah saling bercampur atau berbenturan.
+                  </p>
                 </div>
 
                 <!-- Solusi Cepat: Aturan Keamanan Firebase Rules (Aman & Permanen) -->
@@ -4497,7 +4528,22 @@
 
       // Tetapkan ID secara berurutan: NILAI NIK ASLI DIPERTAHANKAN 100% MUTLAK
       regularEmployees.forEach((u) => {
-        const isGalang = warehouse === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')));
+        const cClean = cleanStr(u.name);
+        if (warehouse === 'MBI' && cClean === 'ogisaputra') {
+          u.nik = 'MBI26-009';
+          u.barcodeValue = 'MBI26-009';
+          assignedNiks.add('MBI26-009');
+          cleanList.push(u);
+          return;
+        }
+        if (warehouse === 'MBI' && cClean === 'yonno') {
+          u.nik = 'MBI26-010';
+          u.barcodeValue = 'MBI26-010';
+          assignedNiks.add('MBI26-010');
+          cleanList.push(u);
+          return;
+        }
+        const isGalang = warehouse === 'MBI' && (cClean === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')));
         if (isGalang) {
           u.nik = 'MBI26-011';
           u.barcodeValue = 'MBI26-011';
@@ -4855,8 +4901,25 @@
           let whChanged = false;
           users.forEach(u => {
             if (!u || isManagementSystemAccount(u)) return;
-            // 1. KUNCI MUTLAK Galang Erdiansyah di MBI sebagai MBI26-011 (Urutan No. 11 Excel)
-            if (wh === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')))) {
+            const cName = cleanStr(u.name);
+            // Kunci Urutan Baku Excel MBI: No. 9 Ogi, No. 10 Yonno, No. 11 Galang
+            if (wh === 'MBI' && cName === 'ogisaputra') {
+              if (u.nik !== 'MBI26-009' || u.barcodeValue !== 'MBI26-009') {
+                u.nik = 'MBI26-009';
+                u.barcodeValue = 'MBI26-009';
+                whChanged = true;
+              }
+              return;
+            }
+            if (wh === 'MBI' && cName === 'yonno') {
+              if (u.nik !== 'MBI26-010' || u.barcodeValue !== 'MBI26-010') {
+                u.nik = 'MBI26-010';
+                u.barcodeValue = 'MBI26-010';
+                whChanged = true;
+              }
+              return;
+            }
+            if (wh === 'MBI' && (cName === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')))) {
               if (u.nik !== 'MBI26-011' || u.barcodeValue !== 'MBI26-011') {
                 u.nik = 'MBI26-011';
                 u.barcodeValue = 'MBI26-011';
@@ -5099,14 +5162,14 @@
     // DUAL PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE
     // Gudang MBI & Gudang MAI Masing-Masing Memiliki Database Terpisah (Kuota Dobel & Isolasi Penuh)
     // =========================================================
-    const DEFAULT_FIREBASE_RTDB_MBI_URL = 'https://wfm-medika-mbi-default-rtdb.firebaseio.com/wfm_database.json';
+    const DEFAULT_FIREBASE_RTDB_MBI_URL = 'https://wfm-medika-mbi-new-default-rtdb.firebaseio.com/wfm_database.json';
     const DEFAULT_FIREBASE_RTDB_MAI_URL = 'https://wfm-medika2-default-rtdb.firebaseio.com/wfm_database.json';
     const DEFAULT_FIREBASE_RTDB_URL = DEFAULT_FIREBASE_RTDB_MBI_URL;
 
     function getFirebaseEndpoint(wh) {
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
       if (targetWh === 'MAI') {
-        const customMai = localStorage.getItem('wfm_firebase_custom_mai_url') || localStorage.getItem('wfm_firebase_custom_url');
+        const customMai = localStorage.getItem('wfm_firebase_custom_mai_url');
         if (customMai && customMai.trim().startsWith('https://')) {
           let clean = customMai.trim().replace(/\/$/, '');
           if (!clean.endsWith('.json')) clean += '/wfm_database.json';
@@ -5114,7 +5177,7 @@
         }
         return DEFAULT_FIREBASE_RTDB_MAI_URL;
       } else {
-        const customMbi = localStorage.getItem('wfm_firebase_custom_mbi_url') || localStorage.getItem('wfm_firebase_custom_url');
+        const customMbi = localStorage.getItem('wfm_firebase_custom_mbi_url');
         if (customMbi && customMbi.trim().startsWith('https://')) {
           let clean = customMbi.trim().replace(/\/$/, '');
           if (!clean.endsWith('.json')) clean += '/wfm_database.json';
@@ -5148,16 +5211,20 @@
       const maiUrl = getFirebaseEndpoint('MAI');
       const lbl = document.getElementById('lbl-firebase-endpoint');
       if (lbl) lbl.innerText = `MBI: ${mbiUrl}\nMAI: ${maiUrl}`;
-      const input = document.getElementById('input-custom-firebase-url');
-      if (input) input.value = getFirebaseEndpoint();
+      const mbiInput = document.getElementById('input-custom-firebase-mbi-url');
+      if (mbiInput) mbiInput.value = mbiUrl;
+      const maiInput = document.getElementById('input-custom-firebase-mai-url');
+      if (maiInput) maiInput.value = maiUrl;
     }
 
-    function saveCustomFirebaseUrl() {
-      const input = document.getElementById('input-custom-firebase-url');
+    function saveCustomFirebaseUrl(wh = null) {
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      const inputId = targetWh === 'MAI' ? 'input-custom-firebase-mai-url' : 'input-custom-firebase-mbi-url';
+      const input = document.getElementById(inputId) || document.getElementById('input-custom-firebase-url');
       if (!input) return;
       const val = input.value.trim();
       if (!val) {
-        alert('Silakan masukkan URL Firebase Realtime Database.');
+        alert(`Silakan masukkan URL Firebase Realtime Database untuk Gudang ${targetWh}.`);
         return;
       }
       if (!val.startsWith('https://') || !val.includes('firebaseio.com')) {
@@ -5168,24 +5235,41 @@
       if (!clean.endsWith('.json')) {
         clean = clean + '/wfm_database.json';
       }
-      if (activeWarehouse === 'MAI') {
+      if (targetWh === 'MAI') {
         localStorage.setItem('wfm_firebase_custom_mai_url', clean);
       } else {
         localStorage.setItem('wfm_firebase_custom_mbi_url', clean);
       }
       updateFirebaseUrlUI();
-      alert('✅ URL Firebase Berhasil Disimpan!\n\nAplikasi sekarang terhubung ke database Gudang ' + activeWarehouse + ':\n' + clean);
+      alert(`✅ URL Firebase Berhasil Disimpan!\n\nDatabase Gudang ${targetWh} kini terhubung ke:\n${clean}`);
       testFirebaseConnection();
     }
 
-    function resetDefaultFirebaseUrl() {
-      if (confirm('Kembalikan URL Firebase ke default resmi kedua gudang (MBI & MAI)?')) {
-        localStorage.removeItem('wfm_firebase_custom_mbi_url');
-        localStorage.removeItem('wfm_firebase_custom_mai_url');
-        localStorage.removeItem('wfm_firebase_custom_url');
-        updateFirebaseUrlUI();
-        alert('URL Firebase telah dikembalikan ke default:\n• MBI: ' + DEFAULT_FIREBASE_RTDB_MBI_URL + '\n• MAI: ' + DEFAULT_FIREBASE_RTDB_MAI_URL);
-        testFirebaseConnection();
+    function resetDefaultFirebaseUrl(wh = 'ALL') {
+      const target = (wh || 'ALL').toUpperCase();
+      if (target === 'MBI') {
+        if (confirm('Kembalikan URL Firebase Gudang MBI ke default resmi?')) {
+          localStorage.removeItem('wfm_firebase_custom_mbi_url');
+          updateFirebaseUrlUI();
+          alert('URL Firebase MBI telah dikembalikan ke default:\n' + DEFAULT_FIREBASE_RTDB_MBI_URL);
+          testFirebaseConnection();
+        }
+      } else if (target === 'MAI') {
+        if (confirm('Kembalikan URL Firebase Gudang MAI ke default resmi?')) {
+          localStorage.removeItem('wfm_firebase_custom_mai_url');
+          updateFirebaseUrlUI();
+          alert('URL Firebase MAI telah dikembalikan ke default:\n' + DEFAULT_FIREBASE_RTDB_MAI_URL);
+          testFirebaseConnection();
+        }
+      } else {
+        if (confirm('Kembalikan URL Firebase ke default resmi kedua gudang (MBI & MAI)?')) {
+          localStorage.removeItem('wfm_firebase_custom_mbi_url');
+          localStorage.removeItem('wfm_firebase_custom_mai_url');
+          localStorage.removeItem('wfm_firebase_custom_url');
+          updateFirebaseUrlUI();
+          alert('URL Firebase kedua gudang telah dikembalikan ke default:\n• MBI: ' + DEFAULT_FIREBASE_RTDB_MBI_URL + '\n• MAI: ' + DEFAULT_FIREBASE_RTDB_MAI_URL);
+          testFirebaseConnection();
+        }
       }
     }
 
@@ -5479,7 +5563,14 @@
           }
 
           // Prioritas Sinkronisasi NIK:
-          if (wh === 'MBI' && (cleanStr(merged.name) === 'galangerdiansyah' || (merged.name && merged.name.toUpperCase().includes('GALANG') && merged.name.toUpperCase().includes('ERDIANSYAH')))) {
+          const cMName = cleanStr(merged.name);
+          if (wh === 'MBI' && cMName === 'ogisaputra') {
+            merged.nik = 'MBI26-009';
+            merged.barcodeValue = 'MBI26-009';
+          } else if (wh === 'MBI' && cMName === 'yonno') {
+            merged.nik = 'MBI26-010';
+            merged.barcodeValue = 'MBI26-010';
+          } else if (wh === 'MBI' && (cMName === 'galangerdiansyah' || (merged.name && merged.name.toUpperCase().includes('GALANG') && merged.name.toUpperCase().includes('ERDIANSYAH')))) {
             merged.nik = 'MBI26-011';
             merged.barcodeValue = 'MBI26-011';
           } else if (cloudMatch.nik && cloudMatch.nik.trim() !== '') {
@@ -6283,7 +6374,22 @@
           if (cleanUsers.length !== users.length) hasChanges = true;
 
           cleanUsers.forEach(u => {
-            if (wh === 'MBI' && (cleanStr(u.name) === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')))) {
+            const cUName = cleanStr(u.name);
+            if (wh === 'MBI' && cUName === 'ogisaputra') {
+              if (u.nik !== 'MBI26-009' || u.barcodeValue !== 'MBI26-009') {
+                u.nik = 'MBI26-009';
+                u.barcodeValue = 'MBI26-009';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MBI' && cUName === 'yonno') {
+              if (u.nik !== 'MBI26-010' || u.barcodeValue !== 'MBI26-010') {
+                u.nik = 'MBI26-010';
+                u.barcodeValue = 'MBI26-010';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MBI' && (cUName === 'galangerdiansyah' || (u.name && u.name.toUpperCase().includes('GALANG') && u.name.toUpperCase().includes('ERDIANSYAH')))) {
               if (u.nik !== 'MBI26-011' || u.barcodeValue !== 'MBI26-011') {
                 u.nik = 'MBI26-011';
                 u.barcodeValue = 'MBI26-011';
@@ -14465,7 +14571,12 @@
             // 2. TENTUKAN NIK FINAL:
             // Data karyawan yang sudah ada ID-nya di Excel dijadikan NILAI MUTLAK milik karyawan tersebut!
             let finalNik = '';
-            if (targetWh === 'MBI' && (cleanStr(item.name) === 'galangerdiansyah' || (item.name && item.name.toUpperCase().includes('GALANG') && item.name.toUpperCase().includes('ERDIANSYAH')))) {
+            const cItemName = cleanStr(item.name);
+            if (targetWh === 'MBI' && cItemName === 'ogisaputra') {
+              finalNik = 'MBI26-009';
+            } else if (targetWh === 'MBI' && cItemName === 'yonno') {
+              finalNik = 'MBI26-010';
+            } else if (targetWh === 'MBI' && (cItemName === 'galangerdiansyah' || (item.name && item.name.toUpperCase().includes('GALANG') && item.name.toUpperCase().includes('ERDIANSYAH')))) {
               finalNik = 'MBI26-011';
             } else if (item.rawNik && item.rawNik.trim() !== '') {
               let n = item.rawNik.trim();
