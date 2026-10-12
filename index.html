@@ -5722,6 +5722,7 @@
       let hasAttChanged = false;
       let hasOtChanged = false;
       let hasLeavesChanged = false;
+      let hasNewLocalDataToPush = false;
 
       // PROSES DATA GUDANG MBI (JIKA DIKIRIM DARI SERVER MBI)
       if (db.mbi_users !== undefined || db.mbi_attendance !== undefined || db.mbi_overtime !== undefined || db.mbi_leaves !== undefined) {
@@ -5744,11 +5745,16 @@
           }
         }
         if (db.mbi_attendance !== undefined) {
-          const mergedMbiAtt = mergeAttendanceArrays(getWhDB('MBI', 'attendance', []), normalizeFirebaseArray(db.mbi_attendance));
+          const rawCloudMbiAtt = normalizeFirebaseArray(db.mbi_attendance);
+          const localMbiAtt = getWhDB('MBI', 'attendance', []);
+          const mergedMbiAtt = mergeAttendanceArrays(localMbiAtt, rawCloudMbiAtt);
           const newMbiAtt = JSON.stringify(mergedMbiAtt);
           if (currMbiAtt !== newMbiAtt) {
             localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
             hasAttChanged = true;
+          }
+          if (mergedMbiAtt.length > rawCloudMbiAtt.length) {
+            hasNewLocalDataToPush = true;
           }
         }
         if (db.mbi_overtime !== undefined) {
@@ -5790,11 +5796,16 @@
           }
         }
         if (db.mai_attendance !== undefined) {
-          const mergedMaiAtt = mergeAttendanceArrays(getWhDB('MAI', 'attendance', []), normalizeFirebaseArray(db.mai_attendance));
+          const rawCloudMaiAtt = normalizeFirebaseArray(db.mai_attendance);
+          const localMaiAtt = getWhDB('MAI', 'attendance', []);
+          const mergedMaiAtt = mergeAttendanceArrays(localMaiAtt, rawCloudMaiAtt);
           const newMaiAtt = JSON.stringify(mergedMaiAtt);
           if (currMaiAtt !== newMaiAtt) {
             localStorage.setItem('wfm_mai_attendance', newMaiAtt);
             hasAttChanged = true;
+          }
+          if (mergedMaiAtt.length > rawCloudMaiAtt.length) {
+            hasNewLocalDataToPush = true;
           }
         }
         if (db.mai_overtime !== undefined) {
@@ -5889,6 +5900,14 @@
             applyRolePermissions();
           }
         }
+      }
+
+      if (hasNewLocalDataToPush && !isSavingToCloud) {
+        setTimeout(() => {
+          if (typeof saveFullDatabaseToCloud === 'function') {
+            saveFullDatabaseToCloud(false, true, true);
+          }
+        }, 300);
       }
 
       // Render ulang layar aktif secara selektif & cepat
