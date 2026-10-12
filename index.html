@@ -8563,41 +8563,29 @@
         updateLoginWhStyle();
       }
 
-      // Validasi Password:
-      // Jika akun memiliki password khusus yang sudah diubah, WAJIB memasukkan password baru yang cocok
-      // Jika akun masih default, izinkan password default medika123 / password123
+      // Validasi Password Ketat:
+      // Hanya menerima password yang tersimpan saat ini di database (storedPass).
+      // Kata sandi lama otomatis ditolak setelah kata sandi diperbarui.
       const storedPass = (user.password || '').trim();
       let isPasswordCorrect = false;
 
       if (!storedPass) {
-        // Akun staf biasa tanpa password / akun scanner
+        // Akun staf biasa tanpa password / akun scanner presensi
         isPasswordCorrect = true;
       } else {
-        // Akun memiliki password (Admin, SPV, Coord, Manager, atau Staff yang telah dibuatkan kata sandi)
+        // Wajib persis sesuai kata sandi aktif di database saat ini
         if (inputPass && inputPass === storedPass) {
           isPasswordCorrect = true;
-        } else if (
-          (user.nik === 'ADM001' && (inputPass === 'adminmbi123' || inputPass === 'password123')) ||
-          (user.nik === 'ADM-MAI' && (inputPass === 'adminmai123' || inputPass === 'password123')) ||
-          (isUserManager(user) && (inputPass === 'medika123' || inputPass === 'password123'))
-        ) {
-          // Dukungan fleksibel untuk akun admin & manager agar lancar dan tidak pernah gagal login
-          isPasswordCorrect = true;
-        } else if (storedPass === 'password123' || storedPass === 'medika123' || storedPass === 'adminmbi123' || storedPass === 'adminmai123') {
-          // Hanya berlaku JIKA akun masih memakai password default / seed
-          if (inputPass === 'password123' || inputPass === 'medika123' || inputPass === 'admin' || inputPass === 'admin123' || inputPass === 'adminmbi123' || inputPass === 'adminmai123') {
-            isPasswordCorrect = true;
-          }
         }
       }
 
       if (!isPasswordCorrect) {
         if (alertEl) {
           alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          if (storedPass && storedPass !== 'password123' && storedPass !== 'medika123') {
+          if (storedPass && storedPass !== 'password123' && storedPass !== 'medika123' && storedPass !== 'adminmbi123' && storedPass !== 'adminmai123') {
             alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan password baru yang telah Anda perbarui.</span>`;
           } else {
-            alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password default: <code class="font-bold text-teal-700">medika123</code> / <code class="font-bold text-teal-700">password123</code></span>`;
+            alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password akun Anda yang terdaftar di sistem.</span>`;
           }
           alertEl.classList.remove('hidden');
         }
