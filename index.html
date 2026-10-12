@@ -6004,7 +6004,7 @@
     let lastSentMbiPayloadHash = '';
     let lastSentMaiPayloadHash = '';
 
-    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false) {
+    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false, targetWarehouse = null) {
       if (isMasterForceUpload === true) {
         pendingMasterForceUpload = true;
       }
@@ -6070,8 +6070,9 @@
         const currentMbiHash = JSON.stringify(mbiDataPure);
         const currentMaiHash = JSON.stringify(maiDataPure);
 
-        const shouldUploadMbi = isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash;
-        const shouldUploadMai = isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash;
+        const filterWh = targetWarehouse ? targetWarehouse.toUpperCase() : null;
+        const shouldUploadMbi = (filterWh === null || filterWh === 'MBI') && (isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash);
+        const shouldUploadMai = (filterWh === null || filterWh === 'MAI') && (isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash);
 
         // JIKA TIDAK ADA PERUBAHAN DATA: HEMAT KUOTA FIREBASE (0 REQUEST / 0 KB DIKIRIM)
         if (!shouldUploadMbi && !shouldUploadMai) {
@@ -6093,27 +6094,35 @@
         try {
           const fetchList = [];
           if (shouldUploadMbi) {
+            const ctrlMbi = new AbortController();
+            const tmrMbi = setTimeout(() => ctrlMbi.abort(), 7000);
             fetchList.push(
               fetch(mbiEndpoint, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(mbiPayload)
-              }).then(r => ({ target: 'MBI', ok: r.ok, status: r.status }))
+                body: JSON.stringify(mbiPayload),
+                signal: ctrlMbi.signal
+              }).then(r => { clearTimeout(tmrMbi); return { target: 'MBI', ok: r.ok, status: r.status }; })
+                .catch(err => { clearTimeout(tmrMbi); return { target: 'MBI', ok: false, status: 0, err }; })
             );
           }
           if (shouldUploadMai) {
+            const ctrlMai = new AbortController();
+            const tmrMai = setTimeout(() => ctrlMai.abort(), 7000);
             fetchList.push(
               fetch(maiEndpoint, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(maiPayload)
-              }).then(r => ({ target: 'MAI', ok: r.ok, status: r.status }))
+                body: JSON.stringify(maiPayload),
+                signal: ctrlMai.signal
+              }).then(r => { clearTimeout(tmrMai); return { target: 'MAI', ok: r.ok, status: r.status }; })
+                .catch(err => { clearTimeout(tmrMai); return { target: 'MAI', ok: false, status: 0, err }; })
             );
           }
 
           const results = await Promise.allSettled(fetchList);
           results.forEach(item => {
-            if (item.status === 'fulfilled') {
+            if (item.status === 'fulfilled' && item.value) {
               if (item.value.ok) {
                 if (item.value.target === 'MBI') {
                   mbiSuccess = true;
@@ -6125,7 +6134,7 @@
                   lastSentMaiPayloadHash = currentMaiHash;
                   localStorage.setItem('wfm_mai_master_updated_at', nowIso);
                 }
-              } else {
+              } else if (item.value.status) {
                 lastStatusCode = item.value.status;
               }
             }
@@ -6936,12 +6945,12 @@
       // Sinkronkan data otomatis dari Google Firebase Cloud Server (Fresh Load saat pertama buka app)
       try { fetchFullDatabaseFromCloud(false, null, true); } catch(e) {}
       
-      // Smart Delta Check hemat kuota di latar belakang (Jeda 10 detik, hanya mengecek 30 Byte timestamp)
+      // Smart Delta Check hemat kuota di latar belakang (Cek timestamp 30 Byte setiap 4 detik untuk pembaruan realtime lancar)
       setInterval(() => {
         if (!document.hidden) {
           fetchFullDatabaseFromCloud(false, null, false);
         }
-      }, 10000);
+      }, 4000);
 
       // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
       document.addEventListener('visibilitychange', () => {
@@ -8382,7 +8391,7 @@
       }
       activeWarehouse = warehouse;
       try { initFirebaseLiveStream(warehouse); } catch(e) {}
-      try { fetchFullDatabaseFromCloud(false, warehouse); } catch(e) {}
+      try { fetchFullDatabaseFromCloud(false, warehouse, true); } catch(e) {}
       loginUserSession(scannerUser);
     }
 
@@ -10647,7 +10656,7 @@
 
         // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
         setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(false, true);
+        saveFullDatabaseToCloud(false, true, true, targetWh);
         if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         showProfessionalAttendanceToast({
@@ -10702,7 +10711,7 @@
 
           // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
           setWhDB(targetWh, 'attendance', attendances);
-          saveFullDatabaseToCloud(false, true);
+          saveFullDatabaseToCloud(false, true, true, targetWh);
           if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
           const hrs = Math.floor(diffMs / (1000 * 60 * 60));
