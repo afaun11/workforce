@@ -2401,12 +2401,12 @@
                 <!-- Endpoint URL & Custom Firebase Config (MBI & MAI Terpisah) -->
                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3.5 text-xs">
                   <div class="flex items-center justify-between text-xs font-bold text-slate-900">
-                    <span class="flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4 text-teal-600"></i> Pengaturan Database Terpisah (MBI &amp; MAI)</span>
-                    <button type="button" onclick="resetDefaultFirebaseUrl('ALL')" class="text-[11px] text-slate-500 hover:text-slate-900 underline font-semibold">Reset Semua ke Bawaan</button>
+                    <span id="lbl-db-setting-title" class="flex items-center gap-1.5"><i data-lucide="database" class="w-4 h-4 text-blue-600"></i> Pengaturan Database Gudang MBI</span>
+                    <button type="button" id="btn-reset-db-active" onclick="resetActiveWarehouseFirebaseUrl()" class="text-[11px] text-slate-500 hover:text-slate-900 underline font-semibold">Reset ke Bawaan</button>
                   </div>
                   
-                  <!-- Setting MBI -->
-                  <div class="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <!-- Setting MBI (Hanya Tampil untuk Gudang MBI) -->
+                  <div id="container-db-setting-mbi" class="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
                     <div class="flex items-center justify-between">
                       <span class="font-extrabold text-slate-800 text-[11px] flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-blue-600"></span>
@@ -2422,8 +2422,8 @@
                     </div>
                   </div>
 
-                  <!-- Setting MAI -->
-                  <div class="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
+                  <!-- Setting MAI (Hanya Tampil untuk Gudang MAI) -->
+                  <div id="container-db-setting-mai" class="space-y-1.5 p-3 rounded-xl bg-white border border-slate-200 shadow-2xs hidden">
                     <div class="flex items-center justify-between">
                       <span class="font-extrabold text-slate-800 text-[11px] flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
@@ -2439,8 +2439,8 @@
                     </div>
                   </div>
 
-                  <p class="text-[11px] text-slate-500 leading-relaxed">
-                    Database Gudang MBI dan MAI berjalan 100% mandiri pada server masing-masing, sehingga data absensi dan data karyawan tidak akan pernah saling bercampur atau berbenturan.
+                  <p id="lbl-db-setting-desc" class="text-[11px] text-slate-500 leading-relaxed">
+                    Database Gudang MBI berjalan 100% mandiri pada server Google Cloud khusus MBI, terpisah sepenuhnya dari gudang lain.
                   </p>
                 </div>
 
@@ -2484,7 +2484,7 @@
                       <i data-lucide="activity" class="w-4 h-4 text-teal-600"></i>
                       <span>Uji Respon & Koneksi Cloud</span>
                     </button>
-                    <button type="button" onclick="fetchFullDatabaseFromCloud(true)" class="py-3 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                    <button type="button" onclick="fetchFullDatabaseFromCloud(true, activeWarehouse)" class="py-3 px-3 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
                       <i data-lucide="refresh-cw" class="w-4 h-4 text-blue-600"></i>
                       <span>Tarik Data Terbaru dari Cloud</span>
                     </button>
@@ -2496,7 +2496,7 @@
                   </button>
 
                   <div class="pt-1">
-                    <button type="button" onclick="purgeAndReloadFromFirebase()" class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                    <button type="button" onclick="purgeAndReloadFromFirebase(activeWarehouse)" class="w-full py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
                       <i data-lucide="trash-2" class="w-3.5 h-3.5 text-slate-500"></i>
                       <span>Bersihkan Cache & Muat Ulang Murni dari Cloud</span>
                     </button>
@@ -5207,14 +5207,48 @@
     }
 
     function updateFirebaseUrlUI() {
+      const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
       const mbiUrl = getFirebaseEndpoint('MBI');
       const maiUrl = getFirebaseEndpoint('MAI');
+      const activeUrl = currentWh === 'MAI' ? maiUrl : mbiUrl;
+
       const lbl = document.getElementById('lbl-firebase-endpoint');
-      if (lbl) lbl.innerText = `MBI: ${mbiUrl}\nMAI: ${maiUrl}`;
+      if (lbl) {
+        lbl.innerText = `${currentWh === 'MAI' ? 'Gudang MAI' : 'Gudang MBI'}: ${activeUrl}`;
+      }
+
       const mbiInput = document.getElementById('input-custom-firebase-mbi-url');
       if (mbiInput) mbiInput.value = mbiUrl;
       const maiInput = document.getElementById('input-custom-firebase-mai-url');
       if (maiInput) maiInput.value = maiUrl;
+
+      const containerMbi = document.getElementById('container-db-setting-mbi');
+      const containerMai = document.getElementById('container-db-setting-mai');
+      const titleEl = document.getElementById('lbl-db-setting-title');
+      const resetBtn = document.getElementById('btn-reset-db-active');
+      const descEl = document.getElementById('lbl-db-setting-desc');
+
+      if (containerMbi && containerMai) {
+        if (currentWh === 'MAI') {
+          containerMbi.classList.add('hidden');
+          containerMai.classList.remove('hidden');
+          if (titleEl) titleEl.innerHTML = '<i data-lucide="database" class="w-4 h-4 text-emerald-600"></i> Pengaturan Database Gudang MAI';
+          if (resetBtn) resetBtn.innerText = 'Reset MAI ke Bawaan';
+          if (descEl) descEl.innerHTML = 'Database Gudang <b>MAI</b> berjalan 100% mandiri pada server Google Cloud khusus MAI. Pengaturan URL ini hanya berlaku untuk operasional Gudang MAI.';
+        } else {
+          containerMai.classList.add('hidden');
+          containerMbi.classList.remove('hidden');
+          if (titleEl) titleEl.innerHTML = '<i data-lucide="database" class="w-4 h-4 text-blue-600"></i> Pengaturan Database Gudang MBI';
+          if (resetBtn) resetBtn.innerText = 'Reset MBI ke Bawaan';
+          if (descEl) descEl.innerHTML = 'Database Gudang <b>MBI</b> berjalan 100% mandiri pada server Google Cloud khusus MBI. Pengaturan URL ini hanya berlaku untuk operasional Gudang MBI.';
+        }
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+      }
+    }
+
+    function resetActiveWarehouseFirebaseUrl() {
+      const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+      resetDefaultFirebaseUrl(currentWh);
     }
 
     function saveCustomFirebaseUrl(wh = null) {
@@ -6217,119 +6251,92 @@
       }
     }
 
-    async function purgeAndReloadFromFirebase() {
-      if (!confirm('Apakah Anda ingin menyinkronkan & memuat ulang database murni dari kedua Google Firebase Cloud (MBI & MAI) ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi dari Cloud akan dimuat ulang agar 100% sama.')) {
+    async function purgeAndReloadFromFirebase(targetWh = null) {
+      const wh = (targetWh || activeWarehouse || 'MBI').toUpperCase();
+      if (!confirm(`Apakah Anda ingin menyinkronkan & memuat ulang database murni Gudang ${wh} dari Google Firebase Cloud ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi Gudang ${wh} dari Cloud akan dimuat ulang agar 100% sama.`)) {
         return;
       }
 
       updateCloudSyncStatusBadge('syncing');
       try {
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        const maiEndpoint = getFirebaseEndpoint('MAI');
+        const endpoint = getFirebaseEndpoint(wh);
+        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
+        let loaded = false;
 
-        const [mbiRes, maiRes] = await Promise.allSettled([
-          fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
-          fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
-        ]);
+        if (res.ok) {
+          const dbData = await res.json();
+          if (dbData && typeof dbData === 'object') {
+            const prefix = wh.toLowerCase();
+            const cloudUsers = normalizeFirebaseArray(dbData[`${prefix}_users`]);
+            const cloudAtt = normalizeFirebaseArray(dbData[`${prefix}_attendance`]);
+            const cloudOt = normalizeFirebaseArray(dbData[`${prefix}_overtime`]);
+            const cloudLeaves = normalizeFirebaseArray(dbData[`${prefix}_leaves`]);
 
-        let loadedMbi = false;
-        let loadedMai = false;
-
-        if (mbiRes.status === 'fulfilled' && mbiRes.value.ok) {
-          const dbMbi = await mbiRes.value.json();
-          if (dbMbi && typeof dbMbi === 'object') {
-            const cloudMbiUsers = normalizeFirebaseArray(dbMbi.mbi_users);
-            const cloudMbiAtt = normalizeFirebaseArray(dbMbi.mbi_attendance);
-            const cloudMbiOt = normalizeFirebaseArray(dbMbi.mbi_overtime);
-            const cloudMbiLeaves = normalizeFirebaseArray(dbMbi.mbi_leaves);
-
-            if (cloudMbiUsers.length > 0) localStorage.setItem('wfm_mbi_users', JSON.stringify(cloudMbiUsers));
-            localStorage.setItem('wfm_mbi_attendance', JSON.stringify(cloudMbiAtt));
-            localStorage.setItem('wfm_mbi_overtime', JSON.stringify(cloudMbiOt));
-            localStorage.setItem('wfm_mbi_leaves', JSON.stringify(cloudMbiLeaves));
-            if (dbMbi.mbi_coords) localStorage.setItem('wfm_mbi_coords', JSON.stringify(dbMbi.mbi_coords));
-            loadedMbi = true;
-          }
-        }
-
-        if (maiRes.status === 'fulfilled' && maiRes.value.ok) {
-          const dbMai = await maiRes.value.json();
-          if (dbMai && typeof dbMai === 'object') {
-            const cloudMaiUsers = normalizeFirebaseArray(dbMai.mai_users);
-            const cloudMaiAtt = normalizeFirebaseArray(dbMai.mai_attendance);
-            const cloudMaiOt = normalizeFirebaseArray(dbMai.mai_overtime);
-            const cloudMaiLeaves = normalizeFirebaseArray(dbMai.mai_leaves);
-
-            if (cloudMaiUsers.length > 0) localStorage.setItem('wfm_mai_users', JSON.stringify(cloudMaiUsers));
-            localStorage.setItem('wfm_mai_attendance', JSON.stringify(cloudMaiAtt));
-            localStorage.setItem('wfm_mai_overtime', JSON.stringify(cloudMaiOt));
-            localStorage.setItem('wfm_mai_leaves', JSON.stringify(cloudMaiLeaves));
-            if (dbMai.mai_coords) localStorage.setItem('wfm_mai_coords', JSON.stringify(dbMai.mai_coords));
-            loadedMai = true;
+            if (cloudUsers.length > 0) localStorage.setItem(`wfm_${prefix}_users`, JSON.stringify(cloudUsers));
+            localStorage.setItem(`wfm_${prefix}_attendance`, JSON.stringify(cloudAtt));
+            localStorage.setItem(`wfm_${prefix}_overtime`, JSON.stringify(cloudOt));
+            localStorage.setItem(`wfm_${prefix}_leaves`, JSON.stringify(cloudLeaves));
+            if (dbData[`${prefix}_coords`]) localStorage.setItem(`wfm_${prefix}_coords`, JSON.stringify(dbData[`${prefix}_coords`]));
+            loaded = true;
           }
         }
 
         renderAllLiveScreens();
         updateCloudSyncStatusBadge('synced');
 
-        alert(`✅ SUKSES MEMUAT DATA DARI KEDUA FIREBASE CLOUD!\n\n` +
-              `• Status MBI: ${loadedMbi ? 'Berhasil Terhubung' : 'Standby'}\n` +
-              `• Status MAI: ${loadedMai ? 'Berhasil Terhubung' : 'Standby'}\n\n` +
+        alert(`✅ SUKSES MEMUAT DATA GUDANG ${wh} DARI FIREBASE CLOUD!\n\n` +
+              `• Gudang: ${wh}\n` +
+              `• Server: ${endpoint}\n` +
+              `• Status: ${loaded ? 'Berhasil Terhubung & Termuat' : 'Standby'}\n\n` +
               `Semua data di perangkat ini sekarang 100% SINKRON & SAMA dengan Cloud Server.`);
       } catch (err) {
         console.error('Purge and reload error:', err);
-        alert('⚠️ Gagal terhubung ke Firebase Cloud: ' + err.message + '\nData di perangkat ini tetap aman.');
+        alert(`⚠️ Gagal terhubung ke Firebase Cloud Gudang ${wh}: ` + err.message + '\nData di perangkat ini tetap aman.');
         updateCloudSyncStatusBadge('local');
       }
     }
 
     async function testFirebaseConnection() {
+      const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
       const statusEl = document.getElementById('firebase-diag-status');
       if (statusEl) {
         statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon koneksi ke Database MBI & MAI...</span>`;
+        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon koneksi ke Database Gudang ${currentWh}...</span>`;
         statusEl.classList.remove('hidden');
         lucide.createIcons();
       }
 
-      const mbiEndpoint = getFirebaseEndpoint('MBI');
-      const maiEndpoint = getFirebaseEndpoint('MAI');
+      const endpoint = getFirebaseEndpoint(currentWh);
 
       try {
         const tStart = Date.now();
-        const [mbiRes, maiRes] = await Promise.allSettled([
-          fetch(mbiEndpoint + '?t=' + Date.now(), { cache: 'no-store' }),
-          fetch(maiEndpoint + '?t=' + Date.now(), { cache: 'no-store' })
-        ]);
+        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
         const latency = Date.now() - tStart;
+        const isOk = res.ok;
+        let data = isOk ? await res.json() : null;
 
-        const mbiOk = mbiRes.status === 'fulfilled' && mbiRes.value.ok;
-        const maiOk = maiRes.status === 'fulfilled' && maiRes.value.ok;
+        const countKey = `${currentWh.toLowerCase()}_users`;
+        const attKey = `${currentWh.toLowerCase()}_attendance`;
+        const empCount = data && data[countKey] ? data[countKey].length : 0;
+        const attCount = data && data[attKey] ? data[attKey].length : 0;
 
-        let mbiData = mbiOk ? await mbiRes.value.json() : null;
-        let maiData = maiOk ? await maiRes.value.json() : null;
-
-        const mbiCount = mbiData && mbiData.mbi_users ? mbiData.mbi_users.length : 0;
-        const maiCount = maiData && maiData.mai_users ? maiData.mai_users.length : 0;
-        const attCount = (mbiData && mbiData.mbi_attendance ? mbiData.mbi_attendance.length : 0) + (maiData && maiData.mai_attendance ? maiData.mai_attendance.length : 0);
-
-        if (mbiOk || maiOk) {
+        if (isOk) {
           if (statusEl) {
             statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 space-y-1.5';
             statusEl.innerHTML = `
               <div class="flex items-center gap-2">
                 <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
-                <span>✅ <b>Firebase Cloud MBI & MAI Aktif & Normal!</b> (Respon: ${latency}ms)</span>
+                <span>✅ <b>Firebase Cloud Gudang ${currentWh} Aktif & Normal!</b> (Respon: ${latency}ms)</span>
               </div>
               <p class="text-[11px] text-emerald-800 font-normal pl-6">
-                Database terpisah terhubung sempurna: <b>${mbiCount} Karyawan MBI (wfm-medika-mbi)</b>, <b>${maiCount} Karyawan MAI (wfm-medika2)</b>, <b>${attCount} Total Record Absensi</b>.
+                Database terhubung sempurna: <b>${empCount} Karyawan ${currentWh}</b>, <b>${attCount} Total Record Absensi</b>.
               </p>
             `;
             statusEl.classList.remove('hidden');
             lucide.createIcons();
           }
           updateCloudSyncStatusBadge('synced');
-          alert(`✅ KONEKSI KEDUA DATABASE FIREBASE BERHASIL!\n\n• Respon: ${latency}ms\n• Database MBI: ${mbiOk ? '200 OK (Online)' : 'Offline/Check Rules'}\n• Database MAI: ${maiOk ? '200 OK (Online)' : 'Offline/Check Rules'}\n• Total Karyawan di Server: ${mbiCount + maiCount} orang\n\nSemua perangkat HP & laptop siap bertukar data otomatis.`);
+          alert(`✅ KONEKSI DATABASE GUDANG ${currentWh} BERHASIL!\n\n• Respon: ${latency}ms\n• Status: 200 OK (Online)\n• Database: ${endpoint}\n• Total Karyawan: ${empCount} orang\n• Total Riwayat Absensi: ${attCount} record\n\nSemua perangkat HP & laptop Gudang ${currentWh} siap bertukar data otomatis.`);
         } else {
           updateCloudSyncStatusBadge('permission_denied');
           if (statusEl) {
@@ -6337,25 +6344,25 @@
             statusEl.innerHTML = `
               <div class="flex items-center gap-2">
                 <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0"></i>
-                <span>⚠️ <b>Akses Firebase Rules Terkunci (HTTP 401)</b></span>
+                <span>⚠️ <b>Akses Firebase Rules Terkunci (HTTP ${res.status})</b></span>
               </div>
               <p class="text-[11px] text-rose-800 font-normal pl-6">
-                Pastikan Rules pada kedua database Firebase sudah diatur .read: true dan .write: true, lalu klik Publish.
+                Pastikan Rules pada database Firebase Gudang ${currentWh} sudah diatur .read: true dan .write: true, lalu klik Publish.
               </p>
             `;
             statusEl.classList.remove('hidden');
             lucide.createIcons();
           }
-          alert('⚠️ Akses Firebase Rules Terkunci (HTTP 401).\n\nPastikan tab Rules di console.firebase.google.com pada kedua project sudah diubah .read: true dan .write: true lalu klik Publish.');
+          alert(`⚠️ Akses Firebase Rules Terkunci (HTTP ${res.status}).\n\nPastikan tab Rules di console.firebase.google.com pada project Gudang ${currentWh} sudah diubah .read: true dan .write: true lalu klik Publish.`);
         }
       } catch (err) {
         if (statusEl) {
           statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300';
-          statusEl.innerHTML = `<span>⚠️ Gagal menghubungi Firebase: ${err.message}.</span>`;
+          statusEl.innerHTML = `<span>⚠️ Gagal menghubungi Firebase Gudang ${currentWh}: ${err.message}.</span>`;
           statusEl.classList.remove('hidden');
         }
         updateCloudSyncStatusBadge('local');
-        alert(`⚠️ Gagal menghubungi Firebase: ${err.message}`);
+        alert(`⚠️ Gagal menghubungi Firebase Gudang ${currentWh}: ${err.message}`);
       }
     }
 
@@ -8310,6 +8317,8 @@
           btnResetAllEmp.classList.remove('inline-flex');
         }
       }
+
+      try { updateFirebaseUrlUI(); } catch(e) {}
     }
 
 
@@ -9024,6 +9033,7 @@
       populatePermissionAccountDropdown();
       updateRegisteredCoordsDisplay();
       resetVerificationState();
+      try { updateFirebaseUrlUI(); } catch(e) {}
       lucide.createIcons();
     }
 
@@ -9190,7 +9200,7 @@
           } catch(e) {}
         }
         if (viewName === 'settings') { try { renderAccountSettingsForm(); } catch(e) {} }
-        if (viewName === 'github') { try { renderGitHubConfig(); } catch(e) {} }
+        if (viewName === 'github') { try { renderGitHubConfig(); } catch(e) {} try { updateFirebaseUrlUI(); } catch(e) {} }
         if (viewName === 'attendance') { try { resetVerificationState(); } catch(e) {} }
 
         if (viewName !== 'attendance') {
