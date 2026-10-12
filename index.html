@@ -5186,8 +5186,8 @@
         if (customMbi && customMbi.trim().startsWith('https://')) {
           let clean = customMbi.trim().replace(/\/$/, '');
           if (!clean.endsWith('.json')) clean += '/wfm_database.json';
-          // Otomatis hapus jika masih tersimpan database lama (wfm-medika-default-rtdb) atau MAI
-          if (clean.includes('wfm-medika-default-rtdb') || clean.includes('wfm-medika2')) {
+          // Otomatis hapus jika masih tersimpan database lama (wfm-medika-default-rtdb atau wfm-medika-mbi tanpa -new) atau MAI
+          if (clean.includes('wfm-medika-default-rtdb') || (clean.includes('wfm-medika-mbi') && !clean.includes('wfm-medika-mbi-new')) || clean.includes('wfm-medika2')) {
             localStorage.removeItem('wfm_firebase_custom_mbi_url');
             localStorage.removeItem('wfm_firebase_custom_url');
             return DEFAULT_FIREBASE_RTDB_MBI_URL;
@@ -6848,9 +6848,9 @@
         const legacyMbi = localStorage.getItem('wfm_firebase_custom_mbi_url') || '';
         const legacyAll = localStorage.getItem('wfm_firebase_custom_url') || '';
         const legacyMai = localStorage.getItem('wfm_firebase_custom_mai_url') || '';
-        if (legacyMbi.includes('wfm-medika-default-rtdb') || legacyMbi.includes('wfm-medika2')) localStorage.removeItem('wfm_firebase_custom_mbi_url');
-        if (legacyAll.includes('wfm-medika-default-rtdb')) localStorage.removeItem('wfm_firebase_custom_url');
-        if (legacyMai.includes('wfm-medika-default-rtdb') || legacyMai.includes('wfm-medika-mbi-new')) localStorage.removeItem('wfm_firebase_custom_mai_url');
+        if (legacyMbi.includes('wfm-medika-default-rtdb') || (legacyMbi.includes('wfm-medika-mbi') && !legacyMbi.includes('wfm-medika-mbi-new')) || legacyMbi.includes('wfm-medika2')) localStorage.removeItem('wfm_firebase_custom_mbi_url');
+        if (legacyAll.includes('wfm-medika-default-rtdb') || (legacyAll.includes('wfm-medika-mbi') && !legacyAll.includes('wfm-medika-mbi-new'))) localStorage.removeItem('wfm_firebase_custom_url');
+        if (legacyMai.includes('wfm-medika-default-rtdb') || legacyMai.includes('wfm-medika-mbi')) localStorage.removeItem('wfm_firebase_custom_mai_url');
       } catch(e) {}
 
       try { updateLoginWhStyle(); } catch(e) {}
