@@ -5085,7 +5085,51 @@
           }
         });
 
-        attendances = dedupedList;
+        // 3. AUTO-HEAL PRESENSI SHIFT LINTAS HARI GANDA:
+        // Jika karyawan masuk malam (misal 21:35 tgl D, out null) dan tap masuk lagi pagi (misal 06:01 tgl D+1, out null)
+        // di mana selisih jam masuknya antara 4 s.d 14 jam (terjadi karena salah pilih tombol Masuk padahal mau Pulang):
+        // Satukan menjadi 1 record shift lengkap (in tgl D, out jam tap pagi)!
+        const userChronological = new Map();
+        dedupedList.forEach(a => {
+          if (!a) return;
+          const userKey = (a.userNik || a.userId || a.userName || '').toUpperCase().trim();
+          if (!userChronological.has(userKey)) userChronological.set(userKey, []);
+          userChronological.get(userKey).push(a);
+        });
+
+        const healedAtts = [];
+        const discardedIds = new Set();
+
+        userChronological.forEach(list => {
+          list.sort((x, y) => {
+            const tx = x.checkInTime ? new Date(x.checkInTime).getTime() : 0;
+            const ty = y.checkInTime ? new Date(y.checkInTime).getTime() : 0;
+            return tx - ty;
+          });
+
+          for (let i = 0; i < list.length; i++) {
+            const cur = list[i];
+            if (discardedIds.has(cur.id)) continue;
+
+            const next = list[i + 1];
+            if (next && cur.checkInTime && !cur.checkOutTime && next.checkInTime && !next.checkOutTime) {
+              const tCur = new Date(cur.checkInTime).getTime();
+              const tNext = new Date(next.checkInTime).getTime();
+              const diffMs = tNext - tCur;
+              if (diffMs >= 4 * 3600 * 1000 && diffMs <= 14 * 3600 * 1000) {
+                cur.checkOutTime = next.checkInTime;
+                discardedIds.add(next.id);
+                const delSet = getDeletedAttendanceIds();
+                delSet.add(next.id);
+                saveDeletedAttendanceIds(delSet);
+                hasChanges = true;
+              }
+            }
+            healedAtts.push(cur);
+          }
+        });
+
+        attendances = healedAtts;
 
         if (hasChanges) {
           localStorage.setItem(storageKey, JSON.stringify(attendances));
@@ -10615,37 +10659,39 @@
         return tB - tA;
       });
 
-      // 2. IDENTIFIKASI SESI AKTIF (HANYA BERLAKU UNTUK SHIFT BERJALAN < 16 JAM)
-      // Mendukung 100% seluruh jenis shift 24 Jam: Masuk Pagi (08:00 / 10:00), Shift Siang/Sore (15:00), Lembur hingga malam, serta Shift Malam/Dini Hari Lintas Hari (23:00 - 08:00).
-      // Sesi lama yang tidak di-tap pulang (> 16 jam lalu atau shift hari sebelumnya saat karyawan tap masuk baru) otomatis ditutup sebagai Miss Scan murni (checkOutTime: null) & terhitung 7 jam kerja.
-      const openSession = userAtts.find(a => a.checkInTime && !a.checkOutTime);
-      let isOpenSessionValid = false;
-      let sessionElapsedMs = 0;
-      let isSameDate = true;
-      if (openSession) {
-        const inMs = parseSafeTimeMs(openSession.checkInTime, openSession.date) || new Date(openSession.checkInTime).getTime();
-        sessionElapsedMs = now.getTime() - inMs;
-        const openLocalDate = getLocalDateString(new Date(inMs));
-        isSameDate = (openSession.date === todayStr || openLocalDate === todayStr);
-        isOpenSessionValid = (sessionElapsedMs >= 0 && sessionElapsedMs < MAX_SHIFT_MS);
-      }
+      // 2. IDENTIFIKASI SESI AKTIF (MENDUKUNG 100% SEMUA SHIFT TERMASUK SHIFT MALAM LINTAS HARI)
+      // Kriteria Sesi Aktif:
+      // a. Memiliki jam masuk (checkInTime)
+      // b. Belum absen pulang (checkOutTime kosong / null / '-')
+      // c. Belum ditandai secara eksplisit sebagai Miss Scan
+      // d. Durasi berjalan masih dalam batas wajar shift aktif (< 18 Jam / MAX_ACTIVE_SHIFT_MS)
+      const MAX_ACTIVE_SHIFT_MS = 18 * 60 * 60 * 1000;
+      
+      const activeOpenSession = userAtts.find(a => {
+        if (!a || !a.checkInTime) return false;
+        if (a.checkOutTime && a.checkOutTime !== '-' && a.checkOutTime !== '') return false;
+        if (a.notes && a.notes.toLowerCase().includes('miss scan')) return false;
+        if (a.checkInStatus === 'miss_scan') return false;
+        const inMs = parseSafeTimeMs(a.checkInTime, a.date) || new Date(a.checkInTime).getTime();
+        if (isNaN(inMs) || inMs <= 0) return false;
+        const elapsed = now.getTime() - inMs;
+        return (elapsed >= 0 && elapsed < MAX_ACTIVE_SHIFT_MS);
+      });
 
       if (selectedAttendanceType === 'check_in') {
         // ==========================================
         // MODE ABSEN MASUK (CHECK_IN) - 24 JAM PENUH
         // ==========================================
-        // Jika ada sesi lama yang belum di-tap pulang dan sudah melebihi 16 jam: otomatis finalisasi sebagai Miss Scan murni (checkOutTime: null)
-        if (openSession && !isOpenSessionValid) {
-          openSession.checkOutTime = null;
-          openSession.notes = openSession.notes ? (openSession.notes.includes('Miss Scan') ? openSession.notes : openSession.notes + ' (Miss Scan)') : 'Miss Scan';
-          setWhDB(targetWh, 'attendance', attendances);
-          saveFullDatabaseToCloud(false, true);
-        }
 
-        // 1. JIKA MASIH MEMILIKI SESI AKTIF YANG BELUM PULANG (< 16 JAM, TERMASUK SHIFT MALAM LINTAS HARI):
-        if (openSession && isOpenSessionValid) {
-          const inTimeStr = new Date(openSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
-          const diffMs = sessionElapsedMs;
+        // 1. PROTEKSI MUTLAK SHIFT LINTAS HARI & SHIFT NORMAL:
+        // Karyawan yang MASIH MEMILIKI SHIFT AKTIF (termasuk Shift Malam Lintas Hari kemarin)
+        // DILARANG KERAS ABSEN MASUK LAGI sebelum melakukan absen pulang!
+        if (activeOpenSession) {
+          const inTimeStr = new Date(activeOpenSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+          const shiftDateStr = activeOpenSession.date || getLocalDateString(new Date(activeOpenSession.checkInTime));
+          const inMs = parseSafeTimeMs(activeOpenSession.checkInTime, activeOpenSession.date) || new Date(activeOpenSession.checkInTime).getTime();
+          const diffMs = Math.max(0, now.getTime() - inMs);
+
           if (diffMs < 3 * 60 * 1000) {
             // Anti-Double Tap: Scan masuk ganda dalam 3 menit pertama
             showProfessionalAttendanceToast({
@@ -10660,17 +10706,17 @@
               statusText: 'Sudah Masuk'
             });
           } else {
-            // Masih dalam sesi kerja aktif (shift normal atau shift malam lintas hari)
+            // Peringatan Tegas: Masih dalam shift aktif dan belum absen pulang
             showProfessionalAttendanceToast({
               isWarning: true,
-              title: 'Masih Dalam Shift Aktif!',
-              subtitle: `${matchedUser.name} masih dalam shift aktif (Masuk tgl ${openSession.date} jam ${inTimeStr}). Silakan pilih tombol [Absen Keluar / Pulang] jika shift Anda telah selesai.`,
+              title: 'Belum Absen Pulang!',
+              subtitle: `${matchedUser.name} masih tercatat aktif pada Shift ${shiftDateStr} (Jam Masuk: ${inTimeStr}). Tidak bisa absen masuk jika belum melakukan absen pulang. Silakan ganti ke tombol [Absen Pulang]!`,
               name: matchedUser.name,
               nik: matchedUser.nik,
               dept: matchedUser.dept || 'Staff',
               warehouse: targetWh,
               time: inTimeStr,
-              statusText: 'Shift Masih Berjalan'
+              statusText: 'Wajib Absen Pulang'
             });
           }
           playAttendanceErrorSound('Sudah absen masuk');
@@ -10705,6 +10751,15 @@
           stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
+        }
+
+        // 3. FINALISASI SESI KEDALUWARSA (> 18 JAM TANPA PULANG) SEBAGAI MISS SCAN
+        const expiredOpenSession = userAtts.find(a => a.checkInTime && !a.checkOutTime && !a.notes?.includes('Miss Scan'));
+        if (expiredOpenSession) {
+          expiredOpenSession.checkOutTime = null;
+          expiredOpenSession.notes = expiredOpenSession.notes ? (expiredOpenSession.notes.includes('Miss Scan') ? expiredOpenSession.notes : expiredOpenSession.notes + ' (Miss Scan)') : 'Miss Scan';
+          setWhDB(targetWh, 'attendance', attendances);
+          saveFullDatabaseToCloud(false, true);
         }
 
         // KARYAWAN MEMBUAT ABSEN MASUK BARU PADA SEMUA JAM (00:00 - 23:59 WIB)
@@ -10754,12 +10809,14 @@
         // MODE ABSEN PULANG (CHECK_OUT) - 24 JAM PENUH
         // ==========================================
         // KASUS 1: Ada sesi terbuka yang sah (rentang 0 s.d 18 jam)
-        // MENDUKUNG PENUH SELURUH SHIFT: Shift Malam Lintas Hari (Masuk 23:00 kemarin, Pulang 07:00 / 08:00 hari ini), Shift Dini Hari, Shift Pagi, Shift Lembur hingga 23:00.
-        if (openSession && isOpenSessionValid) {
-          const diffMs = now.getTime() - new Date(openSession.checkInTime).getTime();
+        // MENDUKUNG PENUH SELURUH SHIFT: Shift Malam Lintas Hari (Masuk kemarin malam, Pulang pagi hari ini), Shift Dini Hari, Shift Pagi, Shift Siang/Sore, Shift Lembur.
+        if (activeOpenSession) {
+          const inMs = parseSafeTimeMs(activeOpenSession.checkInTime, activeOpenSession.date) || new Date(activeOpenSession.checkInTime).getTime();
+          const diffMs = Math.max(0, now.getTime() - inMs);
+
           // Proteksi jika baru saja tap masuk (< 1 menit)
           if (diffMs < 60 * 1000) {
-            const inTimeStr = new Date(openSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+            const inTimeStr = new Date(activeOpenSession.checkInTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
             showProfessionalAttendanceToast({
               isWarning: true,
               title: 'Baru Saja Absen Masuk!',
@@ -10777,12 +10834,12 @@
             return;
           }
 
-          openSession.checkOutTime = now.toISOString();
-          openSession.userNik = matchedUser.nik;
-          openSession.userName = matchedUser.name;
-          openSession.userId = matchedUser.id;
-          openSession.dept = matchedUser.dept;
-          openSession.outsource = matchedUser.outsource || openSession.outsource || 'Internal';
+          activeOpenSession.checkOutTime = now.toISOString();
+          activeOpenSession.userNik = matchedUser.nik;
+          activeOpenSession.userName = matchedUser.name;
+          activeOpenSession.userId = matchedUser.id;
+          activeOpenSession.dept = matchedUser.dept;
+          activeOpenSession.outsource = matchedUser.outsource || activeOpenSession.outsource || 'Internal';
 
           // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
           setWhDB(targetWh, 'attendance', attendances);
@@ -10795,7 +10852,7 @@
           showProfessionalAttendanceToast({
             type: 'check_out',
             title: 'Absen Pulang Berhasil!',
-            subtitle: `Presensi pulang ${matchedUser.name} sukses tercatat (Shift ${openSession.date}, durasi kerja ${hrs} jam ${mins} mnt)`,
+            subtitle: `Presensi pulang ${matchedUser.name} sukses tercatat (Shift ${activeOpenSession.date}, durasi kerja ${hrs} jam ${mins} mnt)`,
             name: matchedUser.name,
             nik: matchedUser.nik,
             dept: matchedUser.dept || 'Staff',
@@ -10807,32 +10864,10 @@
 
           playAttendanceSuccessSound('check_out', matchedUser.name);
           stopScanner();
-        } else if (openSession && !isOpenSessionValid) {
-          // Sesi kemarin lewat 16 jam adalah Miss Scan murni
-          openSession.checkOutTime = null;
-          openSession.notes = openSession.notes ? (openSession.notes.includes('Miss Scan') ? openSession.notes : openSession.notes + ' (Miss Scan)') : 'Miss Scan';
-          setWhDB(targetWh, 'attendance', attendances);
-          saveFullDatabaseToCloud(false, true);
-
-          showProfessionalAttendanceToast({
-            isWarning: true,
-            title: 'Shift Sebelumnya Miss Scan',
-            subtitle: `Sesi ${matchedUser.name} pada ${openSession.date} telah lewat dari batas toleransi shift (16 jam) dan tercatat Miss Scan (7 jam kerja). Silakan pilih tombol [Absen Masuk] untuk shift hari ini.`,
-            name: matchedUser.name,
-            nik: matchedUser.nik,
-            dept: matchedUser.dept || 'Staff',
-            warehouse: targetWh,
-            time: nowFormatted,
-            statusText: 'Miss Scan'
-          });
-          playAttendanceErrorSound('Miss scan kemarin');
-          stopScanner();
-          setTimeout(() => { isScanProcessing = false; }, 2000);
-          return;
         } else {
           // KASUS 2: Tidak ada sesi terbuka (Sudah pulang sebelumnya ATAU Belum masuk)
           const recentAtt = userAtts[0];
-          const hasRecentCheckout = recentAtt && recentAtt.checkOutTime && ((now.getTime() - new Date(recentAtt.checkOutTime).getTime()) < MAX_SHIFT_MS);
+          const hasRecentCheckout = recentAtt && recentAtt.checkOutTime && ((now.getTime() - new Date(recentAtt.checkOutTime).getTime()) < MAX_ACTIVE_SHIFT_MS);
 
           if (hasRecentCheckout) {
             const outTimeStr = new Date(recentAtt.checkOutTime).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
