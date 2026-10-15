@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -18592,7 +18592,7 @@ function testManualSync() {
       const docHtml = `\uFEFF<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta charset="utf-8">
-  <title>Buku Panduan Lengkap Sistem WFM Medika</title>
+  <title>Buku Panduan Operasional Sistem WFM Medika</title>
   <!--[if gte mso 9]>
   <xml>
     <w:WordDocument>
@@ -18614,7 +18614,7 @@ function testManualSync() {
     
     body {
       font-family: 'Segoe UI', Calibri, Arial, sans-serif;
-      font-size: 11pt;
+      font-size: 10.5pt;
       line-height: 1.5;
       color: #1e293b;
       background-color: #ffffff;
@@ -18628,31 +18628,32 @@ function testManualSync() {
     }
 
     h1 {
-      font-size: 20pt;
+      font-size: 18pt;
       color: #0f766e;
-      border-bottom: 2.5pt solid #0f766e;
-      padding-bottom: 6pt;
-      margin-top: 18pt;
-      margin-bottom: 12pt;
+      border-bottom: 2pt solid #0f766e;
+      padding-bottom: 5pt;
+      margin-top: 20pt;
+      margin-bottom: 10pt;
     }
 
     h2 {
-      font-size: 14pt;
+      font-size: 13pt;
       color: #1e3a5f;
-      border-left: 4.5pt solid #0284c7;
+      border-left: 4pt solid #0284c7;
       padding-left: 8pt;
-      margin-top: 16pt;
-      margin-bottom: 8pt;
+      margin-top: 14pt;
+      margin-bottom: 6pt;
       background-color: #f0f9ff;
       padding-top: 4pt;
       padding-bottom: 4pt;
     }
 
     h3 {
-      font-size: 12pt;
+      font-size: 11pt;
       color: #334155;
-      margin-top: 12pt;
-      margin-bottom: 6pt;
+      margin-top: 10pt;
+      margin-bottom: 4pt;
+      font-weight: 700;
     }
 
     p {
@@ -18664,7 +18665,7 @@ function testManualSync() {
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8pt;
+      margin-top: 6pt;
       margin-bottom: 12pt;
       font-size: 9.5pt;
     }
@@ -18690,10 +18691,10 @@ function testManualSync() {
 
     .badge {
       display: inline-block;
-      padding: 2pt 6pt;
-      font-size: 8.5pt;
+      padding: 2pt 5pt;
+      font-size: 8pt;
       font-weight: bold;
-      border-radius: 4pt;
+      border-radius: 3pt;
     }
 
     .badge-admin { background-color: #fee2e2; color: #991b1b; border: 1pt solid #f87171; }
@@ -18702,49 +18703,71 @@ function testManualSync() {
     .badge-crd { background-color: #e0e7ff; color: #3730a3; border: 1pt solid #a5b4fc; }
     .badge-scanner { background-color: #ccfbf1; color: #115e59; border: 1pt solid #5eead4; }
     .badge-staff { background-color: #f1f5f9; color: #475569; border: 1pt solid #cbd5e1; }
+    .badge-success { background-color: #dcfce7; color: #166534; border: 1pt solid #86efac; }
+    .badge-warning { background-color: #fef9c3; color: #854d0e; border: 1pt solid #fde047; }
+    .badge-danger { background-color: #ffe4e6; color: #9f1239; border: 1pt solid #fda4af; }
 
     .callout {
       background-color: #f0fdfa;
       border-left: 4pt solid #0d9488;
       padding: 8pt 12pt;
-      margin: 10pt 0;
-      border-radius: 0 6pt 6pt 0;
+      margin: 8pt 0;
+      border-radius: 0 4pt 4pt 0;
+    }
+
+    .callout-warning {
+      background-color: #fffbeb;
+      border-left: 4pt solid #d97706;
+      padding: 8pt 12pt;
+      margin: 8pt 0;
+      border-radius: 0 4pt 4pt 0;
+    }
+
+    .callout-danger {
+      background-color: #fef2f2;
+      border-left: 4pt solid #dc2626;
+      padding: 8pt 12pt;
+      margin: 8pt 0;
+      border-radius: 0 4pt 4pt 0;
     }
 
     .cover-box {
       text-align: center;
-      padding: 30pt 20pt;
-      background-color: #1e3a5f;
+      padding: 26pt 16pt;
+      background-color: #0f172a;
       color: #ffffff;
-      border-radius: 12pt;
-      margin-bottom: 25pt;
+      border-radius: 8pt;
+      margin-bottom: 20pt;
     }
 
     .cover-title {
-      font-size: 24pt;
+      font-size: 22pt;
       font-weight: 900;
       margin-bottom: 6pt;
-      color: #ffffff;
+      color: #38bdf8;
+      letter-spacing: 0.5pt;
     }
 
     .cover-subtitle {
-      font-size: 13pt;
-      color: #99f6e4;
-      margin-bottom: 16pt;
+      font-size: 12.5pt;
+      color: #f1f5f9;
+      margin-bottom: 12pt;
+      font-weight: 600;
     }
 
     .cover-meta {
-      font-size: 9.5pt;
+      font-size: 9pt;
       color: #cbd5e1;
-      border-top: 1pt solid rgba(255,255,255,0.2);
-      padding-top: 10pt;
+      border-top: 1pt solid #334155;
+      padding-top: 8pt;
       display: inline-block;
+      line-height: 1.4;
     }
 
     ol, ul {
-      margin-top: 4pt;
-      margin-bottom: 8pt;
-      padding-left: 20pt;
+      margin-top: 3pt;
+      margin-bottom: 6pt;
+      padding-left: 18pt;
     }
 
     li {
@@ -18754,11 +18777,27 @@ function testManualSync() {
     code {
       font-family: Consolas, 'Courier New', monospace;
       background-color: #f1f5f9;
-      padding: 1pt 4pt;
+      padding: 1pt 3pt;
       border-radius: 3pt;
-      font-size: 9.5pt;
+      font-size: 9pt;
       color: #0f766e;
       border: 1pt solid #e2e8f0;
+    }
+
+    .step-box {
+      background-color: #ffffff;
+      border: 1pt solid #cbd5e1;
+      border-left: 4pt solid #0284c7;
+      padding: 8pt 12pt;
+      margin-bottom: 8pt;
+      border-radius: 4pt;
+    }
+
+    .step-title {
+      font-weight: bold;
+      color: #0369a1;
+      font-size: 10.5pt;
+      margin-bottom: 3pt;
     }
   </style>
 </head>
@@ -18767,360 +18806,462 @@ function testManualSync() {
 
   <!-- COVER / HEADER DOKUMEN -->
   <div class="cover-box">
-    <div class="cover-title">BUKU PANDUAN PENGGUNAAN SISTEM</div>
-    <div class="cover-subtitle">Workforce Management (WFM) & Presensi Barcode Multi-Gudang 24/7</div>
+    <div class="cover-title">BUKU PANDUAN STANDAR OPERASIONAL (SOP)</div>
+    <div class="cover-subtitle">Sistem Workforce Management (WFM) & Presensi Barcode Multi-Gudang 24/7</div>
     <div class="cover-meta">
-      <b>PT Medika Bina Investama (Gudang MBI) & PT Medika Akses Investama (Gudang MAI)</b><br>
-      Edisi Lengkap • Versi Sistem Terkini 2026 • Dilengkapi Standar Operasional Prosedur (SOP)
+      <b>PT Medika Bina Investama (Gudang MBI) &amp; PT Medika Akses Investama (Gudang MAI)</b><br>
+      Edisi Pembaruan Terlengkap â€¢ Versi Sistem Terkini 2026<br>
+      <i>Panduan Langkah demi Langkah untuk Seluruh Divisi &amp; Tingkatan Pengguna</i>
     </div>
   </div>
 
-  <!-- DAFTAR ISI RINGKAS -->
-  <h2>DAFTAR ISI & STRUKTUR PANDUAN</h2>
-  <table style="margin-bottom: 18pt;">
+  <!-- DAFTAR ISI & STRUKTUR PANDUAN -->
+  <h2>DAFTAR ISI &amp; PEMETAAN PANDUAN</h2>
+  <table>
     <thead>
       <tr>
-        <th style="width: 15%;">BAB</th>
-        <th style="width: 55%;">TOPIK PEMBAHASAN</th>
+        <th style="width: 12%;">BAB</th>
+        <th style="width: 58%;">TOPIK PEMBAHASAN</th>
         <th style="width: 30%;">SASARAN PENGGUNA</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><b>BAB 1</b></td>
-        <td>Pengenalan Sistem, Arsitektur Gudang & Akun Login</td>
-        <td>Semua Pengguna & Manajemen</td>
+        <td>Arsitektur Sistem, Pemisahan Gudang MBI &amp; MAI, serta Aturan Akun Login</td>
+        <td>Semua Karyawan &amp; Manajemen</td>
       </tr>
       <tr>
         <td><b>BAB 2</b></td>
-        <td>Sistem Hak Akses Akun Granular (Granular Permissions)</td>
-        <td>Admin & General Manager</td>
+        <td>Operasional Presensi 24 Jam &amp; Aturan Ketat Shift Lintas Hari</td>
+        <td>Staf, Petugas Scanner, SPV</td>
       </tr>
       <tr>
         <td><b>BAB 3</b></td>
-        <td>Operasional Presensi Barcode & Verifikasi Radius GPS</td>
-        <td>Scanner Absen, SPV & Staf</td>
+        <td>Panduan Operasional Langkah Demi Langkah Berdasarkan Peran (SOP Step-by-Step)</td>
+        <td>Staf, Scanner, Coord, SPV, Mgr, Admin</td>
       </tr>
       <tr>
         <td><b>BAB 4</b></td>
-        <td>Manajemen Master Data Karyawan & Sinkronisasi Excel</td>
-        <td>Admin, SPV & Coordinator</td>
+        <td>Manajemen Data Karyawan, Filter Tab Status &amp; Urutan NIK Baku</td>
+        <td>Admin Gudang &amp; Supervisor</td>
       </tr>
       <tr>
         <td><b>BAB 5</b></td>
-        <td>Alur Pengajuan & Approval 2-Stage (Izin, Sakit, Lembur)</td>
-        <td>Staf, SPV, Coordinator & Manager</td>
+        <td>Alur Pengajuan &amp; Approval 2-Stage (Izin, Sakit, Lembur Massal)</td>
+        <td>Coordinator, SPV &amp; General Manager</td>
       </tr>
       <tr>
         <td><b>BAB 6</b></td>
-        <td>Laporan Presensi, Matriks Bulanan & Rekapitulasi Upah</td>
-        <td>Admin, SPV & Manager</td>
+        <td>Laporan Presensi, Matriks Bulanan &amp; Ekspor Excel Payroll 3-Sheet</td>
+        <td>Admin, SPV, Coordinator &amp; Manager</td>
       </tr>
       <tr>
         <td><b>BAB 7</b></td>
-        <td>Pencetakan Kartu ID Card (CR80 Satuan & Lembar A4 ZIP)</td>
-        <td>Admin & Supervisor</td>
+        <td>Pencetakan Kartu ID Card (Satuan PNG, Lembar A4 &amp; Unduh ZIP Instan)</td>
+        <td>Admin &amp; Supervisor</td>
       </tr>
       <tr>
         <td><b>BAB 8</b></td>
-        <td>Database Cloud Firebase 24/7 & Integrasi Spreadsheet</td>
-        <td>Admin Utama</td>
+        <td>Pengaturan Keamanan Akun, Ganti Password &amp; Hak Akses Granular</td>
+        <td>Semua Pemegang Akun Login</td>
       </tr>
       <tr>
         <td><b>BAB 9</b></td>
-        <td>Pengaturan Profil, Sinkronisasi Nama & Tema Aplikasi</td>
-        <td>Semua Akun Login</td>
+        <td>Database Cloud Firebase 24/7, Backup Spreadsheet &amp; Troubleshooting</td>
+        <td>Admin Utama &amp; Tim IT Operasional</td>
       </tr>
     </tbody>
   </table>
 
   <!-- BAB 1 -->
-  <h1>BAB 1: PENGENALAN SISTEM & STRUKTUR AKUN</h1>
+  <h1>BAB 1: ARSITEKTUR SISTEM &amp; KEBIJAKAN AKUN LOGIN</h1>
   <p>
-    <b>WFM Medika</b> adalah sistem terpadu pengelolaan kehadiran, shift kerja 24 jam penuh, pengajuan izin/sakit/cuti, perhitungan jam lembur, dan pencetakan kartu ID Card ber-QR barcode untuk <b>Gudang MBI</b> dan <b>Gudang MAI</b>. Sistem terhubung secara realtime 24/7 menggunakan Google Firebase Cloud Server.
+    <b>WFM Medika</b> adalah sistem operasional terintegrasi untuk pengelolaan kehadiran tenaga kerja, penjadwalan shift 24 jam non-stop, pengajuan lembur, izin/sakit, perhitungan rekapitulasi kehadiran, hingga pencetakan ID Card fisik ber-QR barcode untuk <b>Gudang MBI</b> dan <b>Gudang MAI</b>.
   </p>
 
-  <h2>1.1 Hierarki Peran & Hak Akses Akun</h2>
+  <h2>1.1 Pemisahan Gudang &amp; Database Independen</h2>
   <p>
-    Sistem menerapkan pemisahan tugas <i>(Segregation of Duties)</i> yang ketat antara staf presensi dan jajaran pengelola:
+    Sistem menerapkan pemisahan data 100% antar-gudang menggunakan dua database Firebase Realtime independen:
   </p>
+  <ul>
+    <li><b>Gudang MBI:</b> Menggunakan basis data terisolasi khusus PT Medika Bina Investama.</li>
+    <li><b>Gudang MAI:</b> Menggunakan basis data terisolasi khusus PT Medika Akses Investama.</li>
+  </ul>
+  <div class="callout-danger">
+    <b>âš ï¸ Aturan Pemilihan Gudang Saat Login:</b><br>
+    Pengguna <b>wajib memilih gudang yang sesuai</b> pada tombol pilihan radio di halaman login sebelum memasukkan akun. Akun yang terdaftar di Gudang MBI <b>tidak akan pernah ditemukan</b> jika mencoba masuk dengan posisi kursor berada di Gudang MAI, dan sebaliknya. Hal ini mencegah tertukarnya data operasional antar-lokasi.
+  </div>
 
+  <h2>1.2 Kebijakan Kepemilikan Akun Login (Zero-Account Policy untuk Staff)</h2>
+  <p>
+    Sistem menerapkan efisiensi database dan keamanan tingkat tinggi:
+  </p>
   <table>
     <thead>
       <tr>
         <th>Jabatan / Role</th>
-        <th>Status Akun</th>
-        <th>Fungsi Utama & Wewenang</th>
+        <th>Status Akun Web</th>
+        <th>Metode Operasional &amp; Tugas</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><span class="badge badge-admin">ADMIN UTAMA</span></td>
-        <td>Memiliki Akun Login</td>
-        <td>Pengelola konfigurasi sistem, database, hak akses granular, import/export Excel master, koordinat GPS, dan backup Google Sheet.</td>
+        <td><span class="badge badge-staff">WAREHOUSE STAFF</span></td>
+        <td><b>TIDAK ADA AKUN LOGIN</b></td>
+        <td>Karyawan pelaksana gudang <b>tidak perlu login web</b>. Cukup membawa kartu fisik ID Card ber-barcode dan melakukan scan di pos presensi. Hal ini mencegah kebocoran password, manipulasi data, dan meringankan sistem.</td>
       </tr>
       <tr>
-        <td><span class="badge badge-mgr">GENERAL MANAGER</span></td>
-        <td>Memiliki Akun Login</td>
-        <td>Persetujuan Final (Tahap 2) Cuti/Sakit & Lembur, pemantauan dua gudang secara bebas, pengaturan hak akses, serta rekapitulasi biaya.</td>
-      </tr>
-      <tr>
-        <td><span class="badge badge-spv">SUPERVISOR (SPV)</span></td>
-        <td>Memiliki Akun Login</td>
-        <td>Persetujuan Awal (Tahap 1) Cuti/Sakit & Lembur, monitoring presensi harian, download laporan Excel, dan cetak kartu ID Card.</td>
+        <td><span class="badge badge-scanner">POS SCANNER</span></td>
+        <td>Memiliki Akun Login Khusus</td>
+        <td>Akun dedicated (<code>ABSEN-MBI</code> / <code>ABSEN-MAI</code>) yang login pada tablet / smartphone yang terpasang di meja pos absensi gudang.</td>
       </tr>
       <tr>
         <td><span class="badge badge-crd">COORDINATOR</span></td>
         <td>Memiliki Akun Login</td>
-        <td>Input permohonan lembur massal (batch overtime), input sakit/izin staf, monitoring kehadiran, dan download laporan.</td>
+        <td>Mengajukan lembur massal (batch overtime) untuk anggota tim, menginput izin/sakit staf, memantau kehadiran harian, dan mendownload rekap.</td>
       </tr>
       <tr>
-        <td><span class="badge badge-scanner">POS SCANNER</span></td>
+        <td><span class="badge badge-spv">SUPERVISOR (SPV)</span></td>
         <td>Memiliki Akun Login</td>
-        <td>Akun dedicated pada tablet / HP pos absensi gudang. Terkunci khusus untuk scan barcode ID Card kamera dan verifikasi GPS.</td>
+        <td>Verifikator Tahap 1 pengajuan izin/sakit &amp; lembur, monitoring kehadiran harian, dan pencetakan ID Card.</td>
       </tr>
       <tr>
-        <td><span class="badge badge-staff">WAREHOUSE STAFF</span></td>
-        <td>Data Master Presensi</td>
-        <td>Karyawan operasional gudang. Melakukan presensi dengan membawa ID Card ber-barcode di pos scanner tanpa perlu login web.</td>
+        <td><span class="badge badge-mgr">GENERAL MANAGER</span></td>
+        <td>Memiliki Akun Login Lintas Gudang</td>
+        <td>Pemberi persetujuan akhir (Final Approval Tahap 2) lembur &amp; cuti, monitoring lintas gudang (MBI &amp; MAI via fitur switch warehouse), dan audit biaya.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-admin">ADMIN GUDANG</span></td>
+        <td>Memiliki Akun Login</td>
+        <td>Pengelola master data karyawan, konfigurasi GPS, hak akses, backup Google Sheet, dan download laporan payroll.</td>
       </tr>
     </tbody>
   </table>
 
-  <div class="callout">
-    <b>💡 Catatan Keamanan Akun:</b><br>
-    Hanya akun jajaran manajemen (Admin, Manager, Supervisor, Coordinator) dan Pos Scanner yang memiliki akun login ke sistem. Karyawan biasa tidak memerlukan akun login demi menjaga integritas data presensi.
-  </div>
-
   <!-- BAB 2 -->
-  <h1>BAB 2: KONTROL HAK AKSES AKUN (GRANULAR PERMISSION)</h1>
+  <h1>BAB 2: OPERASIONAL PRESENSI 24 JAM &amp; SHIFT LINTAS HARI</h1>
   <p>
-    Sistem dilengkapi mesin kontrol hak akses granular <i>(Granular Permission Engine)</i> yang memungkinkan Admin Utama atau Manager memberikan atau membatasi kewenangan spesifik per akun karyawan.
+    Gudang beroperasi 24 jam sehari yang terbagi dalam beberapa shift, termasuk shift malam yang melewati pergantian hari kalender <i>(Cross-Day Shift)</i>.
   </p>
 
-  <h2>2.1 Cara Mengatur Hak Akses Akun</h2>
+  <h2>2.1 Aturan Mutlak Presensi Masuk vs Pulang</h2>
+  <div class="callout-warning">
+    <b>â›” ATURAN KETAT SISTEM (ANTI-DOUBLE MASUK):</b><br>
+    Seorang karyawan <b>TIDAK BISA melakukan Absen Masuk (Check-In) kembali jika sesi presensi sebelumnya belum melakukan Absen Pulang (Check-Out)</b>.
+  </div>
+  <p>
+    Aturan ini berlaku mutlak untuk semua shift, terutama <b>Shift Malam Lintas Hari</b>:
+  </p>
+  <ul>
+    <li><b>Contoh Kasus Shift Malam:</b> Karyawan masuk pukul 21:00 WIB (malam). Keesokan paginya pukul 06:00 WIB saat jam pulang kerja, karyawan <b>wajib memilih tombol Absen Pulang</b>.</li>
+    <li><b>Penolakan Otomatis Sistem:</b> Jika karyawan atau petugas scanner salah menekan tombol (memilih tombol Masuk pada pukul 06:00), sistem secara cerdas akan mendeteksi sesi kerja aktif dalam rentang 18 jam terakhir dan <b>MENOLAK</b> scan tersebut dengan peringatan:<br>
+    <i>"Gagal: Anda masih memiliki sesi kerja aktif yang belum absen Pulang! Silakan lakukan Absen Pulang (Check-Out) terlebih dahulu."</i></li>
+    <li><b>Proteksi Double Tap:</b> Sistem mencegah barcode ter-scan dua kali berturut-turut dalam beberapa detik secara tidak sengaja.</li>
+  </ul>
+
+  <h2>2.2 Validasi Geofencing Radius GPS Gudang</h2>
+  <p>
+    Untuk memastikan presensi dilakukan secara fisik di lingkungan gudang dan bukan dari luar:
+  </p>
   <ol>
-    <li>Masuk ke sistem menggunakan akun <b>Admin Utama</b> atau akun yang memiliki izin <code>perm_sys_manage_permissions</code>.</li>
-    <li>Buka menu sidebar <b>Hak Akses Akun</b>.</li>
-    <li>Pada dropdown <b>Pilih Akun Manajemen</b>, pilih akun yang ingin diatur izinnya. Daftar pilihan menampilkan nama akun mutakhir beserta NIK, Jabatan, dan Gudang asalnya.</li>
-    <li>Pilih status kewenangan pada setiap modul dengan menekan tombol:
-      <ul>
-        <li><b style="color: #059669;">🟢 IZINKAN:</b> Memberikan hak akses membuka menu / mengeksekusi fitur.</li>
-        <li><b style="color: #dc2626;">🔴 TOLAK:</b> Mengunci dan menyembunyikan menu / tombol tersebut secara total dari akun yang bersangkutan.</li>
-      </ul>
-    </li>
-    <li>Gunakan tombol <b>Preset Cepat</b> jika ingin menerapkan konfigurasi standar (misal: <i>Super Admin Full Akses</i>, <i>Supervisor Default</i>, atau <i>Reset Semua Ditolak</i>).</li>
-    <li>Klik tombol <b>Simpan Hak Akses Akun</b>. Izin otomatis aktif seketika dan tersinkron ke Cloud Firebase.</li>
+    <li>Setiap kali tombol kamera scanner dibuka, browser perangkat scanner akan meminta izin pembacaan GPS.</li>
+    <li>Sistem menghitung jarak garis lurus antara koordinat perangkat scanner saat itu dengan titik pusat resmi gudang.</li>
+    <li>Jika jarak melebihi batas radius yang ditetapkan (misal &gt; 50 meter), presensi ditolak dengan notifikasi <i>"Di Luar Radius Gudang"</i>.</li>
   </ol>
 
   <!-- BAB 3 -->
-  <h1>BAB 3: OPERASIONAL PRESENSI BARCODE & RADIUS GPS</h1>
+  <h1>BAB 3: PANDUAN LANGKAH OPERASIONAL (SOP STEP-BY-STEP)</h1>
   <p>
-    Presensi staf dilakukan dengan men-scan Barcode QR pada ID Card fisik di depan kamera HP/tablet pos scanner yang ditempatkan di gudang.
+    Berikut adalah panduan praktis langkah demi langkah untuk setiap peran agar seluruh karyawan dapat langsung menjalankan tugasnya:
   </p>
 
-  <h2>3.1 Standar Operasional Presensi (SOP)</h2>
-  <ol>
-    <li>Login pada perangkat pos absensi menggunakan akun Scanner Gudang (<code>ABSEN-MBI</code> atau <code>ABSEN-MAI</code>).</li>
-    <li>Pilih tipe presensi yang sedang berlangsung: <b>Masuk (Check In)</b> atau <b>Pulang (Check Out)</b>.</li>
-    <li>Klik tombol <b>Buka Kamera Scanner</b>. Pastikan izin akses kamera dan izin GPS browser diberikan (Allow).</li>
-    <li>Staf mengarahkan kartu ID Card ke kotak bidik kamera.</li>
-    <li>Sistem secara instan melakukan validasi ganda:
-      <ul>
-        <li><b>Validasi Identitas Barcode:</b> Mencocokkan NIK & nama staf pada database aktif.</li>
-        <li><b>Validasi Geofencing GPS:</b> Memastikan koordinat HP scanner berada di dalam radius toleransi resmi gudang.</li>
-      </ul>
-    </li>
-    <li>Sistem mengeluarkan notifikasi suara berbahasa Indonesia dan mencatat waktu presensi secara akurat pada detik tersebut.</li>
-  </ol>
+  <div class="step-box">
+    <div class="step-title">3.1 SOP KARYAWAN OPERASIONAL (WAREHOUSE STAFF)</div>
+    <ol>
+      <li><b>Persiapan:</b> Bawalah kartu fisik ID Card ber-barcode resmi yang telah dibagikan oleh Supervisor/Admin.</li>
+      <li><b>Menuju Pos Absensi:</b> Datangi meja pos scanner presensi saat jam kedatangan (sebelum shift dimulai) dan saat jam kepulangan (setelah shift selesai).</li>
+      <li><b>Perhatikan Mode Tombol Scanner:</b> Lihat layar scanner, pastikan petugas/pos scanner sedang membuka mode yang tepat:
+        <ul>
+          <li>Pilih <b>Absen Masuk</b> saat Anda baru tiba di gudang untuk memulai shift kerja.</li>
+          <li>Pilih <b>Absen Pulang</b> saat Anda telah menyelesaikan jam kerja shift Anda.</li>
+        </ul>
+      </li>
+      <li><b>Arahkan Kartu ke Kamera:</b> Posisikan QR Barcode pada ID Card Anda tepat di depan lensa kamera pada jarak 10â€“20 cm.</li>
+      <li><b>Konfirmasi Suara &amp; Layar:</b>
+        <ul>
+          <li>Terdengar suara ramah: <i>"Presensi Berhasil Masuk"</i> atau <i>"Presensi Berhasil Pulang"</i>.</li>
+          <li>Layar akan menampilkan kotak hijau berisi Nama Lengkap, NIK, Jam Presensi, dan Departemen Anda.</li>
+        </ul>
+      </li>
+      <li><b>Jika Izin / Sakit / Lembur:</b> Laporkan kepada Coordinator atau Supervisor Anda agar diinputkan secara resmi ke dalam sistem.</li>
+    </ol>
+  </div>
 
-  <h2>3.2 Pengaturan & Kalibrasi Radius GPS Gudang</h2>
-  <p>
-    Admin, Manager, Supervisor, dan Coordinator dapat menyesuaikan titik koordinat dan batas radius validasi:
-  </p>
-  <ul>
-    <li><b>Cek Jarak GPS:</b> Fitur diagnostik membaca posisi HP saat ini dan mengukur jarak meter ke titik pusat gudang.</li>
-    <li><b>Daftarkan Titik HP Saat Ini (Kalibrasi):</b> Mengunci titik koordinat resmi gudang sesuai lokasi GPS HP saat ini.</li>
-    <li><b>Ubah Radius Validasi:</b> Mengatur batas radius (misal: 30m, 50m, 100m, 200m). Perubahan otomatis berlaku ke seluruh scanner.</li>
-  </ul>
+  <div class="step-box">
+    <div class="step-title">3.2 SOP PETUGAS POS SCANNER PRESENSI (HP / TABLET POS GUDANG)</div>
+    <ol>
+      <li><b>Persiapan Perangkat:</b> Gunakan smartphone atau tablet pos gudang. Pastikan baterai mencukupi, internet stabil, dan GPS perangkat aktif.</li>
+      <li><b>Akses Aplikasi:</b> Buka link web WFM Medika di browser Google Chrome / Safari.</li>
+      <li><b>Pilih Gudang:</b> Klik radio button <b>Gudang MBI</b> atau <b>Gudang MAI</b> sesuai lokasi pos Anda.</li>
+      <li><b>Login Akun Scanner:</b> Masukkan NIK Scanner (<code>ABSEN-MBI</code> untuk MBI atau <code>ABSEN-MAI</code> untuk MAI) dengan password <code>medika123</code>, atau klik tombol <i>"Masuk Cepat Akun Scanner"</i>.</li>
+      <li><b>Izinkan Akses Kamera &amp; Lokasi:</b> Saat muncul popup browser, pilih <b>Allow (Izinkan)</b> untuk Kamera dan Lokasi.</li>
+      <li><b>Cek Validasi GPS:</b> Klik tombol <b>Cek Jarak GPS</b>. Pastikan jarak berada di bawah batas radius (muncul label hijau: <i>Dalam Radius Gudang</i>).</li>
+      <li><b>Membuka Scanner:</b>
+        <ul>
+          <li>Saat pergantian jam masuk: Klik tab <b>Masuk (Check In)</b> lalu klik <b>Buka Kamera Scanner</b>.</li>
+          <li>Saat pergantian jam pulang: Klik tab <b>Pulang (Check Out)</b> lalu klik <b>Buka Kamera Scanner</b>.</li>
+        </ul>
+      </li>
+      <li><b>Operasional Berjalan:</b> Letakkan perangkat pada holder/stand meja agar karyawan dapat men-scan kartu secara mandiri dan tertib.</li>
+    </ol>
+  </div>
+
+  <div class="step-box">
+    <div class="step-title">3.3 SOP COORDINATOR GUDANG</div>
+    <ol>
+      <li><b>Login Sistem:</b> Buka sistem, pilih gudang Anda, masukkan NIK/Nama Coordinator dan kata sandi Anda.</li>
+      <li><b>Monitoring Kehadiran Tim:</b> Buka menu <b>Record Absen</b> untuk memantau siapa saja staf regu Anda yang sudah hadir atau belum tiba.</li>
+      <li><b>Pengajuan Lembur Massal (Batch Overtime):</b>
+        <ul>
+          <li>Buka menu <b>Lembur (Overtime)</b> lalu pilih tab <b>Input Lembur Massal</b>.</li>
+          <li>Pilih tanggal pelaksanaan lembur, jam mulai, dan jam estimasi selesai.</li>
+          <li>Centang nama-nama staf regu Anda yang ditugaskan lembur pada daftar centang.</li>
+          <li>Ketikkan rincian tugas operasional (contoh: <i>Bongkar muat kontainer obat inbound</i>).</li>
+          <li>Klik <b>Ajukan Lembur Massal</b>. Pengajuan otomatis terkirim ke Supervisor untuk Approval Tahap 1.</li>
+        </ul>
+      </li>
+      <li><b>Input Izin / Sakit Staf:</b> Jika ada staf yang berhalangan, buka menu <b>Pengajuan Izin/Sakit</b>, pilih nama staf, tipe (Sakit/Izin/Cuti), tanggal, dan kirim pengajuan.</li>
+    </ol>
+  </div>
+
+  <div class="step-box">
+    <div class="step-title">3.4 SOP SUPERVISOR (SPV)</div>
+    <ol>
+      <li><b>Login Sistem:</b> Masuk dengan akun Supervisor gudang Anda.</li>
+      <li><b>Verifikasi Kehadiran Harian:</b> Buka menu <b>Record Presensi</b> dan <b>Matriks Absensi</b> untuk mengevaluasi kedisiplinan dan jumlah kehadiran harian.</li>
+      <li><b>Approval Tahap 1 (Cuti/Sakit &amp; Lembur):</b>
+        <ul>
+          <li>Buka menu <b>Approval Pengajuan</b>. Seluruh pengajuan yang menunggu persetujuan akan tampil.</li>
+          <li>Periksa kesesuaian jam lembur atau surat sakit staf.</li>
+          <li>Klik tombol hijau <b>Setujui Tahap 1</b> jika sesuai, atau tombol merah <b>Tolak</b> jika tidak disetujui disertai alasan.</li>
+          <li>Setelah disetujui SPV, status pengajuan otomatis naik ke General Manager untuk persetujuan akhir.</li>
+        </ul>
+      </li>
+      <li><b>Cetak ID Card Karyawan Baru:</b> Jika ada karyawan baru masuk regu kerja, buka menu <b>Data Karyawan</b>, cari nama karyawan, dan klik tombol <b>ID Card</b> untuk mencetak kartu fisiknya.</li>
+    </ol>
+  </div>
+
+  <div class="step-box">
+    <div class="step-title">3.5 SOP GENERAL MANAGER (MGR)</div>
+    <ol>
+      <li><b>Login Sistem:</b> Masuk dengan NIK <code>MGR001</code> dan kata sandi pribadi Anda.</li>
+      <li><b>Pemantauan Multi-Gudang (Switch Warehouse):</b> Manager memiliki wewenang memantau dua gudang secara bebas. Gunakan tombol switcher di bagian atas navigasi untuk beralih antara <b>Gudang MBI</b> dan <b>Gudang MAI</b>.</li>
+      <li><b>Approval Final (Tahap 2):</b>
+        <ul>
+          <li>Buka menu <b>Approval Pengajuan</b>. Filter pengajuan yang telah berstatus <i>Disetujui SPV (Menunggu Final)</i>.</li>
+          <li>Evaluasi urgensi operasional dan estimasi anggaran biaya upah lembur.</li>
+          <li>Klik <b>Setujui Final</b> untuk mengesahkan pengajuan. Status pengajuan langsung berubah menjadi <b>Disetujui Penuh (Selesai)</b> dan siap dicairkan oleh payroll.</li>
+        </ul>
+      </li>
+      <li><b>Audit &amp; Rekapitulasi Upah:</b> Tinjau rekap bulanan pada menu <b>Matriks &amp; Rekap Lembur</b> untuk memastikan efisiensi tenaga kerja antar-vendor.</li>
+    </ol>
+  </div>
+
+  <div class="step-box">
+    <div class="step-title">3.6 SOP ADMINISTRATOR SISTEM (ADMIN GUDANG)</div>
+    <ol>
+      <li><b>Login Sistem:</b> Masuk dengan akun Admin Gudang resmi (<code>ADM001</code> / <code>ADM-MAI</code>).</li>
+      <li><b>Pemeliharaan Master Karyawan:</b> Menambah data karyawan baru, mengedit data vendor outsource, dan mengaktifkan/menonaktifkan karyawan yang resign.</li>
+      <li><b>Kalibrasi Koordinat GPS:</b> Jika ada pemindahan meja pos scanner, buka menu <b>Kalibrasi GPS</b>, bawa HP ke titik pos baru, lalu klik <i>"Daftarkan Titik HP Saat Ini"</i> dan sesuaikan radius meter.</li>
+      <li><b>Kelola Hak Akses Granular:</b> Mengatur wewenang tombol &amp; menu per akun di menu <b>Hak Akses Akun</b>.</li>
+      <li><b>Pencetakan Kartu Massal:</b> Menggunakan fitur <i>"Download Semua ID Card (ZIP)"</i> atau <i>"Cetak Lembar A4"</i> saat pengadaan kartu massal.</li>
+      <li><b>Download &amp; Backup Payroll:</b> Mengunduh berkas rekapitulasi kehadiran bulanan format <b>Excel 3-Sheet</b> untuk diserahkan ke bagian HRD/Payroll.</li>
+    </ol>
+  </div>
 
   <!-- BAB 4 -->
-  <h1>BAB 4: MANAJEMEN DATA KARYAWAN & EXCEL MASTER</h1>
-  <p>
-    Pengelolaan data karyawan mendukung penambahan manual satuan serta impor massal dari dokumen Excel <code>.xlsx</code>.
-  </p>
+  <h1>BAB 4: MANAJEMEN DATA KARYAWAN &amp; FILTER STATUS</h1>
 
-  <h2>4.1 Ketentuan Impor Master Data Excel</h2>
+  <h2>4.1 Penomoran NIK Baku &amp; Urutan Master Data</h2>
   <p>
-    Sistem membaca format Excel secara cerdas dan fleksibel:
+    Sistem menggunakan standarisasi kode NIK unik yang terkunci secara permanen:
+  </p>
+  <ul>
+    <li><b>Gudang MBI:</b> NIK berformat <code>MBI26-001</code> hingga <code>MBI26-126</code> (total 126 karyawan master).</li>
+    <li><b>Gudang MAI:</b> NIK berformat <code>MAI26-001</code> hingga <code>MAI26-050</code> (total 50 karyawan master).</li>
+    <li><b>Integritas Nomor Urut:</b> Nomor NIK karyawan bersifat mutlak dan tidak akan bergeser meskipun ada penambahan atau pengeditan data.</li>
+  </ul>
+
+  <h2>4.2 Fungsi Tab Filter Status (Semua, Aktif, Nonaktif)</h2>
+  <p>
+    Pada tabel Data Karyawan terdapat 3 tab status untuk mempermudah pengecekan:
   </p>
   <table>
     <thead>
       <tr>
-        <th>Kolom Excel</th>
-        <th>Format yang Diterima</th>
-        <th>Keterangan Sistem</th>
+        <th style="width: 20%;">Tab Filter</th>
+        <th style="width: 25%;">Tampilan Jumlah</th>
+        <th style="width: 55%;">Fungsi &amp; Keterangan</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><b>ID Karyawan / NIK</b></td>
-        <td><code>MBI26-001</code>, <code>64</code>, <code>SPV-MBI</code></td>
-        <td>Nilai NIK dari Excel dijadikan <b>Nilai Mutlak</b> karyawan tersebut dan urutan baris Excel 100% dipertahankan.</td>
+        <td><b>Tab "Semua"</b></td>
+        <td>126 Karyawan (MBI)</td>
+        <td>Menampilkan seluruh arsip data master karyawan, baik yang sedang aktif bekerja maupun yang sudah dinonaktifkan.</td>
       </tr>
       <tr>
-        <td><b>Nama Karyawan</b></td>
-        <td>Teks Nama Lengkap</td>
-        <td>Identitas mutlak orang. Dilindungi dari kerusakan teks angka/ID.</td>
+        <td><b>Tab "Aktif"</b></td>
+        <td>125 Karyawan (MBI)</td>
+        <td>Hanya menampilkan karyawan yang masih aktif bekerja sehari-hari. Karyawan yang nonaktif disaring keluar dari tampilan tabel.</td>
       </tr>
       <tr>
-        <td><b>Departemen</b></td>
-        <td>Warehouse Staff / Supervisor / Coordinator</td>
-        <td>Menentukan bagian penugasan kerja karyawan.</td>
-      </tr>
-      <tr>
-        <td><b>Posisi / Role</b></td>
-        <td><code>staff</code>, <code>supervisor</code>, <code>coordinator</code></td>
-        <td>Jika diset supervisor/coordinator, sistem otomatis membuatkan akun login mandiri (Password default: <code>medika123</code>).</td>
-      </tr>
-      <tr>
-        <td><b>Outsource (Vendor)</b></td>
-        <td><code>ADP</code>, <code>Staffinc</code>, <code>Internal</code></td>
-        <td>Pengelompokan vendor tenaga kerja untuk laporan bulanan.</td>
-      </tr>
-      <tr>
-        <td><b>No Telepon & Email</b></td>
-        <td>Nomor HP & Alamat Email</td>
-        <td>Kontak karyawan (wajib minimal 5 digit angka untuk nomor telpon).</td>
-      </tr>
-      <tr>
-        <td><b>Join Date</b></td>
-        <td><code>YYYY-MM-DD</code> atau Serial Excel</td>
-        <td>Tanggal resmi mulai bertugas di gudang.</td>
+        <td><b>Tab "Nonaktif"</b></td>
+        <td>1 Karyawan (MBI)</td>
+        <td>Khusus menampilkan karyawan yang telah dinonaktifkan (misal karena resign/mutasi) untuk keperluan audit data historis.</td>
       </tr>
     </tbody>
   </table>
 
-  <!-- BAB 5 -->
-  <h1>BAB 5: ALUR PENGAJUAN & APPROVAL 2-STAGE</h1>
-  <p>
-    Pengajuan izin, sakit, cuti, maupun lembur menerapkan sistem persetujuan 2 tingkat yang transparan dan akuntabel.
-  </p>
-
-  <h2>5.1 Diagram Alur Persetujuan (Workflow)</h2>
-  <table style="text-align: center;">
-    <thead>
-      <tr>
-        <th style="text-align: center;">TAHAP 1: PENGAJUAN</th>
-        <th style="text-align: center;">TAHAP 2: APPROVAL SPV</th>
-        <th style="text-align: center;">TAHAP 3: APPROVAL FINAL</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>
-          <b>Coordinator / SPV / Staf</b><br>
-          Mengisi form pengajuan izin/sakit atau lembur massal (Batch Overtime).
-        </td>
-        <td>
-          <b>Supervisor (SPV)</b><br>
-          Memverifikasi kesesuaian jam kerja/kebutuhan operasional.<br>
-          <span class="badge badge-spv">Setujui Tahap 1</span> / <span class="badge badge-admin">Tolak</span>
-        </td>
-        <td>
-          <b>General Manager (MGR)</b><br>
-          Persetujuan final pengesahan cuti dan pencairan upah lembur.<br>
-          <span class="badge badge-mgr">Setujui Final</span> / <span class="badge badge-admin">Tolak</span>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  <h2>5.2 Input Lembur Massal (Batch Overtime)</h2>
+  <h2>4.3 Prosedur Nonaktifkan / Aktifkan Karyawan (Tanpa Hapus Data)</h2>
   <ol>
-    <li>Buka menu <b>Lembur (Overtime)</b> lalu pilih <b>Input Lembur Massal</b>.</li>
-    <li>Tentukan tanggal pelaksanaan lembur, jam mulai, dan jam selesai.</li>
-    <li>Beri tanda centang pada nama-nama karyawan yang ditugaskan lembur.</li>
-    <li>Ketikkan keterangan tugas operasional, lalu klik <b>Ajukan Lembur Massal</b>.</li>
-    <li>Sistem otomatis menghitung durasi jam dan estimasi upah lembur per jam.</li>
+    <li>Cari nama karyawan pada menu <b>Data Karyawan</b>.</li>
+    <li>Pada kolom aksi, klik tombol kuning <b>Nonaktifkan</b>. Status karyawan langsung berubah menjadi Nonaktif.</li>
+    <li><b>Keunggulan:</b> Barcode presensinya otomatis terkunci (tidak bisa absen lagi), namun seluruh riwayat presensi masa lalunya tetap utuh 100% dan tidak hilang dari laporan rekap gaji.</li>
+    <li>Jika karyawan kembali bekerja, cukup klik tombol hijau <b>Aktifkan</b> untuk mengaktifkannya kembali.</li>
   </ol>
 
-  <!-- BAB 6 -->
-  <h1>BAB 6: LAPORAN & REKAPITULASI PRESENSI</h1>
+  <!-- BAB 5 -->
+  <h1>BAB 5: ALUR PENGAJUAN &amp; APPROVAL 2-STAGE</h1>
   <p>
-    Sistem menyediakan berbagai format laporan kehadiran yang siap digunakan untuk kebutuhan operasional harian maupun payroll bulanan.
+    Semua bentuk izin, sakit, cuti, dan lembur operasional wajib melalui sistem persetujuan dua pintu yang transparan:
   </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Tahap 1: Pengajuan</th>
+        <th>Tahap 2: Verifikasi SPV</th>
+        <th>Tahap 3: Approval Final Manager</th>
+        <th>Hasil Akhir</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Diajukan oleh <b>Coordinator / SPV / Staf</b></td>
+        <td>Diverifikasi oleh <b>Supervisor (SPV)</b> gudang bersangkutan</td>
+        <td>Disahkan secara mutlak oleh <b>General Manager</b></td>
+        <td><span class="badge badge-success">DISETUJUI PENUH</span> (Siap cair di payroll)</td>
+      </tr>
+    </tbody>
+  </table>
 
-  <h2>6.1 Format Laporan yang Tersedia</h2>
+  <!-- BAB 6 -->
+  <h1>BAB 6: REKAPITULASI PRESENSI &amp; EKSPOR EXCEL PAYROLL</h1>
+
+  <h2>6.1 Fitur Laporan Operasional</h2>
   <ul>
-    <li><b>Record Presensi Harian:</b> Rincian waktu tap masuk, tap pulang, status keterlambatan, dan catatan setiap staf.</li>
-    <li><b>Matriks Kehadiran Bulanan:</b> Grid kalender tanggal 1 s.d. 31 yang memetakan status kehadiran dengan kode:
+    <li><b>Record Absensi Harian:</b> Memperlihatkan jam tap masuk, jam tap pulang, durasi jam kerja, vendor tenaga kerja (Staffinc, ADP, Internal), dan status keterlambatan per detik.</li>
+    <li><b>Matriks Kalender Bulanan:</b> Menampilkan tabel tanggal 1 sampai 31 dengan sandi kehadiran resmi:
       <ul>
-        <li><code>H</code> = Hadir Tepat Waktu</li>
-        <li><code>T</code> = Terlambat</li>
-        <li><code>S</code> = Sakit (dengan approval)</li>
-        <li><code>I</code> = Izin Resmi</li>
-        <li><code>C</code> = Cuti Tahunan</li>
-        <li><code>A</code> = Alpha / Tanpa Keterangan</li>
+        <li><code>H</code> = Hadir Tepat Waktu (Hijau)</li>
+        <li><code>T</code> = Hadir Terlambat (Kuning/Oranye)</li>
+        <li><code>S</code> = Sakit dengan persetujuan (Biru Muda)</li>
+        <li><code>I</code> = Izin resmi dengan persetujuan (Biru)</li>
+        <li><code>C</code> = Cuti resmi (Ungu)</li>
+        <li><code>A</code> = Alpha / Tanpa keterangan (Merah)</li>
       </ul>
     </li>
-    <li><b>Salin Matriks ke WhatsApp:</b> Tombol sekali klik untuk menyalin format teks tabel matriks lengkap agar dapat langsung ditempel ke grup WhatsApp manajemen.</li>
-    <li><b>Ekspor Excel (.xlsx):</b> Mengunduh berkas spreadsheet resmi rekapitulasi kehadiran dan lembur bulanan.</li>
+    <li><b>Salin Matriks ke WhatsApp Sekali Klik:</b> Tombol yang menyusun teks matriks lengkap secara otomatis ke clipboard sehingga Anda tinggal melakukan <i>Paste (Ctrl+V)</i> ke grup chat WhatsApp pimpinan.</li>
+    <li><b>Ekspor Berkas Excel 3-Sheet:</b> Mengunduh berkas spreadsheet terstandarisasi yang berisi 3 lembar kerja langsung:
+      <ol>
+        <li><i>Sheet 1: RECORD ABSEN</i> (Rincian seluruh tap log)</li>
+        <li><i>Sheet 2: REKAP PENGAJUAN</i> (Rekap izin, sakit, cuti yang sah)</li>
+        <li><i>Sheet 3: REKAP LEMBUR</i> (Total jam lembur dan kalkulasi upah)</li>
+      </ol>
+    </li>
   </ul>
 
   <!-- BAB 7 -->
-  <h1>BAB 7: CETAK KARTU ID CARD BER-QR BARCODE</h1>
+  <h1>BAB 7: PENCETAKAN KARTU ID CARD FISIK</h1>
   <p>
-    Seluruh kartu karyawan dirancang mengikuti standar ukuran fisik kartu industri <b>CR80 (54mm × 85.6mm)</b> dengan QR barcode beresolusi tajam.
-  </p>
-
-  <h2>7.1 Fitur Pencetakan & Unduh Kartu</h2>
-  <ol>
-    <li><b>Cetak / Download Satuan (PNG):</b> Mengunduh kartu individual berformat gambar PNG tajam siap cetak.</li>
-    <li><b>Cetak Lembar Massal A4:</b> Tata letak otomatis 9 kartu per lembar A4 portrait dengan garis panduan potong presisi.</li>
-    <li><b>Download Semua Kartu (ZIP):</b> Memaketkan ratusan kartu karyawan ke dalam satu file ZIP terkompresi secara instan (1-2 detik) menggunakan pemrosesan paralel JSZip.</li>
-    <li><b>QR Barcode Lokasi Gudang:</b> Mencetak QR Code titik koordinat absensi untuk dipasang di dinding pos gudang.</li>
-  </ol>
-
-  <!-- BAB 8 -->
-  <h1>BAB 8: DATABASE CLOUD FIREBASE & GOOGLE SPREADSHEET</h1>
-
-  <h2>8.1 Sinkronisasi Otomatis 24/7</h2>
-  <p>
-    Setiap ada penambahan data karyawan, perubahan hak akses, atau scan presensi, sistem secara otomatis:
+    Seluruh kartu karyawan dirancang mengikuti standar ukuran fisik kartu industri <b>CR80 (54mm &times; 85.6mm)</b>:
   </p>
   <ul>
-    <li>Mengunggah data ke <b>Google Firebase Realtime Cloud Server</b> dalam hitungan milidetik.</li>
-    <li>Menyiarkan pembaruan data secara langsung ke semua layar HP staf dan pos scanner melalui <i>BroadcastChannel</i> dan <i>Server-Sent Events (SSE)</i>.</li>
+    <li><b>Cetak / Download Satuan (PNG):</b> Menghasilkan gambar beresolusi tinggi (300 DPI) siap cetak di printer kartu PVC.</li>
+    <li><b>Cetak Lembar Massal A4:</b> Secara otomatis membagi seluruh karyawan menjadi lembaran kertas A4 (berisi 9 kartu per lembar portrait) dengan garis panduan potong presisi.</li>
+    <li><b>Download Semua Kartu Sekaligus (ZIP):</b> Tombol canggih berbasis pemrosesan paralel JSZip yang memaketkan seluruh kartu ratusan karyawan ke dalam satu berkas <code>.zip</code> hanya dalam waktu 1â€“2 detik.</li>
   </ul>
 
-  <h2>8.2 Backup Otomatis Google Spreadsheet</h2>
+  <!-- BAB 8 -->
+  <h1>BAB 8: PENGATURAN KEAMANAN &amp; PERGANTIAN PASSWORD</h1>
+
+  <h2>8.1 Prosedur Mengubah Kata Sandi Pribadi</h2>
+  <ol>
+    <li>Login ke sistem dengan akun Anda.</li>
+    <li>Buka menu <b>Pengaturan Akun</b> di sidebar kiri.</li>
+    <li>Pada bagian kata sandi, ketikkan <b>Kata Sandi Baru</b> Anda (minimal 6 karakter).</li>
+    <li>Ketikkan kembali pada kolom <b>Ulangi Kata Sandi Baru</b>.</li>
+    <li>Klik tombol <b>Simpan Perubahan Kata Sandi</b>.</li>
+    <li><b>Jaminan Keamanan:</b> Sistem langsung memusnahkan kata sandi lama Anda seketika. Percobaan login menggunakan kata sandi lama otomatis ditolak.</li>
+  </ol>
+
+  <h2>8.2 Pengaturan Hak Akses Akun Granular</h2>
   <p>
-    Admin Utama dapat memasukkan Web App URL dari Google Apps Script pada menu Pengaturan Cloud untuk mencadangkan seluruh data record presensi secara live ke Google Sheets perusahaan.
+    Admin Utama dan Manager dapat membuka menu <b>Hak Akses Akun</b> untuk mengatur modul apa saja yang boleh dilihat atau ditekan oleh masing-masing akun supervisor atau coordinator (tombol hijau <b>ðŸŸ¢ IZINKAN</b> dan merah <b>ðŸ”´ TOLAK</b>).
   </p>
 
   <!-- BAB 9 -->
-  <h1>BAB 9: PENGATURAN PROFIL, TEMA & TIPOGRAFI</h1>
+  <h1>BAB 9: DATABASE CLOUD &amp; TROUBLESHOOTING FAQ</h1>
 
-  <h2>9.1 Sinkronisasi Nama Akun Antar-Gudang</h2>
+  <h2>9.1 Sinkronisasi Cloud 24/7</h2>
   <p>
-    Saat General Manager atau Admin memperbarui nama lengkap, nomor telepon, atau kata sandi melalui menu <b>Pengaturan Akun</b>:
+    Sistem bekerja secara otomatis mengunggah setiap transaksi ke Google Firebase Realtime Cloud Server dan menyiarkannya seketika ke seluruh perangkat yang sedang membuka halaman web.
   </p>
-  <ul>
-    <li>Perubahan nama otomatis disinkronkan ke kedua database gudang (<b>Gudang MBI</b> & <b>Gudang MAI</b>).</li>
-    <li>Nama pada dropdown <b>Hak Akses Akun</b>, header navigasi atas, tabel laporan, dan riwayat presensi langsung diperbarui secara dinamis tanpa kembali ke nama default awal.</li>
-  </ul>
 
-  <h2>9.2 Pilihan Tema Warna & Font Sistem</h2>
-  <ul>
-    <li><b>Tema Warna:</b> <i>Biru Navy (Default Elegan)</i>, <i>Emerald Medika (Nuansa Farmasi Sehat)</i>, dan <i>Royal Indigo (Modern Kontras)</i>.</li>
-    <li><b>Tipografi Font:</b> <i>Plus Jakarta Sans</i>, <i>Inter UI</i>, dan <i>Times New Roman</i>.</li>
-  </ul>
+  <h2>9.2 Solusi Masalah Umum (Troubleshooting FAQ)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 30%;">Gejala / Pesan Error</th>
+        <th style="width: 30%;">Penyebab Masalah</th>
+        <th style="width: 40%;">Langkah Solusi Praktis</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>"Akun tidak ditemukan di Gudang ini"</b></td>
+        <td>Salah memilih opsi radio gudang di layar login.</td>
+        <td>Pastikan memilih tombol <b>Gudang MBI</b> jika akun Anda terdaftar di MBI, atau <b>Gudang MAI</b> jika di MAI.</td>
+      </tr>
+      <tr>
+        <td><b>"Gagal: Anda masih memiliki sesi aktif yang belum absen Pulang!"</b></td>
+        <td>Karyawan salah memilih mode presensi (memilih Masuk padahal baru datang dari shift malam).</td>
+        <td>Ubah mode scanner pos ke <b>Absen Pulang (Check Out)</b> terlebih dahulu, lalu lakukan scan kartu.</td>
+      </tr>
+      <tr>
+        <td><b>"Di Luar Radius Gudang"</b></td>
+        <td>Lokasi HP scanner berada jauh dari titik resmi atau akurasi GPS HP sedang melayang.</td>
+        <td>Nyalakan High Accuracy Location di setelan HP. Bawa HP ke area pos, atau lakukan kalibrasi koordinat di menu GPS oleh Admin.</td>
+      </tr>
+      <tr>
+        <td><b>Kamera Scanner Gelap / Tidak Muncul</b></td>
+        <td>Izin kamera di browser terblokir.</td>
+        <td>Klik ikon gembok di bilah alamat browser, lalu ubah izin Kamera menjadi <b>Allow (Izinkan)</b>, kemudian refresh halaman.</td>
+      </tr>
+      <tr>
+        <td><b>Data di Laptop Admin Belum Terupdate di HP Pos</b></td>
+        <td>Koneksi internet HP pos sempat terputus sementara.</td>
+        <td>Tekan tombol <b>Refresh Data Cloud</b> di pojok kanan atas, atau gunakan fitur Direct Sync pada menu Pengaturan Cloud.</td>
+      </tr>
+    </tbody>
+  </table>
 
-  <hr style="border: 0; border-top: 1.5pt solid #cbd5e1; margin-top: 30pt; margin-bottom: 12pt;">
-  <p style="text-align: center; font-size: 9pt; color: #64748b;">
-    <b>WFM Medika • Sistem Manajemen Kehadiran & Operasional Gudang Multi-Site</b><br>
-    Dokumen Panduan Resmi • Hak Cipta &copy; 2026 PT Medika Bina Investama & PT Medika Akses Investama. Seluruh hak cipta dilindungi undang-undang.
+  <hr style="border: 0; border-top: 1.5pt solid #cbd5e1; margin-top: 25pt; margin-bottom: 10pt;">
+  <p style="text-align: center; font-size: 8.5pt; color: #64748b;">
+    <b>Buku Panduan Standar Operasional Prosedur (SOP) â€¢ Sistem WFM Medika</b><br>
+    Dokumen Resmi Perusahaan â€¢ Hak Cipta &copy; 2026 PT Medika Bina Investama &amp; PT Medika Akses Investama.<br>
+    <i>Diterbitkan untuk mendukung kelancaran, akurasi, dan kedisiplinan operasional pergudangan 24 jam.</i>
   </p>
 
 </div>
