@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -4549,6 +4549,45 @@
           cleanList.push(u);
           return;
         }
+        const isMelinda = warehouse === 'MBI' && (cClean === 'melindagitawismaya' || cClean.includes('melinda'));
+        if (isMelinda) {
+          u.nik = 'MBI26-122';
+          u.barcodeValue = 'MBI26-122';
+          assignedNiks.add('MBI26-122');
+          cleanList.push(u);
+          return;
+        }
+
+        if (warehouse === 'MAI') {
+          if (cClean === 'akmal' || cClean.includes('akmal')) {
+            u.nik = 'MAI26-034';
+            u.barcodeValue = 'MAI26-034';
+            assignedNiks.add('MAI26-034');
+            cleanList.push(u);
+            return;
+          }
+          if (cClean === 'achmadvikih' || cClean.includes('vikih')) {
+            u.nik = 'MAI26-035';
+            u.barcodeValue = 'MAI26-035';
+            assignedNiks.add('MAI26-035');
+            cleanList.push(u);
+            return;
+          }
+          if (cClean === 'mohamadyuliandi' || cClean.includes('yuliandi')) {
+            u.nik = 'MAI26-041';
+            u.barcodeValue = 'MAI26-041';
+            assignedNiks.add('MAI26-041');
+            cleanList.push(u);
+            return;
+          }
+          if (cClean === 'nirwanfadlipulungan' || cClean.includes('nirwan')) {
+            u.nik = 'MAI26-042';
+            u.barcodeValue = 'MAI26-042';
+            assignedNiks.add('MAI26-042');
+            cleanList.push(u);
+            return;
+          }
+        }
 
         let rawNik = (u.nik && typeof u.nik === 'string') ? u.nik.trim().toUpperCase() : '';
         if (rawNik && /^\d+$/.test(rawNik)) {
@@ -4657,16 +4696,17 @@
             const mgrItem = users.find(u => u && cleanStr(u.name).includes('melinda'));
             const melindaUser = {
               id: `${wh.toLowerCase()}-melinda-${Date.now()}`,
-              name: mgrItem ? mgrItem.name : 'Melinda',
-              dept: 'Warehouse Staff',
+              name: mgrItem ? mgrItem.name : 'Melinda Gita Wismaya',
+              dept: 'Coordinator',
               outsource: (mgrItem && mgrItem.outsource) ? mgrItem.outsource : 'Internal',
               phone: (mgrItem && mgrItem.phone && mgrItem.phone !== '081200000001') ? mgrItem.phone : '-',
               email: (mgrItem && mgrItem.email && !mgrItem.email.includes('eko') && !mgrItem.email.includes('manager')) ? mgrItem.email : '',
               joinDate: (mgrItem && mgrItem.joinDate) ? mgrItem.joinDate : '-',
-              nik: '',
-              role: 'staff',
-              hasAccount: false,
-              password: '',
+              nik: wh === 'MBI' ? 'MBI26-122' : '',
+              barcodeValue: wh === 'MBI' ? 'MBI26-122' : '',
+              role: 'coordinator',
+              hasAccount: true,
+              password: 'medika123',
               isFirstLogin: false,
               warehouse: wh
             };
@@ -4924,6 +4964,50 @@
                 whChanged = true;
               }
               return;
+            }
+            if (wh === 'MBI' && (cName === 'melindagitawismaya' || cName.includes('melinda'))) {
+              if (u.nik !== 'MBI26-122' || u.barcodeValue !== 'MBI26-122') {
+                u.nik = 'MBI26-122';
+                u.barcodeValue = 'MBI26-122';
+                whChanged = true;
+              }
+              return;
+            }
+
+            // Kunci Urutan Baku Excel MAI: No. 34 Akmal, No. 35 Achmad vikih, No. 41 Mohamad Yuliandi, No. 42 Nirwan Fadli Pulungan
+            if (wh === 'MAI') {
+              if (cName === 'akmal' || cName.includes('akmal')) {
+                if (u.nik !== 'MAI26-034' || u.barcodeValue !== 'MAI26-034') {
+                  u.nik = 'MAI26-034';
+                  u.barcodeValue = 'MAI26-034';
+                  whChanged = true;
+                }
+                return;
+              }
+              if (cName === 'achmadvikih' || cName.includes('vikih')) {
+                if (u.nik !== 'MAI26-035' || u.barcodeValue !== 'MAI26-035') {
+                  u.nik = 'MAI26-035';
+                  u.barcodeValue = 'MAI26-035';
+                  whChanged = true;
+                }
+                return;
+              }
+              if (cName === 'mohamadyuliandi' || cName.includes('yuliandi')) {
+                if (u.nik !== 'MAI26-041' || u.barcodeValue !== 'MAI26-041') {
+                  u.nik = 'MAI26-041';
+                  u.barcodeValue = 'MAI26-041';
+                  whChanged = true;
+                }
+                return;
+              }
+              if (cName === 'nirwanfadlipulungan' || cName.includes('nirwan')) {
+                if (u.nik !== 'MAI26-042' || u.barcodeValue !== 'MAI26-042') {
+                  u.nik = 'MAI26-042';
+                  u.barcodeValue = 'MAI26-042';
+                  whChanged = true;
+                }
+                return;
+              }
             }
 
             if (!u.nik) return;
@@ -5649,6 +5733,21 @@
           } else if (wh === 'MBI' && (cMName === 'galangerdiansyah' || (merged.name && merged.name.toUpperCase().includes('GALANG') && merged.name.toUpperCase().includes('ERDIANSYAH')))) {
             merged.nik = 'MBI26-011';
             merged.barcodeValue = 'MBI26-011';
+          } else if (wh === 'MBI' && (cMName === 'melindagitawismaya' || cMName.includes('melinda'))) {
+            merged.nik = 'MBI26-122';
+            merged.barcodeValue = 'MBI26-122';
+          } else if (wh === 'MAI' && (cMName === 'akmal' || cMName.includes('akmal'))) {
+            merged.nik = 'MAI26-034';
+            merged.barcodeValue = 'MAI26-034';
+          } else if (wh === 'MAI' && (cMName === 'achmadvikih' || cMName.includes('vikih'))) {
+            merged.nik = 'MAI26-035';
+            merged.barcodeValue = 'MAI26-035';
+          } else if (wh === 'MAI' && (cMName === 'mohamadyuliandi' || cMName.includes('yuliandi'))) {
+            merged.nik = 'MAI26-041';
+            merged.barcodeValue = 'MAI26-041';
+          } else if (wh === 'MAI' && (cMName === 'nirwanfadlipulungan' || cMName.includes('nirwan'))) {
+            merged.nik = 'MAI26-042';
+            merged.barcodeValue = 'MAI26-042';
           } else if (cloudMatch.nik && cloudMatch.nik.trim() !== '') {
             merged.nik = cloudMatch.nik.toUpperCase().trim();
             merged.barcodeValue = merged.nik;
@@ -6470,6 +6569,41 @@
               if (u.nik !== 'MBI26-011' || u.barcodeValue !== 'MBI26-011') {
                 u.nik = 'MBI26-011';
                 u.barcodeValue = 'MBI26-011';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MBI' && (cUName === 'melindagitawismaya' || cUName.includes('melinda'))) {
+              if (u.nik !== 'MBI26-122' || u.barcodeValue !== 'MBI26-122') {
+                u.nik = 'MBI26-122';
+                u.barcodeValue = 'MBI26-122';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MAI' && (cUName === 'akmal' || cUName.includes('akmal'))) {
+              if (u.nik !== 'MAI26-034' || u.barcodeValue !== 'MAI26-034') {
+                u.nik = 'MAI26-034';
+                u.barcodeValue = 'MAI26-034';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MAI' && (cUName === 'achmadvikih' || cUName.includes('vikih'))) {
+              if (u.nik !== 'MAI26-035' || u.barcodeValue !== 'MAI26-035') {
+                u.nik = 'MAI26-035';
+                u.barcodeValue = 'MAI26-035';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MAI' && (cUName === 'mohamadyuliandi' || cUName.includes('yuliandi'))) {
+              if (u.nik !== 'MAI26-041' || u.barcodeValue !== 'MAI26-041') {
+                u.nik = 'MAI26-041';
+                u.barcodeValue = 'MAI26-041';
+                hasChanges = true;
+              }
+            }
+            if (wh === 'MAI' && (cUName === 'nirwanfadlipulungan' || cUName.includes('nirwan'))) {
+              if (u.nik !== 'MAI26-042' || u.barcodeValue !== 'MAI26-042') {
+                u.nik = 'MAI26-042';
+                u.barcodeValue = 'MAI26-042';
                 hasChanges = true;
               }
             }
@@ -14748,6 +14882,16 @@
               finalNik = 'MBI26-010';
             } else if (targetWh === 'MBI' && (cItemName === 'galangerdiansyah' || (item.name && item.name.toUpperCase().includes('GALANG') && item.name.toUpperCase().includes('ERDIANSYAH')))) {
               finalNik = 'MBI26-011';
+            } else if (targetWh === 'MBI' && (cItemName === 'melindagitawismaya' || cItemName.includes('melinda'))) {
+              finalNik = 'MBI26-122';
+            } else if (targetWh === 'MAI' && (cItemName === 'akmal' || cItemName.includes('akmal'))) {
+              finalNik = 'MAI26-034';
+            } else if (targetWh === 'MAI' && (cItemName === 'achmadvikih' || cItemName.includes('vikih'))) {
+              finalNik = 'MAI26-035';
+            } else if (targetWh === 'MAI' && (cItemName === 'mohamadyuliandi' || cItemName.includes('yuliandi'))) {
+              finalNik = 'MAI26-041';
+            } else if (targetWh === 'MAI' && (cItemName === 'nirwanfadlipulungan' || cItemName.includes('nirwan'))) {
+              finalNik = 'MAI26-042';
             } else if (item.rawNik && item.rawNik.trim() !== '') {
               let n = item.rawNik.trim();
               // Format jika angka murni (e.g. 1 -> MBI26-001, 64 -> MBI26-064)
