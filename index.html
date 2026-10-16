@@ -4118,9 +4118,18 @@
             keys.add(cleanStr(item.id));
             keys.add(item.id.trim().toLowerCase());
           }
+          if (item.nik) {
+            keys.add(cleanStr(item.nik));
+            keys.add(item.nik.trim().toLowerCase());
+          }
         }
       });
       saveDeletedUserKeys(keys);
+    }
+
+    function markDeletedUser(userOrKey) {
+      if (!userOrKey) return;
+      trackDeletedUsers(userOrKey);
     }
 
     function unmarkDeletedUser(nameOrNik) {
@@ -4179,15 +4188,18 @@
       if (rawName === 'agus setiawan' || cName === 'agussetiawan') return true;
       if (rawName === 'budi santoso' || cName === 'budisantoso') return true;
 
-      // Filter nama atau ID Karyawan yang telah resmi dihapus/resign
-      // NIK/ID dari karyawan yang telah resign/dihapus BISA DIGUNAKAN KEMBALI oleh karyawan baru
+      // Filter nama, NIK, atau ID Karyawan yang telah resmi dihapus/resign
       const keys = deletedKeys || getDeletedUserKeys();
       const rawId = (user.id || '').trim().toLowerCase();
       const cId = cleanStr(user.id);
+      const rawNik = (user.nik || '').trim().toLowerCase();
+      const cNik = cleanStr(user.nik);
       if (rawName && keys.has(rawName)) return true;
       if (cName && keys.has(cName)) return true;
       if (rawId && keys.has(rawId)) return true;
       if (cId && keys.has(cId)) return true;
+      if (rawNik && keys.has(rawNik)) return true;
+      if (cNik && keys.has(cNik)) return true;
 
       return false;
     }
@@ -6190,7 +6202,7 @@
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: mbiCoordsToSave,
           gps_radius: mbiRadToSave,
-          deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
+          deleted_user_keys: Array.from(deletedKeys),
           deleted_attendance_ids: Array.from(deletedAttKeys),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
@@ -6202,7 +6214,7 @@
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: maiCoordsToSave,
           gps_radius: maiRadToSave,
-          deleted_user_keys: isProtectedMaster ? ['agus setiawan', 'budi santoso'] : Array.from(deletedKeys),
+          deleted_user_keys: Array.from(deletedKeys),
           deleted_attendance_ids: Array.from(deletedAttKeys),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
@@ -8593,6 +8605,9 @@
         if (!scannerUser.password) scannerUser.password = 'medika123';
       }
       activeWarehouse = warehouse;
+      try { updateWhSwitcherButtons(); } catch(e) {}
+      const attLabel = document.getElementById('att-wh-label');
+      if (attLabel) attLabel.innerText = `Gudang ${warehouse}`;
       try { initFirebaseLiveStream(warehouse); } catch(e) {}
       try { fetchFullDatabaseFromCloud(false, warehouse, true); } catch(e) {}
       loginUserSession(scannerUser);
@@ -9117,6 +9132,7 @@
         currentUser = { ...latestUser };
         currentUser.warehouse = currentUser.warehouse || currentWh || 'MBI';
         activeWarehouse = currentUser.warehouse;
+        try { updateWhSwitcherButtons(); } catch(e) {}
 
         // Pastikan hak akses tersimpan dimuat ke sesi
         if (!currentUser.permissions || Object.keys(currentUser.permissions).length === 0) {
@@ -9342,16 +9358,25 @@
 
     function updateWhSwitcherButtons() {
       const isMBI = activeWarehouse === 'MBI';
-      document.getElementById('wh-btn-mbi').className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
-      document.getElementById('wh-btn-mai').className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      const btnMbi = document.getElementById('wh-btn-mbi');
+      const btnMai = document.getElementById('wh-btn-mai');
+      if (btnMbi) btnMbi.className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      if (btnMai) btnMai.className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
       
-      document.getElementById('dash-wh-label').innerText = activeWarehouse;
-      document.getElementById('stat-wh-note').innerText = `Gudang ${activeWarehouse}`;
-      document.getElementById('emp-wh-title').innerText = activeWarehouse;
-      document.getElementById('att-wh-label').innerText = `Gudang ${activeWarehouse}`;
-      document.getElementById('reports-wh-title').innerText = `Gudang ${activeWarehouse}`;
-      document.getElementById('leave-wh-label').innerText = `Gudang ${activeWarehouse}`;
-      document.getElementById('ot-wh-label').innerText = `Gudang ${activeWarehouse}`;
+      const dashLabel = document.getElementById('dash-wh-label');
+      if (dashLabel) dashLabel.innerText = activeWarehouse;
+      const statNote = document.getElementById('stat-wh-note');
+      if (statNote) statNote.innerText = `Gudang ${activeWarehouse}`;
+      const empTitle = document.getElementById('emp-wh-title');
+      if (empTitle) empTitle.innerText = activeWarehouse;
+      const attLabel = document.getElementById('att-wh-label');
+      if (attLabel) attLabel.innerText = `Gudang ${activeWarehouse}`;
+      const repTitle = document.getElementById('reports-wh-title');
+      if (repTitle) repTitle.innerText = `Gudang ${activeWarehouse}`;
+      const leaveLabel = document.getElementById('leave-wh-label');
+      if (leaveLabel) leaveLabel.innerText = `Gudang ${activeWarehouse}`;
+      const otLabel = document.getElementById('ot-wh-label');
+      if (otLabel) otLabel.innerText = `Gudang ${activeWarehouse}`;
     }
 
     // =========================================================
@@ -9474,6 +9499,10 @@
           try { renderPermissionEditor(); } catch(e) {}
         }
         if (viewName === 'attendance') {
+          try {
+            const attLabel = document.getElementById('att-wh-label');
+            if (attLabel) attLabel.innerText = `Gudang ${activeWarehouse}`;
+          } catch(e) {}
           try { setAttendanceType('check_in'); } catch(e) {}
           try { renderScannerTodayRecords(); } catch(e) {}
           try { switchScanMethod('camera'); } catch(e) {}
@@ -13631,7 +13660,13 @@
       if (user.nik) markDeletedUser(user.nik);
       if (user.id) markDeletedUser(user.id);
 
-      users = users.filter(u => u.nik !== user.nik && u.id !== user.id);
+      users = users.filter(u => {
+        if (!u) return false;
+        if (user.nik && u.nik && String(u.nik).trim().toUpperCase() === String(user.nik).trim().toUpperCase()) return false;
+        if (user.id && u.id && String(u.id).trim() === String(user.id).trim()) return false;
+        if (cleanStr(u.name) === cleanStr(user.name)) return false;
+        return true;
+      });
       setWhDB(actualWh, 'users', users);
       localStorage.setItem(`wfm_${actualWh.toLowerCase()}_users_backup`, JSON.stringify(users));
       const nowIso = new Date().toISOString();
