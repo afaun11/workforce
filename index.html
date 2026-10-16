@@ -1388,7 +1388,6 @@
                   <div>
                     <div class="flex items-center gap-2 flex-wrap">
                       <h3 id="scanner-history-title-text" class="font-extrabold text-sm sm:text-base text-slate-900">Riwayat Scan Absensi Hari Ini</h3>
-                      <span id="scanner-today-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200">0 Data</span>
                     </div>
                     <p class="text-xs text-slate-500 mt-0.5">Menampilkan seluruh scan absensi hari ini (klik untuk membuka/menutup)</p>
                   </div>
@@ -4146,37 +4145,9 @@
     }
 
     function sanitizeDeletedUserKeysWithActiveUsers() {
-      try {
-        const rawMbi = localStorage.getItem('wfm_mbi_users');
-        const rawMai = localStorage.getItem('wfm_mai_users');
-        const activeUsers = [
-          ...(rawMbi ? JSON.parse(rawMbi) : []),
-          ...(rawMai ? JSON.parse(rawMai) : [])
-        ];
-        if (activeUsers.length === 0) return;
-        const keys = getDeletedUserKeys();
-        let changed = false;
-        activeUsers.forEach(u => {
-          if (!u) return;
-          const rName = (u.name || '').trim().toLowerCase();
-          const cName = cleanStr(u.name);
-          const rId = (u.id || '').trim().toLowerCase();
-          const cId = cleanStr(u.id);
-          const rNik = (u.nik || '').trim().toLowerCase();
-          const cNik = cleanStr(u.nik);
-          if (rName !== 'agus setiawan' && cName !== 'agussetiawan' && rName !== 'budi santoso' && cName !== 'budisantoso') {
-            if (rName && keys.has(rName)) { keys.delete(rName); changed = true; }
-            if (cName && keys.has(cName)) { keys.delete(cName); changed = true; }
-            if (rId && keys.has(rId)) { keys.delete(rId); changed = true; }
-            if (cId && keys.has(cId)) { keys.delete(cId); changed = true; }
-            if (rNik && keys.has(rNik)) { keys.delete(rNik); changed = true; }
-            if (cNik && keys.has(cNik)) { keys.delete(cNik); changed = true; }
-          }
-        });
-        if (changed) {
-          saveDeletedUserKeys(keys);
-        }
-      } catch(e) {}
+      // Dijaga agar tombstone (daftar karyawan yang dihapus) tidak pernah terhapus secara otomatis
+      // Pembatalan status hapus hanya dapat dilakukan secara eksplisit saat admin menambah karyawan baru via unmarkDeletedUser()
+      return;
     }
 
     function isUserMarkedDeleted(user, deletedKeys = null) {
@@ -5830,25 +5801,43 @@
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
       isApplyingFromCloud = true;
       try {
-        // Sinkronkan daftar user yang dihapus dari Cloud dengan proteksi akun aktif
-      if (Array.isArray(db.deleted_user_keys)) {
-        const localKeys = getDeletedUserKeys();
-        const activeLocalUsers = [...getWhDB('MBI', 'users', []), ...getWhDB('MAI', 'users', [])];
-        const activeNameSet = new Set(activeLocalUsers.map(u => cleanStr(u.name)));
-        const activeIdSet = new Set(activeLocalUsers.map(u => cleanStr(u.id)));
-        const activeNikSet = new Set(activeLocalUsers.map(u => (u.nik || '').toUpperCase().trim()));
+        // Sinkronkan daftar user yang dihapus dari Cloud dan bersihkan seketika dari memori lokal
+        if (Array.isArray(db.deleted_user_keys)) {
+          const localKeys = getDeletedUserKeys();
+          const mgmtKeys = new Set(['admin', 'admingudangmbi', 'admingudangmai', 'adm001', 'admmai', 'scanner', 'scannerpresensigudang', 'absenmbi', 'absenmai', 'manager', 'mgreko', 'mgr001']);
+          let keysAdded = false;
 
-        db.deleted_user_keys.forEach(k => {
-          if (!k) return;
-          const cleanK = cleanStr(k);
-          // JANGAN PERNAH menandai user yang sedang aktif di sistem sebagai terhapus!
-          if (activeNameSet.has(cleanK) || activeIdSet.has(cleanK) || activeNikSet.has(String(k).toUpperCase().trim())) {
-            return;
+          db.deleted_user_keys.forEach(k => {
+            if (!k) return;
+            const cleanK = cleanStr(k);
+            if (mgmtKeys.has(cleanK)) return;
+            const rawK = String(k).trim().toLowerCase();
+            if (!localKeys.has(rawK)) { localKeys.add(rawK); keysAdded = true; }
+            if (cleanK && !localKeys.has(cleanK)) { localKeys.add(cleanK); keysAdded = true; }
+          });
+          if (keysAdded) {
+            saveDeletedUserKeys(localKeys);
           }
-          localKeys.add(String(k).trim().toLowerCase());
-        });
-        saveDeletedUserKeys(localKeys);
-      }
+
+          // Bersihkan seketika seluruh karyawan lokal yang kuncinya masuk daftar hapus Cloud
+          ['MBI', 'MAI'].forEach(w => {
+            const storageKey = `wfm_${w.toLowerCase()}_users`;
+            const raw = localStorage.getItem(storageKey);
+            if (raw) {
+              try {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list)) {
+                  const filtered = list.filter(u => !u || isManagementSystemAccount(u) || !isUserMarkedDeleted(u, localKeys));
+                  if (filtered.length !== list.length) {
+                    localStorage.setItem(storageKey, JSON.stringify(filtered));
+                    localStorage.setItem(`wfm_${w.toLowerCase()}_users_backup`, JSON.stringify(filtered));
+                    hasUsersChanged = true;
+                  }
+                }
+              } catch(e) {}
+            }
+          });
+        }
 
       // Sinkronkan daftar record presensi yang dihapus dari Cloud
       if (Array.isArray(db.deleted_attendance_ids)) {
@@ -6194,9 +6183,12 @@
         const lastChangeNow = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
         const isProtectedMaster = (effectiveForceMaster === true) || (Date.now() - lastChangeNow < 600000);
 
+        const safeMbiUsers = (finalMbiUsers || []).filter(u => u && !isUserMarkedDeleted(u, deletedKeys));
+        const safeMaiUsers = (finalMaiUsers || []).filter(u => u && !isUserMarkedDeleted(u, deletedKeys));
+
         // PAYLOAD TERPISAH: MBI HANYA DATA MBI, MAI HANYA DATA MAI (STRUKTUR DATA MURNI UNTUK HASHING)
         const mbiDataPure = {
-          mbi_users: finalMbiUsers || [],
+          mbi_users: safeMbiUsers,
           mbi_attendance: getWhDB('MBI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
@@ -6208,7 +6200,7 @@
         };
 
         const maiDataPure = {
-          mai_users: finalMaiUsers || [],
+          mai_users: safeMaiUsers,
           mai_attendance: getWhDB('MAI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
@@ -13628,18 +13620,12 @@
       }
       if (!nik) return;
       const targetWh = activeWarehouse || 'MBI';
-      let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let user = users.find(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase());
-      let actualWh = targetWh;
-
+      let mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      let maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      let allUsers = [...mbiUsers, ...maiUsers];
+      let user = allUsers.find(u => u && u.nik && (u.nik || '').toUpperCase().trim() === (nik || '').toUpperCase().trim());
       if (!user) {
-        const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
-        const otherUsers = getWhDB(otherWh, 'users', []);
-        user = otherUsers.find(u => (u.nik || '').toUpperCase() === (nik || '').toUpperCase());
-        if (user) {
-          users = otherUsers;
-          actualWh = otherWh;
-        }
+        user = allUsers.find(u => u && u.id && String(u.id).trim() === String(nik).trim());
       }
 
       if (!user) {
@@ -13652,27 +13638,51 @@
         return;
       }
 
-      if (!confirm(`Hapus data karyawan "${user.name}" (${user.nik})?\nData akan dihapus permanen dari Gudang ${actualWh} dan Google Firebase Cloud.`)) {
+      const wh = user.warehouse || targetWh;
+      if (!confirm(`Hapus data karyawan "${user.name}" (${user.nik})?\nData akan dihapus permanen dari Gudang ${wh} dan Database Cloud Firebase.`)) {
         return;
       }
 
+      // 1. Daftarkan kunci kematian (tombstone)
       markDeletedUser(user.name);
       if (user.nik) markDeletedUser(user.nik);
       if (user.id) markDeletedUser(user.id);
 
-      users = users.filter(u => {
+      const isMatch = (u) => {
         if (!u) return false;
-        if (user.nik && u.nik && String(u.nik).trim().toUpperCase() === String(user.nik).trim().toUpperCase()) return false;
-        if (user.id && u.id && String(u.id).trim() === String(user.id).trim()) return false;
-        if (cleanStr(u.name) === cleanStr(user.name)) return false;
-        return true;
-      });
-      setWhDB(actualWh, 'users', users);
-      localStorage.setItem(`wfm_${actualWh.toLowerCase()}_users_backup`, JSON.stringify(users));
+        if (isManagementSystemAccount(u)) return false;
+        if (user.nik && u.nik && String(u.nik).trim().toUpperCase() === String(user.nik).trim().toUpperCase()) return true;
+        if (user.id && u.id && String(u.id).trim() === String(user.id).trim()) return true;
+        if (user.name && u.name && cleanStr(u.name) === cleanStr(user.name)) return true;
+        return false;
+      };
+
+      // 2. Bersihkan dari memori lokal (MBI & MAI) dan cadangan backup
+      const newMbi = mbiUsers.filter(u => !isMatch(u));
+      const newMai = maiUsers.filter(u => !isMatch(u));
+      setWhDB('MBI', 'users', newMbi, true);
+      setWhDB('MAI', 'users', newMai, true);
+      localStorage.setItem('wfm_mbi_users_backup', JSON.stringify(newMbi));
+      localStorage.setItem('wfm_mai_users_backup', JSON.stringify(newMai));
+
+      // 3. Bersihkan dari permanent name-to-nik registry
+      try {
+        const permRaw = localStorage.getItem('wfm_permanent_nik_name_registry');
+        if (permRaw) {
+          const permObj = JSON.parse(permRaw);
+          const cName = cleanStr(user.name);
+          delete permObj[`MBI_${cName}`];
+          delete permObj[`MAI_${cName}`];
+          localStorage.setItem('wfm_permanent_nik_name_registry', JSON.stringify(permObj));
+        }
+      } catch(e) {}
+
       const nowIso = new Date().toISOString();
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
+      localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, nowIso);
 
+      // 4. Langsung kirim pembaruan bersih ke Firebase Cloud Realtime Database (Atomic PUT)
       await saveFullDatabaseToCloud(false, true, true);
 
       renderEmployeeTable();
@@ -13681,7 +13691,7 @@
       refreshAllDashboardData();
       renderRecordsTable();
       renderMatrixTable();
-      alert(`✅ Karyawan "${user.name}" (${user.nik}) berhasil dihapus.`);
+      alert(`✅ Karyawan "${user.name}" (${user.nik}) berhasil dihapus permanen dari sistem dan Cloud Database.`);
     }
 
     function toggleSelectAllEmployees(isChecked) {
@@ -13725,24 +13735,50 @@
       }
 
       const selectedNiks = new Set(Array.from(selectedCbs).map(cb => cb.value.toUpperCase().trim()));
-      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS PERMANEN ${selectedNiks.size} karyawan terpilih?\n\nData karyawan akan langsung dibersihkan permanen dari sistem dan Cloud.`)) {
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS PERMANEN ${selectedNiks.size} karyawan terpilih?\n\nData karyawan akan langsung dibersihkan permanen dari sistem dan Cloud Database.`)) {
         return;
       }
 
-      const targetWh = activeWarehouse || 'MBI';
-      let users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+      let maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+      const allUsers = [...mbiUsers, ...maiUsers];
       
-      users.forEach(u => {
-        if (u && u.nik && selectedNiks.has(u.nik.toUpperCase().trim())) {
+      allUsers.forEach(u => {
+        if (u && u.nik && selectedNiks.has(u.nik.toUpperCase().trim()) && !isManagementSystemAccount(u)) {
           markDeletedUser(u.name);
           if (u.nik) markDeletedUser(u.nik);
           if (u.id) markDeletedUser(u.id);
         }
       });
 
-      const preserved = users.filter(u => !u || !u.nik || !selectedNiks.has(u.nik.toUpperCase().trim()) || isManagementSystemAccount(u));
-      setWhDB(targetWh, 'users', preserved);
-      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(preserved));
+      const isSelected = (u) => {
+        if (!u || isManagementSystemAccount(u)) return false;
+        if (u.nik && selectedNiks.has(u.nik.toUpperCase().trim())) return true;
+        return false;
+      };
+
+      const newMbi = mbiUsers.filter(u => !isSelected(u));
+      const newMai = maiUsers.filter(u => !isSelected(u));
+      setWhDB('MBI', 'users', newMbi, true);
+      setWhDB('MAI', 'users', newMai, true);
+      localStorage.setItem('wfm_mbi_users_backup', JSON.stringify(newMbi));
+      localStorage.setItem('wfm_mai_users_backup', JSON.stringify(newMai));
+
+      try {
+        const permRaw = localStorage.getItem('wfm_permanent_nik_name_registry');
+        if (permRaw) {
+          const permObj = JSON.parse(permRaw);
+          allUsers.forEach(u => {
+            if (u && isSelected(u)) {
+              const cName = cleanStr(u.name);
+              delete permObj[`MBI_${cName}`];
+              delete permObj[`MAI_${cName}`];
+            }
+          });
+          localStorage.setItem('wfm_permanent_nik_name_registry', JSON.stringify(permObj));
+        }
+      } catch(e) {}
+
       const nowIso = new Date().toISOString();
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
@@ -13754,7 +13790,7 @@
       refreshAllDashboardData();
       renderRecordsTable();
       renderMatrixTable();
-      alert(`✅ Berhasil menghapus ${selectedNiks.size} karyawan secara permanen.`);
+      alert(`✅ Berhasil menghapus ${selectedNiks.size} karyawan secara permanen dari sistem dan Cloud Database.`);
     }
 
     async function deleteAllEmployees() {
