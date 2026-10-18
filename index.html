@@ -4703,6 +4703,22 @@
           cleanList.push(u);
           return;
         }
+        const isDhio = warehouse === 'MBI' && (cClean === 'dhiobaguscandraarguna' || cClean.includes('dhiobagus') || cClean.includes('dhio'));
+        if (isDhio) {
+          u.nik = 'MBI26-117';
+          u.barcodeValue = 'MBI26-117';
+          assignedNiks.add('MBI26-117');
+          cleanList.push(u);
+          return;
+        }
+        const isDinarya = warehouse === 'MBI' && (cClean === 'dinarya' || cClean.includes('dinarya'));
+        if (isDinarya) {
+          u.nik = 'MBI26-118';
+          u.barcodeValue = 'MBI26-118';
+          assignedNiks.add('MBI26-118');
+          cleanList.push(u);
+          return;
+        }
         const isMelinda = warehouse === 'MBI' && (cClean === 'melindagitawismaya' || cClean.includes('melinda'));
         if (isMelinda) {
           u.nik = 'MBI26-122';
@@ -5017,6 +5033,34 @@
                   attChanged = true;
                   return;
                 }
+                if (a.id === 'att-mbi-1791619172172') {
+                  a.userId = 'mbi-1790828522744-115-i7t3';
+                  a.userNik = 'MBI26-117';
+                  a.userName = 'DHIO BAGUS CANDRA ARGUNA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  a.date = '2026-10-10';
+                  a.checkInTime = '2026-10-10T07:59:32.156Z';
+                  a.checkOutTime = '2026-10-10T15:11:43.903Z';
+                  a.notes = '';
+                  attChanged = true;
+                  return;
+                }
+                if (a.id === 'att-mbi-1791643945285') {
+                  a.userId = 'mbi-1790828522744-116-dxyq';
+                  a.userNik = 'MBI26-118';
+                  a.userName = 'DINARYA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  a.date = '2026-10-10';
+                  a.checkInTime = '2026-10-10T14:52:25.279Z';
+                  a.checkOutTime = '2026-10-11T00:21:24.583Z';
+                  a.notes = '';
+                  attChanged = true;
+                  return;
+                }
                 if (a.checkInTime && (a.checkInTime.includes('T00:35:56') || a.checkInTime.includes('T00:38:15'))) {
                   a.userId = 'mbi-1790828522744-115-i7t3';
                   a.userNik = 'MBI26-117';
@@ -5072,6 +5116,37 @@
                   }
                 }
               });
+
+              // Pembersihan Otomatis Duplikat Absen Pada Tanggal yang Sama (Sinkronkan Record & Matriks 100%):
+              const seenEmpDates = new Map();
+              const uniqueAtts = [];
+              atts.forEach(item => {
+                if (!item || isAttendanceMarkedDeleted(item)) return;
+                const empKey = (item.userNik || item.userName || item.userId || '').toUpperCase().trim();
+                const dKey = item.date;
+                if (!empKey || !dKey) {
+                  uniqueAtts.push(item);
+                  return;
+                }
+                const composite = `${empKey}__${dKey}`;
+                if (!seenEmpDates.has(composite)) {
+                  seenEmpDates.set(composite, item);
+                  uniqueAtts.push(item);
+                } else {
+                  const existing = seenEmpDates.get(composite);
+                  if (item.checkInTime && (!existing.checkInTime || item.checkInTime < existing.checkInTime)) {
+                    existing.checkInTime = item.checkInTime;
+                  }
+                  if (item.checkOutTime && (!existing.checkOutTime || item.checkOutTime > existing.checkOutTime)) {
+                    existing.checkOutTime = item.checkOutTime;
+                  }
+                  trackDeletedAttendance(item);
+                  attChanged = true;
+                  totalRealigned++;
+                }
+              });
+              atts = uniqueAtts;
+
               if (attChanged) {
                 localStorage.setItem(attKey, JSON.stringify(atts));
               }
@@ -5204,6 +5279,14 @@
               }
               return;
             }
+            if (wh === 'MBI' && (cName === 'dhiobaguscandraarguna' || cName.includes('dhiobagus') || cName.includes('dhio'))) {
+              if (u.nik !== 'MBI26-117' || u.barcodeValue !== 'MBI26-117') {
+                u.nik = 'MBI26-117';
+                u.barcodeValue = 'MBI26-117';
+                whChanged = true;
+              }
+              return;
+            }
             if (wh === 'MBI' && (cName === 'dinarya' || cName.includes('dinarya'))) {
               if (u.nik !== 'MBI26-118' || u.barcodeValue !== 'MBI26-118') {
                 u.nik = 'MBI26-118';
@@ -5258,11 +5341,19 @@
             }
           });
 
-          if (whChanged) {
-            hasAnyChanges = true;
-            localStorage.setItem(userKey, JSON.stringify(users));
-            localStorage.setItem(backupKey, JSON.stringify(users));
-          }
+          // PENGURUTAN TETAP & STABIL MENURUT NIK ASCENDING PADA PENYIMPANAN MASTER:
+          const sysUsers = users.filter(u => isManagementSystemAccount(u));
+          const regUsers = users.filter(u => !isManagementSystemAccount(u));
+          regUsers.sort((a, b) => {
+            const nikA = (a?.nik || a?.id || '').toString().trim().toUpperCase();
+            const nikB = (b?.nik || b?.id || '').toString().trim().toUpperCase();
+            return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+          });
+          users = [...sysUsers, ...regUsers];
+
+          hasAnyChanges = true;
+          localStorage.setItem(userKey, JSON.stringify(users));
+          localStorage.setItem(backupKey, JSON.stringify(users));
         });
 
         // Jalankan kaskade penyelarasan riwayat absensi, lembur & cuti
@@ -5972,6 +6063,12 @@
           } else if (wh === 'MBI' && (cMName === 'galangerdiansyah' || (merged.name && merged.name.toUpperCase().includes('GALANG') && merged.name.toUpperCase().includes('ERDIANSYAH')))) {
             merged.nik = 'MBI26-011';
             merged.barcodeValue = 'MBI26-011';
+          } else if (wh === 'MBI' && (cMName === 'dhiobaguscandraarguna' || (merged.name && merged.name.toUpperCase().includes('DHIO') && merged.name.toUpperCase().includes('ARGUNA')))) {
+            merged.nik = 'MBI26-117';
+            merged.barcodeValue = 'MBI26-117';
+          } else if (wh === 'MBI' && (cMName === 'dinarya' || (merged.name && merged.name.toUpperCase().includes('DINARYA')))) {
+            merged.nik = 'MBI26-118';
+            merged.barcodeValue = 'MBI26-118';
           } else if (wh === 'MBI' && (cMName === 'melindagitawismaya' || cMName.includes('melinda'))) {
             merged.nik = 'MBI26-122';
             merged.barcodeValue = 'MBI26-122';
@@ -6061,15 +6158,18 @@
         if (Array.isArray(db.deleted_user_keys)) {
           const localKeys = getDeletedUserKeys();
           const mgmtKeys = new Set(['admin', 'admingudangmbi', 'admingudangmai', 'adm001', 'admmai', 'scanner', 'scannerpresensigudang', 'absenmbi', 'absenmai', 'manager', 'mgreko', 'mgr001']);
-          const forbiddenDinarya = new Set(['dinarya', 'mbi26118', 'mbi26-118', 'mbi1792229164411', 'mbi-1792229164411', 'mbi-1790828522744-116-dxyq', 'mbi1790828522744116dxyq']);
+          const forbiddenProtected = new Set([
+            'dinarya', 'mbi26118', 'mbi26-118', 'mbi1792229164411', 'mbi-1792229164411', 'mbi-1790828522744-116-dxyq', 'mbi1790828522744116dxyq',
+            'dhio', 'dhiobagus', 'dhiobaguscandraarguna', 'mbi26117', 'mbi26-117', 'mbi-1790828522744-115-i7t3', 'mbi1790828522744115i7t3'
+          ]);
           let keysAdded = false;
 
           db.deleted_user_keys.forEach(k => {
             if (!k) return;
             const cleanK = cleanStr(k);
-            if (mgmtKeys.has(cleanK) || forbiddenDinarya.has(cleanK)) return;
+            if (mgmtKeys.has(cleanK) || forbiddenProtected.has(cleanK)) return;
             const rawK = String(k).trim().toLowerCase();
-            if (forbiddenDinarya.has(rawK)) return;
+            if (forbiddenProtected.has(rawK)) return;
             if (!localKeys.has(rawK)) { localKeys.add(rawK); keysAdded = true; }
             if (cleanK && !localKeys.has(cleanK)) { localKeys.add(cleanK); keysAdded = true; }
           });
@@ -13211,6 +13311,29 @@
         const curWh = activeWarehouse || 'MBI';
         let users = getWhDB(curWh, 'users', curWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         if (curWh === 'MBI') {
+          const hasDhio = users.some(u => u && (cleanStr(u.name) === 'dhiobaguscandraarguna' || (u.nik && u.nik.toUpperCase() === 'MBI26-117')));
+          if (!hasDhio) {
+            users.push({
+              barcodeValue: "MBI26-117",
+              dept: "Warehouse Staff",
+              email: "",
+              hasAccount: false,
+              id: "mbi-1790828522744-115-i7t3",
+              isActive: true,
+              isFirstLogin: false,
+              joinDate: "2026-08-29",
+              name: "DHIO BAGUS CANDRA ARGUNA",
+              nik: "MBI26-117",
+              outsource: "Staffinc",
+              password: "",
+              phone: "-",
+              role: "staff",
+              status: "active",
+              updatedAt: new Date().toISOString(),
+              warehouse: "MBI"
+            });
+            setWhDB('MBI', 'users', users);
+          }
           const hasDinarya = users.some(u => u && (cleanStr(u.name) === 'dinarya' || (u.nik && u.nik.toUpperCase() === 'MBI26-118')));
           if (!hasDinarya) {
             users.push({
@@ -17321,7 +17444,13 @@
         }
       });
 
-      return Array.from(empMap.values());
+      const matrixList = Array.from(empMap.values());
+      matrixList.sort((a, b) => {
+        const nikA = (a.nik || a.id || '').toUpperCase().trim();
+        const nikB = (b.nik || b.id || '').toUpperCase().trim();
+        return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
+      });
+      return matrixList;
     }
 
     function initMatrixDateRange(forceReset = false) {
