@@ -3148,17 +3148,10 @@
       </div>
 
       <form onsubmit="handleSaveManualAttendance(event)" class="space-y-3">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Karyawan *</label>
-          <select id="man-att-emp" required onchange="handleManualAttEmpChange(this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
-            <!-- Populated dynamically with regular employees -->
-          </select>
-        </div>
-
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Gudang Penempatan *</label>
-            <select id="man-att-wh" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <select id="man-att-wh" onchange="populateManualAttendanceEmployees(this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
               <option value="MBI">Gudang MBI</option>
               <option value="MAI">Gudang MAI</option>
             </select>
@@ -3167,6 +3160,13 @@
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Presensi *</label>
             <input type="date" id="man-att-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Karyawan *</label>
+          <select id="man-att-emp" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <!-- Populated dynamically with regular employees of selected warehouse -->
+          </select>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -16703,6 +16703,44 @@
     // =========================================================
     // FITUR INPUT ABSENSI MANUAL OLEH ADMIN
     // =========================================================
+    function populateManualAttendanceEmployees(targetWh) {
+      const wh = (targetWh || activeWarehouse || 'MBI').toUpperCase();
+      const empSelect = document.getElementById('man-att-emp');
+      if (!empSelect) return;
+
+      const rawUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS) || [];
+      const userMap = new Map();
+
+      rawUsers.forEach(u => {
+        if (!u || !u.nik) return;
+        const cleanRole = (u.role || '').toLowerCase();
+        if (cleanRole === 'admin' || cleanRole === 'manager' || cleanRole === 'superadmin') return;
+        if (isUserMarkedDeleted(u)) return;
+
+        const cleanNik = u.nik.trim().toUpperCase();
+        if (!userMap.has(cleanNik)) {
+          userMap.set(cleanNik, {
+            nik: cleanNik,
+            name: (u.name || cleanNik).trim(),
+            dept: u.dept || u.department || 'OPERASIONAL',
+            outsource: u.outsource || 'Internal',
+            warehouse: wh,
+            id: u.id || `emp-${cleanNik.toLowerCase()}`
+          });
+        }
+      });
+
+      const sortedUsers = Array.from(userMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+      if (sortedUsers.length === 0) {
+        empSelect.innerHTML = `<option value="">(Tidak ada karyawan aktif di Gudang ${wh})</option>`;
+      } else {
+        empSelect.innerHTML = sortedUsers.map(u => 
+          `<option value="${u.nik}">${u.name} (${u.nik}) - [${wh}] ${u.dept}</option>`
+        ).join('');
+      }
+    }
+
     function openManualAttendanceModal() {
       if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_att_edit')) {
         alert('Akses Ditolak: Anda tidak memiliki izin untuk menginput presensi manual.');
@@ -16711,7 +16749,6 @@
       const modal = document.getElementById('modal-manual-attendance');
       if (!modal) return;
 
-      const empSelect = document.getElementById('man-att-emp');
       const whSelect = document.getElementById('man-att-wh');
       const dateInput = document.getElementById('man-att-date');
       const inTimeInput = document.getElementById('man-att-in-time');
@@ -16720,33 +16757,12 @@
       const crossDaySelect = document.getElementById('man-att-cross-day');
       const notesInput = document.getElementById('man-att-notes');
 
-      const currentWh = activeWarehouse || 'MBI';
+      // Ambil gudang yang sedang aktif dibuka saat ini (MBI / MAI)
+      const currentWh = (activeWarehouse || 'MBI').toUpperCase();
       if (whSelect) whSelect.value = currentWh;
 
-      // Ambil seluruh karyawan non-admin aktif
-      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS) || [];
-      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS) || [];
-      const allUsersMap = new Map();
-
-      [...mbiUsers, ...maiUsers].forEach(u => {
-        if (!u || !u.nik) return;
-        const cleanRole = (u.role || '').toLowerCase();
-        if (cleanRole === 'admin' || cleanRole === 'manager' || cleanRole === 'superadmin') return;
-        if (isUserMarkedDeleted(u)) return;
-        const uWh = u.warehouse || (mbiUsers.some(m => m.nik === u.nik) ? 'MBI' : 'MAI');
-        const key = `${u.nik}|${uWh}`;
-        if (!allUsersMap.has(key)) {
-          allUsersMap.set(key, { ...u, warehouse: uWh });
-        }
-      });
-
-      const sortedUsers = Array.from(allUsersMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-      if (empSelect) {
-        empSelect.innerHTML = sortedUsers.map(u => 
-          `<option value="${u.nik}|${u.warehouse}">${u.name} (${u.nik}) - [${u.warehouse}] ${u.dept || u.department || 'OPERASIONAL'}</option>`
-        ).join('');
-      }
+      // Isi dropdown karyawan HANYA untuk gudang yang sedang dibuka
+      populateManualAttendanceEmployees(currentWh);
 
       // Default tanggal hari ini (WIB)
       const todayWib = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
@@ -16766,18 +16782,10 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    function handleManualAttEmpChange(val) {
-      if (!val) return;
-      const parts = val.split('|');
-      const targetWh = parts[1] || 'MBI';
-      const whSelect = document.getElementById('man-att-wh');
-      if (whSelect) whSelect.value = targetWh;
-    }
-
     async function handleSaveManualAttendance(event) {
       if (event) event.preventDefault();
-      const empVal = document.getElementById('man-att-emp')?.value || '';
-      const wh = document.getElementById('man-att-wh')?.value || activeWarehouse || 'MBI';
+      const wh = (document.getElementById('man-att-wh')?.value || activeWarehouse || 'MBI').toUpperCase();
+      const nik = (document.getElementById('man-att-emp')?.value || '').trim().toUpperCase();
       const date = document.getElementById('man-att-date')?.value || '';
       const inTime = document.getElementById('man-att-in-time')?.value || '';
       const outTime = document.getElementById('man-att-out-time')?.value || '';
@@ -16785,18 +16793,17 @@
       const crossDay = document.getElementById('man-att-cross-day')?.value || 'no';
       const notes = (document.getElementById('man-att-notes')?.value || '').trim();
 
-      if (!empVal || !date || !inTime) {
+      if (!nik || !date || !inTime) {
         alert('Harap lengkapi Karyawan, Tanggal, dan Jam Masuk!');
         return;
       }
 
-      const [nik, userWh] = empVal.split('|');
       const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      let emp = users.find(u => u && u.nik === nik);
+      let emp = users.find(u => u && (u.nik || '').toUpperCase() === nik);
       if (!emp) {
         const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
         const otherUsers = getWhDB(otherWh, 'users', []);
-        emp = otherUsers.find(u => u && u.nik === nik);
+        emp = otherUsers.find(u => u && (u.nik || '').toUpperCase() === nik);
       }
 
       // Format ISO String Check-In (WIB +07:00)
