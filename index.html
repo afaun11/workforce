@@ -4089,6 +4089,17 @@
           }
         }
       } catch (e) {}
+      // SANITIZE: Bersihkan Dinarya & NIK 118 dari memori lokal agar tidak pernah terhapus
+      const forbiddenKeys = ['dinarya', 'mbi26118', 'mbi26-118', 'mbi1792229164411', 'mbi-1792229164411', 'mbi-1790828522744-116-dxyq', 'mbi1790828522744116dxyq'];
+      let hadForbidden = false;
+      forbiddenKeys.forEach(fk => {
+        if (setKeys.has(fk)) { setKeys.delete(fk); hadForbidden = true; }
+      });
+      if (hadForbidden) {
+        try {
+          localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(Array.from(setKeys)));
+        } catch (e) {}
+      }
       return setKeys;
     }
 
@@ -4159,12 +4170,15 @@
       if (rawName === 'agus setiawan' || cName === 'agussetiawan') return true;
       if (rawName === 'budi santoso' || cName === 'budisantoso') return true;
 
+      // KUNCI IMUNITAS MUTLAK: Karyawan sah aktif seperti DINARYA (MBI26-118) tidak boleh dianggap terhapus
+      const rawNik = (user.nik || '').trim().toLowerCase();
+      const cNik = cleanStr(user.nik);
+      if (cName === 'dinarya' || cNik === 'mbi26118' || cNik === 'mbi26-118' || rawNik === 'mbi26-118') return false;
+
       // Filter nama, NIK, atau ID Karyawan yang telah resmi dihapus/resign
       const keys = deletedKeys || getDeletedUserKeys();
       const rawId = (user.id || '').trim().toLowerCase();
       const cId = cleanStr(user.id);
-      const rawNik = (user.nik || '').trim().toLowerCase();
-      const cNik = cleanStr(user.nik);
       if (rawName && keys.has(rawName)) return true;
       if (cName && keys.has(cName)) return true;
       if (rawId && keys.has(rawId)) return true;
@@ -4788,6 +4802,83 @@
               let attChanged = false;
               atts.forEach(a => {
                 if (!a) return;
+
+                // KUNCI PATEN RECORD KHUSUS 13 & 14 OKTOBER AGAR TIDAK GANDA / TERTUKAR ANTARA DHIO & DINARYA:
+                if (a.id === 'att-mbi-1791851756150') {
+                  a.userId = 'mbi-1790828522744-115-i7t3';
+                  a.userNik = 'MBI26-117';
+                  a.userName = 'DHIO BAGUS CANDRA ARGUNA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  a.date = '2026-10-13';
+                  a.checkInTime = '2026-10-13T00:35:56.140Z';
+                  a.checkOutTime = null;
+                  a.notes = 'Miss Scan';
+                  attChanged = true;
+                  return;
+                }
+                if (a.id === 'att-mbi-1791938295676') {
+                  a.userId = 'mbi-1790828522744-115-i7t3';
+                  a.userNik = 'MBI26-117';
+                  a.userName = 'DHIO BAGUS CANDRA ARGUNA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  a.date = '2026-10-14';
+                  a.checkInTime = '2026-10-14T00:38:15.661Z';
+                  a.checkOutTime = '2026-10-14T08:11:50.708Z';
+                  a.notes = '';
+                  attChanged = true;
+                  return;
+                }
+                if (a.id === 'att-mbi-1791902256042') {
+                  a.userId = 'mbi-1790828522744-116-dxyq';
+                  a.userNik = 'MBI26-118';
+                  a.userName = 'DINARYA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  a.date = '2026-10-13';
+                  a.checkInTime = '2026-10-13T14:37:36.035Z';
+                  a.checkOutTime = '2026-10-13T23:03:52.885Z';
+                  a.notes = '';
+                  attChanged = true;
+                  return;
+                }
+                if (a.id === 'att-mbi-1791988509635') {
+                  a.userId = 'mbi-1790828522744-116-dxyq';
+                  a.userNik = 'MBI26-118';
+                  a.userName = 'DINARYA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  a.date = '2026-10-14';
+                  a.checkInTime = '2026-10-14T14:35:09.629Z';
+                  a.checkOutTime = '2026-10-14T23:07:13.016Z';
+                  a.notes = '';
+                  attChanged = true;
+                  return;
+                }
+                if (a.checkInTime && (a.checkInTime.includes('T00:35:56') || a.checkInTime.includes('T00:38:15'))) {
+                  a.userId = 'mbi-1790828522744-115-i7t3';
+                  a.userNik = 'MBI26-117';
+                  a.userName = 'DHIO BAGUS CANDRA ARGUNA';
+                  a.dept = 'Warehouse Staff';
+                  a.outsource = 'Staffinc';
+                  a.warehouse = 'MBI';
+                  if (a.checkInTime.includes('2026-10-13')) {
+                    a.date = '2026-10-13';
+                    a.checkOutTime = null;
+                    a.notes = 'Miss Scan';
+                  } else {
+                    a.date = '2026-10-14';
+                    a.checkOutTime = '2026-10-14T08:11:50.708Z';
+                  }
+                  attChanged = true;
+                  return;
+                }
+
                 const aNik = (a.userNik || '').toString().trim().toUpperCase();
                 const aName = (a.userName || '').toString().trim();
                 const aId = (a.userId || '').toString().trim();
@@ -5813,13 +5904,15 @@
         if (Array.isArray(db.deleted_user_keys)) {
           const localKeys = getDeletedUserKeys();
           const mgmtKeys = new Set(['admin', 'admingudangmbi', 'admingudangmai', 'adm001', 'admmai', 'scanner', 'scannerpresensigudang', 'absenmbi', 'absenmai', 'manager', 'mgreko', 'mgr001']);
+          const forbiddenDinarya = new Set(['dinarya', 'mbi26118', 'mbi26-118', 'mbi1792229164411', 'mbi-1792229164411', 'mbi-1790828522744-116-dxyq', 'mbi1790828522744116dxyq']);
           let keysAdded = false;
 
           db.deleted_user_keys.forEach(k => {
             if (!k) return;
             const cleanK = cleanStr(k);
-            if (mgmtKeys.has(cleanK)) return;
+            if (mgmtKeys.has(cleanK) || forbiddenDinarya.has(cleanK)) return;
             const rawK = String(k).trim().toLowerCase();
+            if (forbiddenDinarya.has(rawK)) return;
             if (!localKeys.has(rawK)) { localKeys.add(rawK); keysAdded = true; }
             if (cleanK && !localKeys.has(cleanK)) { localKeys.add(cleanK); keysAdded = true; }
           });
@@ -12958,9 +13051,36 @@
     function renderEmployeeTable() {
       try {
         if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees();
-        if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs();
-        if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
-        const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        const curWh = activeWarehouse || 'MBI';
+        let users = getWhDB(curWh, 'users', curWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+        if (curWh === 'MBI') {
+          const hasDinarya = users.some(u => u && (cleanStr(u.name) === 'dinarya' || (u.nik && u.nik.toUpperCase() === 'MBI26-118')));
+          if (!hasDinarya) {
+            users.push({
+              barcodeValue: "MBI26-118",
+              dept: "Warehouse Staff",
+              email: "",
+              hasAccount: false,
+              id: "mbi-1790828522744-116-dxyq",
+              isActive: true,
+              isFirstLogin: false,
+              joinDate: "2026-08-29",
+              name: "DINARYA",
+              nik: "MBI26-118",
+              outsource: "Staffinc",
+              password: "",
+              phone: "-",
+              role: "staff",
+              status: "active",
+              updatedAt: new Date().toISOString(),
+              warehouse: "MBI"
+            });
+            setWhDB('MBI', 'users', users);
+            if (typeof saveFullDatabaseToCloud === 'function') {
+              saveFullDatabaseToCloud(false, true, true);
+            }
+          }
+        }
         const regularUsers = users.filter(u => !isManagementSystemAccount(u));
         
         // Update live counters in status tabs
