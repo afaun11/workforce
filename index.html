@@ -4956,6 +4956,14 @@
               }
               return;
             }
+            if (wh === 'MBI' && (cName === 'dinarya' || cName.includes('dinarya'))) {
+              if (u.nik !== 'MBI26-118' || u.barcodeValue !== 'MBI26-118') {
+                u.nik = 'MBI26-118';
+                u.barcodeValue = 'MBI26-118';
+                whChanged = true;
+              }
+              return;
+            }
 
             // Kunci Urutan Baku Excel MAI: No. 34 Akmal, No. 35 Achmad vikih, No. 41 Mohamad Yuliandi, No. 42 Nirwan Fadli Pulungan
             if (wh === 'MAI') {
