@@ -1611,6 +1611,10 @@
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="openManualAttendanceModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Input Presensi Manual Karyawan (Khusus Admin / Koreksi Absen)">
+                          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                          <span>Input Absen Manual</span>
+                        </button>
                         <button onclick="exportRecordsToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                           Download Record Excel
                         </button>
@@ -3123,6 +3127,159 @@
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeEditEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
           <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL INPUT / TAMBAH ABSEN MANUAL KARYAWAN -->
+  <!-- ========================================================= -->
+  <div id="modal-manual-attendance" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900">
+            Input Presensi Manual
+          </h3>
+          <p class="text-[11px] text-slate-500">Tambah riwayat absensi masuk & pulang karyawan secara manual</p>
+        </div>
+        <button type="button" onclick="closeManualAttendanceModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="handleSaveManualAttendance(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Pilih Karyawan *</label>
+          <select id="man-att-emp" required onchange="handleManualAttEmpChange(this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <!-- Populated dynamically with regular employees -->
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Gudang Penempatan *</label>
+            <select id="man-att-wh" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="MBI">Gudang MBI</option>
+              <option value="MAI">Gudang MAI</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Presensi *</label>
+            <input type="date" id="man-att-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Masuk (WIB) *</label>
+            <input type="time" id="man-att-in-time" required step="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Status Masuk</label>
+            <select id="man-att-in-status" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="on_time">Tepat Waktu (Normal)</option>
+              <option value="late">Terlambat (Late In)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Pulang (WIB)</label>
+            <input type="time" id="man-att-out-time" step="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <p class="text-[10px] text-slate-400 mt-0.5">Kosongkan jika Miss Scan / belum pulang</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Shift Lintas Hari?</label>
+            <select id="man-att-cross-day" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="no">Tidak (Pulang hari yang sama)</option>
+              <option value="yes">Ya (Shift Malam, pulang pagi esok harinya)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Presensi</label>
+          <input type="text" id="man-att-notes" placeholder="Contoh: Input Manual Admin / Koreksi Shift" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeManualAttendanceModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition">Simpan Presensi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL EDIT / KOREKSI DATA PRESENSI -->
+  <!-- ========================================================= -->
+  <div id="modal-edit-attendance" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div>
+          <h3 class="font-extrabold text-base text-slate-900">
+            Koreksi Data Absensi
+          </h3>
+          <p class="text-[11px] text-slate-500">Edit jam masuk, jam pulang, tanggal, dan status presensi</p>
+        </div>
+        <button type="button" onclick="closeEditAttendanceModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form onsubmit="handleSaveEditAttendance(event)" class="space-y-3">
+        <input type="hidden" id="edit-att-id">
+        <input type="hidden" id="edit-att-wh">
+
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+          <div>
+            <p id="edit-att-name-display" class="font-extrabold text-xs text-slate-900">-</p>
+            <p id="edit-att-nik-display" class="font-mono text-[11px] text-slate-500">NIK: -</p>
+          </div>
+          <span id="edit-att-wh-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold font-mono bg-sky-100 text-sky-800">MBI</span>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Tanggal Presensi *</label>
+          <input type="date" id="edit-att-date" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Masuk (WIB) *</label>
+            <input type="time" id="edit-att-in-time" required step="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Status Masuk</label>
+            <select id="edit-att-in-status" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="on_time">Tepat Waktu (Normal)</option>
+              <option value="late">Terlambat (Late In)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Jam Pulang (WIB)</label>
+            <input type="time" id="edit-att-out-time" step="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <p class="text-[10px] text-slate-400 mt-0.5">Kosongkan jika Miss Scan / belum pulang</p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Shift Lintas Hari?</label>
+            <select id="edit-att-cross-day" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+              <option value="no">Tidak (Pulang hari yang sama)</option>
+              <option value="yes">Ya (Shift Malam, pulang pagi esok harinya)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Catatan Presensi</label>
+          <input type="text" id="edit-att-notes" placeholder="Contoh: Koreksi Jam Masuk / Koreksi Admin" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900">
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2 border-t border-slate-100">
+          <button type="button" onclick="closeEditAttendanceModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-700 transition">Batal</button>
+          <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md transition">Simpan Koreksi</button>
         </div>
       </form>
     </div>
@@ -16486,10 +16643,16 @@
                 ${notesHtml}
               </div>
             </td>
-            <td class="p-3.5 text-right">
-              <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}', '${recWh}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-500 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-300 rounded-lg text-[11px] font-semibold transition">
-                Hapus
-              </button>
+            <td class="p-3.5 text-right whitespace-nowrap">
+              <div class="inline-flex items-center gap-1.5 justify-end">
+                <button onclick="openEditAttendanceModal('${rec.id || ''}', '${recWh}')" title="Koreksi Data Absen Ini" class="px-2.5 py-1 text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg text-[11px] font-bold transition inline-flex items-center gap-1 shadow-2xs">
+                  <i data-lucide="edit-3" class="w-3 h-3 text-slate-500"></i>
+                  <span>Koreksi</span>
+                </button>
+                <button onclick="deleteSingleAttendanceRecord('${rec.id || ''}', '${recWh}')" title="Hapus Record Absen Ini" class="px-2.5 py-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg text-[11px] font-semibold transition">
+                  Hapus
+                </button>
+              </div>
             </td>
           </tr>
         `);
@@ -16535,6 +16698,325 @@
       renderMatrixTable();
       renderScannerTodayRecords();
       alert('✅ Catatan presensi berhasil dihapus secara permanen dari sistem, Cloud, dan Google Spreadsheet.');
+    }
+
+    // =========================================================
+    // FITUR INPUT ABSENSI MANUAL OLEH ADMIN
+    // =========================================================
+    function openManualAttendanceModal() {
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_att_edit')) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk menginput presensi manual.');
+        return;
+      }
+      const modal = document.getElementById('modal-manual-attendance');
+      if (!modal) return;
+
+      const empSelect = document.getElementById('man-att-emp');
+      const whSelect = document.getElementById('man-att-wh');
+      const dateInput = document.getElementById('man-att-date');
+      const inTimeInput = document.getElementById('man-att-in-time');
+      const outTimeInput = document.getElementById('man-att-out-time');
+      const inStatusSelect = document.getElementById('man-att-in-status');
+      const crossDaySelect = document.getElementById('man-att-cross-day');
+      const notesInput = document.getElementById('man-att-notes');
+
+      const currentWh = activeWarehouse || 'MBI';
+      if (whSelect) whSelect.value = currentWh;
+
+      // Ambil seluruh karyawan non-admin aktif
+      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS) || [];
+      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS) || [];
+      const allUsersMap = new Map();
+
+      [...mbiUsers, ...maiUsers].forEach(u => {
+        if (!u || !u.nik) return;
+        const cleanRole = (u.role || '').toLowerCase();
+        if (cleanRole === 'admin' || cleanRole === 'manager' || cleanRole === 'superadmin') return;
+        if (isUserMarkedDeleted(u)) return;
+        const uWh = u.warehouse || (mbiUsers.some(m => m.nik === u.nik) ? 'MBI' : 'MAI');
+        const key = `${u.nik}|${uWh}`;
+        if (!allUsersMap.has(key)) {
+          allUsersMap.set(key, { ...u, warehouse: uWh });
+        }
+      });
+
+      const sortedUsers = Array.from(allUsersMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      if (empSelect) {
+        empSelect.innerHTML = sortedUsers.map(u => 
+          `<option value="${u.nik}|${u.warehouse}">${u.name} (${u.nik}) - [${u.warehouse}] ${u.dept || u.department || 'OPERASIONAL'}</option>`
+        ).join('');
+      }
+
+      // Default tanggal hari ini (WIB)
+      const todayWib = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+      if (dateInput) dateInput.value = todayWib;
+      if (inTimeInput) inTimeInput.value = '08:00:00';
+      if (outTimeInput) outTimeInput.value = '17:00:00';
+      if (inStatusSelect) inStatusSelect.value = 'on_time';
+      if (crossDaySelect) crossDaySelect.value = 'no';
+      if (notesInput) notesInput.value = 'Input Manual Admin';
+
+      modal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeManualAttendanceModal() {
+      const modal = document.getElementById('modal-manual-attendance');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function handleManualAttEmpChange(val) {
+      if (!val) return;
+      const parts = val.split('|');
+      const targetWh = parts[1] || 'MBI';
+      const whSelect = document.getElementById('man-att-wh');
+      if (whSelect) whSelect.value = targetWh;
+    }
+
+    async function handleSaveManualAttendance(event) {
+      if (event) event.preventDefault();
+      const empVal = document.getElementById('man-att-emp')?.value || '';
+      const wh = document.getElementById('man-att-wh')?.value || activeWarehouse || 'MBI';
+      const date = document.getElementById('man-att-date')?.value || '';
+      const inTime = document.getElementById('man-att-in-time')?.value || '';
+      const outTime = document.getElementById('man-att-out-time')?.value || '';
+      const inStatus = document.getElementById('man-att-in-status')?.value || 'on_time';
+      const crossDay = document.getElementById('man-att-cross-day')?.value || 'no';
+      const notes = (document.getElementById('man-att-notes')?.value || '').trim();
+
+      if (!empVal || !date || !inTime) {
+        alert('Harap lengkapi Karyawan, Tanggal, dan Jam Masuk!');
+        return;
+      }
+
+      const [nik, userWh] = empVal.split('|');
+      const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      let emp = users.find(u => u && u.nik === nik);
+      if (!emp) {
+        const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
+        const otherUsers = getWhDB(otherWh, 'users', []);
+        emp = otherUsers.find(u => u && u.nik === nik);
+      }
+
+      // Format ISO String Check-In (WIB +07:00)
+      const cleanInTime = inTime.length === 5 ? inTime + ':00' : inTime;
+      const inIso = new Date(`${date}T${cleanInTime}+07:00`).toISOString();
+
+      // Format ISO String Check-Out (WIB +07:00)
+      let outIso = null;
+      if (outTime) {
+        let outDateStr = date;
+        if (crossDay === 'yes') {
+          const d = new Date(`${date}T12:00:00Z`);
+          d.setDate(d.getDate() + 1);
+          outDateStr = d.toISOString().split('T')[0];
+        }
+        const cleanOutTime = outTime.length === 5 ? outTime + ':00' : outTime;
+        outIso = new Date(`${outDateStr}T${cleanOutTime}+07:00`).toISOString();
+      }
+
+      const recId = `att-${wh.toLowerCase()}-${Date.now()}`;
+      const empDept = (emp && (emp.dept || emp.department)) ? (emp.dept || emp.department) : 'Warehouse Staff';
+      const empName = (emp && emp.name) ? emp.name : nik;
+      const empOutsource = (emp && emp.outsource) ? emp.outsource : 'Internal';
+      const empUserId = (emp && emp.id) ? emp.id : `emp-${nik.toLowerCase()}`;
+
+      const newRec = {
+        id: recId,
+        userId: empUserId,
+        userNik: nik,
+        userName: empName,
+        name: empName,
+        nik: nik,
+        dept: empDept,
+        department: empDept,
+        outsource: empOutsource,
+        warehouse: wh,
+        date: date,
+        checkInTime: inIso,
+        checkOutTime: outIso,
+        checkInStatus: inStatus,
+        status: inStatus,
+        notes: notes || 'Input Manual Admin',
+        manualInput: true,
+        updatedAt: new Date().toISOString()
+      };
+
+      const attendances = getWhDB(wh, 'attendance', []);
+      attendances.unshift(newRec);
+      setWhDB(wh, 'attendance', attendances);
+
+      // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
+      await saveFullDatabaseToCloud(false, true, true, wh);
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+
+      closeManualAttendanceModal();
+      renderRecordsTable(true);
+      refreshAllDashboardData();
+      renderMatrixTable();
+      alert(`✅ Berhasil menambahkan presensi manual untuk ${newRec.userName} pada tanggal ${date}!`);
+    }
+
+    // =========================================================
+    // FITUR KOREKSI / EDIT DATA ABSENSI OLEH ADMIN
+    // =========================================================
+    function openEditAttendanceModal(id, targetWh) {
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_att_edit')) {
+        alert('Akses Ditolak: Anda tidak memiliki izin untuk mengoreksi data presensi.');
+        return;
+      }
+      const modal = document.getElementById('modal-edit-attendance');
+      if (!modal) return;
+
+      const wh = targetWh || activeWarehouse || 'MBI';
+      let attendances = getWhDB(wh, 'attendance', []);
+      let rec = attendances.find(a => a && (a.id === id || getAttendanceCompositeKey(a) === String(id).toLowerCase()));
+      
+      if (!rec) {
+        const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
+        const otherList = getWhDB(otherWh, 'attendance', []);
+        rec = otherList.find(a => a && (a.id === id || getAttendanceCompositeKey(a) === String(id).toLowerCase()));
+      }
+
+      if (!rec) {
+        alert('Data presensi tidak ditemukan.');
+        return;
+      }
+
+      const finalWh = rec.warehouse || wh;
+      document.getElementById('edit-att-id').value = rec.id || '';
+      document.getElementById('edit-att-wh').value = finalWh;
+
+      const empName = rec.userName || rec.name || 'Karyawan';
+      const empNik = rec.userNik || rec.nik || '-';
+
+      document.getElementById('edit-att-name-display').innerText = empName;
+      document.getElementById('edit-att-nik-display').innerText = `NIK: ${empNik}`;
+      const whBadge = document.getElementById('edit-att-wh-badge');
+      if (whBadge) {
+        whBadge.innerText = finalWh;
+        whBadge.className = `px-2 py-0.5 rounded text-[10px] font-extrabold font-mono ${finalWh === 'MAI' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}`;
+      }
+
+      document.getElementById('edit-att-date').value = rec.date || '';
+
+      // Format jam masuk lokal (HH:mm:ss WIB)
+      if (rec.checkInTime) {
+        const inDate = new Date(rec.checkInTime);
+        const inTimeStr = inDate.toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Jakarta' });
+        document.getElementById('edit-att-in-time').value = inTimeStr;
+      } else {
+        document.getElementById('edit-att-in-time').value = '';
+      }
+
+      // Format jam pulang lokal (HH:mm:ss WIB)
+      if (rec.checkOutTime) {
+        const outDate = new Date(rec.checkOutTime);
+        const inDate = rec.checkInTime ? new Date(rec.checkInTime) : null;
+        const outTimeStr = outDate.toLocaleTimeString('en-GB', { hour12: false, timeZone: 'Asia/Jakarta' });
+        document.getElementById('edit-att-out-time').value = outTimeStr;
+
+        // Cek shift malam lintas hari (tanggal check-out berbeda dengan check-in)
+        const inDayStr = inDate ? inDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }) : rec.date;
+        const outDayStr = outDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        document.getElementById('edit-att-cross-day').value = (inDayStr !== outDayStr) ? 'yes' : 'no';
+      } else {
+        document.getElementById('edit-att-out-time').value = '';
+        document.getElementById('edit-att-cross-day').value = 'no';
+      }
+
+      document.getElementById('edit-att-in-status').value = (rec.checkInStatus === 'late' || rec.status === 'late') ? 'late' : 'on_time';
+      document.getElementById('edit-att-notes').value = rec.notes || '';
+
+      modal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeEditAttendanceModal() {
+      const modal = document.getElementById('modal-edit-attendance');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function handleSaveEditAttendance(event) {
+      if (event) event.preventDefault();
+      const id = document.getElementById('edit-att-id')?.value || '';
+      const wh = document.getElementById('edit-att-wh')?.value || activeWarehouse || 'MBI';
+      const date = document.getElementById('edit-att-date')?.value || '';
+      const inTime = document.getElementById('edit-att-in-time')?.value || '';
+      const outTime = document.getElementById('edit-att-out-time')?.value || '';
+      const inStatus = document.getElementById('edit-att-in-status')?.value || 'on_time';
+      const crossDay = document.getElementById('edit-att-cross-day')?.value || 'no';
+      const notes = (document.getElementById('edit-att-notes')?.value || '').trim();
+
+      if (!id || !date || !inTime) {
+        alert('Harap lengkapi Tanggal dan Jam Masuk!');
+        return;
+      }
+
+      let attendances = getWhDB(wh, 'attendance', []);
+      let idx = attendances.findIndex(a => a && (a.id === id || getAttendanceCompositeKey(a) === String(id).toLowerCase()));
+      let targetWh = wh;
+
+      if (idx === -1) {
+        const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
+        const otherList = getWhDB(otherWh, 'attendance', []);
+        const oIdx = otherList.findIndex(a => a && (a.id === id || getAttendanceCompositeKey(a) === String(id).toLowerCase()));
+        if (oIdx !== -1) {
+          attendances = otherList;
+          idx = oIdx;
+          targetWh = otherWh;
+        }
+      }
+
+      if (idx === -1) {
+        alert('Data presensi tidak ditemukan untuk diperbarui.');
+        return;
+      }
+
+      // Format ISO String Check-In (WIB +07:00)
+      const cleanInTime = inTime.length === 5 ? inTime + ':00' : inTime;
+      const inIso = new Date(`${date}T${cleanInTime}+07:00`).toISOString();
+
+      // Format ISO String Check-Out (WIB +07:00)
+      let outIso = null;
+      if (outTime) {
+        let outDateStr = date;
+        if (crossDay === 'yes') {
+          const d = new Date(`${date}T12:00:00Z`);
+          d.setDate(d.getDate() + 1);
+          outDateStr = d.toISOString().split('T')[0];
+        }
+        const cleanOutTime = outTime.length === 5 ? outTime + ':00' : outTime;
+        outIso = new Date(`${outDateStr}T${cleanOutTime}+07:00`).toISOString();
+      }
+
+      const existingRec = attendances[idx];
+      existingRec.date = date;
+      existingRec.checkInTime = inIso;
+      existingRec.checkOutTime = outIso;
+      existingRec.checkInStatus = inStatus;
+      existingRec.status = inStatus;
+      existingRec.notes = notes || 'Koreksi Admin';
+      existingRec.updatedAt = new Date().toISOString();
+      existingRec.correctedByAdmin = true;
+
+      attendances[idx] = existingRec;
+      setWhDB(targetWh, 'attendance', attendances);
+
+      // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
+      await saveFullDatabaseToCloud(false, true, true, targetWh);
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+
+      closeEditAttendanceModal();
+      renderRecordsTable(true);
+      refreshAllDashboardData();
+      renderMatrixTable();
+      alert(`✅ Data presensi berhasil diperbarui dan disinkronkan ke Cloud & Google Sheet!`);
     }
 
     function exportRecordsToExcel() {
