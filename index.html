@@ -4598,9 +4598,13 @@
             }
             return; // DUPLIKAT NIK & NAMA SAMA -> MERGE & SKIP
           }
-          // JIKA DUA ORANG MANUSIA BERBEDA (misal DINARYA & FIRMAN): JANGAN DI-MERGE / DIBUANG!
-          // Kosongkan u.nik agar dibuatkan NIK baru yang unik dan tidak bentrok di tahap 4!
-          u.nik = '';
+          // JIKA NIK SAMA TAPI VARIASI NAMA, PERBARUI DATA RECORD DAN JANGAN DIKOSONGKAN NIK-NYA
+          if (existing) {
+            if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
+            if (!existing.email && u.email) existing.email = u.email;
+            if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+            return;
+          }
         }
 
         // Saring duplikasi ID System
@@ -4817,9 +4821,6 @@
         });
 
         if (totalCleaned > 0) {
-          if (typeof saveFullDatabaseToCloud === 'function') {
-            saveFullDatabaseToCloud(false, true, true);
-          }
           if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
           if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
         }
@@ -4922,9 +4923,6 @@
           } catch(e) {}
           localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
           localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
-          if (typeof saveFullDatabaseToCloud === 'function') {
-            saveFullDatabaseToCloud(false, true, true);
-          }
           if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
           if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
         }
@@ -5351,9 +5349,11 @@
           });
           users = [...sysUsers, ...regUsers];
 
-          hasAnyChanges = true;
-          localStorage.setItem(userKey, JSON.stringify(users));
-          localStorage.setItem(backupKey, JSON.stringify(users));
+          if (whChanged) {
+            hasAnyChanges = true;
+            localStorage.setItem(userKey, JSON.stringify(users));
+            localStorage.setItem(backupKey, JSON.stringify(users));
+          }
         });
 
         // Jalankan kaskade penyelarasan riwayat absensi, lembur & cuti
@@ -5363,9 +5363,6 @@
         if (hasAnyChanges) {
           localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
           localStorage.setItem('wfm_master_updated_at', new Date().toISOString());
-          if (typeof saveFullDatabaseToCloud === 'function') {
-            saveFullDatabaseToCloud(false, true, true);
-          }
         }
       } catch(e) {
         console.warn('lockAndHarmonizeAllEmployeeNIKs error:', e);
@@ -6503,7 +6500,7 @@
     let lastSentMbiPayloadHash = '';
     let lastSentMaiPayloadHash = '';
 
-    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false, targetWarehouse = null) {
+    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false, targetWarehouse = null, isExplicitAdminMasterReset = false, isExplicitAdminAttendanceReset = false) {
       if (isMasterForceUpload === true) {
         pendingMasterForceUpload = true;
       }
@@ -6573,8 +6570,18 @@
         const currentMaiHash = JSON.stringify(maiDataPure);
 
         const filterWh = targetWarehouse ? targetWarehouse.toUpperCase() : null;
-        const shouldUploadMbi = (filterWh === null || filterWh === 'MBI') && (isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash);
-        const shouldUploadMai = (filterWh === null || filterWh === 'MAI') && (isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash);
+        let shouldUploadMbi = (filterWh === null || filterWh === 'MBI') && (isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash);
+        let shouldUploadMai = (filterWh === null || filterWh === 'MAI') && (isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash);
+
+        // DATA SHIELD GUARD RAILS: Mencegah penimpaan / penghapusan data Cloud oleh browser dengan cache kosong / uninitialized
+        if (shouldUploadMbi && safeMbiUsers.length < 50 && !isExplicitAdminMasterReset) {
+          console.warn('[DataShield] Upload MBI dibatalkan: data karyawan lokal tidak lengkap (< 50):', safeMbiUsers.length);
+          shouldUploadMbi = false;
+        }
+        if (shouldUploadMai && safeMaiUsers.length < 30 && !isExplicitAdminMasterReset) {
+          console.warn('[DataShield] Upload MAI dibatalkan: data karyawan lokal tidak lengkap (< 30):', safeMaiUsers.length);
+          shouldUploadMai = false;
+        }
 
         // JIKA TIDAK ADA PERUBAHAN DATA: HEMAT KUOTA FIREBASE (0 REQUEST / 0 KB DIKIRIM)
         if (!shouldUploadMbi && !shouldUploadMai) {
@@ -6585,6 +6592,16 @@
 
         const mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
         const maiPayload = { ...maiDataPure, updatedAt: nowIso };
+
+        // Proteksi attendance kosong jika belum pernah fetch dari Cloud
+        if (shouldUploadMbi && (!mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
+          console.warn('[DataShield] Upload MBI attendance kosong diabaikan agar riwayat di Cloud tidak hilang.');
+          delete mbiPayload.mbi_attendance;
+        }
+        if (shouldUploadMai && (!maiDataPure.mai_attendance || maiDataPure.mai_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
+          console.warn('[DataShield] Upload MAI attendance kosong diabaikan agar riwayat di Cloud tidak hilang.');
+          delete maiPayload.mai_attendance;
+        }
 
         lastAppliedCloudUpdatedAt = nowIso;
         localStorage.setItem('wfm_master_updated_at', nowIso);
@@ -7397,7 +7414,7 @@
       }
     }
 
-    window.onload = () => {
+    window.onload = async () => {
       // Auto-purge database lama di HP & Laptop agar otomatis terhubung ke database baru masing-masing gudang
       try {
         const legacyMbi = localStorage.getItem('wfm_firebase_custom_mbi_url') || '';
@@ -7413,6 +7430,13 @@
       try { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons(); } catch(e) {}
       try { if (typeof updateGSheetSyncBadge === 'function') updateGSheetSyncBadge(); } catch(e) {}
       try { if (typeof updateFirebaseUrlUI === 'function') updateFirebaseUrlUI(); } catch(e) {}
+
+      // CLOUD-FIRST SSOT: Selalu unduh master database terbaru dari Firebase Cloud sebelum memuat memori lokal
+      try {
+        await fetchFullDatabaseFromCloud(false, null, true);
+      } catch(e) {
+        console.warn('Initial Cloud fetch error:', e);
+      }
 
       // Ensure DB initialized & clean active users from tombstone list
       try {
@@ -14223,7 +14247,7 @@
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
       harmonizeAndResequenceAllNIKs();
-      await saveFullDatabaseToCloud(false, true, true);
+      await saveFullDatabaseToCloud(false, true, true, targetWh, true, false);
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -14252,7 +14276,7 @@
       setWhDB(targetWh, 'attendance', []);
       
       // Kirim langsung payload bersih ke Firebase
-      await saveFullDatabaseToCloud(false);
+      await saveFullDatabaseToCloud(false, true, false, targetWh, false, true);
 
       // Langsung sinkronkan ke Google Sheet agar tab RECORD ABSEN bersih
       if (typeof triggerGoogleSheetAutoSync === 'function') {
