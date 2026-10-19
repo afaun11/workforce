@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -22254,21 +22254,112 @@ function doPost(e) {
       return newSheet;
     }
 
+    function normalizeDateStr(val) {
+      if (!val) return "";
+      if (val instanceof Date) {
+        var y = val.getFullYear();
+        var m = ("0" + (val.getMonth() + 1)).slice(-2);
+        var d = ("0" + val.getDate()).slice(-2);
+        return y + "-" + m + "-" + d;
+      }
+      var s = String(val).trim();
+      if (/^\d{5}(\.\d+)?$/.test(s)) {
+        var serial = parseFloat(s);
+        var dt = new Date((serial - 25569) * 86400 * 1000);
+        var y = dt.getFullYear();
+        var m = ("0" + (dt.getMonth() + 1)).slice(-2);
+        var d = ("0" + dt.getDate()).slice(-2);
+        return y + "-" + m + "-" + d;
+      }
+      return s;
+    }
+
+    function getRowKey(sheetName, row) {
+      if (!row || row.length < 3) return "";
+      var sn = sheetName.toUpperCase();
+      if (sn.indexOf("RECORD") !== -1) {
+        return (normalizeDateStr(row[1]) + "_" + String(row[2]).trim().toUpperCase()).replace(/\s+/g, "");
+      }
+      if (sn.indexOf("PENGAJUAN") !== -1) {
+        return (String(row[1]).trim().toUpperCase() + "_" + String(row[2]).trim().toUpperCase() + "_" + String(row[4]).trim().toUpperCase() + "_" + normalizeDateStr(row[5])).replace(/\s+/g, "");
+      }
+      if (sn.indexOf("LEMBUR") !== -1) {
+        return (String(row[2]).trim().toUpperCase() + "_" + normalizeDateStr(row[4]) + "_" + String(row[5]).trim()).replace(/\s+/g, "");
+      }
+      return String(row[1]).trim().toUpperCase() + "_" + String(row[2]).trim().toUpperCase();
+    }
+
     for (var sheetName in sheetsData) {
       var rows = sheetsData[sheetName];
       if (!rows || rows.length === 0) continue;
 
       var targetSheet = findTargetSheet(sheetName);
-      targetSheet.clearContents();
+      var headerRow = rows[0];
+      var incomingDataRows = rows.slice(1);
 
-      var numRows = rows.length;
+      // BACKUP AMAN & PERMANEN: Membaca data yang sudah ada di spreadsheet agar TIDAK terhapus jika record dihapus di aplikasi
+      var mergedMap = {};
+      var orderedKeys = [];
+
+      // 1. Muat baris yang sudah ada di spreadsheet target ke memory
+      try {
+        var lastRow = targetSheet.getLastRow();
+        var lastCol = targetSheet.getLastColumn();
+        if (lastRow > 1 && lastCol > 0) {
+          var existingRangeVals = targetSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+          for (var eIdx = 0; eIdx < existingRangeVals.length; eIdx++) {
+            var exRow = existingRangeVals[eIdx];
+            var eKey = getRowKey(sheetName, exRow);
+            if (eKey) {
+              mergedMap[eKey] = exRow;
+              orderedKeys.push(eKey);
+            }
+          }
+        }
+      } catch (eRead) {}
+
+      // 2. Gabungkan/perbarui dengan data baru dari payload (tanpa menghapus data lama)
+      for (var inIdx = 0; inIdx < incomingDataRows.length; inIdx++) {
+        var inRow = incomingDataRows[inIdx];
+        var inKey = getRowKey(sheetName, inRow);
+        if (inKey) {
+          if (!mergedMap[inKey]) {
+            orderedKeys.push(inKey);
+          }
+          mergedMap[inKey] = inRow;
+        }
+      }
+
+      // 3. Konversi kembali ke array dan urutkan
+      var compiledData = [];
+      for (var kIdx = 0; kIdx < orderedKeys.length; kIdx++) {
+        var k = orderedKeys[kIdx];
+        if (mergedMap[k]) {
+          compiledData.push(mergedMap[k]);
+        }
+      }
+
+      // Urutkan data berdasarkan Tanggal descending agar rapi
+      compiledData.sort(function(a, b) {
+        var dateA = normalizeDateStr(a[1] || a[4] || "");
+        var dateB = normalizeDateStr(b[1] || b[4] || "");
+        return dateB.localeCompare(dateA);
+      });
+
+      var finalRows = [headerRow];
+      for (var fIdx = 0; fIdx < compiledData.length; fIdx++) {
+        var rData = compiledData[fIdx].slice();
+        rData[0] = fIdx + 1;
+        finalRows.push(rData);
+      }
+
+      var numRows = finalRows.length;
       var numCols = 0;
-      for (var r = 0; r < rows.length; r++) {
-        if (rows[r] && rows[r].length > numCols) numCols = rows[r].length;
+      for (var r = 0; r < finalRows.length; r++) {
+        if (finalRows[r] && finalRows[r].length > numCols) numCols = finalRows[r].length;
       }
 
       if (numRows > 0 && numCols > 0) {
-        // Otomatis perluas kolom dan baris jika data melebihi batas sheet
         var currentCols = targetSheet.getMaxColumns();
         if (numCols > currentCols) {
           targetSheet.insertColumnsAfter(currentCols, numCols - currentCols);
@@ -22279,8 +22370,8 @@ function doPost(e) {
         }
 
         var normalized = [];
-        for (var r = 0; r < rows.length; r++) {
-          var row = rows[r] || [];
+        for (var r = 0; r < numRows; r++) {
+          var row = finalRows[r] || [];
           var nRow = [];
           for (var c = 0; c < numCols; c++) {
             nRow.push(row[c] !== undefined && row[c] !== null ? row[c] : "");
@@ -22288,10 +22379,9 @@ function doPost(e) {
           normalized.push(nRow);
         }
 
-        // Tulis seluruh data tabel sekaligus (Batch Write super cepat)
+        targetSheet.clearContents();
         targetSheet.getRange(1, 1, numRows, numCols).setValues(normalized);
 
-        // Header Styling Cepat & Elegan
         try {
           targetSheet.getRange(1, 1, 1, numCols)
             .setFontWeight("bold")
