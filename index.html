@@ -7706,7 +7706,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261020_v11';
+    const CURRENT_APP_VERSION = '20261020_v12';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -9835,9 +9835,15 @@
           });
         }
 
-      // Reset & amankan daftar record presensi agar tidak ada data sah yang tertekan tombstone usang
+      // Sinkronkan tombstone hapus presensi, pengajuan, dan lembur dari Cloud ke Lokal
       if (Array.isArray(db.deleted_attendance_ids) && db.deleted_attendance_ids.length > 0) {
-        localStorage.removeItem('wfm_deleted_attendance_ids');
+        trackDeletedAttendance(db.deleted_attendance_ids);
+      }
+      if (Array.isArray(db.deleted_leave_ids) && db.deleted_leave_ids.length > 0) {
+        trackDeletedLeaves(db.deleted_leave_ids);
+      }
+      if (Array.isArray(db.deleted_overtime_ids) && db.deleted_overtime_ids.length > 0) {
+        trackDeletedOvertime(db.deleted_overtime_ids);
       }
 
       const cloudUpdatedAt = db.updatedAt || '';
@@ -10193,7 +10199,9 @@
           mbi_coords: mbiCoordsToSave,
           gps_radius: mbiRadToSave,
           deleted_user_keys: Array.from(deletedKeys),
-          deleted_attendance_ids: [],
+          deleted_attendance_ids: Array.from(getDeletedAttendanceIds()),
+          deleted_leave_ids: Array.from(getDeletedLeaveIds()),
+          deleted_overtime_ids: Array.from(getDeletedOvertimeIds()),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
 
@@ -10205,7 +10213,9 @@
           mai_coords: maiCoordsToSave,
           gps_radius: maiRadToSave,
           deleted_user_keys: Array.from(deletedKeys),
-          deleted_attendance_ids: [],
+          deleted_attendance_ids: Array.from(getDeletedAttendanceIds()),
+          deleted_leave_ids: Array.from(getDeletedLeaveIds()),
+          deleted_overtime_ids: Array.from(getDeletedOvertimeIds()),
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
 
@@ -20180,20 +20190,50 @@
       exportWorkHoursToExcel();
     }
 
+    window.selectedReportLeaveIds = window.selectedReportLeaveIds || new Set();
+
+    function handleReportLeaveCheckChange(cb) {
+      if (!window.selectedReportLeaveIds) window.selectedReportLeaveIds = new Set();
+      if (cb.checked) {
+        window.selectedReportLeaveIds.add(cb.value);
+      } else {
+        window.selectedReportLeaveIds.delete(cb.value);
+      }
+      updateSelectedReportLeavesCount();
+    }
+
     function toggleSelectAllReportLeaves(isChecked) {
+      if (!window.selectedReportLeaveIds) window.selectedReportLeaveIds = new Set();
       const checkboxes = document.querySelectorAll('input[name="report-leaves-row-check"]');
-      checkboxes.forEach(cb => { cb.checked = isChecked; });
+      checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        if (isChecked) {
+          window.selectedReportLeaveIds.add(cb.value);
+        } else {
+          window.selectedReportLeaveIds.delete(cb.value);
+        }
+      });
       updateSelectedReportLeavesCount();
     }
 
     function updateSelectedReportLeavesCount() {
-      const selected = document.querySelectorAll('input[name="report-leaves-row-check"]:checked');
+      if (!window.selectedReportLeaveIds) window.selectedReportLeaveIds = new Set();
+      const count = window.selectedReportLeaveIds.size;
       const badge = document.getElementById('count-selected-report-leaves-badge');
       const btnDelete = document.getElementById('btn-delete-selected-report-leaves');
-      if (badge) badge.innerText = selected.length;
+      if (badge) badge.innerText = count;
       if (btnDelete) {
-        btnDelete.classList.toggle('opacity-50', selected.length === 0);
-        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+        btnDelete.classList.toggle('opacity-50', count === 0);
+        btnDelete.classList.toggle('pointer-events-none', count === 0);
+      }
+      const masterCheck = document.getElementById('check-all-report-leaves');
+      if (masterCheck) {
+        const pageCbs = document.querySelectorAll('input[name="report-leaves-row-check"]');
+        if (pageCbs.length > 0) {
+          masterCheck.checked = Array.from(pageCbs).every(cb => cb.checked);
+        } else {
+          masterCheck.checked = false;
+        }
       }
     }
 
@@ -20202,36 +20242,70 @@
         alert('Akses Ditolak: Anda tidak memiliki izin Admin untuk menghapus data pengajuan.');
         return;
       }
-      const selectedCbs = document.querySelectorAll('input[name="report-leaves-row-check"]:checked');
-      if (selectedCbs.length === 0) {
+      if (!window.selectedReportLeaveIds || window.selectedReportLeaveIds.size === 0) {
         alert('Pilih minimal 1 data pengajuan dengan mencentang kotak di tabel.');
         return;
       }
-      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${selectedCbs.length} data pengajuan terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database, dan Google Spreadsheet.`)) {
+      const count = window.selectedReportLeaveIds.size;
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${count} data pengajuan terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database (Firebase), dan Google Spreadsheet.`)) {
         return;
       }
 
-      const selectedIds = new Set(Array.from(selectedCbs).map(cb => cb.value));
+      const selectedIds = Array.from(window.selectedReportLeaveIds);
 
       // Catat tombstone agar tidak pernah bangkit lagi
-      trackDeletedLeaves(Array.from(selectedIds));
+      trackDeletedLeaves(selectedIds);
 
-      // Filter dari kedua gudang
+      // Filter dari kedua gudang lokal
+      const remainingMbi = [];
+      const remainingMai = [];
       ['MBI', 'MAI'].forEach(wh => {
         let list = getWhDB(wh, 'leaves', []);
         const filtered = list.filter(lv => {
           if (!lv) return false;
           const k1 = lv.id;
           const k2 = `${(lv.userNik || '').toUpperCase()}_${lv.startDate || ''}_${lv.type || ''}`.toLowerCase();
-          if ((k1 && selectedIds.has(k1)) || (k2 && selectedIds.has(k2)) || isLeaveMarkedDeleted(lv)) {
+          if ((k1 && selectedIds.includes(k1)) || (k2 && selectedIds.includes(k2)) || isLeaveMarkedDeleted(lv)) {
             return false;
           }
           return true;
         });
-        if (filtered.length !== list.length) {
-          setWhDB(wh, 'leaves', filtered);
-        }
+        setWhDB(wh, 'leaves', filtered);
+        if (wh === 'MBI') remainingMbi.push(...filtered);
+        else remainingMai.push(...filtered);
       });
+
+      // Timpa langsung di Firebase RTDB dengan PUT agar index array lama benar-benar lenyap
+      try {
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
+        const putPromises = [];
+        if (mbiEndpoint) {
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_leaves.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMbi)
+          }).catch(e => {}));
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_leave_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedLeaveIds()))
+          }).catch(e => {}));
+        }
+        if (maiEndpoint) {
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_leaves.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMai)
+          }).catch(e => {}));
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_leave_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedLeaveIds()))
+          }).catch(e => {}));
+        }
+        await Promise.allSettled(putPromises);
+      } catch(e) {}
 
       await saveFullDatabaseToCloud(false, true, true);
 
@@ -20239,10 +20313,12 @@
         triggerGoogleSheetAutoSync(true);
       }
 
+      window.selectedReportLeaveIds.clear();
+      updateSelectedReportLeavesCount();
       renderReportLeavesTable();
       if (typeof renderLeavesTable === 'function') renderLeavesTable();
       refreshAllDashboardData();
-      alert(`✅ Berhasil menghapus ${selectedIds.size} data pengajuan secara permanen dari sistem dan Cloud.`);
+      alert(`✅ Berhasil menghapus ${count} data pengajuan secara permanen dari sistem dan Cloud.`);
     }
 
     function renderReportLeavesTable() {
@@ -20263,16 +20339,13 @@
         return inDate && inType && inStatus && inSearch;
       });
 
-      const masterCheck = document.getElementById('check-all-report-leaves');
-      if (masterCheck) masterCheck.checked = false;
-      updateSelectedReportLeavesCount();
-
       const tbody = document.getElementById('report-leaves-table-body');
       if (!tbody) return;
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 font-medium">Tidak ada data pengajuan pada filter ini.</td></tr>`;
+        updateSelectedReportLeavesCount();
         return;
       }
 
@@ -20294,9 +20367,11 @@
         else if (lv.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
         else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
+        const isChecked = window.selectedReportLeaveIds && window.selectedReportLeaveIds.has(leaveId);
+
         tr.innerHTML = `
           <td class="p-3 text-center border-r border-slate-100">
-            <input type="checkbox" name="report-leaves-row-check" value="${leaveId}" onchange="updateSelectedReportLeavesCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+            <input type="checkbox" name="report-leaves-row-check" value="${leaveId}" ${isChecked ? 'checked' : ''} onchange="handleReportLeaveCheckChange(this)" onclick="event.stopPropagation()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
           </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${lv.userName}</td>
@@ -20366,20 +20441,50 @@
       XLSX.writeFile(wb, `Rekap_Pengajuan_${activeWarehouse}_${startStr || 'all'}_sd_${endStr || 'all'}.xlsx`);
     }
 
+    window.selectedReportOtIds = window.selectedReportOtIds || new Set();
+
+    function handleReportOtCheckChange(cb) {
+      if (!window.selectedReportOtIds) window.selectedReportOtIds = new Set();
+      if (cb.checked) {
+        window.selectedReportOtIds.add(cb.value);
+      } else {
+        window.selectedReportOtIds.delete(cb.value);
+      }
+      updateSelectedReportOvertimeCount();
+    }
+
     function toggleSelectAllReportOvertime(isChecked) {
+      if (!window.selectedReportOtIds) window.selectedReportOtIds = new Set();
       const checkboxes = document.querySelectorAll('input[name="report-ot-row-check"]');
-      checkboxes.forEach(cb => { cb.checked = isChecked; });
+      checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        if (isChecked) {
+          window.selectedReportOtIds.add(cb.value);
+        } else {
+          window.selectedReportOtIds.delete(cb.value);
+        }
+      });
       updateSelectedReportOvertimeCount();
     }
 
     function updateSelectedReportOvertimeCount() {
-      const selected = document.querySelectorAll('input[name="report-ot-row-check"]:checked');
+      if (!window.selectedReportOtIds) window.selectedReportOtIds = new Set();
+      const count = window.selectedReportOtIds.size;
       const badge = document.getElementById('count-selected-report-ot-badge');
       const btnDelete = document.getElementById('btn-delete-selected-report-ot');
-      if (badge) badge.innerText = selected.length;
+      if (badge) badge.innerText = count;
       if (btnDelete) {
-        btnDelete.classList.toggle('opacity-50', selected.length === 0);
-        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+        btnDelete.classList.toggle('opacity-50', count === 0);
+        btnDelete.classList.toggle('pointer-events-none', count === 0);
+      }
+      const masterCheck = document.getElementById('check-all-report-ot');
+      if (masterCheck) {
+        const pageCbs = document.querySelectorAll('input[name="report-ot-row-check"]');
+        if (pageCbs.length > 0) {
+          masterCheck.checked = Array.from(pageCbs).every(cb => cb.checked);
+        } else {
+          masterCheck.checked = false;
+        }
       }
     }
 
@@ -20388,36 +20493,70 @@
         alert('Akses Ditolak: Anda tidak memiliki izin Admin untuk menghapus data lembur.');
         return;
       }
-      const selectedCbs = document.querySelectorAll('input[name="report-ot-row-check"]:checked');
-      if (selectedCbs.length === 0) {
+      if (!window.selectedReportOtIds || window.selectedReportOtIds.size === 0) {
         alert('Pilih minimal 1 data lembur dengan mencentang kotak di tabel.');
         return;
       }
-      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${selectedCbs.length} data lembur terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database, dan Google Spreadsheet.`)) {
+      const count = window.selectedReportOtIds.size;
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${count} data lembur terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database (Firebase), dan Google Spreadsheet.`)) {
         return;
       }
 
-      const selectedIds = new Set(Array.from(selectedCbs).map(cb => cb.value));
+      const selectedIds = Array.from(window.selectedReportOtIds);
 
       // Catat tombstone agar tidak pernah bangkit lagi
-      trackDeletedOvertime(Array.from(selectedIds));
+      trackDeletedOvertime(selectedIds);
 
-      // Filter dari kedua gudang
+      // Filter dari kedua gudang lokal
+      const remainingMbi = [];
+      const remainingMai = [];
       ['MBI', 'MAI'].forEach(wh => {
         let list = getWhDB(wh, 'overtime', []);
         const filtered = list.filter(o => {
           if (!o) return false;
           const k1 = o.id;
           const k2 = `${(o.userNik || '').toUpperCase()}_${o.date || ''}_${o.startTime || ''}`.toLowerCase();
-          if ((k1 && selectedIds.has(k1)) || (k2 && selectedIds.has(k2)) || isOvertimeMarkedDeleted(o)) {
+          if ((k1 && selectedIds.includes(k1)) || (k2 && selectedIds.includes(k2)) || isOvertimeMarkedDeleted(o)) {
             return false;
           }
           return true;
         });
-        if (filtered.length !== list.length) {
-          setWhDB(wh, 'overtime', filtered);
-        }
+        setWhDB(wh, 'overtime', filtered);
+        if (wh === 'MBI') remainingMbi.push(...filtered);
+        else remainingMai.push(...filtered);
       });
+
+      // Timpa langsung di Firebase RTDB dengan PUT agar index array lama benar-benar lenyap
+      try {
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
+        const putPromises = [];
+        if (mbiEndpoint) {
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_overtime.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMbi)
+          }).catch(e => {}));
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_overtime_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedOvertimeIds()))
+          }).catch(e => {}));
+        }
+        if (maiEndpoint) {
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_overtime.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMai)
+          }).catch(e => {}));
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_overtime_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedOvertimeIds()))
+          }).catch(e => {}));
+        }
+        await Promise.allSettled(putPromises);
+      } catch(e) {}
 
       await saveFullDatabaseToCloud(false, true, true);
 
@@ -20425,10 +20564,12 @@
         triggerGoogleSheetAutoSync(true);
       }
 
+      window.selectedReportOtIds.clear();
+      updateSelectedReportOvertimeCount();
       renderReportOvertimeTable();
       if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
       refreshAllDashboardData();
-      alert(`✅ Berhasil menghapus ${selectedIds.size} data lembur secara permanen dari sistem dan Cloud.`);
+      alert(`✅ Berhasil menghapus ${count} data lembur secara permanen dari sistem dan Cloud.`);
     }
 
     function renderReportOvertimeTable() {
@@ -20463,16 +20604,13 @@
         badge.innerText = `Total Estimasi Biaya: Rp ${totalNominal.toLocaleString('id-ID')} (${filtered.length} Data)`;
       }
 
-      const masterCheck = document.getElementById('check-all-report-ot');
-      if (masterCheck) masterCheck.checked = false;
-      updateSelectedReportOvertimeCount();
-
       const tbody = document.getElementById('report-overtime-table-body');
       if (!tbody) return;
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400 font-medium">Tidak ada data lembur pada filter periode ini.</td></tr>`;
+        updateSelectedReportOvertimeCount();
         return;
       }
 
@@ -20491,9 +20629,11 @@
         else if (ot.status === 'pending_manager') statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">MENUNGGU MANAGER</span>';
         else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
+        const isChecked = window.selectedReportOtIds && window.selectedReportOtIds.has(otId);
+
         tr.innerHTML = `
           <td class="p-3 text-center border-r border-slate-100">
-            <input type="checkbox" name="report-ot-row-check" value="${otId}" onchange="updateSelectedReportOvertimeCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+            <input type="checkbox" name="report-ot-row-check" value="${otId}" ${isChecked ? 'checked' : ''} onchange="handleReportOtCheckChange(this)" onclick="event.stopPropagation()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
           </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
@@ -20804,12 +20944,9 @@
       const tbody = document.getElementById('records-table-body');
       if (!tbody) return;
 
-      const masterCheck = document.getElementById('check-all-records');
-      if (masterCheck) masterCheck.checked = false;
-      updateSelectedRecordsCount();
-
       if (totalFiltered === 0) {
         tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
+        updateSelectedRecordsCount();
         return;
       }
 
@@ -20864,11 +21001,12 @@
           : '';
 
         const whBadgeClass = recWh === 'MAI' ? 'bg-amber-50 text-amber-900 border-amber-200' : 'bg-sky-50 text-sky-900 border-sky-200';
+        const isChecked = window.selectedRecordIds && window.selectedRecordIds.has(recId);
 
         rowsHTML.push(`
           <tr class="hover:bg-slate-50 transition border-b border-slate-100">
             <td class="p-3 text-center border-r border-slate-100">
-              <input type="checkbox" name="record-row-check" value="${recId}" data-wh="${recWh}" onchange="updateSelectedRecordsCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+              <input type="checkbox" name="record-row-check" value="${recId}" data-wh="${recWh}" ${isChecked ? 'checked' : ''} onchange="handleRecordCheckChange(this)" onclick="event.stopPropagation()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
             </td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${globalIdx + 1}</td>
             <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900 whitespace-nowrap">${rec.date}</td>
@@ -20908,22 +21046,53 @@
 
       tbody.innerHTML = rowsHTML.join('');
       lucide.createIcons();
+      updateSelectedRecordsCount();
+    }
+
+    window.selectedRecordIds = window.selectedRecordIds || new Set();
+
+    function handleRecordCheckChange(cb) {
+      if (!window.selectedRecordIds) window.selectedRecordIds = new Set();
+      if (cb.checked) {
+        window.selectedRecordIds.add(cb.value);
+      } else {
+        window.selectedRecordIds.delete(cb.value);
+      }
+      updateSelectedRecordsCount();
     }
 
     function toggleSelectAllRecords(isChecked) {
+      if (!window.selectedRecordIds) window.selectedRecordIds = new Set();
       const checkboxes = document.querySelectorAll('input[name="record-row-check"]');
-      checkboxes.forEach(cb => { cb.checked = isChecked; });
+      checkboxes.forEach(cb => {
+        cb.checked = isChecked;
+        if (isChecked) {
+          window.selectedRecordIds.add(cb.value);
+        } else {
+          window.selectedRecordIds.delete(cb.value);
+        }
+      });
       updateSelectedRecordsCount();
     }
 
     function updateSelectedRecordsCount() {
-      const selected = document.querySelectorAll('input[name="record-row-check"]:checked');
+      if (!window.selectedRecordIds) window.selectedRecordIds = new Set();
+      const count = window.selectedRecordIds.size;
       const badge = document.getElementById('count-selected-records-badge');
       const btnDelete = document.getElementById('btn-delete-selected-records');
-      if (badge) badge.innerText = selected.length;
+      if (badge) badge.innerText = count;
       if (btnDelete) {
-        btnDelete.classList.toggle('opacity-50', selected.length === 0);
-        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+        btnDelete.classList.toggle('opacity-50', count === 0);
+        btnDelete.classList.toggle('pointer-events-none', count === 0);
+      }
+      const masterCheck = document.getElementById('check-all-records');
+      if (masterCheck) {
+        const pageCbs = document.querySelectorAll('input[name="record-row-check"]');
+        if (pageCbs.length > 0) {
+          masterCheck.checked = Array.from(pageCbs).every(cb => cb.checked);
+        } else {
+          masterCheck.checked = false;
+        }
       }
     }
 
@@ -20932,44 +21101,75 @@
         alert('Akses Ditolak: Anda tidak memiliki izin Admin untuk menghapus record absen.');
         return;
       }
-      const selectedCbs = document.querySelectorAll('input[name="record-row-check"]:checked');
-      if (selectedCbs.length === 0) {
+      if (!window.selectedRecordIds || window.selectedRecordIds.size === 0) {
         alert('Pilih minimal 1 catatan presensi dengan mencentang kotak di tabel.');
         return;
       }
-      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${selectedCbs.length} record presensi terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database, dan Google Spreadsheet.`)) {
+      const count = window.selectedRecordIds.size;
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${count} record presensi terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database (Firebase), dan Google Spreadsheet.`)) {
         return;
       }
 
-      const selectedItems = Array.from(selectedCbs).map(cb => ({
-        id: cb.value,
-        warehouse: cb.getAttribute('data-wh') || activeWarehouse || 'MBI'
-      }));
+      const selectedIds = Array.from(window.selectedRecordIds);
 
       // Catat ke tombstone
-      selectedItems.forEach(item => {
-        if (item.id) {
-          trackDeletedAttendance(item.id);
-        }
-      });
+      trackDeletedAttendance(selectedIds);
 
-      // Filter dari kedua gudang
+      // Filter dari kedua gudang lokal
+      const remainingMbi = [];
+      const remainingMai = [];
       ['MBI', 'MAI'].forEach(w => {
         let list = getWhDB(w, 'attendance', []);
         const filtered = list.filter(a => {
           if (!a) return false;
-          const matchItem = selectedItems.find(item => item.id && (a.id === item.id || getAttendanceCompositeKey(a) === String(item.id).toLowerCase()));
-          if (matchItem) {
+          const kId = a.id ? String(a.id).trim().toLowerCase() : '';
+          const kComp = getAttendanceCompositeKey(a);
+          if (selectedIds.some(sel => {
+            const s = String(sel).trim().toLowerCase();
+            return (kId && kId === s) || (kComp && kComp === s);
+          })) {
             trackDeletedAttendance(a);
             return false;
           }
           if (isAttendanceMarkedDeleted(a)) return false;
           return true;
         });
-        if (filtered.length !== list.length) {
-          setWhDB(w, 'attendance', filtered);
-        }
+        setWhDB(w, 'attendance', filtered);
+        if (w === 'MBI') remainingMbi.push(...filtered);
+        else remainingMai.push(...filtered);
       });
+
+      // Timpa langsung di Firebase RTDB dengan PUT agar index array lama benar-benar lenyap
+      try {
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
+        const putPromises = [];
+        if (mbiEndpoint) {
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_attendance.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMbi)
+          }).catch(e => {}));
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
+          }).catch(e => {}));
+        }
+        if (maiEndpoint) {
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_attendance.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMai)
+          }).catch(e => {}));
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
+          }).catch(e => {}));
+        }
+        await Promise.allSettled(putPromises);
+      } catch(e) {}
 
       await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
@@ -20977,11 +21177,13 @@
         triggerGoogleSheetAutoSync(true);
       }
 
+      window.selectedRecordIds.clear();
+      updateSelectedRecordsCount();
       renderRecordsTable();
       refreshAllDashboardData();
       renderMatrixTable();
       renderScannerTodayRecords();
-      alert(`✅ Berhasil menghapus ${selectedItems.length} catatan presensi secara permanen dari sistem dan Cloud.`);
+      alert(`✅ Berhasil menghapus ${count} catatan presensi secara permanen dari sistem dan Cloud.`);
     }
 
     async function deleteSingleAttendanceRecord(id, targetWh = activeWarehouse) {
@@ -20999,13 +21201,47 @@
       }
 
       // Bersihkan dari kedua gudang jika record ada
+      const remainingMbi = [];
+      const remainingMai = [];
       ['MBI', 'MAI'].forEach(w => {
         let list = getWhDB(w, 'attendance', []);
         const filtered = list.filter(a => a && !isAttendanceMarkedDeleted(a));
-        if (filtered.length !== list.length) {
-          setWhDB(w, 'attendance', filtered);
-        }
+        setWhDB(w, 'attendance', filtered);
+        if (w === 'MBI') remainingMbi.push(...filtered);
+        else remainingMai.push(...filtered);
       });
+
+      // Timpa langsung array di Firebase RTDB dengan PUT
+      try {
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        const maiEndpoint = getFirebaseEndpoint('MAI');
+        const putPromises = [];
+        if (mbiEndpoint) {
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_attendance.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMbi)
+          }).catch(e => {}));
+          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
+          }).catch(e => {}));
+        }
+        if (maiEndpoint) {
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_attendance.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(remainingMai)
+          }).catch(e => {}));
+          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
+          }).catch(e => {}));
+        }
+        await Promise.allSettled(putPromises);
+      } catch(e) {}
 
       // Simpan ke Firebase Cloud dengan isExplicitAdminAttendanceReset = true
       await saveFullDatabaseToCloud(false, true, true, null, false, true);
@@ -21015,6 +21251,10 @@
         triggerGoogleSheetAutoSync(true);
       }
 
+      if (window.selectedRecordIds) {
+        window.selectedRecordIds.delete(id);
+        updateSelectedRecordsCount();
+      }
       renderRecordsTable();
       refreshAllDashboardData();
       renderMatrixTable();
