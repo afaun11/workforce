@@ -9283,17 +9283,22 @@
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
         map.set(key, item);
       });
+      // Data lokal HANYA boleh menambahkan record baru jika tanggalnya adalah hari ini (offline tap baru hari ini)
+      const todayStr = getLocalDateString(new Date());
       (localList || []).forEach(localItem => {
         if (!localItem || isAttendanceMarkedDeleted(localItem, deletedIds)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.checkInTime || ''}`;
         if (!map.has(key)) {
-          map.set(key, localItem);
+          if (localItem.date === todayStr) {
+            map.set(key, localItem);
+          }
         } else {
           const cloudItem = map.get(key);
-          const merged = { ...cloudItem, ...localItem };
-          // Pertahankan jam checkout jika salah satu sisi telah melakukan tap pulang
-          if (cloudItem.checkOutTime && !localItem.checkOutTime) {
-            merged.checkOutTime = cloudItem.checkOutTime;
+          // Data Cloud adalah otoritas utama untuk userNik, userName, userId, dept, outsource
+          const merged = { ...localItem, ...cloudItem };
+          // Pertahankan jam checkout jika lokal baru saja melakukan tap pulang offline
+          if (localItem.checkOutTime && !cloudItem.checkOutTime) {
+            merged.checkOutTime = localItem.checkOutTime;
           }
           map.set(key, merged);
         }
@@ -10836,12 +10841,26 @@
     }
 
     window.onload = async () => {
-      // Auto-purge tombstone racun & database lama di HP & Laptop agar seketika 100% sinkron
-      try {
-        localStorage.removeItem('wfm_deleted_user_keys');
-        localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(['agus setiawan', 'agussetiawan', 'budi santoso', 'budisantoso']));
-        localStorage.removeItem('wfm_deleted_attendance_ids');
-      } catch(e) {}
+      // Auto-purge cache lokal lama agar seketika 100% sinkron dengan database cloud yang sudah dirapikan
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v4';
+      if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
+        try {
+          localStorage.removeItem('wfm_mbi_attendance');
+          localStorage.removeItem('wfm_mai_attendance');
+          localStorage.removeItem('wfm_mbi_attendance_backup');
+          localStorage.removeItem('wfm_mai_attendance_backup');
+          localStorage.removeItem('wfm_mbi_users');
+          localStorage.removeItem('wfm_mai_users');
+          localStorage.removeItem('wfm_mbi_users_backup');
+          localStorage.removeItem('wfm_mai_users_backup');
+          localStorage.removeItem('wfm_mbi_master_updated_at');
+          localStorage.removeItem('wfm_mai_master_updated_at');
+          localStorage.removeItem('wfm_deleted_user_keys');
+          localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(['agus setiawan', 'agussetiawan', 'budi santoso', 'budisantoso']));
+          localStorage.removeItem('wfm_deleted_attendance_ids');
+          localStorage.setItem('wfm_data_revision', CURRENT_DATA_REVISION);
+        } catch(e) {}
+      }
       // Auto-purge database lama di HP & Laptop agar otomatis terhubung ke database baru masing-masing gudang
       try {
         const legacyMbi = localStorage.getItem('wfm_firebase_custom_mbi_url') || '';
