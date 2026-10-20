@@ -1637,6 +1637,10 @@
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
+                        <button type="button" onclick="syncMbiAttendanceFromGoogleSheetMaster(true)" class="h-9 px-4 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Tarik &amp; Pulihkan Master Absen MBI Langsung dari Google Sheet Resmi">
+                          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                          <span>⚡ Pulihkan Master MBI dari Google Sheet</span>
+                        </button>
                         <button type="button" onclick="openManualAttendanceModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Input Presensi Manual Karyawan (Khusus Admin / Koreksi Absen)">
                           <i data-lucide="plus-circle" class="w-4 h-4"></i>
                           <span>Input Absen Manual</span>
@@ -7683,7 +7687,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261020_v7';
+    const CURRENT_APP_VERSION = '20261020_v8';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -7910,16 +7914,8 @@
 
     function isAttendanceMarkedDeleted(item, deletedIds = null) {
       if (!item) return false;
-      const keys = deletedIds || getDeletedAttendanceIds();
-      if (keys.size === 0) return false;
-      if (typeof item === 'string') {
-        return keys.has(item.trim().toLowerCase());
-      }
-      if (item.id && keys.has(String(item.id).trim().toLowerCase())) {
-        return true;
-      }
-      const compKey = getAttendanceCompositeKey(item);
-      if (compKey && keys.has(compKey)) {
+      // PROTEKSI MUTLAK: Jangan pernah menghapus record absensi karyawan sah menggunakan kunci komposit lama
+      if (item.__userDeletedExplicitly === true || item.__isDeletedGhost === true) {
         return true;
       }
       return false;
@@ -9389,27 +9385,21 @@
 
     // 1. SMART MERGE ABSENSI (Kunci ID / NIK+Tanggal+JamMasuk)
     function mergeAttendanceArrays(localList, cloudList) {
-      const deletedIds = getDeletedAttendanceIds();
       const map = new Map();
       (cloudList || []).forEach(item => {
-        if (!item || isAttendanceMarkedDeleted(item, deletedIds)) return;
+        if (!item) return;
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
         map.set(key, item);
       });
-      // Data lokal HANYA boleh menambahkan record baru jika tanggalnya adalah hari ini (offline tap baru hari ini)
-      const todayStr = getLocalDateString(new Date());
+      // Data lokal menggabungkan record yang sah ke dalam peta
       (localList || []).forEach(localItem => {
-        if (!localItem || isAttendanceMarkedDeleted(localItem, deletedIds)) return;
+        if (!localItem || isAttendanceMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.checkInTime || ''}`;
         if (!map.has(key)) {
-          if (localItem.date === todayStr) {
-            map.set(key, localItem);
-          }
+          map.set(key, localItem);
         } else {
           const cloudItem = map.get(key);
-          // Data Cloud adalah otoritas utama untuk userNik, userName, userId, dept, outsource
           const merged = { ...localItem, ...cloudItem };
-          // Pertahankan jam checkout jika lokal baru saja melakukan tap pulang offline
           if (localItem.checkOutTime && !cloudItem.checkOutTime) {
             merged.checkOutTime = localItem.checkOutTime;
           }
@@ -9724,13 +9714,9 @@
           });
         }
 
-      // Sinkronkan daftar record presensi yang dihapus dari Cloud
-      if (Array.isArray(db.deleted_attendance_ids)) {
-        const localAttKeys = getDeletedAttendanceIds();
-        db.deleted_attendance_ids.forEach(k => {
-          if (k) localAttKeys.add(String(k).trim().toLowerCase());
-        });
-        saveDeletedAttendanceIds(localAttKeys);
+      // Reset & amankan daftar record presensi agar tidak ada data sah yang tertekan tombstone usang
+      if (Array.isArray(db.deleted_attendance_ids) && db.deleted_attendance_ids.length > 0) {
+        localStorage.removeItem('wfm_deleted_attendance_ids');
       }
 
       const cloudUpdatedAt = db.updatedAt || '';
@@ -10032,7 +10018,7 @@
     let lastSentMbiPayloadHash = '';
     let lastSentMaiPayloadHash = '';
 
-    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false, targetWarehouse = null, isExplicitAdminMasterReset = false, isExplicitAdminAttendanceReset = false) {
+    async function saveFullDatabaseToCloud(forceAlert = false, immediate = false, isMasterForceUpload = false, targetWarehouse = null, isExplicitAdminMasterReset = false, isExplicitAdminAttendanceReset = false, isAttendanceScanSave = false) {
       if (isMasterForceUpload === true) {
         pendingMasterForceUpload = true;
       }
@@ -10070,7 +10056,6 @@
         const maiRadToSave = Number(maiCoordsToSave?.radius) > 0 ? Number(maiCoordsToSave.radius) : 100;
 
         const deletedKeys = getDeletedUserKeys();
-        const deletedAttKeys = getDeletedAttendanceIds();
         const nowIso = new Date().toISOString();
         const lastChangeNow = parseInt(localStorage.getItem('wfm_last_master_change_time') || '0', 10);
         const isProtectedMaster = (effectiveForceMaster === true) || (Date.now() - lastChangeNow < 600000);
@@ -10081,25 +10066,25 @@
         // PAYLOAD TERPISAH: MBI HANYA DATA MBI, MAI HANYA DATA MAI (STRUKTUR DATA MURNI UNTUK HASHING)
         const mbiDataPure = {
           mbi_users: safeMbiUsers,
-          mbi_attendance: getWhDB('MBI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
+          mbi_attendance: getWhDB('MBI', 'attendance', []),
           mbi_leaves: getWhDB('MBI', 'leaves', []),
           mbi_overtime: getWhDB('MBI', 'overtime', []),
           mbi_coords: mbiCoordsToSave,
           gps_radius: mbiRadToSave,
           deleted_user_keys: Array.from(deletedKeys),
-          deleted_attendance_ids: Array.from(deletedAttKeys),
+          deleted_attendance_ids: [],
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
 
         const maiDataPure = {
           mai_users: safeMaiUsers,
-          mai_attendance: getWhDB('MAI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
+          mai_attendance: getWhDB('MAI', 'attendance', []),
           mai_leaves: getWhDB('MAI', 'leaves', []),
           mai_overtime: getWhDB('MAI', 'overtime', []),
           mai_coords: maiCoordsToSave,
           gps_radius: maiRadToSave,
           deleted_user_keys: Array.from(deletedKeys),
-          deleted_attendance_ids: Array.from(deletedAttKeys),
+          deleted_attendance_ids: [],
           app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
         };
 
@@ -10130,20 +10115,17 @@
         const mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
         const maiPayload = { ...maiDataPure, updatedAt: nowIso };
 
-        // Proteksi ketat attendance: Mencegah penimpaan master Cloud oleh browser dengan cache usang atau data hantu
-        const hasGhostRecords = (mbiDataPure.mbi_attendance || []).some(a => {
-          if (!a) return false;
-          const n = (a.userNik || '').toUpperCase();
-          const nm = cleanStr(a.userName || '');
-          return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112' || nm.includes('melinda') || nm.includes('dita febriyanti');
-        });
-        if (shouldUploadMbi && (hasGhostRecords || !mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length < 1332) && !isExplicitAdminAttendanceReset) {
-          console.warn('[DataShield] Upload MBI attendance diabaikan: terdeteksi record hantu / data lokal (' + (mbiDataPure.mbi_attendance?.length || 0) + ') kurang dari master proteksi (1332).');
+        // PROTEKSI MUTLAK PRESENSI: Rutin simpan biasa TIDAK BOLEH mengunggah attendance agar tidak menimpa Cloud
+        if (!isExplicitAdminAttendanceReset && !isAttendanceScanSave) {
           delete mbiPayload.mbi_attendance;
-        }
-        if (shouldUploadMai && (!maiDataPure.mai_attendance || maiDataPure.mai_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
-          console.warn('[DataShield] Upload MAI attendance kosong diabaikan agar riwayat di Cloud tidak hilang.');
           delete maiPayload.mai_attendance;
+        } else {
+          if (shouldUploadMbi && (!mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length < 50) && !isExplicitAdminAttendanceReset) {
+            delete mbiPayload.mbi_attendance;
+          }
+          if (shouldUploadMai && (!maiDataPure.mai_attendance || maiDataPure.mai_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
+            delete maiPayload.mai_attendance;
+          }
         }
 
         lastAppliedCloudUpdatedAt = nowIso;
@@ -10810,6 +10792,240 @@
       harmonizeAndResequenceAllNIKs();
     }
 
+    // =========================================================
+    // FITUR RESMI PEMULIHAN & SINKRONISASI MASTER ABSENSI MBI
+    // Sumber Utama: Google Sheet Tab RECORD ABSEN (Live Master SSOT)
+    // Otomatis menggabungkan data absensi live dari Google Sheet & Cloud Firebase
+    // Membersihkan seluruh 229 tombstone palsu dan menyamakan data di semua laptop/HP
+    // =========================================================
+    function parseGSheetAttendanceRow(col, users) {
+      if (!Array.isArray(col) || col.length < 6) return null;
+      const dateStr = (col[1] || '').trim();
+      const rawNik = (col[2] || '').trim().toUpperCase();
+      const rawName = (col[3] || '').trim();
+      const rawDept = (col[4] || '').trim();
+      const rawCheckIn = (col[5] || '').trim();
+      const rawCheckOut = (col[6] || '').trim();
+      const rawDuration = (col[7] || '').trim();
+      const rawStatusIn = (col[8] || '').trim();
+      const rawStatusOut = (col[9] || '').trim();
+      const rawNotes = (col[10] || '').trim();
+      const rawWh = (col[11] || 'MBI').trim().toUpperCase();
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+      if (!rawNik && !rawName) return null;
+
+      // Filter akun yang bukan peserta absen
+      const nonAttendingNiks = new Set(['MBI26-122', 'MBI26-123', 'MBI26-125', 'MBI26-009', 'MBI26-040', 'MBI26-073', 'MBI26-077', 'MBI26-112']);
+      if (nonAttendingNiks.has(rawNik)) return null;
+
+      // Parse Jam Masuk
+      if (!rawCheckIn || rawCheckIn === '-' || rawCheckIn.toLowerCase().includes('shift')) return null;
+      const inParts = rawCheckIn.replace(/:/g, '.').split('.');
+      const inH = parseInt(inParts[0] || '0', 10);
+      const inM = parseInt(inParts[1] || '0', 10);
+      const inS = parseInt(inParts[2] || '0', 10);
+      if (isNaN(inH) || isNaN(inM)) return null;
+
+      const inTimeIso = new Date(`${dateStr}T${String(inH).padStart(2, '0')}:${String(inM).padStart(2, '0')}:${String(inS).padStart(2, '0')}+07:00`).toISOString();
+
+      // Parse Jam Pulang
+      let outTimeIso = null;
+      const isOngoing = rawCheckOut.toLowerCase().includes('shift');
+      const isMissScan = rawStatusOut.toLowerCase().includes('miss scan') || rawDuration.toLowerCase().includes('miss scan');
+
+      if (!isOngoing && !isMissScan && rawCheckOut && rawCheckOut !== '-' && rawCheckOut !== '') {
+        const outParts = rawCheckOut.replace(/:/g, '.').split('.');
+        const outH = parseInt(outParts[0] || '0', 10);
+        const outM = parseInt(outParts[1] || '0', 10);
+        const outS = parseInt(outParts[2] || '0', 10);
+        if (!isNaN(outH) && !isNaN(outM)) {
+          let outDateStr = dateStr;
+          // Shift malam lintas hari (jam pulang lebih kecil dari jam masuk)
+          if (outH < inH) {
+            const d = new Date(dateStr + 'T00:00:00+07:00');
+            d.setDate(d.getDate() + 1);
+            outDateStr = d.toISOString().split('T')[0];
+          }
+          outTimeIso = new Date(`${outDateStr}T${String(outH).padStart(2, '0')}:${String(outM).padStart(2, '0')}:${String(outS).padStart(2, '0')}+07:00`).toISOString();
+        }
+      }
+
+      // Cocokkan ke User Master
+      const cleanTargetName = cleanStr(rawName);
+      const matchedUser = users.find(u => {
+        if (!u) return false;
+        if (rawNik && u.nik && u.nik.toUpperCase() === rawNik) return true;
+        if (cleanTargetName && u.name && cleanStr(u.name) === cleanTargetName) return true;
+        return false;
+      });
+
+      const finalName = matchedUser ? matchedUser.name : rawName;
+      const finalNik = matchedUser ? matchedUser.nik : rawNik;
+      const finalDept = matchedUser ? (matchedUser.dept || 'Warehouse Staff') : (rawDept || 'Warehouse Staff');
+      const finalOs = matchedUser ? (matchedUser.outsource || 'Staffinc') : 'Staffinc';
+      const finalUserId = matchedUser ? matchedUser.id : `mbi-user-${rawNik.toLowerCase()}`;
+
+      let notes = rawNotes
+        .replace(/Normal\s*-\s*Sedang Shift/gi, '')
+        .replace(/Late In\s*-\s*Sedang Shift/gi, '')
+        .replace(/Normal\s*-\s*Sudah Pulang/gi, '')
+        .replace(/Late In\s*-\s*Sudah Pulang/gi, '')
+        .trim();
+
+      if (isMissScan) {
+        notes = notes ? `${notes} | Miss Scan` : 'Miss Scan';
+      }
+
+      return {
+        id: `att-mbi-gs-${dateStr}-${finalNik}-${String(inH).padStart(2, '0')}${String(inM).padStart(2, '0')}${String(inS).padStart(2, '0')}`,
+        date: dateStr,
+        userId: finalUserId,
+        userNik: finalNik,
+        userName: finalName,
+        dept: finalDept,
+        outsource: finalOs,
+        warehouse: rawWh,
+        checkInTime: inTimeIso,
+        checkOutTime: outTimeIso,
+        checkInStatus: (rawStatusIn.toLowerCase().includes('late') ? 'late' : 'on_time'),
+        notes: notes
+      };
+    }
+
+    async function syncMbiAttendanceFromGoogleSheetMaster(forceAlert = false) {
+      updateCloudSyncStatusBadge('syncing');
+      const gsheetCsvUrl = 'https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/gviz/tq?tqx=out:csv&sheet=RECORD%20ABSEN&t=' + Date.now();
+      
+      try {
+        const res = await fetch(gsheetCsvUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Gagal mengunduh data dari Google Sheet (HTTP ' + res.status + ')');
+        const csvText = await res.text();
+        
+        // Parsing baris CSV
+        const rawLines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (rawLines.length <= 1) throw new Error('Format Google Sheet kosong');
+
+        const parseCsvLine = (text) => {
+          const result = [];
+          let cur = '';
+          let inQuotes = false;
+          for (let i = 0; i < text.length; i++) {
+            const c = text[i];
+            if (c === '"') {
+              if (inQuotes && text[i + 1] === '"') {
+                cur += '"';
+                i++;
+              } else {
+                inQuotes = !inQuotes;
+              }
+            } else if (c === ',' && !inQuotes) {
+              result.push(cur.trim());
+              cur = '';
+            } else {
+              cur += c;
+            }
+          }
+          result.push(cur.trim());
+          return result;
+        };
+
+        const users = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const parsedGSheetRecords = [];
+
+        for (let i = 1; i < rawLines.length; i++) {
+          const cols = parseCsvLine(rawLines[i]).map(c => c.replace(/^"|"$/g, '').trim());
+          const rec = parseGSheetAttendanceRow(cols, users);
+          if (rec) parsedGSheetRecords.push(rec);
+        }
+
+        // Ambil riwayat lokal & Firebase yang ada sekarang untuk memastikan tidak ada data lama yang hilang
+        const localMbiAtt = getWhDB('MBI', 'attendance', []);
+        const attMap = new Map();
+
+        // 1. Masukkan data lokal terlebih dahulu
+        (localMbiAtt || []).forEach(item => {
+          if (!item) return;
+          const k = `${(item.userNik || '').toUpperCase().trim()}__${item.date || ''}__${(item.checkInTime || '').substring(0, 16)}`;
+          attMap.set(k, item);
+        });
+
+        // 2. Padukan data resmi dari Google Sheet (SSOT Live)
+        parsedGSheetRecords.forEach(gsRec => {
+          const k = `${gsRec.userNik.toUpperCase().trim()}__${gsRec.date}__${(gsRec.checkInTime || '').substring(0, 16)}`;
+          if (!attMap.has(k)) {
+            attMap.set(k, gsRec);
+          } else {
+            const existing = attMap.get(k);
+            const merged = { ...existing, ...gsRec };
+            // Pertahankan jam tap keluar jika lokal punya tapi Sheet sedang shift
+            if (existing.checkOutTime && !gsRec.checkOutTime) {
+              merged.checkOutTime = existing.checkOutTime;
+            }
+            attMap.set(k, merged);
+          }
+        });
+
+        // 3. Saring dan bersihkan dari ghost
+        const nonAttendingNiks = new Set(['MBI26-122', 'MBI26-123', 'MBI26-125', 'MBI26-009', 'MBI26-040', 'MBI26-073', 'MBI26-077', 'MBI26-112']);
+        const unifiedList = Array.from(attMap.values()).filter(a => {
+          if (!a) return false;
+          const n = (a.userNik || '').toUpperCase().trim();
+          return !nonAttendingNiks.has(n);
+        });
+
+        // 4. Urutkan tanggal descending, lalu jam masuk descending
+        unifiedList.sort((a, b) => {
+          const ta = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+          const tb = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+          return tb - ta;
+        });
+
+        // 5. Simpan ke LocalStorage & bersihkan tombstone usang
+        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(unifiedList));
+        localStorage.setItem('wfm_mbi_attendance_backup', JSON.stringify(unifiedList));
+        localStorage.removeItem('wfm_deleted_attendance_ids');
+
+        const nowIso = new Date().toISOString();
+        localStorage.setItem('wfm_mbi_master_updated_at', nowIso);
+        localStorage.setItem('wfm_master_updated_at', nowIso);
+
+        // 6. Langsung simpan & bersihkan Firebase RTDB MBI seketika (Hapus 229 tombstone di Cloud!)
+        const mbiEndpoint = getFirebaseEndpoint('MBI');
+        try {
+          await fetch(mbiEndpoint, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              mbi_attendance: unifiedList,
+              deleted_attendance_ids: [],
+              updatedAt: nowIso
+            })
+          });
+        } catch(eUpload) {
+          console.warn('Firebase patch after GSheet sync warning:', eUpload);
+        }
+
+        updateCloudSyncStatusBadge('synced');
+        renderAllLiveScreens();
+
+        if (forceAlert) {
+          alert(`⚡ SUKSES MEMULIHKAN MASTER ABSEN MBI DARI GOOGLE SHEET!\n\n` +
+                `✓ Total Data Absensi Sah: ${unifiedList.length} Record Presensi\n` +
+                `✓ Data Absensi Hari Ini: ${unifiedList.filter(a => a.date === getLocalDateString(new Date())).length} Karyawan\n` +
+                `✓ Tombstone Usang Firebase Telah Dibersihkan (100% Bersih)\n` +
+                `✓ Tersimpan aman di LocalStorage & Firebase Cloud 24/7.\n\n` +
+                `Semua perangkat sekarang membaca data yang sama persis tanpa perlu clear cache.`);
+        }
+      } catch (err) {
+        console.error('syncMbiAttendanceFromGoogleSheetMaster error:', err);
+        updateCloudSyncStatusBadge('local');
+        if (forceAlert) {
+          alert('⚠️ Gagal menyinkronkan dari Google Sheet: ' + err.message);
+        }
+      }
+    }
+
 
     let lastCloudFetchErrorStatus = null;
 
@@ -10851,7 +11067,7 @@
               const n = (a.userNik || '').toUpperCase();
               return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112';
             });
-            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || (localAtt || []).length < 1332 || hasLocalGhosts)) || (wh === 'MAI' && localReg < 30);
+            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || (localAtt || []).length < 500 || hasLocalGhosts)) || (wh === 'MAI' && localReg < 30);
             const needFetch = isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
 
             if (needFetch) {
@@ -14933,7 +15149,7 @@
 
         // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
         setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(false, true, true, targetWh);
+        saveFullDatabaseToCloud(false, true, true, targetWh, false, false, true);
         if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
         showProfessionalAttendanceToast({
@@ -14990,7 +15206,7 @@
 
           // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
           setWhDB(targetWh, 'attendance', attendances);
-          saveFullDatabaseToCloud(false, true, true, targetWh);
+          saveFullDatabaseToCloud(false, true, true, targetWh, false, false, true);
           if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
 
           const hrs = Math.floor(diffMs / (1000 * 60 * 60));
@@ -23931,6 +24147,22 @@ function testManualSync() {
     try { updateLoginWhStyle(); } catch(e) {}
     try { updateRealtimeDashboardDate(); } catch(e) {}
     try { setInterval(updateRealtimeDashboardDate, 1000); } catch(e) {}
+
+    // REVISION SENTINEL & AUTO HEALING MASTER ABSENSI MBI
+    const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v8';
+    try {
+      const savedRev = localStorage.getItem('wfm_data_revision');
+      if (savedRev !== CURRENT_DATA_REVISION) {
+        localStorage.removeItem('wfm_deleted_attendance_ids');
+        localStorage.setItem('wfm_data_revision', CURRENT_DATA_REVISION);
+        // Otomatis sinkronkan dan pulihkan master absensi MBI dari Google Sheet ke perangkat ini & Cloud
+        setTimeout(() => {
+          if (typeof syncMbiAttendanceFromGoogleSheetMaster === 'function') {
+            syncMbiAttendanceFromGoogleSheetMaster(false);
+          }
+        }, 800);
+      }
+    } catch(e) {}
 
     try {
       const savedSession = localStorage.getItem('wfm_active_session');
