@@ -10010,9 +10010,9 @@
         const mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
         const maiPayload = { ...maiDataPure, updatedAt: nowIso };
 
-        // Proteksi attendance kosong jika belum pernah fetch dari Cloud
-        if (shouldUploadMbi && (!mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
-          console.warn('[DataShield] Upload MBI attendance kosong diabaikan agar riwayat di Cloud tidak hilang.');
+        // Proteksi ketat attendance: Mencegah penimpaan master Cloud oleh browser dengan cache usang (< 1330)
+        if (shouldUploadMbi && (!mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length < 1330) && !isExplicitAdminAttendanceReset) {
+          console.warn('[DataShield] Upload MBI attendance diabaikan: data lokal (' + (mbiDataPure.mbi_attendance?.length || 0) + ') kurang dari master proteksi (1330).');
           delete mbiPayload.mbi_attendance;
         }
         if (shouldUploadMai && (!maiDataPure.mai_attendance || maiDataPure.mai_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
@@ -10034,7 +10034,7 @@
             const tmrMbi = setTimeout(() => ctrlMbi.abort(), 7000);
             fetchList.push(
               fetch(mbiEndpoint, {
-                method: 'PUT',
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(mbiPayload),
                 signal: ctrlMbi.signal
@@ -10047,7 +10047,7 @@
             const tmrMai = setTimeout(() => ctrlMai.abort(), 7000);
             fetchList.push(
               fetch(maiEndpoint, {
-                method: 'PUT',
+                method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(maiPayload),
                 signal: ctrlMai.signal
@@ -10698,7 +10698,8 @@
             const cloudTimestamp = checkRes.ok ? await checkRes.json() : null;
             const localUsers = getWhDB(wh, 'users', []);
             const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
-            const isLocalIncomplete = (wh === 'MBI' && localReg < 50) || (wh === 'MAI' && localReg < 30);
+            const localAtt = getWhDB(wh, 'attendance', []);
+            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || localAtt.length < 1300)) || (wh === 'MAI' && localReg < 30);
             const needFetch = isManualAlert || forceDownload === true || isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
 
             if (needFetch) {
@@ -10842,7 +10843,7 @@
 
     window.onload = async () => {
       // Auto-purge cache lokal lama agar seketika 100% sinkron dengan database cloud yang sudah dirapikan
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v4';
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v5';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_mbi_attendance');
