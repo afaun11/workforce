@@ -7683,7 +7683,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261020_v6';
+    const CURRENT_APP_VERSION = '20261020_v7';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -7734,6 +7734,10 @@
         localStorage.removeItem('wfm_mai_attendance');
         localStorage.removeItem('wfm_mbi_attendance_backup');
         localStorage.removeItem('wfm_mai_attendance_backup');
+        localStorage.removeItem('wfm_mbi_users');
+        localStorage.removeItem('wfm_mai_users');
+        localStorage.removeItem('wfm_mbi_users_backup');
+        localStorage.removeItem('wfm_mai_users_backup');
         localStorage.removeItem('wfm_mbi_master_updated_at');
         localStorage.removeItem('wfm_mai_master_updated_at');
         localStorage.removeItem('wfm_data_revision');
@@ -10359,14 +10363,25 @@
             const cloudOt = normalizeFirebaseArray(dbData[`${prefix}_overtime`]);
             const cloudLeaves = normalizeFirebaseArray(dbData[`${prefix}_leaves`]);
 
-            if (cloudUsers.length > 0) localStorage.setItem(`wfm_${prefix}_users`, JSON.stringify(cloudUsers));
+            if (cloudUsers.length > 0) {
+              localStorage.setItem(`wfm_${prefix}_users`, JSON.stringify(cloudUsers));
+              localStorage.setItem(`wfm_${prefix}_users_backup`, JSON.stringify(cloudUsers));
+            }
             localStorage.setItem(`wfm_${prefix}_attendance`, JSON.stringify(cloudAtt));
+            localStorage.setItem(`wfm_${prefix}_attendance_backup`, JSON.stringify(cloudAtt));
             localStorage.setItem(`wfm_${prefix}_overtime`, JSON.stringify(cloudOt));
             localStorage.setItem(`wfm_${prefix}_leaves`, JSON.stringify(cloudLeaves));
             if (dbData[`${prefix}_coords`]) localStorage.setItem(`wfm_${prefix}_coords`, JSON.stringify(dbData[`${prefix}_coords`]));
+            localStorage.setItem(`wfm_${prefix}_master_updated_at`, dbData.updatedAt || new Date().toISOString());
             loaded = true;
           }
         }
+
+        try {
+          if (typeof realignAllAttendanceRecordsWithMaster === 'function') {
+            realignAllAttendanceRecordsWithMaster(wh);
+          }
+        } catch(eRealign) {}
 
         renderAllLiveScreens();
         updateCloudSyncStatusBadge('synced');
@@ -10815,18 +10830,29 @@
           const localUpdated = localStorage.getItem(`wfm_${wh.toLowerCase()}_master_updated_at`) || '';
 
           try {
+            // Jika force download atau manual alert, langsung fetch tanpa harus delta check
+            if (isManualAlert || forceDownload === true) {
+              fetchPromises.push(
+                fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
+                  .then(r => r.ok ? r.json() : null)
+                  .then(db => ({ wh, db, ts: new Date().toISOString() }))
+              );
+              continue;
+            }
+
             // SMART DELTA CHECK: Cek timestamp ringan (hanya 30 bytes)
             const checkRes = await fetch(updatedUrl + '?t=' + Date.now(), { cache: 'no-store' });
             const cloudTimestamp = checkRes.ok ? await checkRes.json() : null;
             const localUsers = getWhDB(wh, 'users', []);
+            const localAtt = getWhDB(wh, 'attendance', []);
             const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
             const hasLocalGhosts = wh === 'MBI' && (localAtt || []).some(a => {
               if (!a) return false;
               const n = (a.userNik || '').toUpperCase();
               return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112';
             });
-            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || localAtt.length < 1332 || hasLocalGhosts)) || (wh === 'MAI' && localReg < 30);
-            const needFetch = isManualAlert || forceDownload === true || isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
+            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || (localAtt || []).length < 1332 || hasLocalGhosts)) || (wh === 'MAI' && localReg < 30);
+            const needFetch = isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
 
             if (needFetch) {
               fetchPromises.push(
@@ -10837,6 +10863,11 @@
             }
           } catch(errDelta) {
             console.warn(`Delta check error for ${wh}:`, errDelta);
+            fetchPromises.push(
+              fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
+                .then(r => r.ok ? r.json() : null)
+                .then(db => ({ wh, db, ts: new Date().toISOString() }))
+            );
           }
         }
 
@@ -10969,7 +11000,7 @@
 
     window.onload = async () => {
       // Auto-purge cache lokal lama agar seketika 100% sinkron dengan database cloud yang sudah dirapikan
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v6';
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v7';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_mbi_attendance');
