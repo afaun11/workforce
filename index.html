@@ -1637,6 +1637,10 @@
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
+                        <button id="btn-delete-selected-records" type="button" onclick="deleteSelectedRecords()" class="hidden h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5 opacity-50 pointer-events-none" title="Hapus Catatan Presensi Terpilih (Khusus Admin)">
+                          <i data-lucide="trash-2" class="w-4 h-4"></i>
+                          <span>Hapus Pilihan (<span id="count-selected-records-badge">0</span>)</span>
+                        </button>
                         <button type="button" onclick="openManualAttendanceModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Input Presensi Manual Karyawan (Khusus Admin / Koreksi Absen)">
                           <i data-lucide="plus-circle" class="w-4 h-4"></i>
                           <span>Input Absen Manual</span>
@@ -1692,6 +1696,9 @@
                   <table class="w-full text-left text-xs">
                     <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
                       <tr>
+                        <th class="p-3 text-center border-r border-slate-200 w-10">
+                          <input type="checkbox" id="check-all-records" onchange="toggleSelectAllRecords(this.checked)" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer" title="Pilih Semua Record">
+                        </th>
                         <th class="p-3.5 border-r border-slate-200">No</th>
                         <th class="p-3.5 border-r border-slate-200">Tanggal</th>
                         <th class="p-3.5 border-r border-slate-200">Gudang</th>
@@ -1963,9 +1970,15 @@
                         Cari Data
                       </button>
 
-                      <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-                        Download Pengajuan Excel
-                      </button>
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <button id="btn-delete-selected-report-leaves" type="button" onclick="deleteSelectedReportLeaves()" class="hidden h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5 opacity-50 pointer-events-none" title="Hapus Pengajuan Terpilih (Khusus Admin)">
+                          <i data-lucide="trash-2" class="w-4 h-4"></i>
+                          <span>Hapus Pilihan (<span id="count-selected-report-leaves-badge">0</span>)</span>
+                        </button>
+                        <button onclick="exportReportLeavesToExcel()" class="h-9 px-5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
+                          Download Pengajuan Excel
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1974,6 +1987,9 @@
                   <table class="w-full text-left text-xs">
                     <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
                       <tr>
+                        <th class="p-3 text-center border-r border-slate-200 w-10">
+                          <input type="checkbox" id="check-all-report-leaves" onchange="toggleSelectAllReportLeaves(this.checked)" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer" title="Pilih Semua Pengajuan">
+                        </th>
                         <th class="p-3.5 border-r border-slate-200">No</th>
                         <th class="p-3.5 border-r border-slate-200">Nama Karyawan</th>
                         <th class="p-3.5 border-r border-slate-200">NIK</th>
@@ -2040,6 +2056,10 @@
                       </button>
 
                       <div class="flex items-center gap-2.5 flex-wrap">
+                        <button id="btn-delete-selected-report-ot" type="button" onclick="deleteSelectedReportOvertime()" class="hidden h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5 opacity-50 pointer-events-none" title="Hapus Data Lembur Terpilih (Khusus Admin)">
+                          <i data-lucide="trash-2" class="w-4 h-4"></i>
+                          <span>Hapus Pilihan (<span id="count-selected-report-ot-badge">0</span>)</span>
+                        </button>
                         <span id="report-ot-total-nominal-badge" class="h-9 px-4 bg-white text-slate-800 border border-slate-300 rounded-xl text-xs font-black inline-flex items-center shadow-2xs">
                           Total Biaya: Rp 0
                         </span>
@@ -2055,6 +2075,9 @@
                   <table class="w-full text-left text-xs border-collapse">
                     <thead class="bg-slate-100 text-slate-700 font-extrabold uppercase border-b border-slate-200">
                       <tr>
+                        <th class="p-3 text-center border-r border-slate-200 w-10">
+                          <input type="checkbox" id="check-all-report-ot" onchange="toggleSelectAllReportOvertime(this.checked)" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer" title="Pilih Semua Lembur">
+                        </th>
                         <th class="p-3.5 border-r border-slate-200">No</th>
                         <th class="p-3.5 border-r border-slate-200">Tanggal</th>
                         <th class="p-3.5 border-r border-slate-200">NIK</th>
@@ -7683,7 +7706,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261020_v10';
+    const CURRENT_APP_VERSION = '20261020_v11';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -7910,10 +7933,111 @@
 
     function isAttendanceMarkedDeleted(item, deletedIds = null) {
       if (!item) return false;
-      // PROTEKSI MUTLAK: Jangan pernah menghapus record absensi karyawan sah menggunakan kunci komposit lama
       if (item.__userDeletedExplicitly === true || item.__isDeletedGhost === true) {
         return true;
       }
+      const delSet = deletedIds || getDeletedAttendanceIds();
+      if (delSet && delSet.size > 0) {
+        if (item.id && delSet.has(String(item.id).trim().toLowerCase())) return true;
+        const compKey = getAttendanceCompositeKey(item);
+        if (compKey && delSet.has(compKey)) return true;
+      }
+      return false;
+    }
+
+    // =========================================================
+    // REKAP PENGAJUAN (CUTI/SAKIT): TOMBSTONE TRACKING ENGINE
+    // =========================================================
+    function getDeletedLeaveIds() {
+      const setKeys = new Set();
+      try {
+        const raw = localStorage.getItem('wfm_deleted_leave_ids');
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) arr.forEach(k => { if (k) setKeys.add(String(k).trim().toLowerCase()); });
+        }
+      } catch (e) {}
+      return setKeys;
+    }
+
+    function saveDeletedLeaveIds(setKeys) {
+      try {
+        localStorage.setItem('wfm_deleted_leave_ids', JSON.stringify(Array.from(setKeys)));
+      } catch (e) {}
+    }
+
+    function trackDeletedLeaves(itemsOrIds) {
+      if (!itemsOrIds) return;
+      const keys = getDeletedLeaveIds();
+      const list = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds];
+      list.forEach(item => {
+        if (!item) return;
+        if (typeof item === 'string') {
+          keys.add(item.trim().toLowerCase());
+        } else if (typeof item === 'object') {
+          if (item.id) keys.add(String(item.id).trim().toLowerCase());
+          const compKey = `${(item.userNik || '').toUpperCase()}_${item.startDate || ''}_${item.type || ''}`.toLowerCase();
+          keys.add(compKey);
+        }
+      });
+      saveDeletedLeaveIds(keys);
+    }
+
+    function isLeaveMarkedDeleted(item) {
+      if (!item) return false;
+      const keys = getDeletedLeaveIds();
+      if (keys.size === 0) return false;
+      if (item.id && keys.has(String(item.id).trim().toLowerCase())) return true;
+      const compKey = `${(item.userNik || '').toUpperCase()}_${item.startDate || ''}_${item.type || ''}`.toLowerCase();
+      if (keys.has(compKey)) return true;
+      return false;
+    }
+
+    // =========================================================
+    // REKAP LEMBUR: TOMBSTONE TRACKING ENGINE
+    // =========================================================
+    function getDeletedOvertimeIds() {
+      const setKeys = new Set();
+      try {
+        const raw = localStorage.getItem('wfm_deleted_overtime_ids');
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) arr.forEach(k => { if (k) setKeys.add(String(k).trim().toLowerCase()); });
+        }
+      } catch (e) {}
+      return setKeys;
+    }
+
+    function saveDeletedOvertimeIds(setKeys) {
+      try {
+        localStorage.setItem('wfm_deleted_overtime_ids', JSON.stringify(Array.from(setKeys)));
+      } catch (e) {}
+    }
+
+    function trackDeletedOvertime(itemsOrIds) {
+      if (!itemsOrIds) return;
+      const keys = getDeletedOvertimeIds();
+      const list = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds];
+      list.forEach(item => {
+        if (!item) return;
+        if (typeof item === 'string') {
+          keys.add(item.trim().toLowerCase());
+        } else if (typeof item === 'object') {
+          if (item.id) keys.add(String(item.id).trim().toLowerCase());
+          const compKey = `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`.toLowerCase();
+          keys.add(compKey);
+        }
+      });
+      saveDeletedOvertimeIds(keys);
+    }
+
+    function isOvertimeMarkedDeleted(item) {
+      if (!item) return false;
+      const keys = getDeletedOvertimeIds();
+      if (keys.size === 0) return false;
+      if (item.id && keys.has(String(item.id).trim().toLowerCase())) return true;
+      const compKey = `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`.toLowerCase();
+      if (keys.has(compKey)) return true;
       return false;
     }
 
@@ -9384,7 +9508,7 @@
     function mergeAttendanceArrays(localList, cloudList) {
       const map = new Map();
       (cloudList || []).forEach(item => {
-        if (!item) return;
+        if (!item || isAttendanceMarkedDeleted(item)) return;
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
         map.set(key, item);
       });
@@ -9410,12 +9534,12 @@
     function mergeLeaveArrays(localList, cloudList) {
       const map = new Map();
       (cloudList || []).forEach(item => {
-        if (!item) return;
+        if (!item || isLeaveMarkedDeleted(item)) return;
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.startDate || ''}_${item.type || ''}`;
         map.set(key, item);
       });
       (localList || []).forEach(localItem => {
-        if (!localItem) return;
+        if (!localItem || isLeaveMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.startDate || ''}_${localItem.type || ''}`;
         if (!map.has(key)) {
           map.set(key, localItem);
@@ -9435,12 +9559,12 @@
     function mergeOvertimeArrays(localList, cloudList) {
       const map = new Map();
       (cloudList || []).forEach(item => {
-        if (!item) return;
+        if (!item || isOvertimeMarkedDeleted(item)) return;
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`;
         map.set(key, item);
       });
       (localList || []).forEach(localItem => {
-        if (!localItem) return;
+        if (!localItem || isOvertimeMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.startTime || ''}`;
         if (!map.has(key)) {
           map.set(key, localItem);
@@ -12780,6 +12904,40 @@
         } else {
           btnResetAllEmp.classList.add('hidden');
           btnResetAllEmp.classList.remove('inline-flex');
+        }
+      }
+
+      // 6. Tombol Hapus Pilihan di Laporan (Record Absen, Rekap Pengajuan, Rekap Lembur - Khusus Admin / Manager)
+      const canDeleteReports = (isAdmin || isManager || hasPermission('perm_rep_reset_att')) && !isScanner;
+      const btnDelRec = document.getElementById('btn-delete-selected-records');
+      const btnDelLeaves = document.getElementById('btn-delete-selected-report-leaves');
+      const btnDelOt = document.getElementById('btn-delete-selected-report-ot');
+
+      if (btnDelRec) {
+        if (canDeleteReports) {
+          btnDelRec.classList.remove('hidden');
+          btnDelRec.classList.add('inline-flex');
+        } else {
+          btnDelRec.classList.add('hidden');
+          btnDelRec.classList.remove('inline-flex');
+        }
+      }
+      if (btnDelLeaves) {
+        if (canDeleteReports) {
+          btnDelLeaves.classList.remove('hidden');
+          btnDelLeaves.classList.add('inline-flex');
+        } else {
+          btnDelLeaves.classList.add('hidden');
+          btnDelLeaves.classList.remove('inline-flex');
+        }
+      }
+      if (btnDelOt) {
+        if (canDeleteReports) {
+          btnDelOt.classList.remove('hidden');
+          btnDelOt.classList.add('inline-flex');
+        } else {
+          btnDelOt.classList.add('hidden');
+          btnDelOt.classList.remove('inline-flex');
         }
       }
 
@@ -20022,6 +20180,71 @@
       exportWorkHoursToExcel();
     }
 
+    function toggleSelectAllReportLeaves(isChecked) {
+      const checkboxes = document.querySelectorAll('input[name="report-leaves-row-check"]');
+      checkboxes.forEach(cb => { cb.checked = isChecked; });
+      updateSelectedReportLeavesCount();
+    }
+
+    function updateSelectedReportLeavesCount() {
+      const selected = document.querySelectorAll('input[name="report-leaves-row-check"]:checked');
+      const badge = document.getElementById('count-selected-report-leaves-badge');
+      const btnDelete = document.getElementById('btn-delete-selected-report-leaves');
+      if (badge) badge.innerText = selected.length;
+      if (btnDelete) {
+        btnDelete.classList.toggle('opacity-50', selected.length === 0);
+        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+      }
+    }
+
+    async function deleteSelectedReportLeaves() {
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_rep_reset_att')) {
+        alert('Akses Ditolak: Anda tidak memiliki izin Admin untuk menghapus data pengajuan.');
+        return;
+      }
+      const selectedCbs = document.querySelectorAll('input[name="report-leaves-row-check"]:checked');
+      if (selectedCbs.length === 0) {
+        alert('Pilih minimal 1 data pengajuan dengan mencentang kotak di tabel.');
+        return;
+      }
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${selectedCbs.length} data pengajuan terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database, dan Google Spreadsheet.`)) {
+        return;
+      }
+
+      const selectedIds = new Set(Array.from(selectedCbs).map(cb => cb.value));
+
+      // Catat tombstone agar tidak pernah bangkit lagi
+      trackDeletedLeaves(Array.from(selectedIds));
+
+      // Filter dari kedua gudang
+      ['MBI', 'MAI'].forEach(wh => {
+        let list = getWhDB(wh, 'leaves', []);
+        const filtered = list.filter(lv => {
+          if (!lv) return false;
+          const k1 = lv.id;
+          const k2 = `${(lv.userNik || '').toUpperCase()}_${lv.startDate || ''}_${lv.type || ''}`.toLowerCase();
+          if ((k1 && selectedIds.has(k1)) || (k2 && selectedIds.has(k2)) || isLeaveMarkedDeleted(lv)) {
+            return false;
+          }
+          return true;
+        });
+        if (filtered.length !== list.length) {
+          setWhDB(wh, 'leaves', filtered);
+        }
+      });
+
+      await saveFullDatabaseToCloud(false, true, true);
+
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+
+      renderReportLeavesTable();
+      if (typeof renderLeavesTable === 'function') renderLeavesTable();
+      refreshAllDashboardData();
+      alert(`✅ Berhasil menghapus ${selectedIds.size} data pengajuan secara permanen dari sistem dan Cloud.`);
+    }
+
     function renderReportLeavesTable() {
       const startStr = document.getElementById('report-leave-start')?.value || '';
       const endStr = document.getElementById('report-leave-end')?.value || '';
@@ -20040,18 +20263,23 @@
         return inDate && inType && inStatus && inSearch;
       });
 
+      const masterCheck = document.getElementById('check-all-report-leaves');
+      if (masterCheck) masterCheck.checked = false;
+      updateSelectedReportLeavesCount();
+
       const tbody = document.getElementById('report-leaves-table-body');
       if (!tbody) return;
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-medium">Tidak ada data pengajuan pada filter ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="p-6 text-center text-slate-400 font-medium">Tidak ada data pengajuan pada filter ini.</td></tr>`;
         return;
       }
 
       filtered.forEach((lv, idx) => {
         const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (lv.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(lv.userName)));
         const osVal = emp ? (emp.outsource || 'Internal') : (lv.outsource || 'Internal');
+        const leaveId = lv.id || `${(lv.userNik || '').toUpperCase()}_${lv.startDate || ''}_${lv.type || ''}`.toLowerCase();
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
@@ -20067,6 +20295,9 @@
         else statusBadge = '<span class="px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
         tr.innerHTML = `
+          <td class="p-3 text-center border-r border-slate-100">
+            <input type="checkbox" name="report-leaves-row-check" value="${leaveId}" onchange="updateSelectedReportLeavesCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+          </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${lv.userName}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${lv.userNik}</td>
@@ -20135,6 +20366,71 @@
       XLSX.writeFile(wb, `Rekap_Pengajuan_${activeWarehouse}_${startStr || 'all'}_sd_${endStr || 'all'}.xlsx`);
     }
 
+    function toggleSelectAllReportOvertime(isChecked) {
+      const checkboxes = document.querySelectorAll('input[name="report-ot-row-check"]');
+      checkboxes.forEach(cb => { cb.checked = isChecked; });
+      updateSelectedReportOvertimeCount();
+    }
+
+    function updateSelectedReportOvertimeCount() {
+      const selected = document.querySelectorAll('input[name="report-ot-row-check"]:checked');
+      const badge = document.getElementById('count-selected-report-ot-badge');
+      const btnDelete = document.getElementById('btn-delete-selected-report-ot');
+      if (badge) badge.innerText = selected.length;
+      if (btnDelete) {
+        btnDelete.classList.toggle('opacity-50', selected.length === 0);
+        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+      }
+    }
+
+    async function deleteSelectedReportOvertime() {
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_rep_reset_att')) {
+        alert('Akses Ditolak: Anda tidak memiliki izin Admin untuk menghapus data lembur.');
+        return;
+      }
+      const selectedCbs = document.querySelectorAll('input[name="report-ot-row-check"]:checked');
+      if (selectedCbs.length === 0) {
+        alert('Pilih minimal 1 data lembur dengan mencentang kotak di tabel.');
+        return;
+      }
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${selectedCbs.length} data lembur terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database, dan Google Spreadsheet.`)) {
+        return;
+      }
+
+      const selectedIds = new Set(Array.from(selectedCbs).map(cb => cb.value));
+
+      // Catat tombstone agar tidak pernah bangkit lagi
+      trackDeletedOvertime(Array.from(selectedIds));
+
+      // Filter dari kedua gudang
+      ['MBI', 'MAI'].forEach(wh => {
+        let list = getWhDB(wh, 'overtime', []);
+        const filtered = list.filter(o => {
+          if (!o) return false;
+          const k1 = o.id;
+          const k2 = `${(o.userNik || '').toUpperCase()}_${o.date || ''}_${o.startTime || ''}`.toLowerCase();
+          if ((k1 && selectedIds.has(k1)) || (k2 && selectedIds.has(k2)) || isOvertimeMarkedDeleted(o)) {
+            return false;
+          }
+          return true;
+        });
+        if (filtered.length !== list.length) {
+          setWhDB(wh, 'overtime', filtered);
+        }
+      });
+
+      await saveFullDatabaseToCloud(false, true, true);
+
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+
+      renderReportOvertimeTable();
+      if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
+      refreshAllDashboardData();
+      alert(`✅ Berhasil menghapus ${selectedIds.size} data lembur secara permanen dari sistem dan Cloud.`);
+    }
+
     function renderReportOvertimeTable() {
       const startStr = document.getElementById('report-ot-start')?.value || '';
       const endStr = document.getElementById('report-ot-end')?.value || '';
@@ -20167,12 +20463,16 @@
         badge.innerText = `Total Estimasi Biaya: Rp ${totalNominal.toLocaleString('id-ID')} (${filtered.length} Data)`;
       }
 
+      const masterCheck = document.getElementById('check-all-report-ot');
+      if (masterCheck) masterCheck.checked = false;
+      updateSelectedReportOvertimeCount();
+
       const tbody = document.getElementById('report-overtime-table-body');
       if (!tbody) return;
       tbody.innerHTML = '';
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="p-6 text-center text-slate-400 font-medium">Tidak ada data lembur pada filter periode ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="p-6 text-center text-slate-400 font-medium">Tidak ada data lembur pada filter periode ini.</td></tr>`;
         return;
       }
 
@@ -20181,6 +20481,7 @@
       filtered.forEach((ot, idx) => {
         const emp = users.find(u => (u.nik && u.nik.toUpperCase() === (ot.userNik || '').toUpperCase()) || (cleanStr(u.name) === cleanStr(ot.userName)));
         const osVal = emp ? (emp.outsource || 'Internal') : (ot.outsource || 'Internal');
+        const otId = ot.id || `${(ot.userNik || '').toUpperCase()}_${ot.date || ''}_${ot.startTime || ''}`.toLowerCase();
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
@@ -20191,6 +20492,9 @@
         else statusBadge = '<span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800 border border-slate-300">MENUNGGU SPV</span>';
 
         tr.innerHTML = `
+          <td class="p-3 text-center border-r border-slate-100">
+            <input type="checkbox" name="report-ot-row-check" value="${otId}" onchange="updateSelectedReportOvertimeCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+          </td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${idx + 1}</td>
           <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900">${ot.date}</td>
           <td class="p-3.5 border-r border-slate-100 font-mono text-slate-700">${ot.userNik}</td>
@@ -20499,8 +20803,13 @@
 
       const tbody = document.getElementById('records-table-body');
       if (!tbody) return;
+
+      const masterCheck = document.getElementById('check-all-records');
+      if (masterCheck) masterCheck.checked = false;
+      updateSelectedRecordsCount();
+
       if (totalFiltered === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-xs text-slate-400 font-medium bg-white">Tidak ada record absensi pada rentang tanggal ini.</td></tr>`;
         return;
       }
 
@@ -20526,6 +20835,7 @@
         const finalOutsource = emp ? (emp.outsource || 'Internal') : (rec.outsource || 'Internal');
         const finalDept = emp ? emp.dept : (rec.dept || '-');
         const recWh = rec.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
+        const recId = rec.id || getAttendanceCompositeKey(rec);
         
         // Hitung Durasi Jam Kerja & Status Miss Scan (16 jam 25 menit)
         const durInfo = getAttendanceDurationInfo(rec);
@@ -20557,6 +20867,9 @@
 
         rowsHTML.push(`
           <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="p-3 text-center border-r border-slate-100">
+              <input type="checkbox" name="record-row-check" value="${recId}" data-wh="${recWh}" onchange="updateSelectedRecordsCount()" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300 cursor-pointer">
+            </td>
             <td class="p-3.5 border-r border-slate-100 font-mono text-slate-500 font-bold">${globalIdx + 1}</td>
             <td class="p-3.5 border-r border-slate-100 font-bold text-slate-900 whitespace-nowrap">${rec.date}</td>
             <td class="p-3.5 border-r border-slate-100 text-center whitespace-nowrap">
@@ -20597,6 +20910,80 @@
       lucide.createIcons();
     }
 
+    function toggleSelectAllRecords(isChecked) {
+      const checkboxes = document.querySelectorAll('input[name="record-row-check"]');
+      checkboxes.forEach(cb => { cb.checked = isChecked; });
+      updateSelectedRecordsCount();
+    }
+
+    function updateSelectedRecordsCount() {
+      const selected = document.querySelectorAll('input[name="record-row-check"]:checked');
+      const badge = document.getElementById('count-selected-records-badge');
+      const btnDelete = document.getElementById('btn-delete-selected-records');
+      if (badge) badge.innerText = selected.length;
+      if (btnDelete) {
+        btnDelete.classList.toggle('opacity-50', selected.length === 0);
+        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+      }
+    }
+
+    async function deleteSelectedRecords() {
+      if (!isUserAdmin(currentUser) && !isUserManager(currentUser) && !hasPermission('perm_rep_reset_att')) {
+        alert('Akses Ditolak: Anda tidak memiliki izin Admin untuk menghapus record absen.');
+        return;
+      }
+      const selectedCbs = document.querySelectorAll('input[name="record-row-check"]:checked');
+      if (selectedCbs.length === 0) {
+        alert('Pilih minimal 1 catatan presensi dengan mencentang kotak di tabel.');
+        return;
+      }
+      if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS ${selectedCbs.length} record presensi terpilih secara permanen?\n\nData yang dihapus akan dibersihkan dari penyimpanan lokal, Cloud Database, dan Google Spreadsheet.`)) {
+        return;
+      }
+
+      const selectedItems = Array.from(selectedCbs).map(cb => ({
+        id: cb.value,
+        warehouse: cb.getAttribute('data-wh') || activeWarehouse || 'MBI'
+      }));
+
+      // Catat ke tombstone
+      selectedItems.forEach(item => {
+        if (item.id) {
+          trackDeletedAttendance(item.id);
+        }
+      });
+
+      // Filter dari kedua gudang
+      ['MBI', 'MAI'].forEach(w => {
+        let list = getWhDB(w, 'attendance', []);
+        const filtered = list.filter(a => {
+          if (!a) return false;
+          const matchItem = selectedItems.find(item => item.id && (a.id === item.id || getAttendanceCompositeKey(a) === String(item.id).toLowerCase()));
+          if (matchItem) {
+            trackDeletedAttendance(a);
+            return false;
+          }
+          if (isAttendanceMarkedDeleted(a)) return false;
+          return true;
+        });
+        if (filtered.length !== list.length) {
+          setWhDB(w, 'attendance', filtered);
+        }
+      });
+
+      await saveFullDatabaseToCloud(false, true, true, null, false, true);
+
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+
+      renderRecordsTable();
+      refreshAllDashboardData();
+      renderMatrixTable();
+      renderScannerTodayRecords();
+      alert(`✅ Berhasil menghapus ${selectedItems.length} catatan presensi secara permanen dari sistem dan Cloud.`);
+    }
+
     async function deleteSingleAttendanceRecord(id, targetWh = activeWarehouse) {
       if (!id) return;
       if (!confirm('Apakah Anda yakin ingin menghapus catatan presensi ini secara permanen?\n\nCatatan ini akan langsung dihapus dari memori lokal, Google Firebase Cloud, dan Google Spreadsheet.')) return;
@@ -20620,8 +21007,8 @@
         }
       });
 
-      // Simpan ke Firebase Cloud dengan payload bebas data terhapus & kirim deleted_attendance_ids
-      await saveFullDatabaseToCloud(false);
+      // Simpan ke Firebase Cloud dengan isExplicitAdminAttendanceReset = true
+      await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
       // Langsung update Google Spreadsheet seketika
       if (typeof triggerGoogleSheetAutoSync === 'function') {
