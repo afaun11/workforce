@@ -1637,10 +1637,6 @@
                       </button>
 
                       <div class="flex items-center gap-2 flex-wrap">
-                        <button type="button" onclick="syncMbiAttendanceFromGoogleSheetMaster(true)" class="h-9 px-4 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Tarik &amp; Pulihkan Master Absen Langsung dari Google Sheet Resmi / Cloud">
-                          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                          <span>⚡ Pulihkan Master Absensi</span>
-                        </button>
                         <button type="button" onclick="openManualAttendanceModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Input Presensi Manual Karyawan (Khusus Admin / Koreksi Absen)">
                           <i data-lucide="plus-circle" class="w-4 h-4"></i>
                           <span>Input Absen Manual</span>
@@ -7687,7 +7683,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261020_v9';
+    const CURRENT_APP_VERSION = '20261020_v10';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -11237,7 +11233,7 @@
 
     window.onload = async () => {
       // Auto-purge tombstone usang agar seketika 100% sinkron dengan database cloud yang sudah dirapikan
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v9';
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v10';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_deleted_user_keys');
@@ -24166,18 +24162,12 @@ function testManualSync() {
     try { setInterval(updateRealtimeDashboardDate, 1000); } catch(e) {}
 
     // REVISION SENTINEL & AUTO HEALING MASTER ABSENSI MBI
-    const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v9';
+    const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v10';
     try {
       const savedRev = localStorage.getItem('wfm_data_revision');
       if (savedRev !== CURRENT_DATA_REVISION) {
         localStorage.removeItem('wfm_deleted_attendance_ids');
         localStorage.setItem('wfm_data_revision', CURRENT_DATA_REVISION);
-        // Otomatis sinkronkan dan pulihkan master absensi MBI dari Google Sheet ke perangkat ini & Cloud
-        setTimeout(() => {
-          if (typeof syncMbiAttendanceFromGoogleSheetMaster === 'function') {
-            syncMbiAttendanceFromGoogleSheetMaster(false);
-          }
-        }, 800);
       }
     } catch(e) {}
 
