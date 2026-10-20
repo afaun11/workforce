@@ -554,6 +554,32 @@
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
 
   <!-- ========================================================= -->
+  <!-- GLOBAL AUTO-UPDATE BANNER (SINKRONISASI UPDATE ADMIN) -->
+  <!-- ========================================================= -->
+  <div id="wfm-update-banner" class="hidden fixed inset-x-0 top-0 z-[999999] bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 text-white px-4 py-3 shadow-2xl border-b-2 border-white/20 animate-in slide-in-from-top duration-300">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div class="flex items-center gap-3 text-left">
+        <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center font-black text-white shrink-0 shadow-inner">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="font-extrabold text-sm sm:text-base leading-tight flex items-center gap-2">
+            <span>Pembaruan Sistem Tersedia</span>
+            <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-400 text-slate-900 rounded-full">Versi Baru</span>
+          </div>
+          <p class="text-xs text-sky-100 font-medium">Sistem telah diperbarui oleh Admin di GitHub. Silakan muat ulang halaman untuk sinkronisasi data presensi &amp; matriks terbaru.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+        <button onclick="applyAppUpdateAndReload()" class="w-full sm:w-auto px-5 py-2.5 bg-white hover:bg-sky-50 active:scale-95 text-sky-900 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
+          <span>Muat Ulang Sekarang (Refresh)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
   <!-- 1. AUTH SCREEN (LOGIN UTAMA & MODE AKUN ABSENSI HP) -->
   <!-- ========================================================= -->
   <div id="auth-container" class="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4">
@@ -7654,6 +7680,69 @@
     let isLocationVerified = false;
 
     // =========================================================
+    // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
+    // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
+    // =========================================================
+    const CURRENT_APP_VERSION = '20261020_v6';
+    let isAppUpdateBannerVisible = false;
+    window.__WFM_VERSION_OUTDATED = false;
+
+    async function checkAppVersionUpdate() {
+      try {
+        const endpoint = getFirebaseEndpoint('MBI').replace('/wfm_database.json', '/wfm_database/app_version.json');
+        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+          const cloudVersion = await res.json();
+          if (cloudVersion && typeof cloudVersion === 'string' && cloudVersion !== CURRENT_APP_VERSION) {
+            window.__WFM_VERSION_OUTDATED = true;
+            showAppUpdateBanner(cloudVersion);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // Fallback: periksa file index.html yang dideploy di web server
+      try {
+        const selfUrl = window.location.origin + window.location.pathname + '?_vcheck=' + Date.now();
+        const headRes = await fetch(selfUrl, { method: 'GET', cache: 'no-store' });
+        if (headRes.ok) {
+          const txt = await headRes.text();
+          const match = txt.match(/CURRENT_APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+          if (match && match[1] && match[1] !== CURRENT_APP_VERSION) {
+            window.__WFM_VERSION_OUTDATED = true;
+            showAppUpdateBanner(match[1]);
+          }
+        }
+      } catch (e) {}
+    }
+
+    function showAppUpdateBanner(newVersion) {
+      if (isAppUpdateBannerVisible) return;
+      isAppUpdateBannerVisible = true;
+      const banner = document.getElementById('wfm-update-banner');
+      if (banner) {
+        banner.classList.remove('hidden');
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+          try { lucide.createIcons(); } catch(e) {}
+        }
+      }
+    }
+
+    function applyAppUpdateAndReload() {
+      try {
+        localStorage.removeItem('wfm_mbi_attendance');
+        localStorage.removeItem('wfm_mai_attendance');
+        localStorage.removeItem('wfm_mbi_attendance_backup');
+        localStorage.removeItem('wfm_mai_attendance_backup');
+        localStorage.removeItem('wfm_mbi_master_updated_at');
+        localStorage.removeItem('wfm_mai_master_updated_at');
+        localStorage.removeItem('wfm_data_revision');
+      } catch(e) {}
+      const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
+      window.location.replace(cleanUrl);
+    }
+
+    // =========================================================
     // MASTER DATA KARYAWAN: TOMBSTONE TRACKING & STRICT SORTING ENGINE
     // Mencegah data terhapus bangkit kembali (anti-zombie) & sorting join date akurat
     // =========================================================
@@ -8495,21 +8584,30 @@
                 const aId = (a.userId || '').toString().trim();
 
                 let matchedMaster = null;
-                // Prioritas 1: Cocokkan dari NIK jika terdaftar di master
-                if (aNik && nikToUserMap.has(aNik)) {
-                  matchedMaster = nikToUserMap.get(aNik);
-                }
-                // Prioritas 2: Cocokkan dari Nama manusia sah jika terdaftar di master
-                else if (aName && !isLikelyIdNotName(aName) && nameToUserMap.has(cleanStr(aName))) {
+                // Prioritas 1: Cocokkan dari NAMA manusia sah jika terdaftar di master (Mencegah pergeseran NIK)
+                if (aName && !isLikelyIdNotName(aName) && nameToUserMap.has(cleanStr(aName))) {
                   matchedMaster = nameToUserMap.get(cleanStr(aName));
                 }
-                // Prioritas 3: Cocokkan dari ID
+                // Prioritas 2: Cocokkan dari ID
                 else if (aId && idToUserMap.has(aId)) {
                   matchedMaster = idToUserMap.get(aId);
+                }
+                // Prioritas 3: Cocokkan dari NIK jika nama tidak tersedia
+                else if (aNik && nikToUserMap.has(aNik)) {
+                  matchedMaster = nikToUserMap.get(aNik);
                 }
 
                 if (matchedMaster) {
                   const targetNik = matchedMaster.nik || a.userNik;
+                  // Proteksi akun non-absen (Dita, Melinda, Ummi, Karyawan Nonaktif)
+                  const nonAttendingNiks = new Set(['MBI26-122', 'MBI26-123', 'MBI26-125', 'MBI26-009', 'MBI26-040', 'MBI26-073', 'MBI26-077', 'MBI26-112']);
+                  if (nonAttendingNiks.has(targetNik)) {
+                    trackDeletedAttendance(a);
+                    a.__isDeletedGhost = true;
+                    attChanged = true;
+                    return;
+                  }
+
                   const targetName = matchedMaster.name;
                   const targetDept = matchedMaster.dept || a.dept || 'Warehouse Staff';
                   const targetOs = matchedMaster.outsource || a.outsource || 'Internal';
@@ -8526,6 +8624,8 @@
                   }
                 }
               });
+
+              atts = atts.filter(a => a && !a.__isDeletedGhost);
 
               // Pembersihan Otomatis Duplikat Absen Pada Tanggal yang Sama (Sinkronkan Record & Matriks 100%):
               const seenEmpDates = new Map();
@@ -8843,19 +8943,26 @@
             }
           }
 
-          // Cari user master
+          // Cari user master: Utamakan NAMA manusia sah agar tidak tergeser NIK
           let matchedUser = null;
-          if (a.userNik) {
-            matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
+          if (a.userName && !isLikelyIdNotName(a.userName)) {
+            matchedUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
           }
           if (!matchedUser && a.userId) {
             matchedUser = users.find(u => u.id === a.userId);
           }
-          if (!matchedUser && a.userName && !isLikelyIdNotName(a.userName)) {
-            matchedUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
+          if (!matchedUser && a.userNik) {
+            matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
           }
 
           if (matchedUser) {
+            const targetNik = matchedUser.nik || a.userNik;
+            const nonAttendingNiks = new Set(['MBI26-122', 'MBI26-123', 'MBI26-125', 'MBI26-009', 'MBI26-040', 'MBI26-073', 'MBI26-077', 'MBI26-112']);
+            if (nonAttendingNiks.has(targetNik)) {
+              a.__isDeletedGhost = true;
+              hasChanges = true;
+              return;
+            }
             const userOS = matchedUser.outsource || 'Internal';
             if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
               a.userName = matchedUser.name;
@@ -8867,6 +8974,8 @@
             }
           }
         });
+
+        attendances = attendances.filter(a => a && !a.__isDeletedGhost);
 
         // 2. DEDUP: Gabungkan absensi ganda pada karyawan yang sama di hari yang sama
         const groupedByDayUser = new Map();
@@ -9666,7 +9775,9 @@
             localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
             hasAttChanged = true;
           }
-          if (mergedMbiAtt.length > rawCloudMbiAtt.length) {
+          const todayStr = getLocalDateString(new Date());
+          const hasTodayOfflineTaps = (localMbiAtt || []).some(l => l && l.date === todayStr && !rawCloudMbiAtt.some(c => c && (c.id === l.id || (c.userNik === l.userNik && c.checkInTime === l.checkInTime))));
+          if (hasTodayOfflineTaps) {
             hasNewLocalDataToPush = true;
           }
         }
@@ -9925,6 +10036,11 @@
       const isImmediateCall = (immediate === true);
 
       const executeSave = async () => {
+        if (window.__WFM_VERSION_OUTDATED === true) {
+          console.warn('[VersionShield] Cloud upload dibatalkan: Aplikasi sedang menjalankan versi lama dan belum di-refresh.');
+          isSavingToCloud = false;
+          return;
+        }
         if (isSavingToCloud) {
           hasPendingCloudSave = true;
           return;
@@ -10010,9 +10126,15 @@
         const mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
         const maiPayload = { ...maiDataPure, updatedAt: nowIso };
 
-        // Proteksi ketat attendance: Mencegah penimpaan master Cloud oleh browser dengan cache usang (< 1330)
-        if (shouldUploadMbi && (!mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length < 1330) && !isExplicitAdminAttendanceReset) {
-          console.warn('[DataShield] Upload MBI attendance diabaikan: data lokal (' + (mbiDataPure.mbi_attendance?.length || 0) + ') kurang dari master proteksi (1330).');
+        // Proteksi ketat attendance: Mencegah penimpaan master Cloud oleh browser dengan cache usang atau data hantu
+        const hasGhostRecords = (mbiDataPure.mbi_attendance || []).some(a => {
+          if (!a) return false;
+          const n = (a.userNik || '').toUpperCase();
+          const nm = cleanStr(a.userName || '');
+          return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112' || nm.includes('melinda') || nm.includes('dita febriyanti');
+        });
+        if (shouldUploadMbi && (hasGhostRecords || !mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length < 1332) && !isExplicitAdminAttendanceReset) {
+          console.warn('[DataShield] Upload MBI attendance diabaikan: terdeteksi record hantu / data lokal (' + (mbiDataPure.mbi_attendance?.length || 0) + ') kurang dari master proteksi (1332).');
           delete mbiPayload.mbi_attendance;
         }
         if (shouldUploadMai && (!maiDataPure.mai_attendance || maiDataPure.mai_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
@@ -10698,8 +10820,12 @@
             const cloudTimestamp = checkRes.ok ? await checkRes.json() : null;
             const localUsers = getWhDB(wh, 'users', []);
             const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
-            const localAtt = getWhDB(wh, 'attendance', []);
-            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || localAtt.length < 1300)) || (wh === 'MAI' && localReg < 30);
+            const hasLocalGhosts = wh === 'MBI' && (localAtt || []).some(a => {
+              if (!a) return false;
+              const n = (a.userNik || '').toUpperCase();
+              return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112';
+            });
+            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || localAtt.length < 1332 || hasLocalGhosts)) || (wh === 'MAI' && localReg < 30);
             const needFetch = isManualAlert || forceDownload === true || isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
 
             if (needFetch) {
@@ -10843,7 +10969,7 @@
 
     window.onload = async () => {
       // Auto-purge cache lokal lama agar seketika 100% sinkron dengan database cloud yang sudah dirapikan
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v5';
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v6';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_mbi_attendance');
@@ -10967,6 +11093,7 @@
       });
       window.addEventListener('focus', () => {
         try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
+        try { checkAppVersionUpdate(); } catch(e) {}
       });
 
       window.addEventListener('storage', (e) => {
@@ -11015,6 +11142,12 @@
           if (addChevron) addChevron.classList.remove('rotate-180');
         }
       });
+
+      // Sentinel version check periodik untuk auto-refresh HP & Laptop
+      try {
+        checkAppVersionUpdate();
+        setInterval(checkAppVersionUpdate, 30000);
+      } catch(e) {}
     };
 
     // =========================================================
