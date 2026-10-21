@@ -978,7 +978,7 @@
                   <div>
                     <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Hadir Hari Ini</p>
                     <h3 id="stat-today-att" class="text-2xl font-black text-slate-900 mt-1">0 Hadir</h3>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Presensi Masuk Terverifikasi</p>
+                    <p id="stat-today-att-sub" class="text-[11px] text-slate-500 mt-0.5">Presensi Masuk Terverifikasi</p>
                   </div>
                   <div class="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
                     <i data-lucide="user-check" class="w-5 h-5"></i>
@@ -1603,10 +1603,18 @@
                   </div>
 
                   <div id="filter-body-records" class="p-4 space-y-3.5">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
                         <input type="text" id="record-search-input" oninput="renderRecordsTable(true)" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Filter Gudang</label>
+                        <select id="record-warehouse-filter" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                          <option value="ALL" selected>Semua Gudang (MBI &amp; MAI)</option>
+                          <option value="MBI">Khusus Gudang MBI</option>
+                          <option value="MAI">Khusus Gudang MAI</option>
+                        </select>
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
@@ -10066,7 +10074,8 @@
         }, 300);
       }
 
-      // Render ulang layar aktif secara selektif & cepat
+      // Render ulang layar aktif secara selektif & cepat dengan data paling segar
+      clearWhDBCache();
       renderAllLiveScreens();
 
       if (db.updatedAt && db.updatedAt !== lastAppliedCloudUpdatedAt) {
@@ -10076,6 +10085,7 @@
         }
       }
       } finally {
+        clearWhDBCache();
         isApplyingFromCloud = false;
       }
     }
@@ -12133,28 +12143,14 @@
         return false;
       }
 
-      // Akun Admin Gudang MBI terkunci mutlak hanya untuk Gudang MBI
-      if (user.nik === 'ADM001' || (user.warehouse === 'MBI' && role === 'admin' && !isUserManager(user))) {
-        if (!hasMaiPerm || user.permissions?.perm_wh_mai === false || hasSwitchPerm === false) {
-          return false;
-        }
-      }
-
-      // Akun Admin Gudang MAI terkunci mutlak hanya untuk Gudang MAI
-      if (user.nik === 'ADM-MAI' || (user.warehouse === 'MAI' && role === 'admin' && !isUserManager(user))) {
-        if (!hasMbiPerm || user.permissions?.perm_wh_mbi === false || hasSwitchPerm === false) {
-          return false;
-        }
-      }
-
-      // Jika user memiliki izin switch dan akses kedua gudang aktif
-      if (hasSwitchPerm && hasMbiPerm && hasMaiPerm) {
+      // Administrator & Manager mengelola multi-gudang (MBI & MAI) secara bebas
+      if (isUserAdmin(user) || isUserManager(user)) {
         return true;
       }
 
-      // Default Manager (General Manager mengelola seluruh gudang jika tidak dimatikan)
-      if (isUserManager(user)) {
-        return hasSwitchPerm !== false;
+      // Jika user memiliki izin switch dan akses kedua gudang aktif
+      if (hasSwitchPerm && (hasMbiPerm || hasMaiPerm)) {
+        return true;
       }
 
       return false;
@@ -13707,11 +13703,12 @@
         alert('Akses terkunci pada Gudang ' + (currentUser ? currentUser.warehouse : activeWarehouse) + '. Akun Anda tidak memiliki izin untuk berpindah gudang.');
         return;
       }
-      if (wh === 'MBI' && !hasPermission('perm_wh_mbi')) {
+      const isMgmt = isUserAdmin(currentUser) || isUserManager(currentUser);
+      if (!isMgmt && wh === 'MBI' && !hasPermission('perm_wh_mbi')) {
         alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang MBI.');
         return;
       }
-      if (wh === 'MAI' && !hasPermission('perm_wh_mai')) {
+      if (!isMgmt && wh === 'MAI' && !hasPermission('perm_wh_mai')) {
         alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang MAI.');
         return;
       }
@@ -14016,6 +14013,13 @@
       if (statTotal) statTotal.innerText = `${regularUsers.length} Orang`;
       const statToday = document.getElementById('stat-today-att');
       if (statToday) statToday.innerText = `${todayAtt.length} Hadir`;
+
+      const mbiTodayAtt = getWhDB('MBI', 'attendance', []).filter(a => a && a.date === todayStr && !isAttendanceMarkedDeleted(a));
+      const maiTodayAtt = getWhDB('MAI', 'attendance', []).filter(a => a && a.date === todayStr && !isAttendanceMarkedDeleted(a));
+      const statTodaySub = document.getElementById('stat-today-att-sub');
+      if (statTodaySub) {
+        statTodaySub.innerHTML = `Gudang MBI: <span class="font-bold text-slate-800">${mbiTodayAtt.length}</span> • Gudang MAI: <span class="font-bold text-slate-800">${maiTodayAtt.length}</span> (Total: ${mbiTodayAtt.length + maiTodayAtt.length})`;
+      }
       const statLeave = document.getElementById('stat-today-leave');
       if (statLeave) statLeave.innerText = `${todayLeaves.length} Orang`;
 
@@ -20838,14 +20842,31 @@
 
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
+      const whFilter = (document.getElementById('record-warehouse-filter')?.value || 'ALL').toUpperCase();
 
-      const currentWh = activeWarehouse || 'MBI';
-      const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
+      let users = [];
+      let attendances = [];
+
+      if (whFilter === 'MBI') {
+        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
+      } else if (whFilter === 'MAI') {
+        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
+      } else {
+        // ALL (Semua Gudang MBI & MAI)
+        const usersMBI = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const usersMAI = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        users = [...usersMBI, ...usersMAI];
+        const attMBI = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
+        const attMAI = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
+        attendances = [...attMBI, ...attMAI];
+      }
 
       // Mapping O(1) Outsource untuk pencarian instan
       const userOSMap = new Map();
       users.forEach(u => {
+        if (!u) return;
         if (u.nik) userOSMap.set(u.nik.toUpperCase(), (u.outsource || 'Internal').toLowerCase());
         if (u.name) userOSMap.set(cleanStr(u.name), (u.outsource || 'Internal').toLowerCase());
         if (u.id) userOSMap.set(u.id, (u.outsource || 'Internal').toLowerCase());
@@ -20916,7 +20937,7 @@
         } else if (endStr) {
           elMiniPeriod.innerText = `Hingga ${endStr}`;
         } else {
-          elMiniPeriod.innerText = `Semua rentang (${whFilter === 'ALL' ? 'Semua Gudang' : whFilter})`;
+          elMiniPeriod.innerText = `Semua rentang (${whFilter === 'ALL' ? 'Semua Gudang' : 'Gudang ' + whFilter})`;
         }
       }
 
@@ -21667,12 +21688,30 @@
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
 
       const currentWh = activeWarehouse || 'MBI';
-      const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
+      const whFilter = (document.getElementById('record-warehouse-filter')?.value || 'ALL').toUpperCase();
+
+      let users = [];
+      let attendances = [];
+
+      if (whFilter === 'MBI') {
+        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
+      } else if (whFilter === 'MAI') {
+        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
+      } else {
+        const usersMBI = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const usersMAI = getWhDB('MAI', 'users', SEED_MAI_USERS);
+        users = [...usersMBI, ...usersMAI];
+        const attMBI = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
+        const attMAI = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
+        attendances = [...attMBI, ...attMAI];
+      }
 
       // Mapping O(1) Outsource untuk pencarian instan
       const userOSMap = new Map();
       users.forEach(u => {
+        if (!u) return;
         if (u.nik) userOSMap.set(u.nik.toUpperCase(), (u.outsource || 'Internal').toLowerCase());
         if (u.name) userOSMap.set(cleanStr(u.name), (u.outsource || 'Internal').toLowerCase());
         if (u.id) userOSMap.set(u.id, (u.outsource || 'Internal').toLowerCase());
@@ -21771,7 +21810,7 @@
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      const sheetName = `Record_Absen_${activeWarehouse}`;
+      const sheetName = `Record_Absen_${whFilter === 'ALL' ? 'Semua_Gudang' : whFilter}`;
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
       const searchTag = searchQ ? `_${searchQ.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
       const periodTag = (startStr || endStr) ? `_${startStr || 'awal'}_sd_${endStr || 'akhir'}` : '_semua';
