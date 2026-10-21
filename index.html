@@ -1348,7 +1348,7 @@
                       
                       <!-- Kotak Target Overlay -->
                       <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div id="scanner-box-border" class="w-56 h-56 sm:w-64 sm:h-64 border-2 border-emerald-400 border-dashed rounded-3xl animate-pulse flex items-center justify-center">
+                        <div id="scanner-box-border" class="w-[270px] h-48 sm:w-[310px] sm:h-52 border-2 border-emerald-400 border-dashed rounded-3xl animate-pulse flex items-center justify-center">
                           <span id="scanner-box-tag" class="text-[10px] text-emerald-200 bg-slate-900/90 px-2.5 py-1 rounded-lg font-mono font-bold tracking-wide">SCAN BARCODE / QR</span>
                         </div>
                       </div>
@@ -1603,18 +1603,10 @@
                   </div>
 
                   <div id="filter-body-records" class="p-4 space-y-3.5">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Cari Karyawan</label>
                         <input type="text" id="record-search-input" oninput="renderRecordsTable(true)" placeholder="Cari nama / NIK..." class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                      </div>
-                      <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Filter Gudang</label>
-                        <select id="record-warehouse-filter" onchange="renderRecordsTable(true)" class="w-full h-9 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
-                          <option value="ALL" selected>Semua Gudang (MBI &amp; MAI)</option>
-                          <option value="MBI">Khusus Gudang MBI</option>
-                          <option value="MAI">Khusus Gudang MAI</option>
-                        </select>
                       </div>
                       <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">Urutan Presensi</label>
@@ -14014,11 +14006,9 @@
       const statToday = document.getElementById('stat-today-att');
       if (statToday) statToday.innerText = `${todayAtt.length} Hadir`;
 
-      const mbiTodayAtt = getWhDB('MBI', 'attendance', []).filter(a => a && a.date === todayStr && !isAttendanceMarkedDeleted(a));
-      const maiTodayAtt = getWhDB('MAI', 'attendance', []).filter(a => a && a.date === todayStr && !isAttendanceMarkedDeleted(a));
       const statTodaySub = document.getElementById('stat-today-att-sub');
       if (statTodaySub) {
-        statTodaySub.innerHTML = `Gudang MBI: <span class="font-bold text-slate-800">${mbiTodayAtt.length}</span> • Gudang MAI: <span class="font-bold text-slate-800">${maiTodayAtt.length}</span> (Total: ${mbiTodayAtt.length + maiTodayAtt.length})`;
+        statTodaySub.innerText = `Gudang ${activeWarehouse} • Presensi Masuk Terverifikasi`;
       }
       const statLeave = document.getElementById('stat-today-leave');
       if (statLeave) statLeave.innerText = `${todayLeaves.length} Orang`;
@@ -16023,7 +16013,7 @@
     }
 
     // =========================================================
-    // KAMERA SCANNER (BUKA & TUTUP) - MULTI-DEVICE IPHONE & ANDROID
+    // KAMERA SCANNER (BUKA & TUTUP) - MULTI-DEVICE IPHONE, ANDROID & LAPTOP
     // =========================================================
     async function startScanner() {
       // 1. Tampilkan container video, sembunyikan standby
@@ -16033,91 +16023,116 @@
       if (standbyWrapper) standbyWrapper.classList.add('hidden');
 
       if (html5QrScanner) {
-        try {
-          await html5QrScanner.stop();
-          html5QrScanner.clear();
-        } catch (e) {}
+        try { await html5QrScanner.stop(); } catch (e) {}
+        try { html5QrScanner.clear(); } catch (e) {}
         html5QrScanner = null;
       }
+
+      // Pastikan container DOM bersih total dari sisa elemen video lama
+      const qrReaderContainer = document.getElementById('qr-reader');
+      if (qrReaderContainer) {
+        qrReaderContainer.innerHTML = '';
+      }
+
+      // Hentikan seluruh stream kamera lama agar tidak terjadi bentrok hardware
+      try {
+        const oldVideos = document.querySelectorAll('video');
+        oldVideos.forEach(v => {
+          if (v.srcObject && typeof v.srcObject.getTracks === 'function') {
+            v.srcObject.getTracks().forEach(t => t.stop());
+            v.srcObject = null;
+          }
+        });
+      } catch (e) {}
 
       lastScannedCode = '';
       isScanProcessing = false;
 
       const statusMsg = document.getElementById('cam-status-msg');
-      if (statusMsg) statusMsg.innerText = 'Meminta izin kamera browser...';
+      if (statusMsg) statusMsg.innerText = 'Menghubungkan ke kamera...';
 
       try {
         if (typeof Html5Qrcode !== 'undefined') {
-          const formatsToSupport = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.UPC_A
-          ] : undefined;
+          // Cari kamera fisik yang tersedia (Deteksi otomatis Laptop Webcam vs HP Kamera Belakang)
+          let cameraConfig = { facingMode: "environment" };
+          let devices = [];
+          try {
+            devices = await Html5Qrcode.getCameras();
+          } catch(camErr) {
+            console.warn('getCameras error:', camErr);
+          }
 
+          if (devices && devices.length > 0) {
+            const backCam = devices.find(d => d.label && (
+              d.label.toLowerCase().includes('back') || 
+              d.label.toLowerCase().includes('rear') || 
+              d.label.toLowerCase().includes('environment') ||
+              d.label.toLowerCase().includes('belakang')
+            ));
+            if (backCam) {
+              cameraConfig = backCam.id;
+            } else if (devices.length === 1) {
+              // Laptop webcam atau HP single-cam
+              cameraConfig = devices[0].id;
+            } else {
+              cameraConfig = devices[devices.length - 1].id;
+            }
+          }
+
+          // Inisialisasi scanner dengan ZXing murni (useBarCodeDetectorIfSupported: false agar tidak silent-fail)
           html5QrScanner = new Html5Qrcode("qr-reader", {
-            formatsToSupport: formatsToSupport,
             verbose: false,
             experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true
+              useBarCodeDetectorIfSupported: false
             }
           });
           preloadGPSLocation();
 
-          // Konfigurasi QR Box Bujur Sangkar Responsif (Sangat cepat mengenali QR Code kartu ID & Barcode)
+          // Konfigurasi QR Box responsif horizontal untuk Barcode 1D (Code-128 / Code-39) dan QR Code
           const scanConfig = {
-            fps: 12, // 12 FPS: Ultra-ringan di CPU HP, bebas lag, suhu HP adem, scanning 80ms responsif
+            fps: 15,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const minDim = Math.min(viewfinderWidth, viewfinderHeight);
-              const size = Math.max(220, Math.min(Math.floor(minDim * 0.85), 320));
-              return { width: size, height: size };
+              const w = Math.min(Math.floor(viewfinderWidth * 0.92), 480);
+              const h = Math.min(Math.floor(viewfinderHeight * 0.75), 320);
+              return { width: Math.max(w, 240), height: Math.max(h, 160) };
             }
           };
 
-          // Optimasi Resolusi 720p HD (1280x720): Kamera terbuka kilat (<300ms) tanpa jeda berat 4K/1080p
-          const fastCameraConfig = {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 }
-          };
-
+          // Mulai stream kamera dengan auto-fallback multi-device
           try {
             await html5QrScanner.start(
-              fastCameraConfig,
+              cameraConfig,
               scanConfig,
               (decodedText) => { processScannedText(decodedText); },
               () => {}
             );
-          } catch (envErr) {
-            console.warn('FastCameraConfig failed, trying standard facingMode fallback:', envErr);
+          } catch (startErr) {
+            console.warn('Kamera pertama gagal, mencoba fallback kamera alternatif:', startErr);
+            // Bersihkan DOM dan instance sebelum mencoba fallback
+            try { html5QrScanner.clear(); } catch(e) {}
+            if (qrReaderContainer) qrReaderContainer.innerHTML = '';
+            html5QrScanner = new Html5Qrcode("qr-reader", { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: false } });
+
             try {
+              // Coba kamera depan/webcam (untuk laptop)
+              await html5QrScanner.start(
+                { facingMode: "user" },
+                scanConfig,
+                (decodedText) => { processScannedText(decodedText); },
+                () => {}
+              );
+            } catch (fallbackUserErr) {
+              // Coba kamera environment / default
+              try { html5QrScanner.clear(); } catch(e) {}
+              if (qrReaderContainer) qrReaderContainer.innerHTML = '';
+              html5QrScanner = new Html5Qrcode("qr-reader", { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: false } });
+
               await html5QrScanner.start(
                 { facingMode: "environment" },
                 scanConfig,
                 (decodedText) => { processScannedText(decodedText); },
                 () => {}
               );
-            } catch (fallbackErr) {
-              // Fallback terakhir: periksa daftar kamera perangkat
-              const devices = await Html5Qrcode.getCameras();
-              if (devices && devices.length > 0) {
-                const backCam = devices.find(d => d.label && (
-                  d.label.toLowerCase().includes('back') || 
-                  d.label.toLowerCase().includes('rear') || 
-                  d.label.toLowerCase().includes('environment') ||
-                  d.label.toLowerCase().includes('belakang')
-                ));
-                const chosenId = backCam ? backCam.id : devices[devices.length - 1].id;
-                await html5QrScanner.start(
-                  chosenId,
-                  scanConfig,
-                  (decodedText) => { processScannedText(decodedText); },
-                  () => {}
-                );
-              } else {
-                throw fallbackErr;
-              }
             }
           }
 
@@ -16129,18 +16144,16 @@
             vidEl.muted = true;
           }
 
-          const curCoords = getWarehouseCoords(activeWarehouse);
-          const curRad = Number(curCoords.radius) > 0 ? Number(curCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 30);
-          if (statusMsg) statusMsg.innerText = `Kamera Aktif (Radius GPS: ${curRad}m). Silakan arahkan ke Barcode ID Card Karyawan.`;
+          if (statusMsg) statusMsg.innerText = `Kamera Aktif • Arahkan ke Barcode / QR ID Card Karyawan`;
           lucide.createIcons();
           return;
         }
       } catch (err) {
         console.error('Html5Qrcode error:', err);
         if (statusMsg) {
-          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum diizinkan atau tidak dapat diakses.</span><br><span class="text-[11px] text-slate-600">Buka Izin Kamera di browser Anda (Ikon Gembok di bar alamat URL atau Pengaturan Safari di iPhone).</span>`;
+          statusMsg.innerHTML = `<span class="text-rose-600 font-bold">Kamera belum dapat diakses:</span> ${err.message || 'Izin kamera belum aktif'}.<br><span class="text-[11px] text-slate-600">Klik ikon Gembok di bar alamat web browser Anda, lalu pastikan Kamera di-set "Izinkan" (Allow).</span>`;
         }
-        alert('Izin akses kamera diperlukan untuk absensi.\n\n• Di iPhone (iOS Safari): Buka Pengaturan HP > Safari > Kamera > Pilih "Izinkan" (Allow).\n• Di Android (Chrome): Klik ikon Gembok di sebelah alamat web > Izin > Kamera > Izinkan.');
+        alert('Kamera belum dapat dibuka:\n' + (err.message || err) + '\n\nLangkah mudah:\n1. Pastikan izin kamera sudah di-Izinkan (Allow).\n2. Pastikan kamera tidak sedang dipakai aplikasi lain (Zoom/Google Meet/Kamera bawaan).\n3. Pada laptop, pastikan webcam menyala.');
       }
     }
 
@@ -16156,13 +16169,17 @@
         }
       }
 
-      // Pastikan seluruh track kamera fisik dihentikan seketika di hardware HP
+      // Pastikan seluruh track kamera fisik dihentikan seketika di hardware HP/Laptop
       try {
-        const vidEl = document.querySelector('#qr-reader video');
-        if (vidEl && vidEl.srcObject && typeof vidEl.srcObject.getTracks === 'function') {
-          vidEl.srcObject.getTracks().forEach(t => t.stop());
-          vidEl.srcObject = null;
-        }
+        const oldVideos = document.querySelectorAll('#qr-reader video, video');
+        oldVideos.forEach(vidEl => {
+          if (vidEl && vidEl.srcObject && typeof vidEl.srcObject.getTracks === 'function') {
+            vidEl.srcObject.getTracks().forEach(t => t.stop());
+            vidEl.srcObject = null;
+          }
+        });
+        const qrCont = document.getElementById('qr-reader');
+        if (qrCont) qrCont.innerHTML = '';
       } catch (e) {}
 
       // 2. Sembunyikan video container dan tampilkan standby wrapper
@@ -20842,26 +20859,10 @@
 
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
-      const whFilter = (document.getElementById('record-warehouse-filter')?.value || 'ALL').toUpperCase();
 
-      let users = [];
-      let attendances = [];
-
-      if (whFilter === 'MBI') {
-        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
-      } else if (whFilter === 'MAI') {
-        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
-      } else {
-        // ALL (Semua Gudang MBI & MAI)
-        const usersMBI = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        const usersMAI = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        users = [...usersMBI, ...usersMAI];
-        const attMBI = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
-        const attMAI = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
-        attendances = [...attMBI, ...attMAI];
-      }
+      const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+      const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
 
       // Mapping O(1) Outsource untuk pencarian instan
       const userOSMap = new Map();
@@ -20937,7 +20938,7 @@
         } else if (endStr) {
           elMiniPeriod.innerText = `Hingga ${endStr}`;
         } else {
-          elMiniPeriod.innerText = `Semua rentang (${whFilter === 'ALL' ? 'Semua Gudang' : 'Gudang ' + whFilter})`;
+          elMiniPeriod.innerText = `Semua rentang (Gudang ${currentWh})`;
         }
       }
 
@@ -21687,26 +21688,9 @@
       const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
       const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
 
-      const currentWh = activeWarehouse || 'MBI';
-      const whFilter = (document.getElementById('record-warehouse-filter')?.value || 'ALL').toUpperCase();
-
-      let users = [];
-      let attendances = [];
-
-      if (whFilter === 'MBI') {
-        users = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        attendances = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
-      } else if (whFilter === 'MAI') {
-        users = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        attendances = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
-      } else {
-        const usersMBI = getWhDB('MBI', 'users', SEED_MBI_USERS);
-        const usersMAI = getWhDB('MAI', 'users', SEED_MAI_USERS);
-        users = [...usersMBI, ...usersMAI];
-        const attMBI = getWhDB('MBI', 'attendance', SEED_MBI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MBI' }));
-        const attMAI = getWhDB('MAI', 'attendance', SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || 'MAI' }));
-        attendances = [...attMBI, ...attMAI];
-      }
+      const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+      const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
 
       // Mapping O(1) Outsource untuk pencarian instan
       const userOSMap = new Map();
@@ -21810,7 +21794,7 @@
 
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      const sheetName = `Record_Absen_${whFilter === 'ALL' ? 'Semua_Gudang' : whFilter}`;
+      const sheetName = `Record_Absen_${currentWh}`;
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
       const searchTag = searchQ ? `_${searchQ.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
       const periodTag = (startStr || endStr) ? `_${startStr || 'awal'}_sd_${endStr || 'akhir'}` : '_semua';
