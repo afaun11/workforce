@@ -1276,6 +1276,17 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Mode Antrean Cepat Berkelanjutan -->
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
+                <label class="flex items-center gap-2 cursor-pointer select-none text-slate-600 hover:text-slate-900">
+                  <input type="checkbox" id="toggle-continuous-scan" onchange="toggleContinuousScanMode(this.checked)" class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 accent-emerald-600" checked>
+                  <span class="font-bold">Mode Antrean Berkelanjutan (Kamera tetap terbuka untuk antrean berikutnya)</span>
+                </label>
+                <span class="text-[11px] text-slate-600 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                  Kecepatan Deteksi: <b class="text-emerald-700">Kilat Pos Scanner</b>
+                </span>
+              </div>
             </div>
 
             <!-- Hidden Inputs for JS Compatibility -->
@@ -1337,8 +1348,8 @@
                       
                       <!-- Kotak Target Overlay -->
                       <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <div id="scanner-box-border" class="w-40 h-40 sm:w-48 sm:h-48 border-2 border-slate-400 border-dashed rounded-2xl animate-pulse flex items-center justify-center">
-                          <span id="scanner-box-tag" class="text-[10px] text-slate-300 bg-slate-900/90 px-2 py-0.5 rounded font-mono font-bold">SCAN BARCODE</span>
+                        <div id="scanner-box-border" class="w-56 h-56 sm:w-64 sm:h-64 border-2 border-emerald-400 border-dashed rounded-3xl animate-pulse flex items-center justify-center">
+                          <span id="scanner-box-tag" class="text-[10px] text-emerald-200 bg-slate-900/90 px-2.5 py-1 rounded-lg font-mono font-bold tracking-wide">SCAN BARCODE / QR</span>
                         </div>
                       </div>
                     </div>
@@ -7706,34 +7717,19 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261020_v12';
+    const CURRENT_APP_VERSION = '20261021_v13';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
     async function checkAppVersionUpdate() {
+      // Non-blocking version check: hanya tampilkan info jika ada rilis resmi
       try {
         const endpoint = getFirebaseEndpoint('MBI').replace('/wfm_database.json', '/wfm_database/app_version.json');
         const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
           const cloudVersion = await res.json();
           if (cloudVersion && typeof cloudVersion === 'string' && cloudVersion !== CURRENT_APP_VERSION) {
-            window.__WFM_VERSION_OUTDATED = true;
             showAppUpdateBanner(cloudVersion);
-            return;
-          }
-        }
-      } catch (e) {}
-
-      // Fallback: periksa file index.html yang dideploy di web server
-      try {
-        const selfUrl = window.location.origin + window.location.pathname + '?_vcheck=' + Date.now();
-        const headRes = await fetch(selfUrl, { method: 'GET', cache: 'no-store' });
-        if (headRes.ok) {
-          const txt = await headRes.text();
-          const match = txt.match(/CURRENT_APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-          if (match && match[1] && match[1] !== CURRENT_APP_VERSION) {
-            window.__WFM_VERSION_OUTDATED = true;
-            showAppUpdateBanner(match[1]);
           }
         }
       } catch (e) {}
@@ -7752,19 +7748,7 @@
     }
 
     function applyAppUpdateAndReload() {
-      try {
-        localStorage.removeItem('wfm_mbi_attendance');
-        localStorage.removeItem('wfm_mai_attendance');
-        localStorage.removeItem('wfm_mbi_attendance_backup');
-        localStorage.removeItem('wfm_mai_attendance_backup');
-        localStorage.removeItem('wfm_mbi_users');
-        localStorage.removeItem('wfm_mai_users');
-        localStorage.removeItem('wfm_mbi_users_backup');
-        localStorage.removeItem('wfm_mai_users_backup');
-        localStorage.removeItem('wfm_mbi_master_updated_at');
-        localStorage.removeItem('wfm_mai_master_updated_at');
-        localStorage.removeItem('wfm_data_revision');
-      } catch(e) {}
+      // Reload aman tanpa menghapus data presensi lokal
       const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
       window.location.replace(cleanUrl);
     }
@@ -9199,28 +9183,57 @@
       });
     }
 
+    const whDBCache = new Map();
+    function clearWhDBCache(targetKey = null) {
+      if (targetKey) {
+        whDBCache.delete(targetKey);
+      } else {
+        whDBCache.clear();
+      }
+    }
+
+    let lucideDebounceTimer = null;
+    function safeCreateIcons(options = null) {
+      if (typeof lucide === 'undefined' || !lucide.createIcons) return;
+      if (options && options.root) {
+        try { lucide.createIcons(options); return; } catch(e) {}
+      }
+      if (lucideDebounceTimer) clearTimeout(lucideDebounceTimer);
+      lucideDebounceTimer = setTimeout(() => {
+        try { lucide.createIcons(); } catch(e) {}
+      }, 50);
+    }
+
     function getWhDB(warehouse, key, defaultVal) {
       const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
+      if (whDBCache.has(storageKey)) {
+        return whDBCache.get(storageKey);
+      }
       const data = localStorage.getItem(storageKey);
       if (data !== null) {
         try {
           const parsed = JSON.parse(data);
+          let result = parsed;
           if (key === 'users' && Array.isArray(parsed)) {
             const cleaned = deduplicateUserList(parsed, warehouse);
             if (cleaned.length !== parsed.length) {
               localStorage.setItem(storageKey, JSON.stringify(cleaned));
             }
-            return cleaned;
+            result = cleaned;
           }
-          return parsed;
+          whDBCache.set(storageKey, result);
+          return result;
         } catch(e) {
-          return defaultVal !== undefined ? defaultVal : [];
+          const fallback = defaultVal !== undefined ? defaultVal : [];
+          whDBCache.set(storageKey, fallback);
+          return fallback;
         }
       }
 
       // Jika data memang belum pernah ada di storage
       const cleanedDefault = key === 'users' && Array.isArray(defaultVal) ? deduplicateUserList(defaultVal, warehouse) : (defaultVal !== undefined ? defaultVal : []);
       localStorage.setItem(storageKey, JSON.stringify(cleanedDefault));
+      whDBCache.set(storageKey, cleanedDefault);
       return cleanedDefault;
     }
 
@@ -9230,6 +9243,7 @@
       try {
         const targetWh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toLowerCase();
         const storageKey = `wfm_${targetWh}_${key}`;
+        whDBCache.set(storageKey, val);
         localStorage.setItem(storageKey, JSON.stringify(val));
         if (isApplyingFromCloud || skipCloudSave) return;
         if (key === 'users') {
@@ -9790,6 +9804,7 @@
     let lastAppliedCloudUpdatedAt = null;
     function applyIncomingDatabase(db) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
+      clearWhDBCache();
       isApplyingFromCloud = true;
       try {
         // Sinkronkan daftar user yang dihapus dari Cloud dan bersihkan seketika dari memori lokal
@@ -10153,11 +10168,6 @@
       const isImmediateCall = (immediate === true);
 
       const executeSave = async () => {
-        if (window.__WFM_VERSION_OUTDATED === true) {
-          console.warn('[VersionShield] Cloud upload dibatalkan: Aplikasi sedang menjalankan versi lama dan belum di-refresh.');
-          isSavingToCloud = false;
-          return;
-        }
         if (isSavingToCloud) {
           hasPendingCloudSave = true;
           return;
@@ -11238,6 +11248,7 @@
           }
         }
 
+        let hasNewDataApplied = false;
         if (fetchPromises.length > 0) {
           const results = await Promise.allSettled(fetchPromises);
           results.forEach(res => {
@@ -11249,6 +11260,7 @@
                 localStorage.setItem('wfm_mai_master_updated_at', res.value.ts || res.value.db.updatedAt || new Date().toISOString());
               }
               loaded = true;
+              hasNewDataApplied = true;
             }
           });
         } else {
@@ -11258,12 +11270,13 @@
 
         if (loaded) {
           lastCloudFetchErrorStatus = null;
-          try {
-            renderAllLiveScreens();
-            if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
-            if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
-            if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
-          } catch(eRender) {}
+          // HANYA re-render jika benar-benar ada data baru yang masuk dari cloud!
+          // Jika data di server masih sama, TIDAK perlu mengulang render seluruh tabel agar UI tetap super lancar & tidak freeze!
+          if (hasNewDataApplied || isManualAlert) {
+            try {
+              renderAllLiveScreens();
+            } catch(eRender) {}
+          }
           const currentMBI = getWhDB('MBI', 'users', []);
           const currentMAI = getWhDB('MAI', 'users', []);
           const currentOt = getWhDB(activeWarehouse, 'overtime', []);
@@ -11467,21 +11480,20 @@
       // Sinkronkan data otomatis dari Google Firebase Cloud Server (Fresh Load saat pertama buka app)
       try { fetchFullDatabaseFromCloud(false, null, true); } catch(e) {}
       
-      // Smart Delta Check hemat kuota di latar belakang (Cek timestamp 30 Byte setiap 4 detik untuk pembaruan realtime lancar)
+      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan setiap 12 detik)
       setInterval(() => {
-        if (!document.hidden) {
+        if (!document.hidden && document.visibilityState === 'visible') {
           fetchFullDatabaseFromCloud(false, null, false);
         }
-      }, 2500); // Smart Delta Check 2.5s realtime
+      }, 12000);
       // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
+        if (!document.hidden && document.visibilityState === 'visible') {
           try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
         }
       });
       window.addEventListener('focus', () => {
         try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
-        try { checkAppVersionUpdate(); } catch(e) {}
       });
 
       window.addEventListener('storage', (e) => {
@@ -11530,12 +11542,6 @@
           if (addChevron) addChevron.classList.remove('rotate-180');
         }
       });
-
-      // Sentinel version check periodik untuk auto-refresh HP & Laptop
-      try {
-        checkAppVersionUpdate();
-        setInterval(checkAppVersionUpdate, 30000);
-      } catch(e) {}
     };
 
     // =========================================================
@@ -13595,15 +13601,8 @@
         
         try {
           if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
-          if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
-          if (typeof populatePermissionAccountDropdown === 'function') populatePermissionAccountDropdown();
-          if (typeof renderOvertimeEmployeeGrid === 'function') renderOvertimeEmployeeGrid();
-          if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
-          if (typeof renderLeavesTable === 'function') renderLeavesTable();
-          if (typeof renderRecordsTable === 'function') renderRecordsTable();
-          if (typeof renderMatrixTable === 'function') renderMatrixTable();
-          if (typeof calculateOvertimeNominal === 'function') calculateOvertimeNominal();
-          if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+          if (typeof safeCreateIcons === 'function') safeCreateIcons();
+          else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
         } catch (renderErr) {
           console.warn('Non-blocking render error after login:', renderErr);
         }
@@ -13920,8 +13919,13 @@
           try { stopScanner(); } catch(e) {}
         }
 
-        try { refreshAllDashboardData(); } catch(e) {}
-        try { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons(); } catch(e) {}
+        if (viewName === 'dashboard') {
+          try { refreshAllDashboardData(); } catch(e) {}
+        }
+        try {
+          if (typeof safeCreateIcons === 'function') safeCreateIcons({ root: activeView });
+          else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        } catch(e) {}
       } catch (err) {
         console.warn('switchView error:', err);
         const fallbackView = document.getElementById('view-' + viewName) || document.getElementById('view-dashboard') || document.getElementById('view-attendance');
@@ -14138,15 +14142,6 @@
         cardOt.classList.toggle('bg-amber-50/40', otCount > 0);
       }
 
-      const repGroup = document.getElementById('view-reports-group');
-      if (repGroup && !repGroup.classList.contains('hidden')) {
-        const tabRec = document.getElementById('tab-content-records');
-        if (tabRec && !tabRec.classList.contains('hidden')) {
-          if (Date.now() - lastRecordsRenderTime > 300) {
-            renderRecordsTable();
-          }
-        }
-      }
     }
 
     // =========================================================
@@ -14209,7 +14204,7 @@
           isGPSFetching = false;
           console.warn('GPS preload error:', err);
         },
-        { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 300000 }
       );
     }
 
@@ -14218,10 +14213,10 @@
         const whToUse = targetWh || activeWarehouse || 'MBI';
         const now = Date.now();
 
-        // 1. Jika ada cache GPS yang VALID dan masih hangat (< 15 detik) untuk gudang ini, gunakan seketika (0ms!)
-        if (latestCachedGPS && latestCachedGPS.valid && latestCachedGPS.wh === whToUse && (now - latestCachedGPS.timestamp < 15000)) {
-          // Lakukan background refresh agar cache berikutnya tetap segar
-          setTimeout(() => preloadGPSLocation(whToUse), 50);
+        // 1. Jika ada cache GPS yang VALID dan masih hangat (< 10 menit) untuk gudang ini, gunakan seketika (0ms!)
+        if (latestCachedGPS && latestCachedGPS.valid && latestCachedGPS.wh === whToUse && (now - latestCachedGPS.timestamp < 600000)) {
+          // Lakukan background refresh tanpa memblokir proses scan
+          setTimeout(() => preloadGPSLocation(whToUse), 100);
           resolve(latestCachedGPS);
           return;
         }
@@ -14274,7 +14269,7 @@
             else if (err.code === 3) errMsg = 'Permintaan GPS timeout. Silakan coba scan kembali.';
             resolve({ valid: false, error: errMsg });
           },
-          { enableHighAccuracy: true, timeout: 6000, maximumAge: 15000 }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 300000 }
         );
       });
     }
@@ -15018,7 +15013,8 @@
 
       const isUserAdminCurrent = isUserAdmin(currentUser) || (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || (currentUser.nik && currentUser.nik.startsWith('ADM'))));
       const isScannedAdmin = trimmed.toUpperCase().startsWith('ADM') || trimmed.toUpperCase().includes('ADMIN');
-      const isAdminTestMode = isUserAdminCurrent || isScannedAdmin;
+      const isScannerTerminal = isUserScanner(currentUser) || (currentUser && (currentUser.role === 'scanner' || (currentUser.nik && currentUser.nik.startsWith('ABSEN-'))));
+      const isInstantScanMode = isUserAdminCurrent || isScannedAdmin || isScannerTerminal;
 
       isScanProcessing = true;
       lastScannedCode = trimmed;
@@ -15026,9 +15022,10 @@
 
       const statusMsg = document.getElementById('cam-status-msg');
 
-      // DISPENSASI ADMIN TAHAP UJI COBA: Langsung proses seketika (0ms) tanpa menunggu GPS!
-      if (isAdminTestMode) {
-        if (statusMsg) statusMsg.innerText = `Mode Uji Coba Admin diizinkan. Memproses absensi...`;
+      // MODE CEPAT SEKETIKA (0ms): Untuk Akun Scanner Pos Gudang & Admin
+      // Menghilangkan jeda 5-6 detik pencarian satelit GPS per scan agar antrean absensi kilat lancar!
+      if (isInstantScanMode) {
+        if (statusMsg) statusMsg.innerText = `Memproses absensi...`;
         processAttendanceScan(trimmed);
         return;
       }
@@ -15183,7 +15180,10 @@
           statusText: `Khusus Gudang ${userWh}`
         });
         playAttendanceErrorSound('Beda gudang penempatan');
-        stopScanner();
+        const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+        if (!shouldKeepOpen) {
+          stopScanner();
+        }
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
@@ -15264,7 +15264,10 @@
             });
           }
           playAttendanceErrorSound('Sudah absen masuk');
-          stopScanner();
+          const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+          if (!shouldKeepOpen) {
+            stopScanner();
+          }
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -15292,7 +15295,10 @@
             statusText: 'Sudah Selesai Shift'
           });
           playAttendanceErrorSound('Shift hari ini sudah selesai');
-          stopScanner();
+          const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+          if (!shouldKeepOpen) {
+            stopScanner();
+          }
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -15347,7 +15353,6 @@
         });
 
         playAttendanceSuccessSound('check_in', matchedUser.name);
-        stopScanner();
       } else {
         // ==========================================
         // MODE ABSEN PULANG (CHECK_OUT) - 24 JAM PENUH
@@ -15373,7 +15378,10 @@
               statusText: 'Baru Tap Masuk'
             });
             playAttendanceErrorSound('Baru saja absen masuk');
-            stopScanner();
+            const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+            if (!shouldKeepOpen) {
+              stopScanner();
+            }
             setTimeout(() => { isScanProcessing = false; }, 2000);
             return;
           }
@@ -15407,7 +15415,6 @@
           });
 
           playAttendanceSuccessSound('check_out', matchedUser.name);
-          stopScanner();
         } else {
           // KASUS 2: Tidak ada sesi terbuka (Sudah pulang sebelumnya ATAU Belum masuk)
           const recentAtt = userAtts[0];
@@ -15441,7 +15448,10 @@
             });
             playAttendanceErrorSound('Belum absen masuk');
           }
-          stopScanner();
+          const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+          if (!shouldKeepOpen) {
+            stopScanner();
+          }
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -15472,11 +15482,6 @@
         typeBadgeEl.className = selectedAttendanceType === 'check_in' ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-200 text-emerald-900 uppercase' : 'px-2 py-0.5 rounded text-[10px] font-bold bg-rose-200 text-rose-900 uppercase';
       }
       if (timeEl) timeEl.innerText = nowFormatted;
-      if (card) card.classList.remove('hidden');
-      if (standbyIcon) standbyIcon.classList.add('hidden');
-      if (standbyTitle) standbyTitle.innerText = selectedAttendanceType === 'check_in' ? 'Absen Masuk Berhasil Dicatat!' : 'Absen Pulang Berhasil Dicatat!';
-      if (standbySubtitle) standbySubtitle.innerText = 'Kamera ditutup agar kartu tidak ter-scan dua kali. Tekan tombol di bawah untuk membuka kamera bagi karyawan berikutnya.';
-      if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Karyawan Berikutnya';
 
       if (gunNameEl) gunNameEl.innerText = matchedUser.name;
       if (gunNikDeptEl) gunNikDeptEl.innerText = `${matchedUser.nik} • ${(matchedUser.dept || 'STAFF').toUpperCase()}`;
@@ -15487,8 +15492,33 @@
       if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
       if (gunCard) gunCard.classList.remove('hidden');
 
-      // Selalu tutup kamera setelah scan berhasil
-      stopScanner();
+      const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+
+      if (!shouldKeepOpen) {
+        if (card) card.classList.remove('hidden');
+        if (standbyIcon) standbyIcon.classList.add('hidden');
+        if (standbyTitle) standbyTitle.innerText = selectedAttendanceType === 'check_in' ? 'Absen Masuk Berhasil Dicatat!' : 'Absen Pulang Berhasil Dicatat!';
+        if (standbySubtitle) standbySubtitle.innerText = 'Kamera ditutup agar kartu tidak ter-scan dua kali. Tekan tombol di bawah untuk membuka kamera bagi karyawan berikutnya.';
+        if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Karyawan Berikutnya';
+        stopScanner();
+      } else {
+        // Mode Berkelanjutan (Antrean Cepat): Kamera tetap menyala & aktif
+        const statusEl = document.getElementById('cam-status-msg');
+        const boxBorder = document.getElementById('scanner-box-border');
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-emerald-600 font-extrabold mr-1">✓ Berhasil:</span> <b class="text-slate-900 font-bold">${matchedUser.name}</b> <span class="text-emerald-700 font-semibold">(${selectedAttendanceType === 'check_in' ? 'MASUK' : 'PULANG'})</span> • Siap antrean berikutnya...`;
+        }
+        if (boxBorder) {
+          boxBorder.classList.remove('border-emerald-400', 'border-dashed');
+          boxBorder.classList.add('border-emerald-500', 'border-solid');
+          setTimeout(() => {
+            if (boxBorder) {
+              boxBorder.classList.remove('border-emerald-500', 'border-solid');
+              boxBorder.classList.add('border-emerald-400', 'border-dashed');
+            }
+          }, 900);
+        }
+      }
 
       // Render update data presensi hari ini secara instan
       renderScannerTodayRecords();
@@ -15502,10 +15532,17 @@
         } catch (e) {}
       }, 350);
 
+      // Jeda anti-double scan sebelum menerima barcode karyawan berikutnya (1.8s jika continuous, 1s jika normal)
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-      }, 1000);
+        if (shouldKeepOpen) {
+          const statusEl = document.getElementById('cam-status-msg');
+          if (statusEl && html5QrScanner) {
+            statusEl.innerText = 'Arahkan kamera ke Barcode ID Card Karyawan...';
+          }
+        }
+      }, shouldKeepOpen ? 1800 : 1000);
     }
 
     // =========================================================
@@ -16007,53 +16044,76 @@
 
       try {
         if (typeof Html5Qrcode !== 'undefined') {
+          const formatsToSupport = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.UPC_A
+          ] : undefined;
+
           html5QrScanner = new Html5Qrcode("qr-reader", {
+            formatsToSupport: formatsToSupport,
+            verbose: false,
             experimentalFeatures: {
               useBarCodeDetectorIfSupported: true
             }
           });
           preloadGPSLocation();
 
-          // Konfigurasi QR Box responsif untuk semua tipe HP Android & iPhone
+          // Konfigurasi QR Box Bujur Sangkar Responsif (Sangat cepat mengenali QR Code kartu ID & Barcode)
           const scanConfig = {
-            fps: 22,
+            fps: 12, // 12 FPS: Ultra-ringan di CPU HP, bebas lag, suhu HP adem, scanning 80ms responsif
             qrbox: (viewfinderWidth, viewfinderHeight) => {
               const minDim = Math.min(viewfinderWidth, viewfinderHeight);
-              const w = Math.min(Math.floor(minDim * 0.88), 320);
-              const h = Math.min(Math.floor(minDim * 0.70), 220);
-              return { width: Math.max(w, 200), height: Math.max(h, 150) };
+              const size = Math.max(220, Math.min(Math.floor(minDim * 0.85), 320));
+              return { width: size, height: size };
             }
           };
 
-          // Kompatibilitas iPhone (iOS Safari) & Android:
-          // Hindari aspectRatio kaku 1.0 yang sering memicu OverconstrainedError di iPhone
+          // Optimasi Resolusi 720p HD (1280x720): Kamera terbuka kilat (<300ms) tanpa jeda berat 4K/1080p
+          const fastCameraConfig = {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 }
+          };
+
           try {
             await html5QrScanner.start(
-              { facingMode: "environment" },
+              fastCameraConfig,
               scanConfig,
               (decodedText) => { processScannedText(decodedText); },
               () => {}
             );
           } catch (envErr) {
-            console.warn('FacingMode environment failed, trying device list enumeration fallback:', envErr);
-            // Fallback: periksa daftar kamera perangkat
-            const devices = await Html5Qrcode.getCameras();
-            if (devices && devices.length > 0) {
-              const backCam = devices.find(d => d.label && (
-                d.label.toLowerCase().includes('back') || 
-                d.label.toLowerCase().includes('rear') || 
-                d.label.toLowerCase().includes('environment') ||
-                d.label.toLowerCase().includes('belakang')
-              ));
-              const chosenId = backCam ? backCam.id : devices[devices.length - 1].id;
+            console.warn('FastCameraConfig failed, trying standard facingMode fallback:', envErr);
+            try {
               await html5QrScanner.start(
-                chosenId,
+                { facingMode: "environment" },
                 scanConfig,
                 (decodedText) => { processScannedText(decodedText); },
                 () => {}
               );
-            } else {
-              throw envErr;
+            } catch (fallbackErr) {
+              // Fallback terakhir: periksa daftar kamera perangkat
+              const devices = await Html5Qrcode.getCameras();
+              if (devices && devices.length > 0) {
+                const backCam = devices.find(d => d.label && (
+                  d.label.toLowerCase().includes('back') || 
+                  d.label.toLowerCase().includes('rear') || 
+                  d.label.toLowerCase().includes('environment') ||
+                  d.label.toLowerCase().includes('belakang')
+                ));
+                const chosenId = backCam ? backCam.id : devices[devices.length - 1].id;
+                await html5QrScanner.start(
+                  chosenId,
+                  scanConfig,
+                  (decodedText) => { processScannedText(decodedText); },
+                  () => {}
+                );
+              } else {
+                throw fallbackErr;
+              }
             }
           }
 
@@ -17452,7 +17512,8 @@
             console.error('Error rendering employee row:', emp, rowErr);
           }
         });
-        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        if (typeof safeCreateIcons === 'function') safeCreateIcons({ root: tbody });
+        else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
       } catch (err) {
         console.error('Error in renderEmployeeTable:', err);
       }
@@ -19868,7 +19929,8 @@
       else if (isLeaves) renderReportLeavesTable();
       else if (isOvertime) renderReportOvertimeTable();
       applyRolePermissions();
-      lucide.createIcons();
+      if (typeof safeCreateIcons === 'function') safeCreateIcons();
+      else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
     }
 
     function initWorkHoursDateRange() {
@@ -21045,7 +21107,8 @@
       });
 
       tbody.innerHTML = rowsHTML.join('');
-      lucide.createIcons();
+      if (typeof safeCreateIcons === 'function') safeCreateIcons({ root: tbody });
+      else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
       updateSelectedRecordsCount();
     }
 
