@@ -1276,17 +1276,6 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Mode Antrean Cepat Berkelanjutan -->
-              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs">
-                <label class="flex items-center gap-2 cursor-pointer select-none text-slate-600 hover:text-slate-900">
-                  <input type="checkbox" id="toggle-continuous-scan" onchange="toggleContinuousScanMode(this.checked)" class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 accent-emerald-600" checked>
-                  <span class="font-bold">Mode Antrean Berkelanjutan (Kamera tetap terbuka untuk antrean berikutnya)</span>
-                </label>
-                <span class="text-[11px] text-slate-600 font-medium bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-                  Kecepatan Deteksi: <b class="text-emerald-700">Kilat Pos Scanner</b>
-                </span>
-              </div>
             </div>
 
             <!-- Hidden Inputs for JS Compatibility -->
@@ -14295,13 +14284,11 @@
     let audioCtx = null;
     let isAudioContextUnlocked = false;
 
-    // Pengaturan Mode Antrean Massal Berkelanjutan
-    let isContinuousScanMode = localStorage.getItem('wfm_continuous_scan') !== 'false';
+    // Mode Antrean Berkelanjutan dinonaktifkan (kamera otomatis ditutup setelah scan)
+    let isContinuousScanMode = false;
     function toggleContinuousScanMode(val) {
-      isContinuousScanMode = !!val;
-      localStorage.setItem('wfm_continuous_scan', isContinuousScanMode ? 'true' : 'false');
-      const el = document.getElementById('toggle-continuous-scan');
-      if (el) el.checked = isContinuousScanMode;
+      isContinuousScanMode = false;
+      localStorage.removeItem('wfm_continuous_scan');
     }
 
     function getAudioContext() {
@@ -15062,50 +15049,67 @@
       let scannedNik = rawCode;
       let scannedName = '';
 
-      if (rawCode.includes('|')) {
-        const parts = rawCode.split('|').map(s => s.trim());
-        scannedNik = parts[0];
-        scannedName = parts[1] || '';
+      // A. Cek payload JSON (jika QR memuat format { nik: "...", name: "..." })
+      if (rawCode.startsWith('{') && rawCode.endsWith('}')) {
+        try {
+          const parsed = JSON.parse(rawCode);
+          if (parsed.nik) scannedNik = parsed.nik;
+          if (parsed.name) scannedName = parsed.name;
+          if (parsed.id) scannedNik = parsed.id;
+        } catch(e) {}
       }
 
-      // 1. Ekstraksi pola NIK jika barcode/QR berisi URL atau teks tambahan
+      // B. Cek pemisah pipe | (misal "MBI26-002|RIZKI ELIYANSYAH" atau "RIZKI ELIYANSYAH|MBI26-002")
+      if (scannedNik.includes('|')) {
+        const parts = scannedNik.split('|').map(s => s.trim());
+        if (parts[0].match(/(MBI|MAI|ADM|\d)/i)) {
+          scannedNik = parts[0];
+          scannedName = parts[1] || '';
+        } else {
+          scannedName = parts[0];
+          scannedNik = parts[1] || '';
+        }
+      }
+
+      // C. Cek format URL QR (misal "https://.../id?nik=MBI26-002" atau "?id=...")
+      if (scannedNik.includes('?')) {
+        try {
+          const urlObj = new URL(scannedNik, window.location.href);
+          const pNik = urlObj.searchParams.get('nik') || urlObj.searchParams.get('id') || urlObj.searchParams.get('code');
+          if (pNik) scannedNik = pNik;
+        } catch(e) {}
+      }
+
+      const cleanUpper = scannedNik.toUpperCase().trim();
+      const cleanAlphaNum = cleanUpper.replace(/[^A-Z0-9]/g, '');
+
+      // D. Ekstraksi pola NIK dengan regex fleksibel (toleran spasi/strip: MBI26-002, MBI-26-002, MAI 26-001, dsb)
       let extractedNik = '';
-      const nikMatch = scannedNik.match(/(MBI|MAI)\d{2}-\d{3,4}/i) || scannedNik.match(/ADM\d+/i) || scannedNik.match(/ADM-MAI/i);
+      const nikMatch = scannedNik.match(/(MBI|MAI)[-\s]?\d{2}[-\s]?\d{3,4}/i) || scannedNik.match(/ADM[-\s]?\d+/i) || scannedNik.match(/ADM-MAI/i) || scannedNik.match(/ABSEN-(MBI|MAI)/i);
       if (nikMatch) {
-        extractedNik = nikMatch[0].toUpperCase();
+        extractedNik = nikMatch[0].toUpperCase().replace(/\s+/g, '');
       }
 
-      // 2. Cari berdasarkan NIK / Barcode Value sama persis di gudang aktif (Prioritas Tertinggi)
-      let matchedUser = primaryUsers.find(u => u && (
-        (u.nik && u.nik.toUpperCase() === scannedNik.toUpperCase()) ||
-        (u.barcodeValue && String(u.barcodeValue).toUpperCase() === scannedNik.toUpperCase()) ||
-        (extractedNik && u.nik && u.nik.toUpperCase() === extractedNik) ||
-        (u.nik && cleanStr(u.nik) === cleanStr(scannedNik))
-      ));
+      function isUserMatch(u) {
+        if (!u) return false;
+        const uNik = (u.nik || '').toUpperCase().trim();
+        const uBarcode = (u.barcodeValue || '').toUpperCase().trim();
+        const uId = (u.id || '').trim();
+        const uCleanAlphaNum = uNik.replace(/[^A-Z0-9]/g, '');
+        const uCleanBarcodeAlphaNum = uBarcode.replace(/[^A-Z0-9]/g, '');
 
-      // 3. Jika belum ditemukan di gudang aktif, cari di gudang lainnya
+        if (uNik && (uNik === cleanUpper || uCleanAlphaNum === cleanAlphaNum)) return true;
+        if (uBarcode && (uBarcode === cleanUpper || uCleanBarcodeAlphaNum === cleanAlphaNum)) return true;
+        if (extractedNik && (uNik === extractedNik || uCleanAlphaNum === extractedNik.replace(/[^A-Z0-9]/g, ''))) return true;
+        if (uId && (uId === scannedNik || uId === rawCode)) return true;
+        if (u.name && (cleanStr(u.name) === cleanStr(scannedNik) || cleanStr(u.name) === cleanStr(scannedName) || cleanStr(u.name) === cleanStr(rawCode))) return true;
+        if (cleanAlphaNum.length >= 4 && uCleanAlphaNum && uCleanAlphaNum.endsWith(cleanAlphaNum)) return true;
+        return false;
+      }
+
+      let matchedUser = primaryUsers.find(isUserMatch);
       if (!matchedUser) {
-        matchedUser = secondaryUsers.find(u => u && (
-          (u.nik && u.nik.toUpperCase() === scannedNik.toUpperCase()) ||
-          (u.barcodeValue && String(u.barcodeValue).toUpperCase() === scannedNik.toUpperCase()) ||
-          (extractedNik && u.nik && u.nik.toUpperCase() === extractedNik) ||
-          (u.nik && cleanStr(u.nik) === cleanStr(scannedNik))
-        ));
-      }
-
-      // 4. Jika ada nama di barcode/QR, cari berdasarkan Nama
-      if (!matchedUser && scannedName) {
-        matchedUser = allUsers.find(u => u && cleanStr(u.name) === cleanStr(scannedName));
-      }
-
-      // 5. Cari berdasarkan Nama Lengkap dari teks barcode mentah
-      if (!matchedUser) {
-        matchedUser = allUsers.find(u => u && cleanStr(u.name) === cleanStr(rawCode));
-      }
-
-      // 6. Cari berdasarkan ID internal
-      if (!matchedUser) {
-        matchedUser = allUsers.find(u => u && u.id === rawCode);
+        matchedUser = secondaryUsers.find(isUserMatch);
       }
 
       if (!matchedUser) {
@@ -15174,10 +15178,7 @@
           statusText: `Khusus Gudang ${userWh}`
         });
         playAttendanceErrorSound('Beda gudang penempatan');
-        const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
-        if (!shouldKeepOpen) {
-          stopScanner();
-        }
+        stopScanner();
         setTimeout(() => { isScanProcessing = false; }, 2500);
         return;
       }
@@ -15258,10 +15259,7 @@
             });
           }
           playAttendanceErrorSound('Sudah absen masuk');
-          const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
-          if (!shouldKeepOpen) {
-            stopScanner();
-          }
+          stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -15289,10 +15287,7 @@
             statusText: 'Sudah Selesai Shift'
           });
           playAttendanceErrorSound('Shift hari ini sudah selesai');
-          const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
-          if (!shouldKeepOpen) {
-            stopScanner();
-          }
+          stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -15372,10 +15367,7 @@
               statusText: 'Baru Tap Masuk'
             });
             playAttendanceErrorSound('Baru saja absen masuk');
-            const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
-            if (!shouldKeepOpen) {
-              stopScanner();
-            }
+            stopScanner();
             setTimeout(() => { isScanProcessing = false; }, 2000);
             return;
           }
@@ -15442,10 +15434,7 @@
             });
             playAttendanceErrorSound('Belum absen masuk');
           }
-          const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
-          if (!shouldKeepOpen) {
-            stopScanner();
-          }
+          stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -15486,33 +15475,15 @@
       if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
       if (gunCard) gunCard.classList.remove('hidden');
 
-      const shouldKeepOpen = (typeof isContinuousScanMode !== 'undefined' ? isContinuousScanMode : true) || isUserScanner(currentUser);
+      // Tampilkan kartu bukti presensi sukses di Standby Wrapper & otomatis tutup kamera
+      if (card) card.classList.remove('hidden');
+      if (standbyIcon) standbyIcon.classList.add('hidden');
+      if (standbyTitle) standbyTitle.innerText = selectedAttendanceType === 'check_in' ? 'Absen Masuk Berhasil Dicatat!' : 'Absen Pulang Berhasil Dicatat!';
+      if (standbySubtitle) standbySubtitle.innerText = `Presensi ${matchedUser.name} (${matchedUser.nik || ''}) sukses tersimpan ke sistem. Kamera otomatis ditutup untuk mencegah scan ganda. Tekan tombol di bawah untuk membuka kamera karyawan berikutnya.`;
+      if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Absen Berikutnya';
 
-      if (!shouldKeepOpen) {
-        if (card) card.classList.remove('hidden');
-        if (standbyIcon) standbyIcon.classList.add('hidden');
-        if (standbyTitle) standbyTitle.innerText = selectedAttendanceType === 'check_in' ? 'Absen Masuk Berhasil Dicatat!' : 'Absen Pulang Berhasil Dicatat!';
-        if (standbySubtitle) standbySubtitle.innerText = 'Kamera ditutup agar kartu tidak ter-scan dua kali. Tekan tombol di bawah untuk membuka kamera bagi karyawan berikutnya.';
-        if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Karyawan Berikutnya';
-        stopScanner();
-      } else {
-        // Mode Berkelanjutan (Antrean Cepat): Kamera tetap menyala & aktif
-        const statusEl = document.getElementById('cam-status-msg');
-        const boxBorder = document.getElementById('scanner-box-border');
-        if (statusEl) {
-          statusEl.innerHTML = `<span class="text-emerald-600 font-extrabold mr-1">✓ Berhasil:</span> <b class="text-slate-900 font-bold">${matchedUser.name}</b> <span class="text-emerald-700 font-semibold">(${selectedAttendanceType === 'check_in' ? 'MASUK' : 'PULANG'})</span> • Siap antrean berikutnya...`;
-        }
-        if (boxBorder) {
-          boxBorder.classList.remove('border-emerald-400', 'border-dashed');
-          boxBorder.classList.add('border-emerald-500', 'border-solid');
-          setTimeout(() => {
-            if (boxBorder) {
-              boxBorder.classList.remove('border-emerald-500', 'border-solid');
-              boxBorder.classList.add('border-emerald-400', 'border-dashed');
-            }
-          }, 900);
-        }
-      }
+      // Selalu tutup kamera secara otomatis setelah ID card terscan
+      stopScanner();
 
       // Render update data presensi hari ini secara instan
       renderScannerTodayRecords();
@@ -15526,17 +15497,11 @@
         } catch (e) {}
       }, 350);
 
-      // Jeda anti-double scan sebelum menerima barcode karyawan berikutnya (1.8s jika continuous, 1s jika normal)
+      // Jeda anti-double scan sebelum menerima barcode karyawan berikutnya
       setTimeout(() => {
         isScanProcessing = false;
         resetVerificationState();
-        if (shouldKeepOpen) {
-          const statusEl = document.getElementById('cam-status-msg');
-          if (statusEl && html5QrScanner) {
-            statusEl.innerText = 'Arahkan kamera ke Barcode ID Card Karyawan...';
-          }
-        }
-      }, shouldKeepOpen ? 1800 : 1000);
+      }, 1000);
     }
 
     // =========================================================
@@ -16079,23 +16044,42 @@
             }
           }
 
-          // Inisialisasi scanner dengan ZXing murni (useBarCodeDetectorIfSupported: false agar tidak silent-fail)
-          html5QrScanner = new Html5Qrcode("qr-reader", {
+          // Inisialisasi scanner dengan format barcode ID Card lengkap (Code-128, Code-39, QR Code, dll)
+          const supportedFormats = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODABAR,
+            Html5QrcodeSupportedFormats.ITF
+          ] : undefined;
+
+          const scannerInitOptions = {
             verbose: false,
             experimentalFeatures: {
               useBarCodeDetectorIfSupported: false
             }
-          });
+          };
+          if (supportedFormats) {
+            scannerInitOptions.formatsToSupport = supportedFormats;
+          }
+
+          html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
           preloadGPSLocation();
 
-          // Konfigurasi QR Box responsif horizontal untuk Barcode 1D (Code-128 / Code-39) dan QR Code
+          // Konfigurasi area pemindaian sangat akurat (96% lebar) & 20 FPS agar barcode panjang ID Card langsung terbaca instan
           const scanConfig = {
-            fps: 15,
+            fps: 20,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const w = Math.min(Math.floor(viewfinderWidth * 0.92), 480);
-              const h = Math.min(Math.floor(viewfinderHeight * 0.75), 320);
-              return { width: Math.max(w, 240), height: Math.max(h, 160) };
-            }
+              const w = Math.max(Math.floor(viewfinderWidth * 0.96), 280);
+              const h = Math.max(Math.floor(viewfinderHeight * 0.88), 200);
+              return { width: w, height: h };
+            },
+            disableFlip: false
           };
 
           // Mulai stream kamera dengan auto-fallback multi-device
@@ -16111,7 +16095,7 @@
             // Bersihkan DOM dan instance sebelum mencoba fallback
             try { html5QrScanner.clear(); } catch(e) {}
             if (qrReaderContainer) qrReaderContainer.innerHTML = '';
-            html5QrScanner = new Html5Qrcode("qr-reader", { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: false } });
+            html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
 
             try {
               // Coba kamera depan/webcam (untuk laptop)
@@ -16125,7 +16109,7 @@
               // Coba kamera environment / default
               try { html5QrScanner.clear(); } catch(e) {}
               if (qrReaderContainer) qrReaderContainer.innerHTML = '';
-              html5QrScanner = new Html5Qrcode("qr-reader", { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: false } });
+              html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
 
               await html5QrScanner.start(
                 { facingMode: "environment" },
@@ -16136,12 +16120,30 @@
             }
           }
 
-          // Pasang atribut playsinline wajib untuk iOS Safari agar tidak membuka media player fullscreen
+          // Pasang atribut playsinline wajib untuk iOS Safari dan aktifkan autofocus hardware jika didukung
           const vidEl = document.querySelector('#qr-reader video');
           if (vidEl) {
             vidEl.setAttribute('playsinline', 'true');
             vidEl.setAttribute('webkit-playsinline', 'true');
             vidEl.muted = true;
+            try {
+              if (vidEl.srcObject && typeof vidEl.srcObject.getVideoTracks === 'function') {
+                const track = vidEl.srcObject.getVideoTracks()[0];
+                if (track && typeof track.getCapabilities === 'function') {
+                  const caps = track.getCapabilities();
+                  const adv = {};
+                  if (caps.focusMode && Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
+                    adv.focusMode = 'continuous';
+                  }
+                  if (caps.exposureMode && Array.isArray(caps.exposureMode) && caps.exposureMode.includes('continuous')) {
+                    adv.exposureMode = 'continuous';
+                  }
+                  if (Object.keys(adv).length > 0 && typeof track.applyConstraints === 'function') {
+                    track.applyConstraints({ advanced: [adv] }).catch(() => {});
+                  }
+                }
+              }
+            } catch(e) {}
           }
 
           if (statusMsg) statusMsg.innerText = `Kamera Aktif • Arahkan ke Barcode / QR ID Card Karyawan`;
