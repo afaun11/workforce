@@ -7836,14 +7836,28 @@
 
     function isUserMarkedDeleted(user, deletedKeys = null) {
       if (!user) return false;
+      const keys = deletedKeys || getDeletedUserKeys();
       const rawName = (user.name || '').trim().toLowerCase();
       const cName = cleanStr(user.name);
+      const rawNik = (user.nik || '').trim().toLowerCase();
+      const cNik = cleanStr(user.nik);
+      const rawId = (user.id || '').trim().toLowerCase();
+      const cId = cleanStr(user.id);
 
       // KUNCI MATI PERMANEN: Agus Setiawan & Budi Santoso (Akun demo fiktif bawaan)
       if (rawName === 'agus setiawan' || cName === 'agussetiawan') return true;
       if (rawName === 'budi santoso' || cName === 'budisantoso') return true;
 
-      // IMMUNITAS MUTLAK: Seluruh karyawan resmi dari Excel tidak boleh dihapus oleh tombstone lama
+      // Cek apakah karyawan ini ada dalam daftar tombstone yang dihapus permanen oleh Admin
+      if (keys && keys.size > 0) {
+        if (rawNik && keys.has(rawNik)) return true;
+        if (cNik && keys.has(cNik)) return true;
+        if (rawName && keys.has(rawName)) return true;
+        if (cName && keys.has(cName)) return true;
+        if (rawId && keys.has(rawId)) return true;
+        if (cId && keys.has(cId)) return true;
+      }
+
       return false;
     }
 
@@ -8392,7 +8406,7 @@
     }
 
     // Pembersihan otomatis data karyawan duplikat dan data ghost (nama berupa ID)
-    function autoPurgeDuplicateAndCorruptEmployees(showAlert = false) {
+    function autoPurgeDuplicateAndCorruptEmployees(showAlert = false, shouldRerender = true) {
       try {
         let totalCleaned = 0;
         ['MBI', 'MAI'].forEach(wh => {
@@ -8414,7 +8428,7 @@
           }
         });
 
-        if (totalCleaned > 0) {
+        if (totalCleaned > 0 && shouldRerender) {
           if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
           if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
         }
@@ -10085,7 +10099,11 @@
           renderScannerTodayRecords();
           updateRegisteredCoordsDisplay();
         } else if (activeViewId === 'view-employees') {
-          renderEmployeeTable();
+          if (!window.selectedEmployeeNiks || window.selectedEmployeeNiks.size === 0) {
+            renderEmployeeTable();
+          } else {
+            updateSelectedEmployeesCount();
+          }
         } else if (activeViewId === 'view-reports-group') {
           if (activeReportTab === 'records') renderRecordsTable();
           else if (activeReportTab === 'matrix') renderMatrixTable();
@@ -10227,13 +10245,13 @@
         let shouldUploadMbi = (filterWh === null || filterWh === 'MBI') && (isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash);
         let shouldUploadMai = (filterWh === null || filterWh === 'MAI') && (isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash);
 
-        // DATA SHIELD GUARD RAILS: Mencegah penimpaan / penghapusan data Cloud oleh browser dengan cache kosong / uninitialized
-        if (shouldUploadMbi && safeMbiUsers.length < 50 && !isExplicitAdminMasterReset) {
-          console.warn('[DataShield] Upload MBI dibatalkan: data karyawan lokal tidak lengkap (< 50):', safeMbiUsers.length);
+        // DATA SHIELD GUARD RAILS: Mencegah penimpaan data Cloud hanya jika data lokal benar-benar kosong (0) akibat crash
+        if (shouldUploadMbi && safeMbiUsers.length === 0 && !isExplicitAdminMasterReset) {
+          console.warn('[DataShield] Upload MBI dibatalkan: data karyawan lokal kosong (0)');
           shouldUploadMbi = false;
         }
-        if (shouldUploadMai && safeMaiUsers.length < 30 && !isExplicitAdminMasterReset) {
-          console.warn('[DataShield] Upload MAI dibatalkan: data karyawan lokal tidak lengkap (< 30):', safeMaiUsers.length);
+        if (shouldUploadMai && safeMaiUsers.length === 0 && !isExplicitAdminMasterReset) {
+          console.warn('[DataShield] Upload MAI dibatalkan: data karyawan lokal kosong (0)');
           shouldUploadMai = false;
         }
 
@@ -11219,7 +11237,7 @@
               const n = (a.userNik || '').toUpperCase();
               return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112';
             });
-            const isLocalIncomplete = (wh === 'MBI' && (localReg < 50 || (localAtt || []).length < 500 || hasLocalGhosts)) || (wh === 'MAI' && localReg < 30);
+            const isLocalIncomplete = (localReg === 0);
             const needFetch = isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
 
             if (needFetch) {
@@ -17460,8 +17478,7 @@
         const totalBadge = document.getElementById('emp-total-badge');
         if (totalBadge) totalBadge.innerText = `Total: ${filtered.length} Karyawan (${activeWarehouse})`;
 
-        const masterCheck = document.getElementById('emp-master-check');
-        if (masterCheck) masterCheck.checked = false;
+        if (!window.selectedEmployeeNiks) window.selectedEmployeeNiks = new Set();
         updateSelectedEmployeesCount();
 
         if (filtered.length === 0) {
@@ -17473,6 +17490,9 @@
           try {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+            const cleanEmpNik = (emp?.nik || '').toString().trim().toUpperCase();
+            const isChecked = window.selectedEmployeeNiks && window.selectedEmployeeNiks.has(cleanEmpNik);
 
             const roleStr = (emp.role || 'staff').toLowerCase().trim();
             const roleBadgeClass = (roleStr === 'supervisor' || roleStr === 'admin') 
@@ -17498,7 +17518,7 @@
 
             tr.innerHTML = `
               <td class="p-3 border-r border-slate-100 text-center">
-                <input type="checkbox" name="emp-row-check" value="${emp.nik}" onchange="updateSelectedEmployeesCount()" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
+                <input type="checkbox" name="emp-row-check" value="${emp.nik}" ${isChecked ? 'checked' : ''} onchange="toggleEmployeeRowSelection('${emp.nik}', this.checked)" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
               </td>
               <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold text-center">${idx + 1}</td>
               <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${displayName}<br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
@@ -17606,13 +17626,12 @@
         alert('Akses Ditolak: Anda tidak memiliki izin untuk mengubah status karyawan.');
         return;
       }
-      const selectedCbs = document.querySelectorAll('input[name="emp-row-check"]:checked');
-      if (selectedCbs.length === 0) {
+      if (!window.selectedEmployeeNiks || window.selectedEmployeeNiks.size === 0) {
         alert('Pilih minimal 1 karyawan dengan mencentang kotak di tabel.');
         return;
       }
 
-      const selectedNiks = new Set(Array.from(selectedCbs).map(cb => cb.value.toUpperCase().trim()));
+      const selectedNiks = new Set(window.selectedEmployeeNiks);
       const isActivating = (newStatus === 'active');
       const actionText = isActivating ? 'MENGAKTIFKAN KEMBALI' : 'MENONAKTIFKAN';
 
@@ -17638,8 +17657,9 @@
       const nowIso = new Date().toISOString();
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
-      await saveFullDatabaseToCloud(false, true, true);
+      await saveFullDatabaseToCloud(false, true, true, targetWh, true);
 
+      window.selectedEmployeeNiks.clear();
       renderEmployeeTable();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
@@ -18155,7 +18175,9 @@
       localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, nowIso);
 
       // 4. Langsung kirim pembaruan bersih ke Firebase Cloud Realtime Database (Atomic PUT)
-      await saveFullDatabaseToCloud(false, true, true);
+      await saveFullDatabaseToCloud(false, true, true, wh, true);
+      if (window.selectedEmployeeNiks) window.selectedEmployeeNiks.delete(String(user.nik).toUpperCase().trim());
+      updateSelectedEmployeesCount();
 
       renderEmployeeTable();
       populateDropdownEmployees();
@@ -18166,32 +18188,61 @@
       alert(`✅ Karyawan "${user.name}" (${user.nik}) berhasil dihapus permanen dari sistem dan Cloud Database.`);
     }
 
+    window.selectedEmployeeNiks = window.selectedEmployeeNiks || new Set();
+
+    function toggleEmployeeRowSelection(nik, isChecked) {
+      if (!window.selectedEmployeeNiks) window.selectedEmployeeNiks = new Set();
+      const cleanNik = String(nik).toUpperCase().trim();
+      if (isChecked) {
+        window.selectedEmployeeNiks.add(cleanNik);
+      } else {
+        window.selectedEmployeeNiks.delete(cleanNik);
+      }
+      updateSelectedEmployeesCount();
+    }
+
     function toggleSelectAllEmployees(isChecked) {
+      if (!window.selectedEmployeeNiks) window.selectedEmployeeNiks = new Set();
       const checkboxes = document.querySelectorAll('input[name="emp-row-check"]');
       checkboxes.forEach(cb => {
         cb.checked = isChecked;
+        const cleanNik = String(cb.value).toUpperCase().trim();
+        if (isChecked) {
+          window.selectedEmployeeNiks.add(cleanNik);
+        } else {
+          window.selectedEmployeeNiks.delete(cleanNik);
+        }
       });
       updateSelectedEmployeesCount();
     }
 
     function updateSelectedEmployeesCount() {
-      const selected = document.querySelectorAll('input[name="emp-row-check"]:checked');
+      if (!window.selectedEmployeeNiks) window.selectedEmployeeNiks = new Set();
+      const count = window.selectedEmployeeNiks.size;
       const badge = document.getElementById('count-selected-emp-badge');
       const btnDelete = document.getElementById('btn-delete-selected-emp');
       const btnDeact = document.getElementById('btn-deact-selected-emp');
       const btnAct = document.getElementById('btn-act-selected-emp');
-      if (badge) badge.innerText = selected.length;
+      if (badge) badge.innerText = count;
       if (btnDelete) {
-        btnDelete.classList.toggle('opacity-50', selected.length === 0);
-        btnDelete.classList.toggle('pointer-events-none', selected.length === 0);
+        btnDelete.classList.toggle('opacity-50', count === 0);
+        btnDelete.classList.toggle('pointer-events-none', count === 0);
       }
       if (btnDeact) {
-        btnDeact.classList.toggle('opacity-50', selected.length === 0);
-        btnDeact.classList.toggle('pointer-events-none', selected.length === 0);
+        btnDeact.classList.toggle('opacity-50', count === 0);
+        btnDeact.classList.toggle('pointer-events-none', count === 0);
       }
       if (btnAct) {
-        btnAct.classList.toggle('opacity-50', selected.length === 0);
-        btnAct.classList.toggle('pointer-events-none', selected.length === 0);
+        btnAct.classList.toggle('opacity-50', count === 0);
+        btnAct.classList.toggle('pointer-events-none', count === 0);
+      }
+
+      const masterCheck = document.getElementById('emp-master-check');
+      const allRowChecks = document.querySelectorAll('input[name="emp-row-check"]');
+      if (masterCheck && allRowChecks.length > 0) {
+        masterCheck.checked = Array.from(allRowChecks).every(cb => cb.checked);
+      } else if (masterCheck && allRowChecks.length === 0) {
+        masterCheck.checked = false;
       }
     }
 
@@ -18200,13 +18251,12 @@
         alert('Akses Ditolak: Anda tidak memiliki izin untuk menghapus data karyawan.');
         return;
       }
-      const selectedCbs = document.querySelectorAll('input[name="emp-row-check"]:checked');
-      if (selectedCbs.length === 0) {
+      if (!window.selectedEmployeeNiks || window.selectedEmployeeNiks.size === 0) {
         alert('Pilih minimal 1 karyawan dengan mencentang kotak di tabel.');
         return;
       }
 
-      const selectedNiks = new Set(Array.from(selectedCbs).map(cb => cb.value.toUpperCase().trim()));
+      const selectedNiks = new Set(window.selectedEmployeeNiks);
       if (!confirm(`⚠️ PERINGATAN HAPUS MASAL:\nApakah Anda yakin ingin MENGHAPUS PERMANEN ${selectedNiks.size} karyawan terpilih?\n\nData karyawan akan langsung dibersihkan permanen dari sistem dan Cloud Database.`)) {
         return;
       }
@@ -18254,8 +18304,9 @@
       const nowIso = new Date().toISOString();
       localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
       localStorage.setItem('wfm_master_updated_at', nowIso);
-      await saveFullDatabaseToCloud(false, true, true);
+      await saveFullDatabaseToCloud(false, true, true, null, true);
 
+      window.selectedEmployeeNiks.clear();
       renderEmployeeTable();
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
