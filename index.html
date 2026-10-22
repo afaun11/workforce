@@ -589,7 +589,7 @@
           <span>Perbarui &amp; Muat Ulang Sekarang</span>
         </button>
 
-        <button type="button" onclick="hideAppUpdateBanner()" class="w-full py-2.5 px-3 bg-transparent hover:bg-slate-100 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer">
+        <button type="button" onclick="hideAppUpdateBanner(true)" class="w-full py-2.5 px-3 bg-transparent hover:bg-slate-100 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer">
           <span>Nanti Saja</span>
         </button>
       </div>
@@ -2667,7 +2667,7 @@
                 <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
                   <div class="flex items-center gap-2 text-xs text-slate-500">
                     <span class="font-bold text-slate-700">Versi Rilis Aplikasi:</span>
-                    <span class="font-mono bg-blue-50 text-blue-800 border border-blue-200/80 px-2 py-0.5 rounded-md font-extrabold text-[11px]">20261022_v18</span>
+                    <span class="font-mono bg-blue-50 text-blue-800 border border-blue-200/80 px-2 py-0.5 rounded-md font-extrabold text-[11px]">20261022_v17</span>
                   </div>
                   <button type="button" onclick="window.testUpdateModal()" class="py-2.5 px-3.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
                     <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-blue-600"></i>
@@ -7806,8 +7806,9 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261022_v18';
+    const CURRENT_APP_VERSION = '20261022_v17';
     let isAppUpdateBannerVisible = false;
+    let lastKnownRemoteVersion = null;
     window.__WFM_VERSION_OUTDATED = false;
 
     // Helper: Hanya anggap update jika versi server BENAR-BENAR LEBIH BARU dari versi lokal saat ini
@@ -7831,9 +7832,14 @@
       return rStr.localeCompare(cStr, undefined, { numeric: true, sensitivity: 'base' }) > 0;
     }
 
-    function hideAppUpdateBanner() {
+    function hideAppUpdateBanner(isUserDismiss = false) {
       isAppUpdateBannerVisible = false;
       window.__WFM_VERSION_OUTDATED = false;
+      if (isUserDismiss && lastKnownRemoteVersion) {
+        try {
+          sessionStorage.setItem('wfm_dismissed_update_' + lastKnownRemoteVersion, 'true');
+        } catch(e) {}
+      }
       const banner = document.getElementById('wfm-update-banner');
       if (banner) {
         banner.classList.add('hidden');
@@ -7856,15 +7862,11 @@
               showAppUpdateBanner(cloudVersion);
               return;
             } else {
-              // Jika versi yang dipakai sudah sama atau lebih baru dari cloud, sembunyikan banner
-              hideAppUpdateBanner();
-              // Sinkronkan versi terbaru ini ke cloud agar perangkat lain mencatat versi terbaru
-              if (isNewerVersion(CURRENT_APP_VERSION, cloudVersion)) {
-                publishAppVersionToCloud(CURRENT_APP_VERSION);
-              }
+              // Jika versi yang dipakai sudah sama atau lebih baru dari cloud, seketika sembunyikan banner & pastikan tidak muncul
+              hideAppUpdateBanner(false);
             }
           } else {
-            publishAppVersionToCloud(CURRENT_APP_VERSION);
+            hideAppUpdateBanner(false);
           }
         }
 
@@ -7879,9 +7881,8 @@
               if (isNewerVersion(match[1], CURRENT_APP_VERSION)) {
                 window.__WFM_VERSION_OUTDATED = true;
                 showAppUpdateBanner(match[1]);
-                publishAppVersionToCloud(match[1]);
               } else {
-                hideAppUpdateBanner();
+                hideAppUpdateBanner(false);
               }
             }
           }
@@ -7914,11 +7915,27 @@
     }
 
     function showAppUpdateBanner(newVersion, force = false) {
-      // Jika versi baru tidak lebih tinggi dari versi saat ini dan bukan mode preview/force, jangan pernah tampilkan notif
+      if (newVersion) lastKnownRemoteVersion = String(newVersion).trim();
+
+      // Jika versi baru tidak lebih tinggi dari versi saat ini dan bukan mode preview/force, sembunyikan notif
       if (!force && !isNewerVersion(newVersion, CURRENT_APP_VERSION)) {
-        hideAppUpdateBanner();
+        hideAppUpdateBanner(false);
         return;
       }
+
+      // Proteksi anti-muncul terus-menerus: Jika pengguna sudah pernah klik "Nanti Saja" atau sudah refresh dalam 15 menit
+      if (!force && newVersion) {
+        try {
+          if (sessionStorage.getItem('wfm_dismissed_update_' + newVersion) === 'true') {
+            return;
+          }
+          const lastReloadTime = sessionStorage.getItem('wfm_reloaded_for_version_' + newVersion);
+          if (lastReloadTime && (Date.now() - parseInt(lastReloadTime, 10)) < 900000) {
+            return;
+          }
+        } catch(e) {}
+      }
+
       if (isAppUpdateBannerVisible && !force) return;
       isAppUpdateBannerVisible = true;
       if (!force) {
@@ -7948,8 +7965,13 @@
     };
 
     function applyAppUpdateAndReload() {
-      // Sembunyikan banner dan bersihkan cache agar versi baru termuat bersih
-      hideAppUpdateBanner();
+      // Catat bahwa pengguna sudah menekan tombol perbarui agar tidak muncul terus-menerus jika ada jeda cache hosting
+      if (lastKnownRemoteVersion) {
+        try {
+          sessionStorage.setItem('wfm_reloaded_for_version_' + lastKnownRemoteVersion, String(Date.now()));
+        } catch(e) {}
+      }
+      hideAppUpdateBanner(false);
       try {
         if ('caches' in window) {
           caches.keys().then(keys => {
