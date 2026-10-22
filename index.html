@@ -571,6 +571,9 @@
         </div>
       </div>
       <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+        <button onclick="hideAppUpdateBanner()" class="px-4 py-2.5 bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer">
+          <span>Nanti</span>
+        </button>
         <button onclick="applyAppUpdateAndReload()" class="w-full sm:w-auto px-5 py-2.5 bg-white hover:bg-sky-50 active:scale-95 text-sky-900 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
           <span>Muat Ulang Sekarang (Refresh)</span>
@@ -7726,6 +7729,36 @@
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
+    // Helper: Hanya anggap update jika versi server BENAR-BENAR LEBIH BARU dari versi lokal saat ini
+    function isNewerVersion(remoteVer, currentVer) {
+      if (!remoteVer || !currentVer) return false;
+      const rStr = String(remoteVer).trim();
+      const cStr = String(currentVer).trim();
+      if (rStr === cStr) return false;
+
+      const matchRem = rStr.match(/(\d{8})_v?(\d+)/i);
+      const matchCur = cStr.match(/(\d{8})_v?(\d+)/i);
+      if (matchRem && matchCur) {
+        const dateRem = parseInt(matchRem[1], 10);
+        const dateCur = parseInt(matchCur[1], 10);
+        if (dateRem > dateCur) return true;
+        if (dateRem < dateCur) return false;
+        const revRem = parseInt(matchRem[2], 10);
+        const revCur = parseInt(matchCur[2], 10);
+        return revRem > revCur;
+      }
+      return rStr.localeCompare(cStr, undefined, { numeric: true, sensitivity: 'base' }) > 0;
+    }
+
+    function hideAppUpdateBanner() {
+      isAppUpdateBannerVisible = false;
+      window.__WFM_VERSION_OUTDATED = false;
+      const banner = document.getElementById('wfm-update-banner');
+      if (banner) {
+        banner.classList.add('hidden');
+      }
+    }
+
     async function checkAppVersionUpdate() {
       try {
         // 1. Cek dari Cloud Firebase Realtime Database
@@ -7736,13 +7769,19 @@
         if (res.ok) {
           const cloudVersion = await res.json();
           if (cloudVersion && typeof cloudVersion === 'string') {
-            if (cloudVersion !== CURRENT_APP_VERSION) {
+            if (isNewerVersion(cloudVersion, CURRENT_APP_VERSION)) {
               window.__WFM_VERSION_OUTDATED = true;
               showAppUpdateBanner(cloudVersion);
               return;
+            } else {
+              // Jika versi yang dipakai sudah sama atau lebih baru dari cloud, sembunyikan banner
+              hideAppUpdateBanner();
+              // Sinkronkan versi terbaru ini ke cloud agar perangkat lain mencatat versi terbaru
+              if (isNewerVersion(CURRENT_APP_VERSION, cloudVersion)) {
+                publishAppVersionToCloud(CURRENT_APP_VERSION);
+              }
             }
           } else {
-            // Jika belum ada versi tercatat di Cloud, terbitkan versi aktif saat ini
             publishAppVersionToCloud(CURRENT_APP_VERSION);
           }
         }
@@ -7754,10 +7793,14 @@
           if (htmlRes.ok) {
             const sampleText = (await htmlRes.text()).substring(0, 350000);
             const match = sampleText.match(/CURRENT_APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-            if (match && match[1] && match[1] !== CURRENT_APP_VERSION) {
-              window.__WFM_VERSION_OUTDATED = true;
-              showAppUpdateBanner(match[1]);
-              publishAppVersionToCloud(match[1]);
+            if (match && match[1]) {
+              if (isNewerVersion(match[1], CURRENT_APP_VERSION)) {
+                window.__WFM_VERSION_OUTDATED = true;
+                showAppUpdateBanner(match[1]);
+                publishAppVersionToCloud(match[1]);
+              } else {
+                hideAppUpdateBanner();
+              }
             }
           }
         } catch(eHtml) {}
@@ -7780,8 +7823,14 @@
     }
 
     function showAppUpdateBanner(newVersion) {
+      // Jika versi baru tidak lebih tinggi dari versi saat ini, jangan pernah tampilkan notif
+      if (!isNewerVersion(newVersion, CURRENT_APP_VERSION)) {
+        hideAppUpdateBanner();
+        return;
+      }
       if (isAppUpdateBannerVisible) return;
       isAppUpdateBannerVisible = true;
+      window.__WFM_VERSION_OUTDATED = true;
       const banner = document.getElementById('wfm-update-banner');
       if (banner) {
         banner.classList.remove('hidden');
@@ -7793,19 +7842,13 @@
           try { lucide.createIcons(); } catch(e) {}
         }
       }
-
-      // Jika pengguna sedang di halaman login atau mode scanner standby, lakukan refresh otomatis mulus setelah 4 detik
-      const isAuthVisible = document.getElementById('auth-container')?.offsetParent !== null;
-      const isStandby = document.getElementById('camera-standby-wrapper')?.offsetParent !== null;
-      if (isAuthVisible || isStandby) {
-        setTimeout(() => {
-          applyAppUpdateAndReload();
-        }, 4000);
-      }
+      // PENTING: TIDAK ada auto-reload paksa di latar belakang (tidak me-refresh terus-terusan).
+      // Pengguna mengontrol penuh saat ingin memuat ulang dengan menekan tombol Refresh.
     }
 
     function applyAppUpdateAndReload() {
-      // Hapus seluruh cache service worker dan browser cache agar versi baru wajib dimuat
+      // Sembunyikan banner dan bersihkan cache agar versi baru termuat bersih
+      hideAppUpdateBanner();
       try {
         if ('caches' in window) {
           caches.keys().then(keys => {
@@ -9885,8 +9928,12 @@
       clearWhDBCache();
       isApplyingFromCloud = true;
       try {
-        if (db.app_version && typeof db.app_version === 'string' && db.app_version !== CURRENT_APP_VERSION) {
-          showAppUpdateBanner(db.app_version);
+        if (db.app_version && typeof db.app_version === 'string') {
+          if (isNewerVersion(db.app_version, CURRENT_APP_VERSION)) {
+            showAppUpdateBanner(db.app_version);
+          } else {
+            hideAppUpdateBanner();
+          }
         }
         // Sinkronkan daftar user yang dihapus dari Cloud dan bersihkan seketika dari memori lokal
         if (Array.isArray(db.deleted_user_keys)) {
