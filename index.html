@@ -554,29 +554,43 @@
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
 
   <!-- ========================================================= -->
-  <!-- GLOBAL AUTO-UPDATE BANNER (SINKRONISASI UPDATE ADMIN) -->
+  <!-- GLOBAL AUTO-UPDATE MODAL DIALOG (TENGAH LAYAR - SANGAT NOTIS & PROFESIONAL) -->
   <!-- ========================================================= -->
-  <div id="wfm-update-banner" class="hidden fixed inset-x-0 top-0 z-[999999] bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-700 text-white px-4 py-3 shadow-2xl border-b-2 border-white/20 animate-in slide-in-from-top duration-300">
-    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-3 text-left">
-        <div class="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center font-black text-white shrink-0 shadow-inner">
-          <i data-lucide="sparkles" class="w-5 h-5"></i>
-        </div>
-        <div>
-          <div class="font-extrabold text-sm sm:text-base leading-tight flex items-center gap-2">
-            <span>Pembaruan Sistem Tersedia</span>
-            <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-400 text-slate-900 rounded-full">Versi Baru</span>
-          </div>
-          <p class="text-xs text-sky-100 font-medium">Sistem telah diperbarui oleh Admin di GitHub. Silakan muat ulang halaman untuk sinkronisasi data presensi &amp; matriks terbaru.</p>
-        </div>
+  <div id="wfm-update-banner" class="hidden fixed inset-0 z-[999999] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200/90 max-w-md w-full p-6 text-center space-y-4 animate-in zoom-in-95 duration-200 relative overflow-hidden">
+      <!-- Glow Accent Decor -->
+      <div class="absolute -top-16 -right-16 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div class="absolute -bottom-16 -left-16 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+      <!-- Icon Box -->
+      <div class="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto text-blue-600 shadow-sm relative">
+        <i data-lucide="refresh-cw" class="w-8 h-8 animate-spin" style="animation-duration: 4s;"></i>
+        <span class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></span>
       </div>
-      <div class="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
-        <button onclick="hideAppUpdateBanner()" class="px-4 py-2.5 bg-white/15 hover:bg-white/25 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer">
-          <span>Nanti</span>
+
+      <!-- Header & Badges -->
+      <div class="space-y-1.5">
+        <div class="flex items-center justify-center gap-2">
+          <span class="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 rounded-full">Pembaruan Tersedia</span>
+          <span id="lbl-update-version-badge" class="px-2.5 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 rounded-full">Versi Terbaru</span>
+        </div>
+        <h3 class="text-lg font-black text-slate-900 tracking-tight">Pembaruan Sistem Aplikasi</h3>
+      </div>
+
+      <!-- Clean, Professional, & Natural Message -->
+      <p id="lbl-update-modal-desc" class="text-xs text-slate-600 leading-relaxed px-2">
+        Pembaruan sistem telah siap. Silakan muat ulang aplikasi untuk memastikan pencatatan absensi dan sinkronisasi data operasional berjalan optimal.
+      </p>
+
+      <!-- Buttons Action -->
+      <div class="space-y-2 pt-2">
+        <button type="button" onclick="applyAppUpdateAndReload()" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+          <span>Perbarui &amp; Muat Ulang Sekarang</span>
         </button>
-        <button onclick="applyAppUpdateAndReload()" class="w-full sm:w-auto px-5 py-2.5 bg-white hover:bg-sky-50 active:scale-95 text-sky-900 font-extrabold text-xs sm:text-sm rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
-          <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
-          <span>Muat Ulang Sekarang (Refresh)</span>
+
+        <button type="button" onclick="hideAppUpdateBanner()" class="w-full py-2.5 px-3 bg-transparent hover:bg-slate-100 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer">
+          <span>Nanti Saja</span>
         </button>
       </div>
     </div>
@@ -7889,9 +7903,13 @@
       const banner = document.getElementById('wfm-update-banner');
       if (banner) {
         banner.classList.remove('hidden');
-        const descEl = banner.querySelector('p');
+        const badgeEl = document.getElementById('lbl-update-version-badge');
+        if (badgeEl && newVersion) {
+          badgeEl.textContent = `v${newVersion}`;
+        }
+        const descEl = document.getElementById('lbl-update-modal-desc') || banner.querySelector('p');
         if (descEl) {
-          descEl.innerHTML = `Sistem telah diperbarui ke versi <b>${escapeHTML(newVersion || 'Terbaru')}</b>. Silakan muat ulang halaman untuk mendapatkan pembaruan matriks, presensi & performa kamera terbaru.`;
+          descEl.innerHTML = `Pembaruan sistem telah siap. Silakan muat ulang aplikasi untuk memastikan pencatatan absensi dan sinkronisasi data operasional berjalan optimal.`;
         }
         if (typeof lucide !== 'undefined' && lucide.createIcons) {
           try { lucide.createIcons(); } catch(e) {}
