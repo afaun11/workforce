@@ -7722,7 +7722,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261022_v14';
+    const CURRENT_APP_VERSION = '20261022_v15';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -9957,7 +9957,6 @@
       let hasAttChanged = false;
       let hasOtChanged = false;
       let hasLeavesChanged = false;
-      let hasNewLocalDataToPush = false;
 
       // PROSES DATA GUDANG MBI (JIKA DIKIRIM DARI SERVER MBI)
       if (db.mbi_users !== undefined || db.mbi_attendance !== undefined || db.mbi_overtime !== undefined || db.mbi_leaves !== undefined) {
@@ -9987,11 +9986,6 @@
           if (currMbiAtt !== newMbiAtt) {
             localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
             hasAttChanged = true;
-          }
-          const todayStr = getLocalDateString(new Date());
-          const hasTodayOfflineTaps = (localMbiAtt || []).some(l => l && l.date === todayStr && !rawCloudMbiAtt.some(c => c && (c.id === l.id || (c.userNik === l.userNik && c.checkInTime === l.checkInTime))));
-          if (hasTodayOfflineTaps) {
-            hasNewLocalDataToPush = true;
           }
         }
         if (db.mbi_overtime !== undefined) {
@@ -10040,9 +10034,6 @@
           if (currMaiAtt !== newMaiAtt) {
             localStorage.setItem('wfm_mai_attendance', newMaiAtt);
             hasAttChanged = true;
-          }
-          if (mergedMaiAtt.length > rawCloudMaiAtt.length) {
-            hasNewLocalDataToPush = true;
           }
         }
         if (db.mai_overtime !== undefined) {
@@ -10137,14 +10128,6 @@
             applyRolePermissions();
           }
         }
-      }
-
-      if (hasNewLocalDataToPush && !isSavingToCloud) {
-        setTimeout(() => {
-          if (typeof saveFullDatabaseToCloud === 'function') {
-            saveFullDatabaseToCloud(false, true, true);
-          }
-        }, 300);
       }
 
       // Render ulang layar aktif secara selektif & cepat dengan data paling segar
@@ -10342,20 +10325,18 @@
           return;
         }
 
-        const mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
-        const maiPayload = { ...maiDataPure, updatedAt: nowIso };
+        let mbiPayload = { ...mbiDataPure, updatedAt: nowIso };
+        let maiPayload = { ...maiDataPure, updatedAt: nowIso };
 
-        // PROTEKSI MUTLAK PRESENSI: Rutin simpan biasa TIDAK BOLEH mengunggah attendance agar tidak menimpa Cloud
-        if (!isExplicitAdminAttendanceReset && !isAttendanceScanSave) {
+        // HEMAT KUOTA PRESENSI: Jika simpan dipicu oleh scan absensi, HANYA kirim data presensi & timestamp!
+        // Firebase PATCH secara otomatis memperbarui presensi tanpa mengirim ulang ratusan data karyawan/lembur/cuti
+        if (isAttendanceScanSave) {
+          mbiPayload = { mbi_attendance: mbiDataPure.mbi_attendance, updatedAt: nowIso };
+          maiPayload = { mai_attendance: maiDataPure.mai_attendance, updatedAt: nowIso };
+        } else if (!isExplicitAdminAttendanceReset) {
+          // Rutin simpan master biasa TIDAK BOLEH mengunggah attendance agar tidak menimpa Cloud
           delete mbiPayload.mbi_attendance;
           delete maiPayload.mai_attendance;
-        } else {
-          if (shouldUploadMbi && (!mbiDataPure.mbi_attendance || mbiDataPure.mbi_attendance.length < 50) && !isExplicitAdminAttendanceReset) {
-            delete mbiPayload.mbi_attendance;
-          }
-          if (shouldUploadMai && (!maiDataPure.mai_attendance || maiDataPure.mai_attendance.length === 0) && !isExplicitAdminAttendanceReset) {
-            delete maiPayload.mai_attendance;
-          }
         }
 
         lastAppliedCloudUpdatedAt = nowIso;
@@ -11312,17 +11293,18 @@
 
             // SMART DELTA CHECK: Cek timestamp ringan (hanya 30 bytes)
             const checkRes = await fetch(updatedUrl + '?t=' + Date.now(), { cache: 'no-store' });
-            const cloudTimestamp = checkRes.ok ? await checkRes.json() : null;
+            if (!checkRes.ok) {
+              // Jika server offline / limit / respons tidak ok, JANGAN unduh database utuh!
+              continue;
+            }
+            const cloudTimestamp = await checkRes.json();
+            if (!cloudTimestamp || typeof cloudTimestamp !== 'string') {
+              continue;
+            }
             const localUsers = getWhDB(wh, 'users', []);
-            const localAtt = getWhDB(wh, 'attendance', []);
             const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
-            const hasLocalGhosts = wh === 'MBI' && (localAtt || []).some(a => {
-              if (!a) return false;
-              const n = (a.userNik || '').toUpperCase();
-              return n === 'MBI26-122' || n === 'MBI26-123' || n === 'MBI26-125' || n === 'MBI26-009' || n === 'MBI26-040' || n === 'MBI26-073' || n === 'MBI26-077' || n === 'MBI26-112';
-            });
             const isLocalIncomplete = (localReg === 0);
-            const needFetch = isLocalIncomplete || !cloudTimestamp || (typeof cloudTimestamp === 'string' && cloudTimestamp !== localUpdated);
+            const needFetch = isLocalIncomplete || (cloudTimestamp !== localUpdated);
 
             if (needFetch) {
               fetchPromises.push(
@@ -11332,12 +11314,8 @@
               );
             }
           } catch(errDelta) {
-            console.warn(`Delta check error for ${wh}:`, errDelta);
-            fetchPromises.push(
-              fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
-                .then(r => r.ok ? r.json() : null)
-                .then(db => ({ wh, db, ts: new Date().toISOString() }))
-            );
+            console.warn(`Delta check notice for ${wh}:`, errDelta);
+            // JANGAN download database utuh jika delta check error/offline agar kuota tidak bocor
           }
         }
 
@@ -11570,31 +11548,33 @@
       try { updateRegisteredCoordsDisplay(); } catch(e) {}
       try { setAttendanceType('check_in'); } catch(e) {}
 
-      // Sinkronkan data otomatis dari Google Firebase Cloud Server & Cek Versi Pembaruan Sistem
+      const getActiveWhTarget = () => (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+
+      // Sinkronkan data otomatis dari Google Firebase Cloud Server & Cek Versi Pembaruan Sistem (Hanya gudang aktif)
       try {
-        fetchFullDatabaseFromCloud(false, null, true);
+        fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
         checkAppVersionUpdate();
       } catch(e) {}
       
-      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan setiap 15 detik)
+      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan setiap 20 detik pada gudang aktif)
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
-          fetchFullDatabaseFromCloud(false, null, false);
+          fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           checkAppVersionUpdate();
         }
-      }, 15000);
+      }, 20000);
       // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.visibilityState === 'visible') {
           try {
-            fetchFullDatabaseFromCloud(false, null, false);
+            fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
             checkAppVersionUpdate();
           } catch(e) {}
         }
       });
       window.addEventListener('focus', () => {
         try {
-          fetchFullDatabaseFromCloud(false, null, false);
+          fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           checkAppVersionUpdate();
         } catch(e) {}
       });
@@ -11608,7 +11588,7 @@
       if (typeof BroadcastChannel !== 'undefined') {
         try {
           const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
-          syncBc.onmessage = () => { try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {} };
+          syncBc.onmessage = () => { try { fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false); } catch(e) {} };
         } catch(e) {}
       }
 
@@ -25143,7 +25123,6 @@ function testManualSync() {
     try { getWarehouseCoords('MBI'); getWarehouseCoords('MAI'); updateRegisteredCoordsDisplay(); } catch(e) {}
     try { preloadGPSLocation(); } catch(e) {}
     try { renderAudioSettingsUI(); } catch(e) {}
-    try { syncAudioClipsFromCloud(); } catch(e) {}
     try { tryAutoLoadLocalFolderAudio(); } catch(e) {}
     try { updateNavbarBrand(); } catch(e) {}
     try { updateLoginWhStyle(); } catch(e) {}
