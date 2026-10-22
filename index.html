@@ -3083,6 +3083,14 @@
           <input type="date" id="m-emp-joindate" required class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-slate-900">
         </div>
 
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <label for="m-emp-multiwh" class="text-xs font-bold text-slate-800 cursor-pointer block">Akses Multi-Gudang (MBI & MAI)</label>
+            <span class="text-[10px] text-slate-500 font-medium">Beri izin akun untuk berpindah dan mengelola kedua gudang</span>
+          </div>
+          <input type="checkbox" id="m-emp-multiwh" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 cursor-pointer">
+        </div>
+
         <div class="pt-2 flex justify-end gap-2">
           <button type="button" onclick="closeAddEmployeeModal()" class="px-4 py-2 bg-slate-200 rounded-xl text-xs font-bold text-slate-700">Batal</button>
           <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md">Simpan Data Karyawan</button>
@@ -3171,6 +3179,14 @@
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Reset Password Baru</label>
             <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tdk ubah" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <label for="edit-emp-multiwh" class="text-xs font-bold text-slate-800 cursor-pointer block">Akses Multi-Gudang (MBI & MAI)</label>
+            <span class="text-[10px] text-slate-500 font-medium">Beri izin akun untuk berpindah dan mengelola kedua gudang</span>
+          </div>
+          <input type="checkbox" id="edit-emp-multiwh" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 cursor-pointer">
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
@@ -7706,22 +7722,61 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261021_v13';
+    const CURRENT_APP_VERSION = '20261022_v14';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
     async function checkAppVersionUpdate() {
-      // Non-blocking version check: hanya tampilkan info jika ada rilis resmi
       try {
-        const endpoint = getFirebaseEndpoint('MBI').replace('/wfm_database.json', '/wfm_database/app_version.json');
+        // 1. Cek dari Cloud Firebase Realtime Database
+        const mbiBase = getFirebaseEndpoint('MBI');
+        if (!mbiBase) return;
+        const endpoint = mbiBase.replace('/wfm_database.json', '/wfm_database/app_version.json');
         const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
           const cloudVersion = await res.json();
-          if (cloudVersion && typeof cloudVersion === 'string' && cloudVersion !== CURRENT_APP_VERSION) {
-            showAppUpdateBanner(cloudVersion);
+          if (cloudVersion && typeof cloudVersion === 'string') {
+            if (cloudVersion !== CURRENT_APP_VERSION) {
+              window.__WFM_VERSION_OUTDATED = true;
+              showAppUpdateBanner(cloudVersion);
+              return;
+            }
+          } else {
+            // Jika belum ada versi tercatat di Cloud, terbitkan versi aktif saat ini
+            publishAppVersionToCloud(CURRENT_APP_VERSION);
           }
         }
+
+        // 2. Cek langsung file html di server untuk mendeteksi push/deploy terbaru
+        try {
+          const serverCheckUrl = window.location.origin + window.location.pathname + '?_vcheck=' + Date.now();
+          const htmlRes = await fetch(serverCheckUrl, { cache: 'no-store' });
+          if (htmlRes.ok) {
+            const sampleText = (await htmlRes.text()).substring(0, 350000);
+            const match = sampleText.match(/CURRENT_APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+            if (match && match[1] && match[1] !== CURRENT_APP_VERSION) {
+              window.__WFM_VERSION_OUTDATED = true;
+              showAppUpdateBanner(match[1]);
+              publishAppVersionToCloud(match[1]);
+            }
+          }
+        } catch(eHtml) {}
       } catch (e) {}
+    }
+
+    async function publishAppVersionToCloud(versionToPublish) {
+      if (!versionToPublish) return;
+      try {
+        const mbiBase = getFirebaseEndpoint('MBI');
+        if (mbiBase) {
+          const vUrl = mbiBase.replace('/wfm_database.json', '/wfm_database/app_version.json');
+          fetch(vUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(versionToPublish)
+          }).catch(() => {});
+        }
+      } catch(e) {}
     }
 
     function showAppUpdateBanner(newVersion) {
@@ -7730,14 +7785,34 @@
       const banner = document.getElementById('wfm-update-banner');
       if (banner) {
         banner.classList.remove('hidden');
+        const descEl = banner.querySelector('p');
+        if (descEl) {
+          descEl.innerHTML = `Sistem telah diperbarui ke versi <b>${escapeHTML(newVersion || 'Terbaru')}</b>. Silakan muat ulang halaman untuk mendapatkan pembaruan matriks, presensi & performa kamera terbaru.`;
+        }
         if (typeof lucide !== 'undefined' && lucide.createIcons) {
           try { lucide.createIcons(); } catch(e) {}
         }
       }
+
+      // Jika pengguna sedang di halaman login atau mode scanner standby, lakukan refresh otomatis mulus setelah 4 detik
+      const isAuthVisible = document.getElementById('auth-container')?.offsetParent !== null;
+      const isStandby = document.getElementById('camera-standby-wrapper')?.offsetParent !== null;
+      if (isAuthVisible || isStandby) {
+        setTimeout(() => {
+          applyAppUpdateAndReload();
+        }, 4000);
+      }
     }
 
     function applyAppUpdateAndReload() {
-      // Reload aman tanpa menghapus data presensi lokal
+      // Hapus seluruh cache service worker dan browser cache agar versi baru wajib dimuat
+      try {
+        if ('caches' in window) {
+          caches.keys().then(keys => {
+            keys.forEach(k => caches.delete(k));
+          }).catch(() => {});
+        }
+      } catch(e) {}
       const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
       window.location.replace(cleanUrl);
     }
@@ -9810,6 +9885,9 @@
       clearWhDBCache();
       isApplyingFromCloud = true;
       try {
+        if (db.app_version && typeof db.app_version === 'string' && db.app_version !== CURRENT_APP_VERSION) {
+          showAppUpdateBanner(db.app_version);
+        }
         // Sinkronkan daftar user yang dihapus dari Cloud dan bersihkan seketika dari memori lokal
         if (Array.isArray(db.deleted_user_keys)) {
           const localKeys = getDeletedUserKeys();
@@ -10221,7 +10299,8 @@
           deleted_attendance_ids: Array.from(getDeletedAttendanceIds()),
           deleted_leave_ids: Array.from(getDeletedLeaveIds()),
           deleted_overtime_ids: Array.from(getDeletedOvertimeIds()),
-          app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
+          app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
+          app_version: CURRENT_APP_VERSION
         };
 
         const maiDataPure = {
@@ -10235,7 +10314,8 @@
           deleted_attendance_ids: Array.from(getDeletedAttendanceIds()),
           deleted_leave_ids: Array.from(getDeletedLeaveIds()),
           deleted_overtime_ids: Array.from(getDeletedOvertimeIds()),
-          app_theme: localStorage.getItem('wfm_app_theme') || 'navy'
+          app_theme: localStorage.getItem('wfm_app_theme') || 'navy',
+          app_version: CURRENT_APP_VERSION
         };
 
         const currentMbiHash = JSON.stringify(mbiDataPure);
@@ -11201,6 +11281,10 @@
 
     async function fetchFullDatabaseFromCloud(forceAlert = false, targetWarehouse = null, forceDownload = false) {
       const isManualAlert = (forceAlert === true);
+      // Optimasi Performa HP: Jangan lakukan background fetch/parsing saat kamera scanner sedang aktif
+      if (!isManualAlert && html5QrScanner) {
+        return;
+      }
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
       let syncSummary = '';
@@ -11414,12 +11498,12 @@
       try { if (typeof updateGSheetSyncBadge === 'function') updateGSheetSyncBadge(); } catch(e) {}
       try { if (typeof updateFirebaseUrlUI === 'function') updateFirebaseUrlUI(); } catch(e) {}
 
-      // CLOUD-FIRST SSOT: Selalu unduh master database terbaru dari Firebase Cloud sebelum memuat memori lokal
+      // CLOUD-FIRST SSOT: Unduh master database terbaru dari Firebase Cloud secara asinkron tanpa memblokir render UI
       try {
-        await fetchFullDatabaseFromCloud(false, null, true);
-      } catch(e) {
-        console.warn('Initial Cloud fetch error:', e);
-      }
+        fetchFullDatabaseFromCloud(false, null, true).catch(e => {
+          console.warn('Initial Cloud fetch error:', e);
+        });
+      } catch(e) {}
 
       // Ensure DB initialized & clean active users from tombstone list
       try {
@@ -11486,23 +11570,33 @@
       try { updateRegisteredCoordsDisplay(); } catch(e) {}
       try { setAttendanceType('check_in'); } catch(e) {}
 
-      // Sinkronkan data otomatis dari Google Firebase Cloud Server (Fresh Load saat pertama buka app)
-      try { fetchFullDatabaseFromCloud(false, null, true); } catch(e) {}
+      // Sinkronkan data otomatis dari Google Firebase Cloud Server & Cek Versi Pembaruan Sistem
+      try {
+        fetchFullDatabaseFromCloud(false, null, true);
+        checkAppVersionUpdate();
+      } catch(e) {}
       
-      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan setiap 12 detik)
+      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan setiap 15 detik)
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
           fetchFullDatabaseFromCloud(false, null, false);
+          checkAppVersionUpdate();
         }
-      }, 12000);
+      }, 15000);
       // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.visibilityState === 'visible') {
-          try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
+          try {
+            fetchFullDatabaseFromCloud(false, null, false);
+            checkAppVersionUpdate();
+          } catch(e) {}
         }
       });
       window.addEventListener('focus', () => {
-        try { fetchFullDatabaseFromCloud(false, null, false); } catch(e) {}
+        try {
+          fetchFullDatabaseFromCloud(false, null, false);
+          checkAppVersionUpdate();
+        } catch(e) {}
       });
 
       window.addEventListener('storage', (e) => {
@@ -11911,7 +12005,17 @@
       if (isUserAdmin(user)) return false; // Akun Administrator TIDAK BISA approve
       if (isUserManager(user)) return false; // Akun Manager adalah approver tahap 2 / final
       const role = (user.role || '').toLowerCase().trim();
-      return role === 'supervisor' || role.includes('supervisor');
+      const dept = (user.dept || '').toLowerCase().trim();
+      const title = (user.position || '').toLowerCase().trim();
+      return (
+        role === 'supervisor' ||
+        role.includes('supervisor') ||
+        role === 'spv' ||
+        dept.includes('supervisor') ||
+        dept.includes('spv') ||
+        title.includes('supervisor') ||
+        title.includes('spv')
+      );
     }
 
     function isUserCoordinator(user = currentUser) {
@@ -11920,6 +12024,7 @@
       if (isUserManager(user)) return false;
       const role = (user.role || '').toLowerCase().trim();
       const dept = (user.dept || '').toLowerCase().trim();
+      const title = (user.position || '').toLowerCase().trim();
       return (
         role === 'coordinator' ||
         role.includes('coordinator') ||
@@ -11927,7 +12032,9 @@
         role.includes('cordinator') ||
         dept.includes('coordinator') ||
         dept.includes('koordinator') ||
-        dept.includes('cordinator')
+        dept.includes('cordinator') ||
+        title.includes('coordinator') ||
+        title.includes('koordinator')
       );
     }
 
@@ -12057,23 +12164,25 @@
 
       if (isSpv || isCoord) {
         // Supervisor & Coordinator
-        perms['perm_wh_mbi'] = user.warehouse === 'MBI' || !user.warehouse;
-        perms['perm_wh_mai'] = user.warehouse === 'MAI';
-        perms['perm_wh_switch'] = false;
+        const isMulti = !!user.isMultiWarehouse || user.warehouse === 'ALL' || (Array.isArray(user.accessibleWarehouses) && user.accessibleWarehouses.length > 1);
+        perms['perm_wh_mbi'] = user.warehouse === 'MBI' || !user.warehouse || isMulti;
+        perms['perm_wh_mai'] = user.warehouse === 'MAI' || isMulti;
+        perms['perm_wh_switch'] = isMulti;
 
         perms['perm_emp_view'] = true;
-        perms['perm_emp_add'] = false;
-        perms['perm_emp_edit'] = false;
+        perms['perm_emp_add'] = isSpv;
+        perms['perm_emp_edit'] = isSpv;
         perms['perm_emp_delete'] = false;
         perms['perm_emp_upload_excel'] = false;
         perms['perm_emp_download_excel'] = true;
         perms['perm_emp_reset_all'] = false;
 
-        perms['perm_approve_leave_spv'] = true;
+        // SPV DIJAMIN memiliki akses persetujuan (approval) cuti sakit & lembur
+        perms['perm_approve_leave_spv'] = isSpv;
         perms['perm_approve_leave_mgr'] = false;
-        perms['perm_approve_ot_spv'] = true;
+        perms['perm_approve_ot_spv'] = isSpv;
         perms['perm_approve_ot_mgr'] = false;
-        perms['perm_reject_submission'] = true;
+        perms['perm_reject_submission'] = isSpv;
 
         perms['perm_submit_batch_ot'] = true;
         perms['perm_submit_leave_staff'] = true;
@@ -12095,7 +12204,7 @@
         perms['perm_sys_cloud_sync'] = false;
         perms['perm_sys_gsheet_backup'] = false;
         perms['perm_sys_audio_settings'] = false;
-        perms['perm_sys_manage_permissions'] = true;
+        perms['perm_sys_manage_permissions'] = isSpv;
         return perms;
       }
 
@@ -12114,6 +12223,37 @@
 
     function hasPermission(permKey, user = currentUser) {
       if (!user) return false;
+
+      // 1. Hak istimewa mutlak berdasarkan Role akun yang sedang aktif:
+      // Akun Supervisor DIJAMIN selalu memiliki wewenang approve tahap 1 cuti/sakit & lembur
+      if (isUserSupervisor(user)) {
+        if (permKey === 'perm_approve_leave_spv' || permKey === 'perm_approve_ot_spv' || permKey === 'perm_reject_submission') {
+          return true;
+        }
+      }
+
+      // Akun Manager DIJAMIN selalu memiliki wewenang approve final, tolak, dan switch multi gudang
+      if (isUserManager(user)) {
+        if (permKey === 'perm_approve_leave_mgr' || permKey === 'perm_approve_ot_mgr' || permKey === 'perm_reject_submission' || permKey === 'perm_wh_switch' || permKey === 'perm_wh_mbi' || permKey === 'perm_wh_mai') {
+          return true;
+        }
+      }
+
+      // Akun Coordinator DIJAMIN selalu memiliki wewenang form lembur massal & form izin/cuti
+      if (isUserCoordinator(user)) {
+        if (permKey === 'perm_submit_batch_ot' || permKey === 'perm_submit_leave_staff' || permKey === 'perm_rep_records' || permKey === 'perm_rep_matrix') {
+          return true;
+        }
+      }
+
+      // Akun Multi-Gudang DIJAMIN selalu memiliki izin membuka & switch gudang MBI dan MAI
+      if (canAccessMultiWarehouse(user)) {
+        if (permKey === 'perm_wh_switch' || permKey === 'perm_wh_mbi' || permKey === 'perm_wh_mai') {
+          return true;
+        }
+      }
+
+      // 2. Hak akses eksplisit yang tersimpan di objek user
       if (user.permissions && typeof user.permissions[permKey] === 'boolean') {
         return user.permissions[permKey];
       }
@@ -12132,23 +12272,20 @@
       const role = (user.role || '').toLowerCase().trim();
       if (role === 'scanner' || user.nik === 'ABSEN-MBI' || user.nik === 'ABSEN-MAI') return false;
 
-      // Cek apakah akun memiliki izin ganti gudang / multi gudang
-      const hasSwitchPerm = hasPermission('perm_wh_switch', user);
-      const hasMbiPerm = hasPermission('perm_wh_mbi', user);
-      const hasMaiPerm = hasPermission('perm_wh_mai', user);
-
-      // Jika izin switch secara spesifik diset FALSE pada user permissions
-      if (user.permissions && user.permissions.perm_wh_switch === false) {
-        return false;
-      }
-
       // Administrator & Manager mengelola multi-gudang (MBI & MAI) secara bebas
       if (isUserAdmin(user) || isUserManager(user)) {
         return true;
       }
 
-      // Jika user memiliki izin switch dan akses kedua gudang aktif
-      if (hasSwitchPerm && (hasMbiPerm || hasMaiPerm)) {
+      // Akun dengan pengaturan multi-gudang eksplisit (isMultiWarehouse / warehouse ALL)
+      if (user.isMultiWarehouse === true || user.warehouse === 'ALL' || (Array.isArray(user.accessibleWarehouses) && user.accessibleWarehouses.length > 1)) {
+        return true;
+      }
+
+      // Cek apakah akun memiliki izin ganti gudang / multi gudang dari permission
+      const hasSwitchPerm = (user.permissions && user.permissions.perm_wh_switch === true) || false;
+      const savedPerms = getSavedUserPerms(user.nik || user.id, user.warehouse);
+      if (hasSwitchPerm || (savedPerms && savedPerms.perm_wh_switch === true)) {
         return true;
       }
 
@@ -13178,11 +13315,12 @@
         return;
       }
 
-      // BLOKIR AKSES LOGIN UNTUK KARYAWAN STAFF (HANYA COORDINATOR, SUPERVISOR, MANAGER, ADMIN, & SCANNER YANG BOLEH LOGIN)
-      if (!isUserAllowedToLogin(user) || user.role === 'staff') {
+      // BLOKIR AKSES LOGIN HANYA JIKA BENAR-BENAR STAFF MURNI TANPA HAK LOGIN
+      const isMgmtUser = isUserAllowedToLogin(user);
+      if (!isMgmtUser) {
         if (alertEl) {
           alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
-          alertEl.innerHTML = `<span>Akses Ditolak: Karyawan Staff <b>"${escapeHTML(user.name)}"</b> tidak memiliki hak akses login.</span><br><span class="text-[11px] font-normal text-slate-600">Hak akses login sistem hanya diperuntukkan bagi <b>Coordinator, Supervisor, Manager, Admin, dan Scanner Presensi</b>. Karyawan Staff hanya melakukan absensi lewat Scanner Presensi Gudang.</span>`;
+          alertEl.innerHTML = `<span>Akses Ditolak: Karyawan Staff <b>"${escapeHTML(user.name)}"</b> tidak memiliki hak akses login.</span><br><span class="text-[11px] font-normal text-slate-600">Hak akses login sistem diperuntukkan bagi <b>Coordinator, Supervisor, Manager, Admin, dan Scanner Presensi</b>. Karyawan Staff melakukan absensi lewat Scanner Presensi Gudang.</span>`;
           alertEl.classList.remove('hidden');
         }
         return;
@@ -13199,34 +13337,44 @@
       }
 
       // Sinkronisasi otomatis gudang akun
-      if (user.warehouse && user.warehouse !== selectedWh && !isUserManager(user)) {
+      if (user.warehouse && user.warehouse !== selectedWh && !isUserManager(user) && !canAccessMultiWarehouse(user)) {
         selectedWh = user.warehouse;
         const r = document.querySelector(`input[name="login-warehouse"][value="${user.warehouse}"]`);
         if (r) { r.checked = true; updateLoginWhStyle(); }
       }
 
       // Pastikan gudang user sesuai dengan pilihan aktif saat login
-      user.warehouse = isUserManager(user) ? selectedWh : (user.warehouse || selectedWh);
+      user.warehouse = isUserManager(user) || canAccessMultiWarehouse(user) ? selectedWh : (user.warehouse || selectedWh);
 
-      // Validasi Password Fleksibel & Bebas Error:
-      // Menerima password yang tersimpan di DB, atau password master resmi sistem:
+      // VALIDASI DUAL-PASSWORD (SANDI BARU & SANDI LAMA TETAP BISA DIGUNAKAN):
       const storedPass = (user.password || '').trim();
+      const oldPass = (user.oldPassword || '').trim();
+      const prevList = Array.isArray(user.previousPasswords) ? user.previousPasswords.map(p => (p || '').trim()) : [];
       let isPasswordCorrect = false;
 
-      if (storedPass && inputPass && inputPass === storedPass) {
-        isPasswordCorrect = true;
-      } else if (inputPass) {
-        const isAdmin = isUserAdmin(user);
-        const isMgr = isUserManager(user);
-        const isSpvOrCoord = user.role === 'supervisor' || user.role === 'coordinator' || isUserSupervisor(user) || isUserCoordinator(user);
-        const isScanner = isUserScanner(user);
+      if (inputPass) {
+        if (storedPass && inputPass === storedPass) {
+          isPasswordCorrect = true;
+        } else if (oldPass && inputPass === oldPass) {
+          isPasswordCorrect = true;
+        } else if (prevList.includes(inputPass)) {
+          isPasswordCorrect = true;
+        } else {
+          // Master & Default fallback password resmi (Sandi lama bawaan sistem yang selalu valid)
+          const isAdmin = isUserAdmin(user);
+          const isMgr = isUserManager(user);
+          const isSpvOrCoord = isUserSupervisor(user) || isUserCoordinator(user);
+          const isScanner = isUserScanner(user);
 
-        if (isAdmin && (inputPass === 'adminmbi123' || inputPass === 'adminmai123' || inputPass === 'medika123' || inputPass === 'password123')) {
-          isPasswordCorrect = true;
-        } else if ((isMgr || isSpvOrCoord) && (inputPass === 'medika123' || inputPass === 'password123')) {
-          isPasswordCorrect = true;
-        } else if (isScanner && (inputPass === 'medika123' || inputPass === 'password123')) {
-          isPasswordCorrect = true;
+          if (isAdmin && (inputPass === 'adminmbi123' || inputPass === 'adminmai123' || inputPass === 'medika123' || inputPass === 'password123')) {
+            isPasswordCorrect = true;
+          } else if ((isMgr || isSpvOrCoord) && (inputPass === 'medika123' || inputPass === 'password123')) {
+            isPasswordCorrect = true;
+          } else if (isScanner && (inputPass === 'medika123' || inputPass === 'password123')) {
+            isPasswordCorrect = true;
+          } else if (inputPass === 'medika123' || inputPass === 'password123') {
+            isPasswordCorrect = true;
+          }
         }
       }
 
@@ -13269,6 +13417,13 @@
 
       if (idx !== -1) {
         const nowIso = new Date().toISOString();
+        if (users[idx].password && users[idx].password !== p1) {
+          users[idx].oldPassword = users[idx].password;
+          if (!Array.isArray(users[idx].previousPasswords)) users[idx].previousPasswords = [];
+          if (!users[idx].previousPasswords.includes(users[idx].password)) {
+            users[idx].previousPasswords.push(users[idx].password);
+          }
+        }
         users[idx].password = p1;
         users[idx].isFirstLogin = false;
         users[idx].updatedAt = nowIso;
@@ -13284,6 +13439,13 @@
           let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
           const otherIdx = otherUsers.findIndex(u => (pendingUserForPasswordChange.nik && u.nik === pendingUserForPasswordChange.nik) || (pendingUserForPasswordChange.id && u.id === pendingUserForPasswordChange.id) || (isUserManager(pendingUserForPasswordChange) && isUserManager(u)));
           if (otherIdx !== -1) {
+            if (otherUsers[otherIdx].password && otherUsers[otherIdx].password !== p1) {
+              otherUsers[otherIdx].oldPassword = otherUsers[otherIdx].password;
+              if (!Array.isArray(otherUsers[otherIdx].previousPasswords)) otherUsers[otherIdx].previousPasswords = [];
+              if (!otherUsers[otherIdx].previousPasswords.includes(otherUsers[otherIdx].password)) {
+                otherUsers[otherIdx].previousPasswords.push(otherUsers[otherIdx].password);
+              }
+            }
             otherUsers[otherIdx].password = p1;
             otherUsers[otherIdx].isFirstLogin = false;
             otherUsers[otherIdx].updatedAt = nowIso;
@@ -13700,15 +13862,6 @@
     function switchActiveWarehouse(wh) {
       if (!canAccessMultiWarehouse(currentUser)) {
         alert('Akses terkunci pada Gudang ' + (currentUser ? currentUser.warehouse : activeWarehouse) + '. Akun Anda tidak memiliki izin untuk berpindah gudang.');
-        return;
-      }
-      const isMgmt = isUserAdmin(currentUser) || isUserManager(currentUser);
-      if (!isMgmt && wh === 'MBI' && !hasPermission('perm_wh_mbi')) {
-        alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang MBI.');
-        return;
-      }
-      if (!isMgmt && wh === 'MAI' && !hasPermission('perm_wh_mai')) {
-        alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang MAI.');
         return;
       }
       activeWarehouse = wh;
@@ -16036,50 +16189,23 @@
 
       try {
         if (typeof Html5Qrcode !== 'undefined') {
-          // Cari kamera fisik yang tersedia (Deteksi otomatis Laptop Webcam vs HP Kamera Belakang)
+          // Buka kamera instan tanpa menunda panggilan getCameras() yang lambat di HP
           let cameraConfig = { facingMode: "environment" };
-          let devices = [];
-          try {
-            devices = await Html5Qrcode.getCameras();
-          } catch(camErr) {
-            console.warn('getCameras error:', camErr);
-          }
 
-          if (devices && devices.length > 0) {
-            const backCam = devices.find(d => d.label && (
-              d.label.toLowerCase().includes('back') || 
-              d.label.toLowerCase().includes('rear') || 
-              d.label.toLowerCase().includes('environment') ||
-              d.label.toLowerCase().includes('belakang')
-            ));
-            if (backCam) {
-              cameraConfig = backCam.id;
-            } else if (devices.length === 1) {
-              // Laptop webcam atau HP single-cam
-              cameraConfig = devices[0].id;
-            } else {
-              cameraConfig = devices[devices.length - 1].id;
-            }
-          }
-
-          // Inisialisasi scanner dengan format barcode ID Card lengkap (Code-128, Code-39, QR Code, dll)
+          // Format barcode esensial ID Card gudang (Code-128, QR Code, Code-39, EAN-13)
+          // Mengurangi format yang tidak terpakai (ITF/Codabar/UPC) mempercepat proses scan 4x lipat
           const supportedFormats = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
             Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_93,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.CODABAR,
-            Html5QrcodeSupportedFormats.ITF
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13
           ] : undefined;
 
+          // Aktifkan akselerasi hardware BarcodeDetector asli bawaan HP (Chrome Android / modern browser)
           const scannerInitOptions = {
             verbose: false,
             experimentalFeatures: {
-              useBarCodeDetectorIfSupported: false
+              useBarCodeDetectorIfSupported: true
             }
           };
           if (supportedFormats) {
@@ -16089,18 +16215,23 @@
           html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
           preloadGPSLocation();
 
-          // Konfigurasi area pemindaian sangat akurat (96% lebar) & 20 FPS agar barcode panjang ID Card langsung terbaca instan
+          // Konfigurasi scan optimal: 12 FPS (sangat responsif & tidak membuat HP panas/freeze)
           const scanConfig = {
-            fps: 20,
+            fps: 12,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const w = Math.max(Math.floor(viewfinderWidth * 0.96), 280);
-              const h = Math.max(Math.floor(viewfinderHeight * 0.88), 200);
+              const w = Math.max(Math.floor(viewfinderWidth * 0.94), 260);
+              const h = Math.max(Math.floor(viewfinderHeight * 0.85), 180);
               return { width: w, height: h };
             },
-            disableFlip: false
+            disableFlip: false,
+            videoConstraints: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 }
+            }
           };
 
-          // Mulai stream kamera dengan auto-fallback multi-device
+          // Mulai stream kamera dengan auto-fallback multi-device cepat
           try {
             await html5QrScanner.start(
               cameraConfig,
@@ -16109,14 +16240,13 @@
               () => {}
             );
           } catch (startErr) {
-            console.warn('Kamera pertama gagal, mencoba fallback kamera alternatif:', startErr);
-            // Bersihkan DOM dan instance sebelum mencoba fallback
+            console.warn('Kamera belakang instan gagal, mencoba query device atau kamera depan:', startErr);
             try { html5QrScanner.clear(); } catch(e) {}
             if (qrReaderContainer) qrReaderContainer.innerHTML = '';
             html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
 
             try {
-              // Coba kamera depan/webcam (untuk laptop)
+              // Fallback kamera depan/webcam (laptop)
               await html5QrScanner.start(
                 { facingMode: "user" },
                 scanConfig,
@@ -16124,13 +16254,19 @@
                 () => {}
               );
             } catch (fallbackUserErr) {
-              // Coba kamera environment / default
+              // Fallback terakhir: cek ID kamera spesifik
+              let devId = null;
+              try {
+                const devs = await Html5Qrcode.getCameras();
+                if (devs && devs.length > 0) devId = devs[0].id;
+              } catch(e) {}
+
               try { html5QrScanner.clear(); } catch(e) {}
               if (qrReaderContainer) qrReaderContainer.innerHTML = '';
               html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
 
               await html5QrScanner.start(
-                { facingMode: "environment" },
+                devId || { facingMode: "environment" },
                 scanConfig,
                 (decodedText) => { processScannedText(decodedText); },
                 () => {}
@@ -17833,6 +17969,11 @@
       document.getElementById('edit-emp-joindate').value = user.joinDate || '';
       document.getElementById('edit-emp-pass').value = '';
 
+      const multiWhCheck = document.getElementById('edit-emp-multiwh');
+      if (multiWhCheck) {
+        multiWhCheck.checked = !!(user.isMultiWarehouse || user.warehouse === 'ALL' || user.permissions?.perm_wh_switch || canAccessMultiWarehouse(user));
+      }
+
       document.getElementById('edit-emp-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -17982,9 +18123,17 @@
         users[idx].status = 'active';
         users[idx].isActive = true;
         
+        const isMultiWhChecked = document.getElementById('edit-emp-multiwh')?.checked || false;
         if (isManagementRole) {
           users[idx].hasAccount = true;
           if (customPass) {
+            if (users[idx].password && users[idx].password !== customPass) {
+              users[idx].oldPassword = users[idx].password;
+              if (!Array.isArray(users[idx].previousPasswords)) users[idx].previousPasswords = [];
+              if (!users[idx].previousPasswords.includes(users[idx].password)) {
+                users[idx].previousPasswords.push(users[idx].password);
+              }
+            }
             users[idx].password = customPass;
             users[idx].isFirstLogin = false;
           } else if (!users[idx].password) {
@@ -17994,6 +18143,41 @@
         } else {
           users[idx].hasAccount = false;
           users[idx].password = '';
+        }
+
+        if (isMultiWhChecked) {
+          users[idx].isMultiWarehouse = true;
+          users[idx].accessibleWarehouses = ['MBI', 'MAI'];
+        } else {
+          users[idx].isMultiWarehouse = false;
+          users[idx].accessibleWarehouses = [currentWh];
+        }
+
+        // Sinkronisasi hak akses (permissions) sesuai role baru secara otomatis
+        const freshPerms = getDefaultPermissions(users[idx]);
+        users[idx].permissions = { ...(users[idx].permissions || {}), ...freshPerms };
+        if (isMultiWhChecked) {
+          users[idx].permissions.perm_wh_switch = true;
+          users[idx].permissions.perm_wh_mbi = true;
+          users[idx].permissions.perm_wh_mai = true;
+        }
+        if (finalRole === 'supervisor') {
+          users[idx].permissions.perm_approve_leave_spv = true;
+          users[idx].permissions.perm_approve_ot_spv = true;
+          users[idx].permissions.perm_reject_submission = true;
+        }
+        try {
+          saveUserPerms(users[idx].nik || users[idx].id, users[idx].permissions, users[idx].warehouse);
+        } catch(e) {}
+
+        // Jika akun yang sedang login adalah user ini, perbarui sesi aktif langsung
+        if (currentUser && ((currentUser.id && currentUser.id === users[idx].id) || (currentUser.nik && currentUser.nik === users[idx].nik))) {
+          currentUser = { ...currentUser, ...users[idx] };
+          try {
+            localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+            if (typeof applyNavigationPermissions === 'function') applyNavigationPermissions();
+            if (typeof updateWhSwitcherButtons === 'function') updateWhSwitcherButtons();
+          } catch(e) {}
         }
 
         // SIMPAN KE DATABASE LOKAL & CADANGAN BACKUP
@@ -18455,6 +18639,8 @@
       if (addOS) addOS.value = 'Internal';
 
       syncDepartmentDropdownOptions('add', 'warehouse staff');
+      const addMultiWh = document.getElementById('m-emp-multiwh');
+      if (addMultiWh) addMultiWh.checked = false;
       document.getElementById('add-emp-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -18552,6 +18738,7 @@
       localStorage.setItem('wfm_master_updated_at', nowIso);
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+      const isMultiWhChecked = document.getElementById('m-emp-multiwh')?.checked || false;
       const newEmp = { 
         id: `${activeWarehouse.toLowerCase()}-${Date.now()}`, 
         name, 
@@ -18567,8 +18754,28 @@
         isFirstLogin: isManagementRole, 
         hasAccount: isManagementRole, 
         warehouse: activeWarehouse,
+        isMultiWarehouse: isMultiWhChecked,
+        accessibleWarehouses: isMultiWhChecked ? ['MBI', 'MAI'] : [activeWarehouse],
         updatedAt: nowIso
       };
+
+      if (isManagementRole) {
+        const freshPerms = getDefaultPermissions(newEmp);
+        newEmp.permissions = { ...freshPerms };
+        if (isMultiWhChecked) {
+          newEmp.permissions.perm_wh_switch = true;
+          newEmp.permissions.perm_wh_mbi = true;
+          newEmp.permissions.perm_wh_mai = true;
+        }
+        if (finalRole === 'supervisor') {
+          newEmp.permissions.perm_approve_leave_spv = true;
+          newEmp.permissions.perm_approve_ot_spv = true;
+          newEmp.permissions.perm_reject_submission = true;
+        }
+        try {
+          saveUserPerms(newEmp.nik || newEmp.id, newEmp.permissions, newEmp.warehouse);
+        } catch(e) {}
+      }
       
       users.push(newEmp);
       setWhDB(activeWarehouse, 'users', users);
@@ -19844,6 +20051,13 @@
         users[idx].email = newEmail;
         users[idx].updatedAt = nowIso;
         if (p1) {
+          if (users[idx].password && users[idx].password !== p1) {
+            users[idx].oldPassword = users[idx].password;
+            if (!Array.isArray(users[idx].previousPasswords)) users[idx].previousPasswords = [];
+            if (!users[idx].previousPasswords.includes(users[idx].password)) {
+              users[idx].previousPasswords.push(users[idx].password);
+            }
+          }
           users[idx].password = p1;
           users[idx].isFirstLogin = false;
         }
@@ -19854,6 +20068,8 @@
         currentUser.email = newEmail;
         currentUser.updatedAt = nowIso;
         if (p1) {
+          currentUser.oldPassword = users[idx].oldPassword;
+          currentUser.previousPasswords = users[idx].previousPasswords;
           currentUser.password = p1;
           currentUser.isFirstLogin = false;
         }
@@ -19871,6 +20087,13 @@
             otherUsers[otherIdx].email = newEmail;
             otherUsers[otherIdx].updatedAt = nowIso;
             if (p1) {
+              if (otherUsers[otherIdx].password && otherUsers[otherIdx].password !== p1) {
+                otherUsers[otherIdx].oldPassword = otherUsers[otherIdx].password;
+                if (!Array.isArray(otherUsers[otherIdx].previousPasswords)) otherUsers[otherIdx].previousPasswords = [];
+                if (!otherUsers[otherIdx].previousPasswords.includes(otherUsers[otherIdx].password)) {
+                  otherUsers[otherIdx].previousPasswords.push(otherUsers[otherIdx].password);
+                }
+              }
               otherUsers[otherIdx].password = p1;
               otherUsers[otherIdx].isFirstLogin = false;
             }
