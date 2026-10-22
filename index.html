@@ -2662,6 +2662,18 @@
                     <span>Salin Rules Firestore</span>
                   </button>
                 </div>
+
+                <!-- Status Versi Sistem & Tombol Pratinjau Modal -->
+                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                  <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span class="font-bold text-slate-700">Versi Rilis Aplikasi:</span>
+                    <span class="font-mono bg-blue-50 text-blue-800 border border-blue-200/80 px-2 py-0.5 rounded-md font-extrabold text-[11px]">20261022_v18</span>
+                  </div>
+                  <button type="button" onclick="window.testUpdateModal()" class="py-2.5 px-3.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
+                    <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-blue-600"></i>
+                    <span>Pratinjau Pop-up Pembaruan Layar</span>
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -7794,7 +7806,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261022_v17';
+    const CURRENT_APP_VERSION = '20261022_v18';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -7831,9 +7843,10 @@
     async function checkAppVersionUpdate() {
       try {
         // 1. Cek dari Cloud Firebase Realtime Database
-        const mbiBase = getFirebaseEndpoint('MBI');
-        if (!mbiBase) return;
-        const endpoint = mbiBase.replace('/wfm_database.json', '/wfm_database/app_version.json');
+        const targetWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+        const baseEndpoint = getFirebaseEndpoint(targetWh) || getFirebaseEndpoint('MBI');
+        if (!baseEndpoint) return;
+        const endpoint = baseEndpoint.replace('/wfm_database.json', '/wfm_database/app_version.json');
         const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
           const cloudVersion = await res.json();
@@ -7888,24 +7901,35 @@
             body: JSON.stringify(versionToPublish)
           }).catch(() => {});
         }
+        const maiBase = getFirebaseEndpoint('MAI');
+        if (maiBase && maiBase !== mbiBase) {
+          const vUrlMai = maiBase.replace('/wfm_database.json', '/wfm_database/app_version.json');
+          fetch(vUrlMai, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(versionToPublish)
+          }).catch(() => {});
+        }
       } catch(e) {}
     }
 
-    function showAppUpdateBanner(newVersion) {
-      // Jika versi baru tidak lebih tinggi dari versi saat ini, jangan pernah tampilkan notif
-      if (!isNewerVersion(newVersion, CURRENT_APP_VERSION)) {
+    function showAppUpdateBanner(newVersion, force = false) {
+      // Jika versi baru tidak lebih tinggi dari versi saat ini dan bukan mode preview/force, jangan pernah tampilkan notif
+      if (!force && !isNewerVersion(newVersion, CURRENT_APP_VERSION)) {
         hideAppUpdateBanner();
         return;
       }
-      if (isAppUpdateBannerVisible) return;
+      if (isAppUpdateBannerVisible && !force) return;
       isAppUpdateBannerVisible = true;
-      window.__WFM_VERSION_OUTDATED = true;
+      if (!force) {
+        window.__WFM_VERSION_OUTDATED = true;
+      }
       const banner = document.getElementById('wfm-update-banner');
       if (banner) {
         banner.classList.remove('hidden');
         const badgeEl = document.getElementById('lbl-update-version-badge');
-        if (badgeEl && newVersion) {
-          badgeEl.textContent = `v${newVersion}`;
+        if (badgeEl) {
+          badgeEl.textContent = newVersion ? `v${newVersion}` : `v${CURRENT_APP_VERSION}`;
         }
         const descEl = document.getElementById('lbl-update-modal-desc') || banner.querySelector('p');
         if (descEl) {
@@ -7918,6 +7942,10 @@
       // PENTING: TIDAK ada auto-reload paksa di latar belakang (tidak me-refresh terus-terusan).
       // Pengguna mengontrol penuh saat ingin memuat ulang dengan menekan tombol Refresh.
     }
+
+    window.testUpdateModal = function() {
+      showAppUpdateBanner('20261022_v18', true);
+    };
 
     function applyAppUpdateAndReload() {
       // Sembunyikan banner dan bersihkan cache agar versi baru termuat bersih
@@ -12082,17 +12110,24 @@
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
           const activePanel = document.querySelector('.view-panel:not(.hidden)');
-          if (activePanel && activePanel.id === 'view-attendance') return;
+          if (activePanel && activePanel.id === 'view-attendance') {
+            // Scanner sedang aktif: hindari fetch database penuh agar kamera 60fps, tapi cek update versi ringan
+            checkAppVersionUpdate();
+            return;
+          }
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           checkAppVersionUpdate();
         }
       }, 35000);
-      // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali (hanya jika bukan layar scanner aktif)
+      // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.visibilityState === 'visible') {
           try {
             const activePanel = document.querySelector('.view-panel:not(.hidden)');
-            if (activePanel && activePanel.id === 'view-attendance') return;
+            if (activePanel && activePanel.id === 'view-attendance') {
+              checkAppVersionUpdate();
+              return;
+            }
             fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
             checkAppVersionUpdate();
           } catch(e) {}
@@ -12101,7 +12136,10 @@
       window.addEventListener('focus', () => {
         try {
           const activePanel = document.querySelector('.view-panel:not(.hidden)');
-          if (activePanel && activePanel.id === 'view-attendance') return;
+          if (activePanel && activePanel.id === 'view-attendance') {
+            checkAppVersionUpdate();
+            return;
+          }
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           checkAppVersionUpdate();
         } catch(e) {}
