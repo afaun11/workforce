@@ -7780,7 +7780,7 @@
     // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
     // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
     // =========================================================
-    const CURRENT_APP_VERSION = '20261022_v16';
+    const CURRENT_APP_VERSION = '20261022_v17';
     let isAppUpdateBannerVisible = false;
     window.__WFM_VERSION_OUTDATED = false;
 
@@ -10651,10 +10651,13 @@
     function renderAllLiveScreens() {
       if (renderScreensTimeout) clearTimeout(renderScreensTimeout);
       renderScreensTimeout = setTimeout(() => {
-        refreshAllDashboardData();
-
         const activePanel = document.querySelector('.view-panel:not(.hidden)');
         const activeViewId = activePanel ? activePanel.id : '';
+
+        // PENGHEMAT KINERJA HP: Hanya hitung data dashboard jika panel dashboard yang aktif
+        if (!activeViewId || activeViewId === 'view-dashboard') {
+          refreshAllDashboardData();
+        }
 
         if (activeViewId === 'view-attendance') {
           renderScannerTodayRecords();
@@ -12056,17 +12059,22 @@
         checkAppVersionUpdate();
       } catch(e) {}
       
-      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan setiap 20 detik pada gudang aktif)
+      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan pada gudang aktif)
+      // PENGHEMAT KINERJA HP: Lewati pemeriksaan jika kamera scanner sedang aktif agar CPU HP 100% dingin & mulus!
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
+          const activePanel = document.querySelector('.view-panel:not(.hidden)');
+          if (activePanel && activePanel.id === 'view-attendance') return;
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           checkAppVersionUpdate();
         }
-      }, 20000);
-      // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
+      }, 35000);
+      // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali (hanya jika bukan layar scanner aktif)
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.visibilityState === 'visible') {
           try {
+            const activePanel = document.querySelector('.view-panel:not(.hidden)');
+            if (activePanel && activePanel.id === 'view-attendance') return;
             fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
             checkAppVersionUpdate();
           } catch(e) {}
@@ -12074,6 +12082,8 @@
       });
       window.addEventListener('focus', () => {
         try {
+          const activePanel = document.querySelector('.view-panel:not(.hidden)');
+          if (activePanel && activePanel.id === 'view-attendance') return;
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           checkAppVersionUpdate();
         } catch(e) {}
@@ -15974,18 +15984,16 @@
         const notesInput = document.getElementById('att-notes');
         if (notesInput) notesInput.value = '';
 
-        // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
-        setWhDB(targetWh, 'attendance', attendances);
-        saveFullDatabaseToCloud(false, true, true, targetWh, false, false, true);
-        if (typeof saveAttendanceDocToFirestore === 'function') {
-          saveAttendanceDocToFirestore(targetWh, attendances[0]);
-        }
-        if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+        const newlyAddedRecord = attendances[0];
 
+        // 1. Simpan ke database lokal seketika (skipCloudSave = true agar tidak memicu dobel proses)
+        setWhDB(targetWh, 'attendance', attendances, true);
+
+        // 2. RESPON KILAT (0ms): Langsung munculkan notifikasi & bunyikan suara tanpa jeda
         showProfessionalAttendanceToast({
           type: 'check_in',
           title: 'Absen Masuk Berhasil!',
-          subtitle: `Presensi ${matchedUser.name} (${matchedUser.outsource || 'Internal'}) sukses tercatat & tersinkron ke Google Sheet & Cloud`,
+          subtitle: `Presensi ${matchedUser.name} (${matchedUser.outsource || 'Internal'}) sukses tercatat & tersinkron`,
           name: matchedUser.name,
           nik: matchedUser.nik,
           dept: matchedUser.dept || 'Staff',
@@ -15996,6 +16004,15 @@
         });
 
         playAttendanceSuccessSound('check_in', matchedUser.name);
+
+        // 3. Sinkronisasi multi-cloud di latar belakang (non-blocking) agar kamera HP tetap 60 FPS
+        setTimeout(() => {
+          if (typeof saveAttendanceDocToFirestore === 'function') {
+            saveAttendanceDocToFirestore(targetWh, newlyAddedRecord);
+          }
+          saveFullDatabaseToCloud(false, false, false, targetWh, false, false, true);
+          if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+        }, 20);
       } else {
         // ==========================================
         // MODE ABSEN PULANG (CHECK_OUT) - 24 JAM PENUH
@@ -16033,17 +16050,13 @@
           activeOpenSession.dept = matchedUser.dept;
           activeOpenSession.outsource = matchedUser.outsource || activeOpenSession.outsource || 'Internal';
 
-          // Simpan langsung ke database lokal & cloud Firebase 24/7 & Google Sheet
-          setWhDB(targetWh, 'attendance', attendances);
-          saveFullDatabaseToCloud(false, true, true, targetWh, false, false, true);
-          if (typeof saveAttendanceDocToFirestore === 'function') {
-            saveAttendanceDocToFirestore(targetWh, activeOpenSession);
-          }
-          if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+          // 1. Simpan ke database lokal seketika (skipCloudSave = true)
+          setWhDB(targetWh, 'attendance', attendances, true);
 
           const hrs = Math.floor(diffMs / (1000 * 60 * 60));
           const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
+          // 2. RESPON KILAT (0ms): Langsung munculkan notifikasi & bunyikan suara tanpa jeda
           showProfessionalAttendanceToast({
             type: 'check_out',
             title: 'Absen Pulang Berhasil!',
@@ -16058,6 +16071,15 @@
           });
 
           playAttendanceSuccessSound('check_out', matchedUser.name);
+
+          // 3. Sinkronisasi multi-cloud di latar belakang (non-blocking) agar kamera HP tetap 60 FPS
+          setTimeout(() => {
+            if (typeof saveAttendanceDocToFirestore === 'function') {
+              saveAttendanceDocToFirestore(targetWh, activeOpenSession);
+            }
+            saveFullDatabaseToCloud(false, false, false, targetWh, false, false, true);
+            if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+          }, 20);
         } else {
           // KASUS 2: Tidak ada sesi terbuka (Sudah pulang sebelumnya ATAU Belum masuk)
           const recentAtt = userAtts[0];
