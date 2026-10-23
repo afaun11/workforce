@@ -553,48 +553,7 @@
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
 
-  <!-- ========================================================= -->
-  <!-- GLOBAL AUTO-UPDATE MODAL DIALOG (TENGAH LAYAR - SANGAT NOTIS & PROFESIONAL) -->
-  <!-- ========================================================= -->
-  <div id="wfm-update-banner" class="hidden fixed inset-0 z-[999999] bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200/90 max-w-md w-full p-6 text-center space-y-4 animate-in zoom-in-95 duration-200 relative overflow-hidden">
-      <!-- Glow Accent Decor -->
-      <div class="absolute -top-16 -right-16 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
-      <div class="absolute -bottom-16 -left-16 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-      <!-- Icon Box -->
-      <div class="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mx-auto text-blue-600 shadow-sm relative">
-        <i data-lucide="refresh-cw" class="w-8 h-8 animate-spin" style="animation-duration: 4s;"></i>
-        <span class="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white"></span>
-      </div>
-
-      <!-- Header & Badges -->
-      <div class="space-y-1.5">
-        <div class="flex items-center justify-center gap-2">
-          <span class="px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 rounded-full">Pembaruan Tersedia</span>
-          <span id="lbl-update-version-badge" class="px-2.5 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 rounded-full">Versi Terbaru</span>
-        </div>
-        <h3 class="text-lg font-black text-slate-900 tracking-tight">Pembaruan Sistem Aplikasi</h3>
-      </div>
-
-      <!-- Clean, Professional, & Natural Message -->
-      <p id="lbl-update-modal-desc" class="text-xs text-slate-600 leading-relaxed px-2">
-        Pembaruan sistem telah siap. Silakan muat ulang aplikasi untuk memastikan pencatatan absensi dan sinkronisasi data operasional berjalan optimal.
-      </p>
-
-      <!-- Buttons Action -->
-      <div class="space-y-2 pt-2">
-        <button type="button" onclick="applyAppUpdateAndReload()" class="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition cursor-pointer">
-          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-          <span>Perbarui &amp; Muat Ulang Sekarang</span>
-        </button>
-
-        <button type="button" onclick="hideAppUpdateBanner(true)" class="w-full py-2.5 px-3 bg-transparent hover:bg-slate-100 text-slate-500 hover:text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer">
-          <span>Nanti Saja</span>
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- ========================================================= -->
   <!-- 1. AUTH SCREEN (LOGIN UTAMA & MODE AKUN ABSENSI HP) -->
@@ -2663,17 +2622,6 @@
                   </button>
                 </div>
 
-                <!-- Status Versi Sistem & Tombol Pratinjau Modal -->
-                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 flex-wrap">
-                  <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span class="font-bold text-slate-700">Versi Rilis Aplikasi:</span>
-                    <span class="font-mono bg-blue-50 text-blue-800 border border-blue-200/80 px-2 py-0.5 rounded-md font-extrabold text-[11px]">20261022_v17</span>
-                  </div>
-                  <button type="button" onclick="window.testUpdateModal()" class="py-2.5 px-3.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200/80 hover:border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs">
-                    <i data-lucide="bell-ring" class="w-3.5 h-3.5 text-blue-600"></i>
-                    <span>Pratinjau Pop-up Pembaruan Layar</span>
-                  </button>
-                </div>
               </div>
 
             </div>
@@ -7803,185 +7751,17 @@
     let isLocationVerified = false;
 
     // =========================================================
-    // SYSTEM APP VERSION & INSTANT REFRESH SENTINEL
-    // Memastikan seluruh HP & Laptop otomatis mendeteksi update Admin di GitHub / Cloud
+    // SYSTEM APP VERSION (NOTIFIKASI PEMBARUAN DINONAKTIFKAN PERMANEN ATAS PERMINTAAN USER)
     // =========================================================
-    const CURRENT_APP_VERSION = '20261022_v17';
-    let isAppUpdateBannerVisible = false;
-    let lastKnownRemoteVersion = null;
+    const CURRENT_APP_VERSION = '20261023_v1';
     window.__WFM_VERSION_OUTDATED = false;
 
-    // Helper: Hanya anggap update jika versi server BENAR-BENAR LEBIH BARU dari versi lokal saat ini
-    function isNewerVersion(remoteVer, currentVer) {
-      if (!remoteVer || !currentVer) return false;
-      const rStr = String(remoteVer).trim();
-      const cStr = String(currentVer).trim();
-      if (rStr === cStr) return false;
-
-      const matchRem = rStr.match(/(\d{8})_v?(\d+)/i);
-      const matchCur = cStr.match(/(\d{8})_v?(\d+)/i);
-      if (matchRem && matchCur) {
-        const dateRem = parseInt(matchRem[1], 10);
-        const dateCur = parseInt(matchCur[1], 10);
-        if (dateRem > dateCur) return true;
-        if (dateRem < dateCur) return false;
-        const revRem = parseInt(matchRem[2], 10);
-        const revCur = parseInt(matchCur[2], 10);
-        return revRem > revCur;
-      }
-      return rStr.localeCompare(cStr, undefined, { numeric: true, sensitivity: 'base' }) > 0;
-    }
-
-    function hideAppUpdateBanner(isUserDismiss = false) {
-      isAppUpdateBannerVisible = false;
-      window.__WFM_VERSION_OUTDATED = false;
-      if (isUserDismiss && lastKnownRemoteVersion) {
-        try {
-          sessionStorage.setItem('wfm_dismissed_update_' + lastKnownRemoteVersion, 'true');
-        } catch(e) {}
-      }
-      const banner = document.getElementById('wfm-update-banner');
-      if (banner) {
-        banner.classList.add('hidden');
-      }
-    }
-
-    async function checkAppVersionUpdate() {
-      try {
-        // 1. Cek dari Cloud Firebase Realtime Database
-        const targetWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
-        const baseEndpoint = getFirebaseEndpoint(targetWh) || getFirebaseEndpoint('MBI');
-        if (!baseEndpoint) return;
-        const endpoint = baseEndpoint.replace('/wfm_database.json', '/wfm_database/app_version.json');
-        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
-        if (res.ok) {
-          const cloudVersion = await res.json();
-          if (cloudVersion && typeof cloudVersion === 'string') {
-            if (isNewerVersion(cloudVersion, CURRENT_APP_VERSION)) {
-              window.__WFM_VERSION_OUTDATED = true;
-              showAppUpdateBanner(cloudVersion);
-              return;
-            } else {
-              // Jika versi yang dipakai sudah sama atau lebih baru dari cloud, seketika sembunyikan banner & pastikan tidak muncul
-              hideAppUpdateBanner(false);
-            }
-          } else {
-            hideAppUpdateBanner(false);
-          }
-        }
-
-        // 2. Cek langsung file html di server untuk mendeteksi push/deploy terbaru
-        try {
-          const serverCheckUrl = window.location.origin + window.location.pathname + '?_vcheck=' + Date.now();
-          const htmlRes = await fetch(serverCheckUrl, { cache: 'no-store' });
-          if (htmlRes.ok) {
-            const sampleText = (await htmlRes.text()).substring(0, 350000);
-            const match = sampleText.match(/CURRENT_APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
-            if (match && match[1]) {
-              if (isNewerVersion(match[1], CURRENT_APP_VERSION)) {
-                window.__WFM_VERSION_OUTDATED = true;
-                showAppUpdateBanner(match[1]);
-              } else {
-                hideAppUpdateBanner(false);
-              }
-            }
-          }
-        } catch(eHtml) {}
-      } catch (e) {}
-    }
-
-    async function publishAppVersionToCloud(versionToPublish) {
-      if (!versionToPublish) return;
-      try {
-        const mbiBase = getFirebaseEndpoint('MBI');
-        if (mbiBase) {
-          const vUrl = mbiBase.replace('/wfm_database.json', '/wfm_database/app_version.json');
-          fetch(vUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(versionToPublish)
-          }).catch(() => {});
-        }
-        const maiBase = getFirebaseEndpoint('MAI');
-        if (maiBase && maiBase !== mbiBase) {
-          const vUrlMai = maiBase.replace('/wfm_database.json', '/wfm_database/app_version.json');
-          fetch(vUrlMai, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(versionToPublish)
-          }).catch(() => {});
-        }
-      } catch(e) {}
-    }
-
-    function showAppUpdateBanner(newVersion, force = false) {
-      if (newVersion) lastKnownRemoteVersion = String(newVersion).trim();
-
-      // Jika versi baru tidak lebih tinggi dari versi saat ini dan bukan mode preview/force, sembunyikan notif
-      if (!force && !isNewerVersion(newVersion, CURRENT_APP_VERSION)) {
-        hideAppUpdateBanner(false);
-        return;
-      }
-
-      // Proteksi anti-muncul terus-menerus: Jika pengguna sudah pernah klik "Nanti Saja" atau sudah refresh dalam 15 menit
-      if (!force && newVersion) {
-        try {
-          if (sessionStorage.getItem('wfm_dismissed_update_' + newVersion) === 'true') {
-            return;
-          }
-          const lastReloadTime = sessionStorage.getItem('wfm_reloaded_for_version_' + newVersion);
-          if (lastReloadTime && (Date.now() - parseInt(lastReloadTime, 10)) < 900000) {
-            return;
-          }
-        } catch(e) {}
-      }
-
-      if (isAppUpdateBannerVisible && !force) return;
-      isAppUpdateBannerVisible = true;
-      if (!force) {
-        window.__WFM_VERSION_OUTDATED = true;
-      }
-      const banner = document.getElementById('wfm-update-banner');
-      if (banner) {
-        banner.classList.remove('hidden');
-        const badgeEl = document.getElementById('lbl-update-version-badge');
-        if (badgeEl) {
-          badgeEl.textContent = newVersion ? `v${newVersion}` : `v${CURRENT_APP_VERSION}`;
-        }
-        const descEl = document.getElementById('lbl-update-modal-desc') || banner.querySelector('p');
-        if (descEl) {
-          descEl.innerHTML = `Pembaruan sistem telah siap. Silakan muat ulang aplikasi untuk memastikan pencatatan absensi dan sinkronisasi data operasional berjalan optimal.`;
-        }
-        if (typeof lucide !== 'undefined' && lucide.createIcons) {
-          try { lucide.createIcons(); } catch(e) {}
-        }
-      }
-      // PENTING: TIDAK ada auto-reload paksa di latar belakang (tidak me-refresh terus-terusan).
-      // Pengguna mengontrol penuh saat ingin memuat ulang dengan menekan tombol Refresh.
-    }
-
-    window.testUpdateModal = function() {
-      showAppUpdateBanner('20261022_v18', true);
-    };
-
-    function applyAppUpdateAndReload() {
-      // Catat bahwa pengguna sudah menekan tombol perbarui agar tidak muncul terus-menerus jika ada jeda cache hosting
-      if (lastKnownRemoteVersion) {
-        try {
-          sessionStorage.setItem('wfm_reloaded_for_version_' + lastKnownRemoteVersion, String(Date.now()));
-        } catch(e) {}
-      }
-      hideAppUpdateBanner(false);
-      try {
-        if ('caches' in window) {
-          caches.keys().then(keys => {
-            keys.forEach(k => caches.delete(k));
-          }).catch(() => {});
-        }
-      } catch(e) {}
-      const cleanUrl = window.location.origin + window.location.pathname + '?v=' + Date.now();
-      window.location.replace(cleanUrl);
-    }
+    function isNewerVersion() { return false; }
+    function hideAppUpdateBanner() {}
+    async function checkAppVersionUpdate() { return; }
+    async function publishAppVersionToCloud() { return; }
+    function showAppUpdateBanner() {}
+    function applyAppUpdateAndReload() {}
 
     // =========================================================
     // MASTER DATA KARYAWAN: TOMBSTONE TRACKING & STRICT SORTING ENGINE
@@ -9705,9 +9485,29 @@
       if (!attRec) return;
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       const docId = attRec.id || `att-${targetWh.toLowerCase()}-${Date.now()}`;
+      
+      // 1. Simpan dokumen satuan presensi ke Cloud Firestore
       saveDocToFirestore(targetWh, 'attendance', docId, attRec).catch(e => {
         console.warn('[Firestore] Non-blocking scan save warning:', e);
       });
+
+      // 2. Tembakkan sinyal realtime kilat (hanya ~100 bytes) agar Akun Manajemen langsung terupdate seketika
+      const liveSignalDoc = {
+        updatedAt: new Date().toISOString(),
+        lastRecordId: docId,
+        userName: attRec.userName || '',
+        userNik: attRec.userNik || '',
+        type: attRec.checkOutTime ? 'check_out' : 'check_in',
+        warehouse: targetWh
+      };
+      saveDocToFirestore(targetWh, '_metadata', 'live_signal', liveSignalDoc).catch(() => {});
+
+      // 3. Siaran lokal instan (0ms) untuk jendela/tab di perangkat yang sama
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          new BroadcastChannel('wfm_firestore_live_sync').postMessage({ targetWh, docId });
+        }
+      } catch(e) {}
     }
 
     function saveUserDocToFirestore(wh, userRec) {
@@ -9939,6 +9739,98 @@
         }
         return false;
       }
+    }
+
+    // =========================================================
+    // CLOUD FIRESTORE REALTIME SYNC ENGINE (SUPER CEPAT 1-2 DETIK)
+    // Akun Manajemen & Dashboard Otomatis Terisi Presensi Baru Seketika
+    // =========================================================
+    let firestoreRealtimeTimer = null;
+    let lastKnownFirestoreSignal = { MBI: '', MAI: '' };
+    let isFetchingFirestoreSignal = false;
+
+    async function checkFirestoreRealtimeUpdates() {
+      if (isFetchingFirestoreSignal) return;
+      // Lewati pengecekan jika di HP sedang aktif kamera pemindai barcode
+      if (typeof html5QrScanner !== 'undefined' && html5QrScanner) {
+        const activePanel = document.querySelector('.view-panel:not(.hidden)');
+        if (activePanel && activePanel.id === 'view-attendance') return;
+      }
+
+      const targetWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+      isFetchingFirestoreSignal = true;
+
+      try {
+        const signalDoc = await getDocFromFirestore(targetWh, '_metadata', 'live_signal');
+        if (signalDoc && signalDoc.updatedAt) {
+          const prevSignal = lastKnownFirestoreSignal[targetWh] || '';
+          if (!prevSignal) {
+            lastKnownFirestoreSignal[targetWh] = signalDoc.updatedAt;
+          } else if (signalDoc.updatedAt !== prevSignal) {
+            lastKnownFirestoreSignal[targetWh] = signalDoc.updatedAt;
+
+            // PRESENSI BARU DARI HP TERDETEKSI!
+            // Ambil record spesifik tersebut secara langsung (< 1 KB)
+            if (signalDoc.lastRecordId) {
+              const newRec = await getDocFromFirestore(targetWh, 'attendance', signalDoc.lastRecordId);
+              if (newRec && (newRec.id || newRec.userName)) {
+                const currentAtts = getWhDB(targetWh, 'attendance', []);
+                const existingIdx = currentAtts.findIndex(a => a && a.id === newRec.id);
+                if (existingIdx >= 0) {
+                  currentAtts[existingIdx] = newRec;
+                } else {
+                  currentAtts.unshift(newRec);
+                }
+                setWhDB(targetWh, 'attendance', currentAtts, true);
+                renderAllLiveScreens();
+                showLiveRealtimeIndicator(`⚡ Presensi Terupdate: ${newRec.userName || 'Karyawan'} (${newRec.checkOutTime ? 'Pulang' : 'Masuk'})`);
+              } else {
+                await pullAttendanceFromFirestore(targetWh, false);
+              }
+            } else {
+              await pullAttendanceFromFirestore(targetWh, false);
+            }
+          }
+        }
+      } catch (err) {
+        // Silent catch
+      } finally {
+        isFetchingFirestoreSignal = false;
+      }
+    }
+
+    function showLiveRealtimeIndicator(msg) {
+      try {
+        const badge = document.getElementById('nav-cloud-label');
+        if (badge) {
+          const orig = badge.innerText;
+          badge.innerText = '⚡ Live: ' + msg.replace(/⚡ Presensi Terupdate:\s*/, '');
+          badge.className = 'text-[11px] font-extrabold text-emerald-400 animate-pulse';
+          setTimeout(() => {
+            badge.innerText = orig;
+            badge.className = 'text-[11px] text-slate-400 font-medium';
+          }, 4000);
+        }
+      } catch(e) {}
+    }
+
+    function startFirestoreRealtimeSync() {
+      if (firestoreRealtimeTimer) clearInterval(firestoreRealtimeTimer);
+      // Pengecekan sinyal ultra-ringan setiap 2.5 detik saat layar aktif
+      firestoreRealtimeTimer = setInterval(() => {
+        if (!document.hidden && document.visibilityState === 'visible') {
+          checkFirestoreRealtimeUpdates();
+        }
+      }, 2500);
+
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const fsBc = new BroadcastChannel('wfm_firestore_live_sync');
+          fsBc.onmessage = () => {
+            try { checkFirestoreRealtimeUpdates(); } catch(e) {}
+          };
+        }
+      } catch(e) {}
     }
 
     function copyFirestoreRules() {
@@ -12121,49 +12013,45 @@
 
       const getActiveWhTarget = () => (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
 
-      // Sinkronkan data otomatis dari Google Firebase Cloud Server & Cek Versi Pembaruan Sistem (Hanya gudang aktif)
+      // Sinkronkan data awal dari Cloud Firestore (Absensi Terkini) & Cloud Database
       try {
+        pullAttendanceFromFirestore(getActiveWhTarget(), false);
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
-        checkAppVersionUpdate();
+      } catch(e) {}
+
+      // AKTIFKAN SINKRONISASI REALTIME KILAT CLOUD FIRESTORE (2.5 DETIK)
+      try {
+        startFirestoreRealtimeSync();
       } catch(e) {}
       
-      // Smart Delta Check hemat kuota & CPU di latar belakang (Cek timestamp ringan pada gudang aktif)
-      // PENGHEMAT KINERJA HP: Lewati pemeriksaan jika kamera scanner sedang aktif agar CPU HP 100% dingin & mulus!
+      // Smart Delta Check hemat kuota & CPU di latar belakang
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
           const activePanel = document.querySelector('.view-panel:not(.hidden)');
           if (activePanel && activePanel.id === 'view-attendance') {
-            // Scanner sedang aktif: hindari fetch database penuh agar kamera 60fps, tapi cek update versi ringan
-            checkAppVersionUpdate();
             return;
           }
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-          checkAppVersionUpdate();
         }
       }, 35000);
+
       // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.visibilityState === 'visible') {
           try {
+            checkFirestoreRealtimeUpdates();
             const activePanel = document.querySelector('.view-panel:not(.hidden)');
-            if (activePanel && activePanel.id === 'view-attendance') {
-              checkAppVersionUpdate();
-              return;
-            }
+            if (activePanel && activePanel.id === 'view-attendance') return;
             fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-            checkAppVersionUpdate();
           } catch(e) {}
         }
       });
       window.addEventListener('focus', () => {
         try {
+          checkFirestoreRealtimeUpdates();
           const activePanel = document.querySelector('.view-panel:not(.hidden)');
-          if (activePanel && activePanel.id === 'view-attendance') {
-            checkAppVersionUpdate();
-            return;
-          }
+          if (activePanel && activePanel.id === 'view-attendance') return;
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-          checkAppVersionUpdate();
         } catch(e) {}
       });
 
@@ -14435,6 +14323,10 @@
       activeWarehouse = wh;
       try { initFirebaseLiveStream(wh); } catch(e) {}
       try { fetchFullDatabaseFromCloud(false, wh); } catch(e) {}
+      try {
+        if (typeof lastKnownFirestoreSignal !== 'undefined') lastKnownFirestoreSignal[wh] = '';
+        if (typeof pullAttendanceFromFirestore === 'function') pullAttendanceFromFirestore(wh, false);
+      } catch(e) {}
       updateNavbarBrand(wh);
       updateWhSwitcherButtons();
       refreshAllDashboardData();
