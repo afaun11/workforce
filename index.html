@@ -2611,9 +2611,9 @@
                     <span>🚀 Migrasi Data ke Firestore</span>
                   </button>
 
-                  <button type="button" onclick="pullAttendanceFromFirestore(activeWarehouse, true)" class="py-3 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
+                  <button type="button" onclick="pullUsersFromFirestore(activeWarehouse, false); pullAttendanceFromFirestore(activeWarehouse, true);" class="py-3 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
                     <i data-lucide="download-cloud" class="w-4 h-4 text-emerald-600"></i>
-                    <span>Tarik Absensi dari Firestore</span>
+                    <span>Tarik Karyawan &amp; Absensi Firestore</span>
                   </button>
 
                   <button type="button" onclick="copyFirestoreRules()" class="py-3 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
@@ -4538,13 +4538,13 @@
     {
         "id":  "mbi-1790828522743-7-8am0",
         "name":  "GALANG ERDIANSYAH",
-        "dept":  "Coordinator",
+        "dept":  "Supervisor",
         "outsource":  "Internal",
         "phone":  "0812-9943-1422",
         "email":  "",
         "joinDate":  "2023-08-22",
         "nik":  "MBI26-011",
-        "role":  "coordinator",
+        "role":  "supervisor",
         "hasAccount":  true,
         "barcodeValue":  "MBI26-011",
         "password":  "medika123",
@@ -9828,6 +9828,61 @@
       }
     }
 
+    async function pullUsersFromFirestore(wh = null, alertOnComplete = false) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      try {
+        const res = await listDocsFromFirestore(targetWh, 'users', 300);
+        if (res && res.docs && res.docs.length > 0) {
+          const localUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          let changed = false;
+          res.docs.forEach(cUser => {
+            if (!cUser) return;
+            const cNik = (cUser.nik || cUser.id || '').toUpperCase().trim();
+            const idx = localUsers.findIndex(u => (u.nik && u.nik.toUpperCase() === cNik) || (u.id && u.id === cUser.id) || (u.name && cleanStr(u.name) === cleanStr(cUser.name)));
+            if (idx !== -1) {
+              if (cUser.role && localUsers[idx].role !== cUser.role) { localUsers[idx].role = cUser.role; changed = true; }
+              if (cUser.dept && localUsers[idx].dept !== cUser.dept) { localUsers[idx].dept = cUser.dept; changed = true; }
+              if (cUser.permissions) { localUsers[idx].permissions = { ...(localUsers[idx].permissions || {}), ...cUser.permissions }; changed = true; }
+              if (cUser.name && localUsers[idx].name !== cUser.name) { localUsers[idx].name = cUser.name; changed = true; }
+              if (cUser.phone && localUsers[idx].phone !== cUser.phone) { localUsers[idx].phone = cUser.phone; changed = true; }
+              if (cUser.status && localUsers[idx].status !== cUser.status) { localUsers[idx].status = cUser.status; changed = true; }
+            } else {
+              localUsers.push(cUser);
+              changed = true;
+            }
+          });
+          if (changed) {
+            setWhDB(targetWh, 'users', localUsers, true);
+            if (currentUser && (currentUser.warehouse || activeWarehouse) === targetWh) {
+              const freshSelf = localUsers.find(u => (u.nik && u.nik === currentUser.nik) || (u.id && u.id === currentUser.id));
+              if (freshSelf) {
+                currentUser.role = freshSelf.role || currentUser.role;
+                currentUser.dept = freshSelf.dept || currentUser.dept;
+                if (freshSelf.permissions) currentUser.permissions = freshSelf.permissions;
+                localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
+                const navDept = document.getElementById('nav-user-dept');
+                if (navDept && !isUserScanner(currentUser) && !isUserManager(currentUser)) {
+                  navDept.innerText = `${(currentUser.dept || 'STAFF').toUpperCase()} - ${(currentUser.role || 'STAFF').toUpperCase()}`;
+                }
+                const roleBadge = document.getElementById('user-role-badge');
+                if (roleBadge) roleBadge.innerText = (currentUser.role || 'STAFF').toUpperCase();
+                applyRolePermissions();
+              }
+            }
+            renderAllLiveScreens();
+          }
+          if (alertOnComplete) {
+            alert(`✅ Berhasil menarik ${res.docs.length} data karyawan langsung dari Cloud Firestore Gudang ${targetWh}!`);
+          }
+          return true;
+        }
+        return false;
+      } catch (e) {
+        console.warn('[Firestore] pull users error:', e);
+        return false;
+      }
+    }
+
     // =========================================================
     // CLOUD FIRESTORE REALTIME SYNC ENGINE (SUPER CEPAT 1-2 DETIK)
     // Akun Manajemen & Dashboard Otomatis Terisi Presensi Baru Seketika
@@ -12145,6 +12200,7 @@
       // Sinkronkan data awal dari Cloud Firestore (Absensi Terkini & Konfigurasi GPS Radius) & Cloud Database
       try {
         pullAttendanceFromFirestore(getActiveWhTarget(), false);
+        pullUsersFromFirestore(getActiveWhTarget(), false).catch(() => {});
         syncGPSCoordsFromFirestore('MBI').catch(() => {});
         syncGPSCoordsFromFirestore('MAI').catch(() => {});
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
@@ -14551,6 +14607,46 @@
         // Terapkan visibility & hak akses tombol / menu sesuai role
         try { applyRolePermissions(); } catch (e) { console.warn('applyRolePermissions error:', e); }
         try { updateNavbarBrand(currentUser.warehouse); } catch (e) { console.warn('updateNavbarBrand error:', e); }
+
+        // Auto-Sync Data Akun dari Cloud Firestore (agar perubahan role, departemen, atau izin seperti Supervisor langsung aktif seketika tanpa perlu clear cache)
+        if (currentUser && currentUser.nik && typeof getDocFromFirestore === 'function') {
+          const userNikKey = currentUser.nik;
+          const userTargetWh = currentUser.warehouse || currentWh || 'MBI';
+          getDocFromFirestore(userTargetWh, 'users', userNikKey).then(cloudUser => {
+            if (cloudUser && (cloudUser.role !== currentUser.role || cloudUser.dept !== currentUser.dept || (cloudUser.permissions && JSON.stringify(cloudUser.permissions) !== JSON.stringify(currentUser.permissions)))) {
+              const newRole = cloudUser.role || currentUser.role;
+              const newDept = cloudUser.dept || currentUser.dept;
+              currentUser.role = newRole;
+              currentUser.dept = newDept;
+              if (cloudUser.permissions) currentUser.permissions = cloudUser.permissions;
+              if (cloudUser.name) currentUser.name = cloudUser.name;
+              try { localStorage.setItem('wfm_active_session', JSON.stringify(currentUser)); } catch(e) {}
+
+              // Sinkronkan ke daftar database users lokal
+              try {
+                const targetWhKey = userTargetWh.toLowerCase();
+                const uList = getWhDB(targetWhKey, 'users', []);
+                const uIdx = uList.findIndex(u => (u.nik && u.nik.toUpperCase() === userNikKey.toUpperCase()) || (u.id && u.id === currentUser.id));
+                if (uIdx !== -1) {
+                  uList[uIdx].role = newRole;
+                  uList[uIdx].dept = newDept;
+                  if (cloudUser.permissions) uList[uIdx].permissions = cloudUser.permissions;
+                  localStorage.setItem(`wfm_${targetWhKey}_users`, JSON.stringify(uList));
+                }
+              } catch(e) {}
+
+              // Perbarui teks navbar dan badge secara real-time
+              const navDept = document.getElementById('nav-user-dept');
+              if (navDept && !isUserScanner(currentUser) && !isUserManager(currentUser)) {
+                navDept.innerText = `${(newDept || 'STAFF').toUpperCase()} - ${(newRole || 'STAFF').toUpperCase()}`;
+              }
+              const roleBadge = document.getElementById('user-role-badge');
+              if (roleBadge) roleBadge.innerText = (newRole || 'STAFF').toUpperCase();
+              try { applyRolePermissions(); } catch (e) {}
+              try { if (typeof renderAccountSettingsForm === 'function') renderAccountSettingsForm(); } catch (e) {}
+            }
+          }).catch(e => console.warn('[Firestore] Live user sync skipped:', e));
+        }
 
         if (isUserScanner(currentUser)) {
           // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
