@@ -1435,7 +1435,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
               <!-- Form Pengajuan -->
-              <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
+              <div id="card-leave-form" class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
                 <h3 class="font-extrabold text-sm text-slate-900">Buat Pengajuan Baru</h3>
 
                 <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
@@ -1478,7 +1478,7 @@
               </div>
 
               <!-- List Pengajuan Sakit/Cuti -->
-              <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
+              <div id="card-leave-table" class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
                 <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
                   <div class="flex items-center gap-2 flex-wrap">
                     <h3 class="font-extrabold text-sm text-slate-900">Daftar Riwayat Sakit / Cuti</h3>
@@ -2091,7 +2091,7 @@
             <div id="ot-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
             <!-- 1. FORM INPUT LEMBUR MASSAL DENGAN GRID CHECKBOX (COLLAPSIBLE) -->
-            <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div id="card-overtime-form" class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
               <div class="p-5 flex items-center justify-between border-b border-slate-100 bg-slate-50/50 flex-wrap gap-2">
                 <div class="flex items-center gap-2.5">
                   <h3 class="font-extrabold text-sm text-slate-900">Form Penugasan Lembur Karyawan</h3>
@@ -2261,19 +2261,19 @@
               </div>
               
               <div class="flex items-center gap-2 flex-wrap">
-                <button onclick="openAllIDCardsA4Modal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download Semua ID Card per Karyawan (ZIP / PNG) dan Cetak Lembar A4">
+                <button id="btn-open-all-idcards-modal" onclick="openAllIDCardsA4Modal()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download Semua ID Card per Karyawan (ZIP / PNG) dan Cetak Lembar A4">
                   <span>Download Semua ID Card (ZIP)</span>
                 </button>
                 <select id="idcard-select-emp" onchange="renderSelectedIDCard()" class="h-9 px-3.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 shadow-xs focus:outline-none">
                   <!-- Rendered by JS -->
                 </select>
-                <button type="button" onclick="openEditEmployeeModalFromIDCard()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Edit Departemen / Data Karyawan yang sedang dipilih">
+                <button id="btn-edit-emp-from-idcard" type="button" onclick="openEditEmployeeModalFromIDCard()" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Edit Departemen / Data Karyawan yang sedang dipilih">
                   Edit Karyawan
                 </button>
-                <button onclick="downloadIDCardImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download gambar PNG kartu ID">
+                <button id="btn-download-idcard-png" onclick="downloadIDCardImage()" class="h-9 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center" title="Download gambar PNG kartu ID">
                   Download ID Card (PNG)
                 </button>
-                <button onclick="printCard('idcard')" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
+                <button id="btn-print-idcard-single" onclick="printCard('idcard')" class="h-9 px-4 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
                   Cetak ID Card
                 </button>
               </div>
@@ -13718,17 +13718,143 @@
             btnPurgeGhost.classList.remove('inline-flex');
           }
         }
+        // Master Checkbox Karyawan (Hanya aktif jika memiliki izin hapus karyawan)
+        const empMasterCheck = document.getElementById('emp-master-check');
+        const canDeleteEmp = isAdmin || isManager || hasPermission('perm_emp_delete');
+        if (empMasterCheck) {
+          empMasterCheck.style.display = canDeleteEmp ? '' : 'none';
+          empMasterCheck.disabled = !canDeleteEmp;
+        }
       }
 
-      // 4. Switcher Warehouse (Hanya muncul jika diizinkan akses multi-gudang MBI & MAI)
+      // 4. Switcher Warehouse & Tombol MBI / MAI Sesuai Hak Akses
+      // Jika akun hanya diberi izin 1 gudang (misal MAI saja), tombol MBI seketika menghilang/disembunyikan total
       const whSwitcher = document.getElementById('wh-switcher-box');
-      if (whSwitcher) {
-        if (canAccessMultiWarehouse(currentUser)) {
-          whSwitcher.classList.remove('hidden');
-          whSwitcher.classList.add('flex');
+      const btnMbi = document.getElementById('wh-btn-mbi');
+      const btnMai = document.getElementById('wh-btn-mai');
+      const canMultiWh = canAccessMultiWarehouse(currentUser);
+      const userWh = (currentUser ? currentUser.warehouse : activeWarehouse) || 'MBI';
+      const canMbi = canMultiWh || hasPermission('perm_wh_mbi') || (userWh === 'MBI' && !hasPermission('perm_wh_mai'));
+      const canMai = canMultiWh || hasPermission('perm_wh_mai') || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'));
+
+      if (btnMbi) {
+        if (canMbi) {
+          btnMbi.classList.remove('hidden');
+          btnMbi.style.display = '';
         } else {
+          btnMbi.classList.add('hidden');
+          btnMbi.style.display = 'none';
+        }
+      }
+      if (btnMai) {
+        if (canMai) {
+          btnMai.classList.remove('hidden');
+          btnMai.style.display = '';
+        } else {
+          btnMai.classList.add('hidden');
+          btnMai.style.display = 'none';
+        }
+      }
+
+      if (whSwitcher) {
+        if (isScanner) {
           whSwitcher.classList.add('hidden');
           whSwitcher.classList.remove('flex');
+        } else {
+          whSwitcher.classList.remove('hidden');
+          whSwitcher.classList.add('flex');
+        }
+      }
+
+      // 4.5 Form Pengajuan Izin/Sakit/Cuti & Form Lembur Massal
+      // Jika akun tidak memiliki hak input form, form seketika menghilang dari layar
+      const cardLeaveForm = document.getElementById('card-leave-form');
+      const cardLeaveTable = document.getElementById('card-leave-table');
+      const canSubmitLeave = isAdmin || isManager || hasPermission('perm_submit_leave_staff');
+      if (cardLeaveForm) {
+        if (canSubmitLeave && !isScanner) {
+          cardLeaveForm.classList.remove('hidden');
+          if (cardLeaveTable) {
+            cardLeaveTable.classList.remove('lg:col-span-12');
+            cardLeaveTable.classList.add('lg:col-span-7');
+          }
+        } else {
+          cardLeaveForm.classList.add('hidden');
+          if (cardLeaveTable) {
+            cardLeaveTable.classList.remove('lg:col-span-7');
+            cardLeaveTable.classList.add('lg:col-span-12');
+          }
+        }
+      }
+
+      const cardOtForm = document.getElementById('card-overtime-form');
+      const canSubmitOt = isAdmin || isManager || hasPermission('perm_submit_batch_ot');
+      if (cardOtForm) {
+        if (canSubmitOt && !isScanner) {
+          cardOtForm.classList.remove('hidden');
+        } else {
+          cardOtForm.classList.add('hidden');
+        }
+      }
+
+      // 4.6 Sub-Tabs di dalam Modul Laporan & Rekapitulasi
+      const tabRec = document.getElementById('btn-tab-records');
+      const tabMat = document.getElementById('btn-tab-matrix');
+      const tabWh = document.getElementById('btn-tab-workhours');
+      const tabLv = document.getElementById('btn-tab-report-leaves');
+      const tabOt = document.getElementById('btn-tab-report-overtime');
+
+      const canRec = isAdmin || isManager || hasPermission('perm_rep_records');
+      const canMat = isAdmin || isManager || hasPermission('perm_rep_matrix');
+      const canWh = isAdmin || isManager || hasPermission('perm_rep_workhours');
+      const canLv = isAdmin || isManager || hasPermission('perm_rep_leaves');
+      const canOt = isAdmin || isManager || hasPermission('perm_rep_ot');
+
+      if (tabRec) tabRec.classList.toggle('hidden', !canRec);
+      if (tabMat) tabMat.classList.toggle('hidden', !canMat);
+      if (tabWh) tabWh.classList.toggle('hidden', !canWh);
+      if (tabLv) tabLv.classList.toggle('hidden', !canLv);
+      if (tabOt) tabOt.classList.toggle('hidden', !canOt);
+
+      // Tombol Salin Matriks (WhatsApp/Clipboard)
+      const btnCopyMatrix = document.getElementById('btn-copy-matrix');
+      const canCopyMatrix = isAdmin || isManager || hasPermission('perm_rep_copy_matrix');
+      if (btnCopyMatrix) btnCopyMatrix.classList.toggle('hidden', !canCopyMatrix);
+
+      // Tombol Download Laporan Excel
+      const canDownloadRep = isAdmin || isManager || hasPermission('perm_rep_download_excel');
+      const repDownloadBtns = [
+        document.getElementById('btn-download-records-excel'),
+        document.getElementById('btn-download-matrix-excel'),
+        document.getElementById('btn-download-workhours-excel'),
+        document.getElementById('btn-download-report-leaves-excel'),
+        document.getElementById('btn-download-report-ot-excel')
+      ];
+      repDownloadBtns.forEach(b => { if (b) b.classList.toggle('hidden', !canDownloadRep); });
+
+      // 4.7 Tombol di Modul Kartu ID Karyawan
+      const btnAllA4 = document.getElementById('btn-open-all-idcards-modal');
+      const canBatchA4 = isAdmin || isManager || hasPermission('perm_idcard_batch_a4');
+      if (btnAllA4) btnAllA4.classList.toggle('hidden', !canBatchA4);
+
+      const canSingleId = isAdmin || isManager || hasPermission('perm_idcard_single');
+      const btnDlPng = document.getElementById('btn-download-idcard-png');
+      const btnPrintId = document.getElementById('btn-print-idcard-single');
+      if (btnDlPng) btnDlPng.classList.toggle('hidden', !canSingleId);
+      if (btnPrintId) btnPrintId.classList.toggle('hidden', !canSingleId);
+
+      const btnEditFromId = document.getElementById('btn-edit-emp-from-idcard');
+      const canEmpEdit = isAdmin || isManager || hasPermission('perm_emp_edit');
+      if (btnEditFromId) btnEditFromId.classList.toggle('hidden', !canEmpEdit);
+
+      // 4.8 Pengaturan Titik & Radius GPS Presensi
+      const gpsBox = document.getElementById('gps-config-box');
+      const canGpsEdit = isAdmin || isManager || hasPermission('perm_sys_gps_edit');
+      if (gpsBox) {
+        if (canGpsEdit && !isScanner) {
+          gpsBox.classList.remove('hidden');
+        } else {
+          gpsBox.classList.add('hidden');
         }
       }
 
@@ -14549,18 +14675,22 @@
     }
 
     function switchActiveWarehouse(wh) {
-      if (!canAccessMultiWarehouse(currentUser)) {
-        alert('Akses terkunci pada Gudang ' + (currentUser ? currentUser.warehouse : activeWarehouse) + '. Akun Anda tidak memiliki izin untuk berpindah gudang.');
+      const targetWh = (wh || 'MBI').toUpperCase();
+      const canMulti = canAccessMultiWarehouse(currentUser);
+      const userWh = (currentUser ? currentUser.warehouse : activeWarehouse) || 'MBI';
+      const canTarget = canMulti || (targetWh === 'MBI' ? (hasPermission('perm_wh_mbi') || (userWh === 'MBI' && !hasPermission('perm_wh_mai'))) : (hasPermission('perm_wh_mai') || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'))));
+      if (!canTarget) {
+        alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang ' + targetWh + '.');
         return;
       }
-      activeWarehouse = wh;
-      try { initFirebaseLiveStream(wh); } catch(e) {}
-      try { fetchFullDatabaseFromCloud(false, wh); } catch(e) {}
+      activeWarehouse = targetWh;
+      try { initFirebaseLiveStream(targetWh); } catch(e) {}
+      try { fetchFullDatabaseFromCloud(false, targetWh); } catch(e) {}
       try {
-        if (typeof lastKnownFirestoreSignal !== 'undefined') lastKnownFirestoreSignal[wh] = '';
-        if (typeof pullAttendanceFromFirestore === 'function') pullAttendanceFromFirestore(wh, false);
+        if (typeof lastKnownFirestoreSignal !== 'undefined') lastKnownFirestoreSignal[targetWh] = '';
+        if (typeof pullAttendanceFromFirestore === 'function') pullAttendanceFromFirestore(targetWh, false);
       } catch(e) {}
-      updateNavbarBrand(wh);
+      updateNavbarBrand(targetWh);
       updateWhSwitcherButtons();
       refreshAllDashboardData();
       renderEmployeeTable();
@@ -14574,7 +14704,7 @@
       populatePermissionAccountDropdown();
       latestCachedGPS = null;
       updateRegisteredCoordsDisplay();
-      try { syncGPSCoordsFromFirestore(wh).then(() => updateRegisteredCoordsDisplay()).catch(() => {}); } catch(e) {}
+      try { syncGPSCoordsFromFirestore(targetWh).then(() => updateRegisteredCoordsDisplay()).catch(() => {}); } catch(e) {}
       resetVerificationState();
       try { updateFirebaseUrlUI(); } catch(e) {}
       lucide.createIcons();
@@ -14584,8 +14714,42 @@
       const isMBI = activeWarehouse === 'MBI';
       const btnMbi = document.getElementById('wh-btn-mbi');
       const btnMai = document.getElementById('wh-btn-mai');
-      if (btnMbi) btnMbi.className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
-      if (btnMai) btnMai.className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+      const whSwitcher = document.getElementById('wh-switcher-box');
+
+      const canMulti = canAccessMultiWarehouse(currentUser);
+      const userWh = (currentUser ? currentUser.warehouse : activeWarehouse) || 'MBI';
+      const canMbi = canMulti || hasPermission('perm_wh_mbi') || (userWh === 'MBI' && !hasPermission('perm_wh_mai'));
+      const canMai = canMulti || hasPermission('perm_wh_mai') || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'));
+
+      if (btnMbi) {
+        if (canMbi) {
+          btnMbi.className = isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+          btnMbi.style.display = '';
+        } else {
+          btnMbi.className = 'hidden';
+          btnMbi.style.display = 'none';
+        }
+      }
+
+      if (btnMai) {
+        if (canMai) {
+          btnMai.className = !isMBI ? 'px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-2xs' : 'px-3 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+          btnMai.style.display = '';
+        } else {
+          btnMai.className = 'hidden';
+          btnMai.style.display = 'none';
+        }
+      }
+
+      if (whSwitcher) {
+        if (isUserScanner(currentUser)) {
+          whSwitcher.classList.add('hidden');
+          whSwitcher.classList.remove('flex');
+        } else {
+          whSwitcher.classList.remove('hidden');
+          whSwitcher.classList.add('flex');
+        }
+      }
       
       const dashLabel = document.getElementById('dash-wh-label');
       if (dashLabel) dashLabel.innerText = activeWarehouse;
@@ -18350,6 +18514,12 @@
           return;
         }
 
+        const isAdmin = isUserAdmin(currentUser);
+        const isManager = isUserManager(currentUser);
+        const canEditEmp = isAdmin || isManager || hasPermission('perm_emp_edit');
+        const canIdCardSingle = isAdmin || isManager || hasPermission('perm_idcard_single');
+        const canDeleteEmp = isAdmin || isManager || hasPermission('perm_emp_delete');
+
         filtered.forEach((emp, idx) => {
           try {
             const tr = document.createElement('tr');
@@ -18380,9 +18550,44 @@
                   <span>Aktifkan</span>
                 </button>`;
 
+            const checkColHtml = canDeleteEmp
+              ? `<input type="checkbox" name="emp-row-check" value="${emp.nik}" ${isChecked ? 'checked' : ''} onchange="toggleEmployeeRowSelection('${emp.nik}', this.checked)" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">`
+              : `<span class="text-slate-300 font-mono text-xs">-</span>`;
+
+            let actionButtonsHtml = '';
+            if (canEditEmp) {
+              actionButtonsHtml += `
+                <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="h-7 px-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
+                  <i data-lucide="edit-3" class="w-3 h-3 text-slate-500"></i>
+                  <span>Edit</span>
+                </button>
+              `;
+            }
+            if (canIdCardSingle) {
+              actionButtonsHtml += `
+                <button onclick="renderIDCardAndShow('${emp.nik}')" title="Cetak ID Card Barcode" class="h-7 px-2 bg-white hover:bg-blue-50 text-blue-700 hover:border-blue-200 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
+                  <i data-lucide="credit-card" class="w-3 h-3 text-blue-500"></i>
+                  <span>ID Card</span>
+                </button>
+              `;
+            }
+            if (canEditEmp) {
+              actionButtonsHtml += toggleStatusBtn;
+            }
+            if (canDeleteEmp) {
+              actionButtonsHtml += `
+                <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="h-7 w-7 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg transition shadow-2xs inline-flex items-center justify-center">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              `;
+            }
+            if (!actionButtonsHtml) {
+              actionButtonsHtml = `<span class="text-[11px] text-slate-400 font-medium italic">Lihat Saja</span>`;
+            }
+
             tr.innerHTML = `
               <td class="p-3 border-r border-slate-100 text-center">
-                <input type="checkbox" name="emp-row-check" value="${emp.nik}" ${isChecked ? 'checked' : ''} onchange="toggleEmployeeRowSelection('${emp.nik}', this.checked)" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 border-slate-300 cursor-pointer">
+                ${checkColHtml}
               </td>
               <td class="p-3 border-r border-slate-100 font-mono text-slate-500 font-bold text-center">${idx + 1}</td>
               <td class="p-3 border-r border-slate-100 font-bold text-slate-900">${displayName}<br><span class="text-[10px] font-mono text-slate-400">NIK: ${emp.nik}</span></td>
@@ -18399,18 +18604,7 @@
               </td>
               <td class="p-3 text-right">
                 <div class="inline-flex items-center justify-end gap-1 whitespace-nowrap">
-                  <button onclick="openEditEmployeeModal('${emp.nik}')" title="Edit Data Karyawan" class="h-7 px-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
-                    <i data-lucide="edit-3" class="w-3 h-3 text-slate-500"></i>
-                    <span>Edit</span>
-                  </button>
-                  <button onclick="renderIDCardAndShow('${emp.nik}')" title="Cetak ID Card Barcode" class="h-7 px-2 bg-white hover:bg-blue-50 text-blue-700 hover:border-blue-200 border border-slate-200 rounded-lg text-[11px] font-bold transition shadow-2xs inline-flex items-center gap-1">
-                    <i data-lucide="credit-card" class="w-3 h-3 text-blue-500"></i>
-                    <span>ID Card</span>
-                  </button>
-                  ${toggleStatusBtn}
-                  <button onclick="deleteSingleEmployee('${emp.nik}')" title="Hapus Karyawan" class="h-7 w-7 bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg transition shadow-2xs inline-flex items-center justify-center">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                  </button>
+                  ${actionButtonsHtml}
                 </div>
               </td>
             `;
@@ -20981,12 +21175,28 @@
     // FITUR LAPORAN ABSENSI (RECORD + MATRIKS + REKAP JAM & LEMBUR)
     // =========================================================
     function switchReportTab(tabName) {
+      const isAdmin = isUserAdmin(currentUser);
+      const isManager = isUserManager(currentUser);
+      const canRec = isAdmin || isManager || hasPermission('perm_rep_records');
+      const canMat = isAdmin || isManager || hasPermission('perm_rep_matrix');
+      const canWh = isAdmin || isManager || hasPermission('perm_rep_workhours');
+      const canLv = isAdmin || isManager || hasPermission('perm_rep_leaves');
+      const canOt = isAdmin || isManager || hasPermission('perm_rep_ot');
+
+      // Auto-fallback jika tab yang dipilih tidak memiliki izin
+      if (tabName === 'records' && !canRec) {
+        if (canMat) tabName = 'matrix';
+        else if (canWh) tabName = 'workhours';
+        else if (canLv) tabName = 'leaves';
+        else if (canOt) tabName = 'overtime';
+      }
+
       activeReportTab = tabName;
-      const isRecord = tabName === 'records';
-      const isMatrix = tabName === 'matrix';
-      const isWorkHours = tabName === 'workhours';
-      const isLeaves = tabName === 'leaves';
-      const isOvertime = tabName === 'overtime';
+      const isRecord = tabName === 'records' && canRec;
+      const isMatrix = tabName === 'matrix' && canMat;
+      const isWorkHours = tabName === 'workhours' && canWh;
+      const isLeaves = tabName === 'leaves' && canLv;
+      const isOvertime = tabName === 'overtime' && canOt;
 
       document.getElementById('tab-content-records').classList.toggle('hidden', !isRecord);
       document.getElementById('tab-content-matrix').classList.toggle('hidden', !isMatrix);
@@ -20996,30 +21206,44 @@
       const tabOtEl = document.getElementById('tab-content-report-overtime');
       if (tabOtEl) tabOtEl.classList.toggle('hidden', !isOvertime);
 
-      document.getElementById('btn-tab-records').className = isRecord 
-        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
-        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
-      
-      document.getElementById('btn-tab-matrix').className = isMatrix 
-        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
-        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+      const btnRec = document.getElementById('btn-tab-records');
+      if (btnRec) {
+        btnRec.className = isRecord 
+          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+        if (!canRec) btnRec.classList.add('hidden');
+      }
+
+      const btnMat = document.getElementById('btn-tab-matrix');
+      if (btnMat) {
+        btnMat.className = isMatrix 
+          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+        if (!canMat) btnMat.classList.add('hidden');
+      }
 
       const btnWhEl = document.getElementById('btn-tab-workhours');
       if (btnWhEl) {
         btnWhEl.className = isWorkHours 
           ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
           : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+        if (!canWh) btnWhEl.classList.add('hidden');
       }
 
-      document.getElementById('btn-tab-report-leaves').className = isLeaves 
-        ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
-        : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+      const btnLvEl = document.getElementById('btn-tab-report-leaves');
+      if (btnLvEl) {
+        btnLvEl.className = isLeaves 
+          ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
+          : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+        if (!canLv) btnLvEl.classList.add('hidden');
+      }
 
       const btnOtEl = document.getElementById('btn-tab-report-overtime');
       if (btnOtEl) {
         btnOtEl.className = isOvertime 
           ? 'px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-900 shadow-sm transition' 
           : 'px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+        if (!canOt) btnOtEl.classList.add('hidden');
       }
 
       if (isRecord) renderRecordsTable();
