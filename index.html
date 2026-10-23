@@ -2985,6 +2985,15 @@
                     <span class="text-slate-600 font-semibold">Status Role:</span>
                     <span id="perm-user-role-display" class="font-black text-slate-900 uppercase">STAFF</span>
                   </div>
+                  <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                    <div class="space-y-0.5">
+                      <span class="text-slate-700 font-extrabold block">Akses Multi-Gudang:</span>
+                      <span id="perm-user-multiwh-desc" class="text-[10px] text-slate-500 block leading-tight">Kelola MBI &amp; MAI</span>
+                    </div>
+                    <button type="button" id="btn-perm-toggle-multiwh" onclick="toggleMultiWarehouseInPermissions()" class="px-2.5 py-1 rounded-xl text-[10px] font-black transition flex items-center gap-1 shadow-2xs">
+                      <i data-lucide="lock" class="w-3 h-3"></i> <span>1 Gudang Saja</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -3211,14 +3220,6 @@
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Reset Password Baru</label>
             <input type="text" id="edit-emp-pass" placeholder="Kosongkan jika tdk ubah" class="w-full px-3 py-2 bg-slate-50 border rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900">
           </div>
-        </div>
-
-        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-          <div>
-            <label for="edit-emp-multiwh" class="text-xs font-bold text-slate-800 cursor-pointer block">Akses Multi-Gudang (MBI & MAI)</label>
-            <span class="text-[10px] text-slate-500 font-medium">Beri izin akun untuk berpindah dan mengelola kedua gudang</span>
-          </div>
-          <input type="checkbox" id="edit-emp-multiwh" class="w-4 h-4 rounded text-slate-900 focus:ring-slate-900 cursor-pointer">
         </div>
 
         <div class="pt-2 flex justify-end gap-2">
@@ -4080,7 +4081,9 @@
       localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(validRadius));
       localStorage.setItem('wfm_gps_radius', String(validRadius));
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
+      latestCachedGPS = null;
       try { saveFullDatabaseToCloud(false, true, true); } catch(e) {}
+      try { saveGPSCoordsToFirestore(targetWh, coords); } catch(e) {}
       updateRegisteredCoordsDisplay();
       return coords;
     }
@@ -4097,12 +4100,13 @@
       
       // Update HANYA radius gudang aktif saat ini TANPA mengubah titik koordinat Latitude & Longitude
       const c = getWarehouseCoords(currentWh);
-      setWarehouseCoords(currentWh, c.lat, c.lng, r);
+      const updated = setWarehouseCoords(currentWh, c.lat, c.lng, r);
 
       updateRegisteredCoordsDisplay();
+      await saveGPSCoordsToFirestore(currentWh, updated);
       await saveFullDatabaseToCloud(false, true, true);
 
-      alert(`✅ Jarak radius validasi GPS Gudang ${currentWh} berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf di Gudang ${currentWh} kini maksimal ${r} Meter.\n• Titik koordinat gudang tetap aman dan tidak berubah.`);
+      alert(`✅ Jarak radius validasi GPS Gudang ${currentWh} berhasil diubah menjadi ${r} Meter.\n\n• Batas toleransi presensi staf di Gudang ${currentWh} kini maksimal ${r} Meter.\n• Seluruh perangkat HP Scanner otomatis tersinkronisasi via Cloud Firestore.`);
     }
 
     function updateRegisteredCoordsDisplay() {
@@ -4278,7 +4282,7 @@
       localStorage.setItem('wfm_last_gps_change_time', Date.now().toString());
       setWarehouseCoords(targetWh, lat, lng, radiusVal);
       closeManualGPSModal();
-      alert(`✅ Koordinat & Radius Gudang ${targetWh} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}\nRadius Validasi: ${radiusVal} Meter`);
+      alert(`✅ Koordinat & Radius Gudang ${targetWh} berhasil disimpan!\nLatitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}\nRadius Validasi: ${radiusVal} Meter\n• Seluruh perangkat HP Scanner otomatis tersinkronisasi via Cloud Firestore.`);
     }
 
     const SEED_MBI_USERS = [
@@ -9519,6 +9523,89 @@
       });
     }
 
+    // =========================================================
+    // SINKRONISASI GPS & RADIUS OTOMATIS KE CLOUD FIRESTORE
+    // Seluruh HP Scanner Seketika Mengikuti Perubahan Radius (100m -> 30m)
+    // =========================================================
+    async function saveGPSCoordsToFirestore(wh, coords) {
+      if (!coords) return false;
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      const nowIso = new Date().toISOString();
+      const def = DEFAULT_COORDS[targetWh] || { lat: -6.263295, lng: 106.877066, radius: 100, name: `Gudang ${targetWh}` };
+      const validRadius = Number(coords.radius) > 0 ? Number(coords.radius) : 100;
+
+      const docData = {
+        lat: Number(coords.lat) || def.lat,
+        lng: Number(coords.lng) || def.lng,
+        radius: validRadius,
+        warehouse: targetWh,
+        updatedAt: nowIso,
+        updatedBy: (typeof currentUser !== 'undefined' && currentUser ? (currentUser.name || currentUser.nik) : 'Admin')
+      };
+
+      // 1. Simpan konfigurasi GPS ke Cloud Firestore: _metadata/gps_config
+      const saveOk = await saveDocToFirestore(targetWh, '_metadata', 'gps_config', docData);
+
+      // 2. Tembakkan sinyal live beacon instan ke Firestore agar seluruh HP Scanner mendeteksi seketika
+      const liveSignalDoc = {
+        updatedAt: nowIso,
+        type: 'gps_update',
+        warehouse: targetWh,
+        radius: validRadius,
+        lat: docData.lat,
+        lng: docData.lng
+      };
+      saveDocToFirestore(targetWh, '_metadata', 'live_signal', liveSignalDoc).catch(() => {});
+
+      // 3. Broadcast lokal instan
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          new BroadcastChannel('wfm_firestore_live_sync').postMessage({ 
+            type: 'gps_update', 
+            targetWh, 
+            radius: validRadius,
+            updatedAt: nowIso 
+          });
+        }
+      } catch(e) {}
+
+      return saveOk;
+    }
+
+    async function syncGPSCoordsFromFirestore(wh = null) {
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      try {
+        const doc = await getDocFromFirestore(targetWh, '_metadata', 'gps_config');
+        if (doc && Number(doc.radius) > 0) {
+          const cloudRadius = Number(doc.radius);
+          const currentLocal = getWarehouseCoords(targetWh);
+          if (currentLocal.radius !== cloudRadius) {
+            console.log(`[Firestore Realtime GPS] Radius ${targetWh} diperbarui dari Cloud: ${currentLocal.radius}m -> ${cloudRadius}m`);
+            const def = DEFAULT_COORDS[targetWh] || { lat: -6.263295, lng: 106.877066, radius: 100, name: `Gudang ${targetWh}` };
+            const newCoords = {
+              lat: def.lat,
+              lng: def.lng,
+              radius: cloudRadius,
+              name: def.name,
+              updatedAt: doc.updatedAt || new Date().toISOString()
+            };
+            localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(newCoords));
+            localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(cloudRadius));
+            if (activeWarehouse === targetWh) {
+              localStorage.setItem('wfm_gps_radius', String(cloudRadius));
+            }
+            latestCachedGPS = null;
+            updateRegisteredCoordsDisplay();
+            showLiveRealtimeIndicator(`⚡ Radius GPS ${targetWh}: ${cloudRadius}m`);
+            return true;
+          }
+        }
+      } catch(err) {
+        // Silent catch
+      }
+      return false;
+    }
+
     async function testFirestoreConnection(wh = null) {
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       const projectId = getFirestoreProjectId(targetWh);
@@ -9751,11 +9838,9 @@
 
     async function checkFirestoreRealtimeUpdates() {
       if (isFetchingFirestoreSignal) return;
-      // Lewati pengecekan jika di HP sedang aktif kamera pemindai barcode
-      if (typeof html5QrScanner !== 'undefined' && html5QrScanner) {
-        const activePanel = document.querySelector('.view-panel:not(.hidden)');
-        if (activePanel && activePanel.id === 'view-attendance') return;
-      }
+      const isScanning = (typeof html5QrScanner !== 'undefined' && html5QrScanner !== null);
+      const activePanel = document.querySelector('.view-panel:not(.hidden)');
+      const isAttendancePanel = (activePanel && activePanel.id === 'view-attendance');
 
       const targetWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
       isFetchingFirestoreSignal = true;
@@ -9766,11 +9851,42 @@
           const prevSignal = lastKnownFirestoreSignal[targetWh] || '';
           if (!prevSignal) {
             lastKnownFirestoreSignal[targetWh] = signalDoc.updatedAt;
+            // Sinkronkan radius awal saat inisialisasi jika ada di dokumen sinyal
+            if (signalDoc.radius && Number(signalDoc.radius) > 0) {
+              const curLocal = getWarehouseCoords(targetWh);
+              if (curLocal.radius !== Number(signalDoc.radius)) {
+                syncGPSCoordsFromFirestore(targetWh);
+              }
+            }
           } else if (signalDoc.updatedAt !== prevSignal) {
             lastKnownFirestoreSignal[targetWh] = signalDoc.updatedAt;
 
-            // PRESENSI BARU DARI HP TERDETEKSI!
-            // Ambil record spesifik tersebut secara langsung (< 1 KB)
+            // 1. SINYAL PERUBAHAN RADIUS / GPS DETEKSI INSTAN (SEKETIKA DITERAPKAN DI SELURUH HP SCANNER)
+            if (signalDoc.type === 'gps_update' || (signalDoc.radius && Number(signalDoc.radius) > 0)) {
+              const newRadius = Number(signalDoc.radius);
+              const curCoords = getWarehouseCoords(targetWh);
+              if (curCoords.radius !== newRadius) {
+                console.log(`[Firestore Realtime GPS] Radius ${targetWh} diperbarui dari Sinyal Cloud: ${curCoords.radius}m -> ${newRadius}m`);
+                const def = DEFAULT_COORDS[targetWh] || { lat: -6.263295, lng: 106.877066, radius: 100, name: `Gudang ${targetWh}` };
+                const newCoords = {
+                  lat: def.lat,
+                  lng: def.lng,
+                  radius: newRadius,
+                  name: def.name,
+                  updatedAt: signalDoc.updatedAt || new Date().toISOString()
+                };
+                localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(newCoords));
+                localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(newRadius));
+                if (activeWarehouse === targetWh) {
+                  localStorage.setItem('wfm_gps_radius', String(newRadius));
+                }
+                latestCachedGPS = null;
+                updateRegisteredCoordsDisplay();
+                showLiveRealtimeIndicator(`⚡ Radius GPS ${targetWh}: ${newRadius}m`);
+              }
+            }
+
+            // 2. SINYAL PRESENSI BARU DARI HP/SERVER
             if (signalDoc.lastRecordId) {
               const newRec = await getDocFromFirestore(targetWh, 'attendance', signalDoc.lastRecordId);
               if (newRec && (newRec.id || newRec.userName)) {
@@ -9782,12 +9898,15 @@
                   currentAtts.unshift(newRec);
                 }
                 setWhDB(targetWh, 'attendance', currentAtts, true);
-                renderAllLiveScreens();
+                // Jaga performa 60 FPS kamera HP: jangan render ulang tabel DOM jika kamera pemindai sedang aktif
+                if (!isScanning || !isAttendancePanel) {
+                  renderAllLiveScreens();
+                }
                 showLiveRealtimeIndicator(`⚡ Presensi Terupdate: ${newRec.userName || 'Karyawan'} (${newRec.checkOutTime ? 'Pulang' : 'Masuk'})`);
-              } else {
+              } else if (!isScanning || !isAttendancePanel) {
                 await pullAttendanceFromFirestore(targetWh, false);
               }
-            } else {
+            } else if (!isScanning || !isAttendancePanel) {
               await pullAttendanceFromFirestore(targetWh, false);
             }
           }
@@ -10516,32 +10635,35 @@
 
       let hasCoordsChanged = false;
       const lastGpsChange = parseInt(localStorage.getItem('wfm_last_gps_change_time') || '0', 10);
-      const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 600000);
+      const isRecentLocalGpsChange = (Date.now() - lastGpsChange < 30000); // 30 detik grace period
 
       if (!isRecentLocalGpsChange) {
-        if (db.mbi_coords) {
-          const cloudMbiRad = Number(db.mbi_coords.radius) || Number(db.gps_radius) || 100;
+        if (db.mbi_coords && Number(db.mbi_coords.radius) > 0) {
+          const cloudMbiRad = Number(db.mbi_coords.radius);
           const localMbi = getWarehouseCoords('MBI');
           if (localMbi.radius !== cloudMbiRad) {
             localStorage.setItem('wfm_mbi_coords', JSON.stringify({ lat: DEFAULT_COORDS.MBI.lat, lng: DEFAULT_COORDS.MBI.lng, radius: cloudMbiRad, name: 'Gudang MBI' }));
             localStorage.setItem('wfm_gps_radius_mbi', String(cloudMbiRad));
             if (activeWarehouse === 'MBI') localStorage.setItem('wfm_gps_radius', String(cloudMbiRad));
+            latestCachedGPS = null;
             hasCoordsChanged = true;
           }
         }
-        if (db.mai_coords) {
-          const cloudMaiRad = Number(db.mai_coords.radius) || Number(db.gps_radius) || 100;
+        if (db.mai_coords && Number(db.mai_coords.radius) > 0) {
+          const cloudMaiRad = Number(db.mai_coords.radius);
           const localMai = getWarehouseCoords('MAI');
           if (localMai.radius !== cloudMaiRad) {
             localStorage.setItem('wfm_mai_coords', JSON.stringify({ lat: DEFAULT_COORDS.MAI.lat, lng: DEFAULT_COORDS.MAI.lng, radius: cloudMaiRad, name: 'Gudang MAI' }));
             localStorage.setItem('wfm_gps_radius_mai', String(cloudMaiRad));
             if (activeWarehouse === 'MAI') localStorage.setItem('wfm_gps_radius', String(cloudMaiRad));
+            latestCachedGPS = null;
             hasCoordsChanged = true;
           }
         }
       }
 
       if (hasCoordsChanged) {
+        latestCachedGPS = null;
         updateRegisteredCoordsDisplay();
       }
 
@@ -11244,6 +11366,13 @@
                 if (u.role !== 'supervisor') { u.role = 'supervisor'; hasChanges = true; }
                 if (u.hasAccount !== true) { u.hasAccount = true; hasChanges = true; }
                 if (!u.password) { u.password = 'medika123'; hasChanges = true; }
+                if (!u.permissions) u.permissions = {};
+                if (u.permissions.perm_approve_leave_spv !== true || u.permissions.perm_approve_ot_spv !== true) {
+                  u.permissions.perm_approve_leave_spv = true;
+                  u.permissions.perm_approve_ot_spv = true;
+                  u.permissions.perm_reject_submission = true;
+                  hasChanges = true;
+                }
               } else if (isCoord) {
                 if (u.dept !== 'Coordinator') { u.dept = 'Coordinator'; hasChanges = true; }
                 if (u.role !== 'coordinator') { u.role = 'coordinator'; hasChanges = true; }
@@ -12013,9 +12142,11 @@
 
       const getActiveWhTarget = () => (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
 
-      // Sinkronkan data awal dari Cloud Firestore (Absensi Terkini) & Cloud Database
+      // Sinkronkan data awal dari Cloud Firestore (Absensi Terkini & Konfigurasi GPS Radius) & Cloud Database
       try {
         pullAttendanceFromFirestore(getActiveWhTarget(), false);
+        syncGPSCoordsFromFirestore('MBI').catch(() => {});
+        syncGPSCoordsFromFirestore('MAI').catch(() => {});
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
       } catch(e) {}
 
@@ -12515,7 +12646,7 @@
         items: [
           { key: "perm_wh_mbi", label: "Akses Gudang MBI", desc: "Izin melihat dan mengelola operasional di Gudang MBI" },
           { key: "perm_wh_mai", label: "Akses Gudang MAI", desc: "Izin melihat dan mengelola operasional di Gudang MAI" },
-          { key: "perm_wh_switch", label: "Ganti Gudang (MBI & MAI)", desc: "Izin berganti portal antara Gudang MBI dan MAI secara bebas" }
+          { key: "perm_wh_switch", label: "Akses Multi-Gudang (Kelola MBI & MAI)", desc: "Beri izin akun untuk berpindah dan mengelola operasional di kedua gudang secara penuh (termasuk approve cuti & lembur di MBI & MAI)" }
         ]
       },
       {
@@ -12766,7 +12897,7 @@
       const hasExplicitAccount = (u.hasAccount === true && role !== 'staff' && role !== 'scanner');
       const hasCustomPass = !!(u.password && String(u.password).trim().length > 0 && role !== 'staff' && role !== 'scanner');
 
-      return isSpv || isCoord || isMgr || isAdminRole || hasExplicitAccount || hasCustomPass;
+      return isSpv || isCoord || isMgr || isAdminRole || hasExplicitAccount || hasCustomPass || u.isMultiWarehouse === true;
     }
 
     function populatePermissionAccountDropdown(selectedNik = null) {
@@ -12993,6 +13124,8 @@
       const metaEl = document.getElementById('perm-user-meta-display');
       const roleEl = document.getElementById('perm-user-role-display');
       const whBadge = document.getElementById('perm-user-badge-wh');
+      const btnMulti = document.getElementById('btn-perm-toggle-multiwh');
+      const descMulti = document.getElementById('perm-user-multiwh-desc');
 
       if (nameEl) nameEl.innerText = user.name || '-';
       if (metaEl) metaEl.innerText = `NIK: ${user.nik} • Bagian: ${user.dept || '-'} • Outsource: ${user.outsource || 'Internal'}`;
@@ -13001,6 +13134,19 @@
         roleEl.className = (user.role === 'admin' || user.role === 'supervisor') ? 'font-black text-teal-700 uppercase' : 'font-black text-slate-900 uppercase';
       }
       if (whBadge) whBadge.innerText = `Gudang ${userWh}`;
+
+      const isMulti = !!(currentEditingPermissions['perm_wh_switch'] || user.isMultiWarehouse || user.warehouse === 'ALL');
+      if (btnMulti) {
+        if (isMulti) {
+          btnMulti.className = 'px-2.5 py-1 rounded-xl text-[10px] font-black transition flex items-center gap-1 bg-emerald-600 text-white shadow-xs cursor-pointer';
+          btnMulti.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> <span>MBI &amp; MAI Aktif</span>';
+          if (descMulti) descMulti.innerText = 'Bisa akses & kelola kedua gudang';
+        } else {
+          btnMulti.className = 'px-2.5 py-1 rounded-xl text-[10px] font-black transition flex items-center gap-1 bg-slate-200 text-slate-700 hover:bg-slate-300 cursor-pointer';
+          btnMulti.innerHTML = '<i data-lucide="lock" class="w-3 h-3"></i> <span>1 Gudang Saja</span>';
+          if (descMulti) descMulti.innerText = `Terkunci di Gudang ${userWh}`;
+        }
+      }
 
       // Render Categories
       const container = document.getElementById('perm-categories-container');
@@ -13095,6 +13241,24 @@
         btnDeny.className = `flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1 shadow-2xs ${!state ? 'bg-rose-600 text-white font-extrabold shadow-sm' : 'bg-white hover:bg-rose-50 text-slate-600 border border-slate-200'}`;
       }
 
+      // Sinkronkan status tombol toggle kartu multi-gudang jika yang diubah adalah perm_wh_switch
+      if (permKey === 'perm_wh_switch') {
+        const btnMulti = document.getElementById('btn-perm-toggle-multiwh');
+        const descMulti = document.getElementById('perm-user-multiwh-desc');
+        if (btnMulti) {
+          if (state) {
+            btnMulti.className = 'px-2.5 py-1 rounded-xl text-[10px] font-black transition flex items-center gap-1 bg-emerald-600 text-white shadow-xs cursor-pointer';
+            btnMulti.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> <span>MBI &amp; MAI Aktif</span>';
+            if (descMulti) descMulti.innerText = 'Bisa akses & kelola kedua gudang';
+          } else {
+            btnMulti.className = 'px-2.5 py-1 rounded-xl text-[10px] font-black transition flex items-center gap-1 bg-slate-200 text-slate-700 hover:bg-slate-300 cursor-pointer';
+            btnMulti.innerHTML = '<i data-lucide="lock" class="w-3 h-3"></i> <span>1 Gudang Saja</span>';
+            if (descMulti) descMulti.innerText = 'Terkunci 1 Gudang Saja';
+          }
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+
       // Update badge category count
       if (catIdx !== null && PERMISSION_DEFINITIONS[catIdx]) {
         const cat = PERMISSION_DEFINITIONS[catIdx];
@@ -13106,6 +13270,24 @@
           badgeEl.innerText = `${grantedCount} / ${totalCount} Diizinkan`;
         }
       }
+    }
+
+    function toggleMultiWarehouseInPermissions() {
+      const isCurrentlyMulti = !!currentEditingPermissions['perm_wh_switch'];
+      const nextState = !isCurrentlyMulti;
+
+      currentEditingPermissions['perm_wh_switch'] = nextState;
+      if (nextState) {
+        currentEditingPermissions['perm_wh_mbi'] = true;
+        currentEditingPermissions['perm_wh_mai'] = true;
+      }
+
+      togglePermissionItem('perm_wh_switch', nextState, 0);
+      if (nextState) {
+        togglePermissionItem('perm_wh_mbi', true, 0);
+        togglePermissionItem('perm_wh_mai', true, 0);
+      }
+      if (window.lucide) lucide.createIcons();
     }
 
     function applyPermissionPreset(presetType) {
@@ -13188,6 +13370,17 @@
         return;
       }
 
+      const isMulti = currentEditingPermissions['perm_wh_switch'] === true;
+      users[idx].isMultiWarehouse = isMulti;
+      if (isMulti) {
+        users[idx].accessibleWarehouses = ['MBI', 'MAI'];
+        currentEditingPermissions['perm_wh_switch'] = true;
+        currentEditingPermissions['perm_wh_mbi'] = true;
+        currentEditingPermissions['perm_wh_mai'] = true;
+      } else {
+        users[idx].accessibleWarehouses = [actualWh];
+      }
+
       const nowIso = new Date().toISOString();
       users[idx].permissions = { ...currentEditingPermissions };
       users[idx].updatedAt = nowIso;
@@ -13220,14 +13413,54 @@
             setWhDB(otherWh, 'users', otherUsers);
             localStorage.setItem(`wfm_${otherWh.toLowerCase()}_users_backup`, JSON.stringify(otherUsers));
           }
+        } else if (isMulti) {
+          // Sinkronkan ke database gudang lainnya untuk akun multi-gudang (misal: SPV / Coordinator / Staff yang diberi multi-gudang)
+          const otherWh = actualWh === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const otherIdx = otherUsers.findIndex(u => (u.nik && u.nik.toUpperCase() === targetNik) || (u.id && u.id === users[idx].id) || cleanStr(u.name) === cleanStr(users[idx].name));
+          const mirroredUser = {
+            ...users[idx],
+            warehouse: otherWh,
+            isMultiWarehouse: true,
+            accessibleWarehouses: ['MBI', 'MAI'],
+            permissions: { ...currentEditingPermissions },
+            updatedAt: nowIso
+          };
+          if (otherIdx !== -1) {
+            otherUsers[otherIdx] = mirroredUser;
+          } else {
+            otherUsers.push(mirroredUser);
+          }
+          setWhDB(otherWh, 'users', otherUsers);
+          localStorage.setItem(`wfm_${otherWh.toLowerCase()}_users_backup`, JSON.stringify(otherUsers));
+          try {
+            localStorage.setItem(`wfm_perm_${otherWh.toLowerCase()}_${targetNik}`, JSON.stringify(currentEditingPermissions));
+          } catch(e) {}
+        } else {
+          // Jika akses multi-gudang dicabut pada akun non-manager
+          const otherWh = actualWh === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const otherIdx = otherUsers.findIndex(u => (u.nik && u.nik.toUpperCase() === targetNik) || (u.id && u.id === users[idx].id) || cleanStr(u.name) === cleanStr(users[idx].name));
+          if (otherIdx !== -1) {
+            otherUsers[otherIdx].isMultiWarehouse = false;
+            otherUsers[otherIdx].accessibleWarehouses = [otherWh];
+            if (otherUsers[otherIdx].permissions) {
+              otherUsers[otherIdx].permissions.perm_wh_switch = false;
+            }
+            setWhDB(otherWh, 'users', otherUsers);
+            localStorage.setItem(`wfm_${otherWh.toLowerCase()}_users_backup`, JSON.stringify(otherUsers));
+          }
         }
       } catch(e) {}
 
       // Jika akun yang diedit adalah akun yang sedang aktif login
       if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id || (isMgr && isUserManager(currentUser)))) {
         currentUser.permissions = { ...currentEditingPermissions };
+        currentUser.isMultiWarehouse = isMulti;
+        currentUser.accessibleWarehouses = isMulti ? ['MBI', 'MAI'] : [actualWh];
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
         applyRolePermissions();
+        if (typeof updateWhSwitcherButtons === 'function') updateWhSwitcherButtons();
       }
 
       // Sync ke Firebase Cloud 24/7 dengan master force upload
@@ -14339,7 +14572,9 @@
       populateDropdownEmployees();
       renderOvertimeEmployeeGrid();
       populatePermissionAccountDropdown();
+      latestCachedGPS = null;
       updateRegisteredCoordsDisplay();
+      try { syncGPSCoordsFromFirestore(wh).then(() => updateRegisteredCoordsDisplay()).catch(() => {}); } catch(e) {}
       resetVerificationState();
       try { updateFirebaseUrlUI(); } catch(e) {}
       lucide.createIcons();
@@ -14818,7 +15053,7 @@
           isGPSFetching = false;
           console.warn('GPS preload error:', err);
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 300000 }
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 15000 }
       );
     }
 
@@ -14826,23 +15061,31 @@
       return new Promise((resolve) => {
         const whToUse = targetWh || activeWarehouse || 'MBI';
         const now = Date.now();
+        const targetCoords = getWarehouseCoords(whToUse);
+        const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
+        const maxRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
+        const effectiveAllowedRadius = maxRadius + 10; // Toleransi Jarak Tetap +10 Meter
 
-        // 1. Jika ada cache GPS yang VALID dan masih hangat (< 10 menit) untuk gudang ini, gunakan seketika (0ms!)
-        if (latestCachedGPS && latestCachedGPS.valid && latestCachedGPS.wh === whToUse && (now - latestCachedGPS.timestamp < 600000)) {
+        // 1. Jika ada cache GPS yang VALID dan radiusnya COCOK serta masih hangat (< 2 menit), gunakan seketika (0ms!)
+        if (latestCachedGPS && 
+            latestCachedGPS.valid && 
+            latestCachedGPS.wh === whToUse && 
+            latestCachedGPS.maxRadius === maxRadius &&
+            latestCachedGPS.distance <= effectiveAllowedRadius &&
+            (now - latestCachedGPS.timestamp < 120000)) {
           // Lakukan background refresh tanpa memblokir proses scan
           setTimeout(() => preloadGPSLocation(whToUse), 100);
           resolve(latestCachedGPS);
           return;
         }
 
+        // Jika radius berubah atau cache sudah tidak cocok/basi, reset cache seketika
+        latestCachedGPS = null;
+
         if (!navigator.geolocation) {
           resolve({ valid: false, error: 'Browser ini tidak mendukung fitur GPS Geolocation.' });
           return;
         }
-
-        const targetCoords = getWarehouseCoords(whToUse);
-        const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
-        const maxRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
 
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -14851,7 +15094,6 @@
             const accuracy = Math.round(pos.coords.accuracy || 0);
 
             const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-            const effectiveAllowedRadius = maxRadius + 10; // Toleransi Jarak Tetap +10 Meter
             const isValid = (rawDistActive <= effectiveAllowedRadius);
 
             const res = {
@@ -14883,7 +15125,7 @@
             else if (err.code === 3) errMsg = 'Permintaan GPS timeout. Silakan coba scan kembali.';
             resolve({ valid: false, error: errMsg });
           },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 300000 }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 15000 }
         );
       });
     }
@@ -16630,6 +16872,14 @@
     // KAMERA SCANNER (BUKA & TUTUP) - MULTI-DEVICE IPHONE, ANDROID & LAPTOP
     // =========================================================
     async function startScanner() {
+      // Tarik konfigurasi GPS terbaru dari Cloud Firestore secara instan
+      try {
+        const curWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+        syncGPSCoordsFromFirestore(curWh).then(() => {
+          updateRegisteredCoordsDisplay();
+        }).catch(() => {});
+      } catch(e) {}
+
       // 1. Tampilkan container video, sembunyikan standby
       const videoWrapper = document.getElementById('camera-video-wrapper');
       const standbyWrapper = document.getElementById('camera-standby-wrapper');
@@ -18447,11 +18697,6 @@
       document.getElementById('edit-emp-joindate').value = user.joinDate || '';
       document.getElementById('edit-emp-pass').value = '';
 
-      const multiWhCheck = document.getElementById('edit-emp-multiwh');
-      if (multiWhCheck) {
-        multiWhCheck.checked = !!(user.isMultiWarehouse || user.warehouse === 'ALL' || user.permissions?.perm_wh_switch || canAccessMultiWarehouse(user));
-      }
-
       document.getElementById('edit-emp-modal').classList.remove('hidden');
       lucide.createIcons();
     }
@@ -18601,7 +18846,7 @@
         users[idx].status = 'active';
         users[idx].isActive = true;
         
-        const isMultiWhChecked = document.getElementById('edit-emp-multiwh')?.checked || false;
+        // 1. Tangani Akun Login & Password
         if (isManagementRole) {
           users[idx].hasAccount = true;
           if (customPass) {
@@ -18623,30 +18868,97 @@
           users[idx].password = '';
         }
 
-        if (isMultiWhChecked) {
-          users[idx].isMultiWarehouse = true;
+        // 2. PERTAHANKAN STATUS MULTI-GUDANG (Pengaturan Multi-Gudang DIKELOLA DI MENU HAK AKSES AKUN)
+        const isMultiWh = !!(users[idx].isMultiWarehouse || users[idx].warehouse === 'ALL' || (users[idx].permissions && users[idx].permissions.perm_wh_switch) || canAccessMultiWarehouse(users[idx]));
+        users[idx].isMultiWarehouse = isMultiWh;
+        if (isMultiWh) {
           users[idx].accessibleWarehouses = ['MBI', 'MAI'];
         } else {
-          users[idx].isMultiWarehouse = false;
           users[idx].accessibleWarehouses = [currentWh];
         }
 
-        // Sinkronisasi hak akses (permissions) sesuai role baru secara otomatis
+        // 3. SINKRONISASI OTOMATIS HAK AKSES SESUAI ROLE BARU
+        // Jika jabatan diubah (misal: Coordinator -> Supervisor), otomatis akun mendapatkan seluruh kewenangan role tersebut
         const freshPerms = getDefaultPermissions(users[idx]);
         users[idx].permissions = { ...(users[idx].permissions || {}), ...freshPerms };
-        if (isMultiWhChecked) {
-          users[idx].permissions.perm_wh_switch = true;
-          users[idx].permissions.perm_wh_mbi = true;
-          users[idx].permissions.perm_wh_mai = true;
-        }
+        
         if (finalRole === 'supervisor') {
           users[idx].permissions.perm_approve_leave_spv = true;
           users[idx].permissions.perm_approve_ot_spv = true;
           users[idx].permissions.perm_reject_submission = true;
+          users[idx].permissions.perm_submit_batch_ot = true;
+          users[idx].permissions.perm_submit_leave_staff = true;
+          users[idx].permissions.perm_emp_view = true;
+          users[idx].permissions.perm_emp_add = true;
+          users[idx].permissions.perm_emp_edit = true;
+          users[idx].permissions.perm_emp_download_excel = true;
+          users[idx].permissions.perm_rep_records = true;
+          users[idx].permissions.perm_rep_matrix = true;
+          users[idx].permissions.perm_rep_workhours = true;
+          users[idx].permissions.perm_rep_leaves = true;
+          users[idx].permissions.perm_rep_ot = true;
+          users[idx].permissions.perm_rep_copy_matrix = true;
+          users[idx].permissions.perm_rep_download_excel = true;
+          users[idx].permissions.perm_idcard_single = true;
+          users[idx].permissions.perm_idcard_batch_a4 = true;
+          users[idx].permissions.perm_idcard_qr_location = true;
+          users[idx].permissions.perm_sys_manage_permissions = true;
+          users[idx].permissions.perm_approve_leave_mgr = false;
+          users[idx].permissions.perm_approve_ot_mgr = false;
+        } else if (finalRole === 'coordinator') {
+          users[idx].permissions.perm_approve_leave_spv = false;
+          users[idx].permissions.perm_approve_ot_spv = false;
+          users[idx].permissions.perm_approve_leave_mgr = false;
+          users[idx].permissions.perm_approve_ot_mgr = false;
+          users[idx].permissions.perm_reject_submission = false;
+          users[idx].permissions.perm_submit_batch_ot = true;
+          users[idx].permissions.perm_submit_leave_staff = true;
+          users[idx].permissions.perm_emp_view = true;
+          users[idx].permissions.perm_rep_records = true;
+          users[idx].permissions.perm_rep_matrix = true;
+          users[idx].permissions.perm_rep_workhours = true;
+          users[idx].permissions.perm_rep_leaves = true;
+          users[idx].permissions.perm_rep_ot = true;
         }
+
+        if (isMultiWh) {
+          users[idx].permissions.perm_wh_switch = true;
+          users[idx].permissions.perm_wh_mbi = true;
+          users[idx].permissions.perm_wh_mai = true;
+        }
+
+        const targetNikKey = (users[idx].nik || users[idx].id || '').toUpperCase().trim();
         try {
-          saveUserPerms(users[idx].nik || users[idx].id, users[idx].permissions, users[idx].warehouse);
+          if (targetNikKey) {
+            localStorage.setItem(`wfm_perm_${currentWh.toLowerCase()}_${targetNikKey}`, JSON.stringify(users[idx].permissions));
+            localStorage.setItem(`wfm_perm_${targetNikKey}`, JSON.stringify(users[idx].permissions));
+          }
         } catch(e) {}
+
+        // 4. SINKRONISASI KE GUDANG LAIN JIKA AKUN ADALAH MULTI-GUDANG
+        if (isMultiWh) {
+          const otherWh = currentWh === 'MBI' ? 'MAI' : 'MBI';
+          let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const oIdx = otherUsers.findIndex(u => (u.nik && u.nik.toUpperCase() === targetNikKey) || (u.id && u.id === users[idx].id) || cleanStr(u.name) === cleanStr(users[idx].name));
+          const mirroredUser = {
+            ...users[idx],
+            warehouse: otherWh,
+            isMultiWarehouse: true,
+            accessibleWarehouses: ['MBI', 'MAI'],
+            permissions: { ...users[idx].permissions },
+            updatedAt: nowIso
+          };
+          if (oIdx !== -1) {
+            otherUsers[oIdx] = mirroredUser;
+          } else {
+            otherUsers.push(mirroredUser);
+          }
+          setWhDB(otherWh, 'users', otherUsers);
+          localStorage.setItem(`wfm_${otherWh.toLowerCase()}_users_backup`, JSON.stringify(otherUsers));
+          try {
+            localStorage.setItem(`wfm_perm_${otherWh.toLowerCase()}_${targetNikKey}`, JSON.stringify(users[idx].permissions));
+          } catch(e) {}
+        }
 
         // Jika akun yang sedang login adalah user ini, perbarui sesi aktif langsung
         if (currentUser && ((currentUser.id && currentUser.id === users[idx].id) || (currentUser.nik && currentUser.nik === users[idx].nik))) {
