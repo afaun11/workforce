@@ -12867,36 +12867,7 @@
     function hasPermission(permKey, user = currentUser) {
       if (!user) return false;
 
-      // 1. Hak istimewa mutlak berdasarkan Role akun yang sedang aktif:
-      // Akun Supervisor DIJAMIN selalu memiliki wewenang approve tahap 1 cuti/sakit & lembur
-      if (isUserSupervisor(user)) {
-        if (permKey === 'perm_approve_leave_spv' || permKey === 'perm_approve_ot_spv' || permKey === 'perm_reject_submission') {
-          return true;
-        }
-      }
-
-      // Akun Manager DIJAMIN selalu memiliki wewenang approve final, tolak, dan switch multi gudang
-      if (isUserManager(user)) {
-        if (permKey === 'perm_approve_leave_mgr' || permKey === 'perm_approve_ot_mgr' || permKey === 'perm_reject_submission' || permKey === 'perm_wh_switch' || permKey === 'perm_wh_mbi' || permKey === 'perm_wh_mai') {
-          return true;
-        }
-      }
-
-      // Akun Coordinator DIJAMIN selalu memiliki wewenang form lembur massal & form izin/cuti
-      if (isUserCoordinator(user)) {
-        if (permKey === 'perm_submit_batch_ot' || permKey === 'perm_submit_leave_staff' || permKey === 'perm_rep_records' || permKey === 'perm_rep_matrix') {
-          return true;
-        }
-      }
-
-      // Akun Multi-Gudang DIJAMIN selalu memiliki izin membuka & switch gudang MBI dan MAI
-      if (canAccessMultiWarehouse(user)) {
-        if (permKey === 'perm_wh_switch' || permKey === 'perm_wh_mbi' || permKey === 'perm_wh_mai') {
-          return true;
-        }
-      }
-
-      // 2. Hak akses eksplisit yang tersimpan di objek user
+      // 1. Hak akses eksplisit yang tersimpan di objek user (Prioritas Tertinggi)
       if (user.permissions && typeof user.permissions[permKey] === 'boolean') {
         return user.permissions[permKey];
       }
@@ -12906,6 +12877,36 @@
         user.permissions[permKey] = savedPerms[permKey];
         return savedPerms[permKey];
       }
+
+      // 2. Hak akses default berdasarkan Role jika belum ada kustomisasi izin:
+      // Akun Supervisor default memiliki wewenang approve tahap 1 cuti/sakit & lembur
+      if (isUserSupervisor(user)) {
+        if (permKey === 'perm_approve_leave_spv' || permKey === 'perm_approve_ot_spv' || permKey === 'perm_reject_submission') {
+          return true;
+        }
+      }
+
+      // Akun Manager default memiliki wewenang approve final, tolak, dan switch multi gudang
+      if (isUserManager(user)) {
+        if (permKey === 'perm_approve_leave_mgr' || permKey === 'perm_approve_ot_mgr' || permKey === 'perm_reject_submission' || permKey === 'perm_wh_switch' || permKey === 'perm_wh_mbi' || permKey === 'perm_wh_mai') {
+          return true;
+        }
+      }
+
+      // Akun Coordinator default memiliki wewenang form lembur massal & form izin/cuti
+      if (isUserCoordinator(user)) {
+        if (permKey === 'perm_submit_batch_ot' || permKey === 'perm_submit_leave_staff' || permKey === 'perm_rep_records' || permKey === 'perm_rep_matrix') {
+          return true;
+        }
+      }
+
+      // Akun Multi-Gudang default memiliki izin membuka & switch gudang MBI dan MAI
+      if (canAccessMultiWarehouse(user)) {
+        if (permKey === 'perm_wh_switch' || permKey === 'perm_wh_mbi' || permKey === 'perm_wh_mai') {
+          return true;
+        }
+      }
+
       const defaults = getDefaultPermissions(user);
       return !!defaults[permKey];
     }
@@ -12915,20 +12916,27 @@
       const role = (user.role || '').toLowerCase().trim();
       if (role === 'scanner' || user.nik === 'ABSEN-MBI' || user.nik === 'ABSEN-MAI') return false;
 
-      // Administrator & Manager mengelola multi-gudang (MBI & MAI) secara bebas
-      if (isUserAdmin(user) || isUserManager(user)) {
-        return true;
+      // 1. Prioritaskan izin eksplisit perm_wh_switch (termasuk Admin yang dinonaktifkan multi-gudangnya)
+      if (user.permissions && typeof user.permissions.perm_wh_switch === 'boolean') {
+        return user.permissions.perm_wh_switch;
+      }
+      const savedPerms = getSavedUserPerms(user.nik || user.id, user.warehouse);
+      if (savedPerms && typeof savedPerms.perm_wh_switch === 'boolean') {
+        return savedPerms.perm_wh_switch;
       }
 
-      // Akun dengan pengaturan multi-gudang eksplisit (isMultiWarehouse / warehouse ALL)
+      // 2. Akun yang secara eksplisit diset bukan multi warehouse
+      if (user.isMultiWarehouse === false) {
+        return false;
+      }
+
+      // 3. Akun dengan pengaturan multi-gudang eksplisit (isMultiWarehouse / warehouse ALL)
       if (user.isMultiWarehouse === true || user.warehouse === 'ALL' || (Array.isArray(user.accessibleWarehouses) && user.accessibleWarehouses.length > 1)) {
         return true;
       }
 
-      // Cek apakah akun memiliki izin ganti gudang / multi gudang dari permission
-      const hasSwitchPerm = (user.permissions && user.permissions.perm_wh_switch === true) || false;
-      const savedPerms = getSavedUserPerms(user.nik || user.id, user.warehouse);
-      if (hasSwitchPerm || (savedPerms && savedPerms.perm_wh_switch === true)) {
+      // 4. Default role (Administrator & Manager default aktif multi-gudang jika belum dikustomisasi)
+      if (isUserAdmin(user) || isUserManager(user)) {
         return true;
       }
 
@@ -13191,7 +13199,7 @@
       }
       if (whBadge) whBadge.innerText = `Gudang ${userWh}`;
 
-      const isMulti = !!(currentEditingPermissions['perm_wh_switch'] || user.isMultiWarehouse || user.warehouse === 'ALL');
+      const isMulti = (typeof currentEditingPermissions['perm_wh_switch'] === 'boolean') ? currentEditingPermissions['perm_wh_switch'] : !!(user.isMultiWarehouse || user.warehouse === 'ALL');
       if (btnMulti) {
         if (isMulti) {
           btnMulti.className = 'px-2.5 py-1 rounded-xl text-[10px] font-black transition flex items-center gap-1 bg-emerald-600 text-white shadow-xs cursor-pointer';
@@ -13336,13 +13344,22 @@
       if (nextState) {
         currentEditingPermissions['perm_wh_mbi'] = true;
         currentEditingPermissions['perm_wh_mai'] = true;
+      } else {
+        const select = document.getElementById('perm-account-select');
+        const [wh] = (select?.value || '').split('__');
+        const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+        if (targetWh === 'MAI') {
+          currentEditingPermissions['perm_wh_mbi'] = false;
+          currentEditingPermissions['perm_wh_mai'] = true;
+        } else {
+          currentEditingPermissions['perm_wh_mbi'] = true;
+          currentEditingPermissions['perm_wh_mai'] = false;
+        }
       }
 
       togglePermissionItem('perm_wh_switch', nextState, 0);
-      if (nextState) {
-        togglePermissionItem('perm_wh_mbi', true, 0);
-        togglePermissionItem('perm_wh_mai', true, 0);
-      }
+      togglePermissionItem('perm_wh_mbi', !!currentEditingPermissions['perm_wh_mbi'], 0);
+      togglePermissionItem('perm_wh_mai', !!currentEditingPermissions['perm_wh_mai'], 0);
       if (window.lucide) lucide.createIcons();
     }
 
@@ -13435,6 +13452,17 @@
         currentEditingPermissions['perm_wh_mai'] = true;
       } else {
         users[idx].accessibleWarehouses = [actualWh];
+        currentEditingPermissions['perm_wh_switch'] = false;
+        if (currentEditingPermissions['perm_wh_mai'] === true && currentEditingPermissions['perm_wh_mbi'] === false) {
+          users[idx].warehouse = 'MAI';
+          actualWh = 'MAI';
+        } else if (currentEditingPermissions['perm_wh_mbi'] === true && currentEditingPermissions['perm_wh_mai'] === false) {
+          users[idx].warehouse = 'MBI';
+          actualWh = 'MBI';
+        } else {
+          currentEditingPermissions['perm_wh_mbi'] = (actualWh === 'MBI');
+          currentEditingPermissions['perm_wh_mai'] = (actualWh === 'MAI');
+        }
       }
 
       const nowIso = new Date().toISOString();
@@ -13509,11 +13537,12 @@
         }
       } catch(e) {}
 
-      // Jika akun yang diedit adalah akun yang sedang aktif login
-      if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id || (isMgr && isUserManager(currentUser)))) {
+      // Jika akun yang diedit adalah akun yang sedang aktif login (atau sesama admin)
+      if (currentUser && (currentUser.nik === users[idx].nik || currentUser.id === users[idx].id || (isMgr && isUserManager(currentUser)) || (isUserAdmin(currentUser) && isUserAdmin(users[idx])))) {
         currentUser.permissions = { ...currentEditingPermissions };
         currentUser.isMultiWarehouse = isMulti;
         currentUser.accessibleWarehouses = isMulti ? ['MBI', 'MAI'] : [actualWh];
+        currentUser.warehouse = users[idx].warehouse || actualWh;
         localStorage.setItem('wfm_active_session', JSON.stringify(currentUser));
         applyRolePermissions();
         if (typeof updateWhSwitcherButtons === 'function') updateWhSwitcherButtons();
@@ -13790,8 +13819,39 @@
       const btnMai = document.getElementById('wh-btn-mai');
       const canMultiWh = canAccessMultiWarehouse(currentUser);
       const userWh = (currentUser ? currentUser.warehouse : activeWarehouse) || 'MBI';
-      const canMbi = canMultiWh || hasPermission('perm_wh_mbi') || (userWh === 'MBI' && !hasPermission('perm_wh_mai'));
-      const canMai = canMultiWh || hasPermission('perm_wh_mai') || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'));
+      let canMbi = false;
+      let canMai = false;
+
+      if (canMultiWh) {
+        canMbi = hasPermission('perm_wh_mbi');
+        canMai = hasPermission('perm_wh_mai');
+        if (!canMbi && !canMai) {
+          canMbi = true;
+          canMai = true;
+        }
+      } else {
+        // Mode 1 Gudang Saja: Tampilkan HANYA gudang yang berhak diakses
+        if (hasPermission('perm_wh_mai') && !hasPermission('perm_wh_mbi')) {
+          canMbi = false;
+          canMai = true;
+        } else if (hasPermission('perm_wh_mbi') && !hasPermission('perm_wh_mai')) {
+          canMbi = true;
+          canMai = false;
+        } else {
+          canMbi = (userWh === 'MBI');
+          canMai = (userWh === 'MAI');
+        }
+      }
+
+      if (!canMultiWh) {
+        if (canMbi && !canMai && activeWarehouse !== 'MBI') {
+          activeWarehouse = 'MBI';
+          updateNavbarBrand('MBI');
+        } else if (canMai && !canMbi && activeWarehouse !== 'MAI') {
+          activeWarehouse = 'MAI';
+          updateNavbarBrand('MAI');
+        }
+      }
 
       if (btnMbi) {
         if (canMbi) {
@@ -14774,7 +14834,17 @@
       const targetWh = (wh || 'MBI').toUpperCase();
       const canMulti = canAccessMultiWarehouse(currentUser);
       const userWh = (currentUser ? currentUser.warehouse : activeWarehouse) || 'MBI';
-      const canTarget = canMulti || (targetWh === 'MBI' ? (hasPermission('perm_wh_mbi') || (userWh === 'MBI' && !hasPermission('perm_wh_mai'))) : (hasPermission('perm_wh_mai') || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'))));
+      let canTarget = false;
+      if (canMulti) {
+        canTarget = (targetWh === 'MBI') ? hasPermission('perm_wh_mbi') : hasPermission('perm_wh_mai');
+        if (!hasPermission('perm_wh_mbi') && !hasPermission('perm_wh_mai')) canTarget = true;
+      } else {
+        if (targetWh === 'MBI') {
+          canTarget = (hasPermission('perm_wh_mbi') && !hasPermission('perm_wh_mai')) || (userWh === 'MBI' && !hasPermission('perm_wh_mai'));
+        } else {
+          canTarget = (hasPermission('perm_wh_mai') && !hasPermission('perm_wh_mbi')) || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'));
+        }
+      }
       if (!canTarget) {
         alert('Akses Ditolak: Akun Anda tidak memiliki izin untuk membuka Gudang ' + targetWh + '.');
         return;
@@ -14814,8 +14884,39 @@
 
       const canMulti = canAccessMultiWarehouse(currentUser);
       const userWh = (currentUser ? currentUser.warehouse : activeWarehouse) || 'MBI';
-      const canMbi = canMulti || hasPermission('perm_wh_mbi') || (userWh === 'MBI' && !hasPermission('perm_wh_mai'));
-      const canMai = canMulti || hasPermission('perm_wh_mai') || (userWh === 'MAI' && !hasPermission('perm_wh_mbi'));
+      let canMbi = false;
+      let canMai = false;
+
+      if (canMulti) {
+        canMbi = hasPermission('perm_wh_mbi');
+        canMai = hasPermission('perm_wh_mai');
+        if (!canMbi && !canMai) {
+          canMbi = true;
+          canMai = true;
+        }
+      } else {
+        // Mode 1 Gudang Saja: Tampilkan HANYA gudang yang berhak diakses
+        if (hasPermission('perm_wh_mai') && !hasPermission('perm_wh_mbi')) {
+          canMbi = false;
+          canMai = true;
+        } else if (hasPermission('perm_wh_mbi') && !hasPermission('perm_wh_mai')) {
+          canMbi = true;
+          canMai = false;
+        } else {
+          canMbi = (userWh === 'MBI');
+          canMai = (userWh === 'MAI');
+        }
+      }
+
+      if (!canMulti) {
+        if (canMbi && !canMai && activeWarehouse !== 'MBI') {
+          activeWarehouse = 'MBI';
+          updateNavbarBrand('MBI');
+        } else if (canMai && !canMbi && activeWarehouse !== 'MAI') {
+          activeWarehouse = 'MAI';
+          updateNavbarBrand('MAI');
+        }
+      }
 
       if (btnMbi) {
         if (canMbi) {
@@ -15060,12 +15161,14 @@
     }
 
     function navigateToPendingApproval(type) {
-      const isSpv = currentUser && isUserSupervisor(currentUser);
-      const isMgr = currentUser && isUserManager(currentUser);
-      const isAdmin = currentUser && isUserAdmin(currentUser);
+      const canApprove = hasPermission('perm_approve_leave_spv') || 
+                         hasPermission('perm_approve_leave_mgr') || 
+                         hasPermission('perm_approve_ot_spv') || 
+                         hasPermission('perm_approve_ot_mgr') || 
+                         (currentUser && (isUserAdmin(currentUser) || isUserManager(currentUser) || isUserSupervisor(currentUser)));
 
-      if (!isSpv && !isMgr && !isAdmin) {
-        alert("Akses Ditolak: Halaman persetujuan ini khusus untuk akun Supervisor dan Manager.");
+      if (!canApprove) {
+        alert("Akses Ditolak: Anda tidak memiliki hak akses persetujuan (approval). Hubungi Administrator.");
         return;
       }
 
@@ -15128,16 +15231,15 @@
       const statLeave = document.getElementById('stat-today-leave');
       if (statLeave) statLeave.innerText = `${todayLeaves.length} Orang`;
 
-      const isSpv = currentUser && isUserSupervisor(currentUser);
-      const isMgr = currentUser && isUserManager(currentUser);
+      const canApproveSpvLeave = hasPermission('perm_approve_leave_spv');
+      const canApproveMgrLeave = hasPermission('perm_approve_leave_mgr');
+      const canApproveSpvOt = hasPermission('perm_approve_ot_spv');
+      const canApproveMgrOt = hasPermission('perm_approve_ot_mgr');
 
       // 1. Pending Cuti
       let cutiCount = 0;
       let cutiNote = 'Perlu Review';
-      if (isSpv) {
-        cutiCount = leaves.filter(l => l.type === 'cuti' && l.status === 'pending').length;
-        cutiNote = cutiCount > 0 ? 'Menunggu Persetujuan SPV' : 'Semua Selesai Direview';
-      } else if (isMgr) {
+      if (canApproveMgrLeave) {
         const waitingMgr = leaves.filter(l => l.type === 'cuti' && l.status === 'pending_manager').length;
         const waitingSpv = leaves.filter(l => l.type === 'cuti' && l.status === 'pending').length;
         cutiCount = waitingMgr + waitingSpv;
@@ -15148,6 +15250,9 @@
         } else {
           cutiNote = 'Semua Selesai Disetujui';
         }
+      } else if (canApproveSpvLeave) {
+        cutiCount = leaves.filter(l => l.type === 'cuti' && l.status === 'pending').length;
+        cutiNote = cutiCount > 0 ? 'Menunggu Persetujuan SPV' : 'Semua Selesai Direview';
       } else {
         cutiCount = leaves.filter(l => l.type === 'cuti' && (l.status === 'pending' || l.status === 'pending_manager')).length;
         cutiNote = cutiCount > 0 ? 'Dalam Proses Approval' : 'Semua Selesai Disetujui';
@@ -15156,10 +15261,7 @@
       // 2. Pending Sakit
       let sakitCount = 0;
       let sakitNote = 'Perlu Review';
-      if (isSpv) {
-        sakitCount = leaves.filter(l => l.type === 'sakit' && l.status === 'pending').length;
-        sakitNote = sakitCount > 0 ? 'Menunggu Persetujuan SPV' : 'Semua Selesai Direview';
-      } else if (isMgr) {
+      if (canApproveMgrLeave) {
         const waitingMgr = leaves.filter(l => l.type === 'sakit' && l.status === 'pending_manager').length;
         const waitingSpv = leaves.filter(l => l.type === 'sakit' && l.status === 'pending').length;
         sakitCount = waitingMgr + waitingSpv;
@@ -15170,6 +15272,9 @@
         } else {
           sakitNote = 'Semua Selesai Disetujui';
         }
+      } else if (canApproveSpvLeave) {
+        sakitCount = leaves.filter(l => l.type === 'sakit' && l.status === 'pending').length;
+        sakitNote = sakitCount > 0 ? 'Menunggu Persetujuan SPV' : 'Semua Selesai Direview';
       } else {
         sakitCount = leaves.filter(l => l.type === 'sakit' && (l.status === 'pending' || l.status === 'pending_manager')).length;
         sakitNote = sakitCount > 0 ? 'Dalam Proses Approval' : 'Semua Selesai Disetujui';
@@ -15178,10 +15283,7 @@
       // 3. Pending Lembur
       let otCount = 0;
       let otNote = 'Perlu Review Upah';
-      if (isSpv) {
-        otCount = overtimes.filter(o => o.status === 'pending').length;
-        otNote = otCount > 0 ? 'Menunggu Persetujuan SPV' : 'Semua Selesai Direview';
-      } else if (isMgr) {
+      if (canApproveMgrOt) {
         const waitingMgr = overtimes.filter(o => o.status === 'pending_manager').length;
         const waitingSpv = overtimes.filter(o => o.status === 'pending').length;
         otCount = waitingMgr + waitingSpv;
@@ -15192,6 +15294,9 @@
         } else {
           otNote = 'Semua Selesai Disetujui';
         }
+      } else if (canApproveSpvOt) {
+        otCount = overtimes.filter(o => o.status === 'pending').length;
+        otNote = otCount > 0 ? 'Menunggu Persetujuan SPV' : 'Semua Selesai Direview';
       } else {
         otCount = overtimes.filter(o => o.status === 'pending' || o.status === 'pending_manager').length;
         otNote = otCount > 0 ? 'Dalam Proses Approval' : 'Semua Selesai Disetujui';
@@ -17180,20 +17285,24 @@
           // Buka kamera instan tanpa menunda panggilan getCameras() yang lambat di HP
           let cameraConfig = { facingMode: "environment" };
 
-          // Format barcode esensial ID Card gudang (Code-128, QR Code, Code-39, EAN-13)
-          // Mengurangi format yang tidak terpakai (ITF/Codabar/UPC) mempercepat proses scan 4x lipat
+          // Deteksi iOS (iPhone / iPad) untuk penyesuaian engine scanner
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+          // Format barcode esensial ID Card gudang: Utamakan QR_CODE agar scan ID Card instan
           const supportedFormats = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
-            Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.EAN_13
           ] : undefined;
 
-          // Aktifkan akselerasi hardware BarcodeDetector asli bawaan HP (Chrome Android / modern browser)
+          // BarcodeDetector asli Safari iOS (WebKit 17+) memiliki bug freezing/stalling pada frame video.
+          // Pada iOS dinonaktifkan agar menggunakan engine ZXing yang terbukti super lancar di iPhone.
+          // Pada Android Chrome tetap aktif untuk akselerasi hardware.
           const scannerInitOptions = {
             verbose: false,
             experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true
+              useBarCodeDetectorIfSupported: !isIOS
             }
           };
           if (supportedFormats) {
@@ -17203,19 +17312,20 @@
           html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
           preloadGPSLocation();
 
-          // Konfigurasi scan optimal: 12 FPS (sangat responsif & tidak membuat HP panas/freeze)
+          // Konfigurasi scan optimal: 15 FPS, qrbox persegi proporsional agar QR code ID card tidak terpotong
           const scanConfig = {
-            fps: 12,
+            fps: 15,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const w = Math.max(Math.floor(viewfinderWidth * 0.94), 260);
-              const h = Math.max(Math.floor(viewfinderHeight * 0.85), 180);
-              return { width: w, height: h };
+              const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+              const edge = Math.floor(minDim * 0.82);
+              const boxDim = Math.max(edge, 220);
+              return { width: boxDim, height: boxDim };
             },
             disableFlip: false,
             videoConstraints: {
               facingMode: { ideal: "environment" },
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 720, max: 1080 }
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
             }
           };
 
@@ -24127,16 +24237,40 @@
         item.rejectedBy = `${currentUser.name || 'Petugas'} (${(currentUser.role || '').toUpperCase()})`;
         item.rejectedAt = new Date().toISOString();
         alert(`Pengajuan berhasil DITOLAK oleh ${currentUser.name}.`);
+      } else if ((action === 'approved' || !action) && canApproveMgr) {
+        if (item.status !== 'pending_manager' && item.status !== 'pending') {
+          alert("Pengajuan ini sudah selesai diproses.");
+          return;
+        }
+        item.status = 'approved';
+        item.mgrApprovedBy = `${currentUser.name || 'Manager'} (${(currentUser.role || 'Manager').toUpperCase()})`;
+        item.mgrApprovedAt = new Date().toISOString();
+        if (!item.spvApprovedBy) {
+          item.spvApprovedBy = `Disetujui Langsung (${(currentUser.role || 'Manager').toUpperCase()})`;
+          item.spvApprovedAt = item.mgrApprovedAt;
+        }
+        item.approvedBy = `${item.spvApprovedBy} & ${currentUser.name || 'Manager'}`;
+        item.approvedAt = new Date().toISOString();
+        alert(`✅ Pengajuan berhasil DISETUJUI FINAL oleh ${currentUser.name}!\nStatus cuti/izin/sakit karyawan resmi aktif.`);
+      } else if (action === 'approve_spv' && canApproveSpv) {
+        if (item.status !== 'pending') {
+          alert("Pengajuan ini sudah diproses dan tidak berstatus Menunggu SPV.");
+          return;
+        }
+        item.status = 'pending_manager';
+        item.spvApprovedBy = `${currentUser.name || 'Supervisor'} (${(currentUser.role || 'Supervisor').toUpperCase()})`;
+        item.spvApprovedAt = new Date().toISOString();
+        alert(`✅ Pengajuan berhasil disetujui tahap 1 oleh ${currentUser.name}!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       } else if (canApproveMgr) {
         if (item.status !== 'pending_manager' && item.status !== 'pending') {
           alert("Pengajuan ini sudah selesai diproses.");
           return;
         }
         item.status = 'approved';
-        item.mgrApprovedBy = currentUser.name || 'Manager';
+        item.mgrApprovedBy = `${currentUser.name || 'Manager'} (${(currentUser.role || 'Manager').toUpperCase()})`;
         item.mgrApprovedAt = new Date().toISOString();
         if (!item.spvApprovedBy) {
-          item.spvApprovedBy = 'Disetujui Langsung Manager';
+          item.spvApprovedBy = `Disetujui Langsung (${(currentUser.role || 'Manager').toUpperCase()})`;
           item.spvApprovedAt = item.mgrApprovedAt;
         }
         item.approvedBy = `${item.spvApprovedBy} & ${currentUser.name || 'Manager'}`;
@@ -24148,9 +24282,9 @@
           return;
         }
         item.status = 'pending_manager';
-        item.spvApprovedBy = currentUser.name || 'Supervisor';
+        item.spvApprovedBy = `${currentUser.name || 'Supervisor'} (${(currentUser.role || 'Supervisor').toUpperCase()})`;
         item.spvApprovedAt = new Date().toISOString();
-        alert(`✅ Pengajuan berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
+        alert(`✅ Pengajuan berhasil disetujui tahap 1 oleh ${currentUser.name}!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       }
 
       setWhDB(activeWarehouse, 'leaves', leaves);
@@ -24470,16 +24604,40 @@
         item.rejectedBy = `${currentUser.name || 'Petugas'} (${(currentUser.role || '').toUpperCase()})`;
         item.rejectedAt = new Date().toISOString();
         alert(`Pengajuan lembur ${item.userName} berhasil DITOLAK oleh ${currentUser.name}.`);
+      } else if ((action === 'approved' || !action) && canApproveMgr) {
+        if (item.status !== 'pending_manager' && item.status !== 'pending') {
+          alert("Pengajuan lembur ini sudah selesai diproses.");
+          return;
+        }
+        item.status = 'approved';
+        item.mgrApprovedBy = `${currentUser.name || 'Manager'} (${(currentUser.role || 'Manager').toUpperCase()})`;
+        item.mgrApprovedAt = new Date().toISOString();
+        if (!item.spvApprovedBy) {
+          item.spvApprovedBy = `Disetujui Langsung (${(currentUser.role || 'Manager').toUpperCase()})`;
+          item.spvApprovedAt = item.mgrApprovedAt;
+        }
+        item.approvedBy = `${item.spvApprovedBy} & ${currentUser.name || 'Manager'}`;
+        item.approvedAt = new Date().toISOString();
+        alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil DISETUJUI FINAL oleh ${currentUser.name}!\nData lembur terkunci permanen.`);
+      } else if (action === 'approve_spv' && canApproveSpv) {
+        if (item.status !== 'pending') {
+          alert("Pengajuan lembur ini sudah diproses dan tidak berstatus Menunggu SPV.");
+          return;
+        }
+        item.status = 'pending_manager';
+        item.spvApprovedBy = `${currentUser.name || 'Supervisor'} (${(currentUser.role || 'Supervisor').toUpperCase()})`;
+        item.spvApprovedAt = new Date().toISOString();
+        alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui tahap 1 oleh ${currentUser.name}!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       } else if (canApproveMgr) {
         if (item.status !== 'pending_manager' && item.status !== 'pending') {
           alert("Pengajuan lembur ini sudah selesai diproses.");
           return;
         }
         item.status = 'approved';
-        item.mgrApprovedBy = currentUser.name || 'Manager';
+        item.mgrApprovedBy = `${currentUser.name || 'Manager'} (${(currentUser.role || 'Manager').toUpperCase()})`;
         item.mgrApprovedAt = new Date().toISOString();
         if (!item.spvApprovedBy) {
-          item.spvApprovedBy = 'Disetujui Langsung Manager';
+          item.spvApprovedBy = `Disetujui Langsung (${(currentUser.role || 'Manager').toUpperCase()})`;
           item.spvApprovedAt = item.mgrApprovedAt;
         }
         item.approvedBy = `${item.spvApprovedBy} & ${currentUser.name || 'Manager'}`;
@@ -24491,9 +24649,9 @@
           return;
         }
         item.status = 'pending_manager';
-        item.spvApprovedBy = currentUser.name || 'Supervisor';
+        item.spvApprovedBy = `${currentUser.name || 'Supervisor'} (${(currentUser.role || 'Supervisor').toUpperCase()})`;
         item.spvApprovedAt = new Date().toISOString();
-        alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui Supervisor (${currentUser.name})!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
+        alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui tahap 1 oleh ${currentUser.name}!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       }
 
       setWhDB(activeWarehouse, 'overtime', overtimes);
