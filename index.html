@@ -431,8 +431,26 @@
     }
     @media (max-width: 1023px) {
       #app-sidebar {
-        display: none !important;
+        display: none;
       }
+      #app-sidebar.is-mobile-open {
+        display: flex !important;
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 280px !important;
+        max-width: 85vw !important;
+        z-index: 50 !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+      }
+      main {
+        padding-bottom: 5.5rem !important;
+      }
+    }
+    body.role-scanner #mobile-bottom-nav,
+    .is-scanner-mode #mobile-bottom-nav {
+      display: none !important;
     }
     #qr-reader {
       width: 100% !important;
@@ -721,6 +739,25 @@
       if (loginTitle) {
         loginTitle.innerText = isMBI ? 'Medika Bina Investama' : 'Medika Akses Investama';
       }
+    window.toggleMobileSidebar = function() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('mobile-sidebar-backdrop');
+      if (!sb) return;
+      const isOpen = sb.classList.contains('is-mobile-open');
+      if (isOpen) {
+        sb.classList.remove('is-mobile-open');
+        if (bd) bd.classList.add('hidden');
+      } else {
+        sb.classList.add('is-mobile-open');
+        if (bd) bd.classList.remove('hidden');
+      }
+    };
+
+    window.closeMobileSidebar = function() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('mobile-sidebar-backdrop');
+      if (sb) sb.classList.remove('is-mobile-open');
+      if (bd) bd.classList.add('hidden');
     };
 
     window.loginUserSession = function(user) {
@@ -764,6 +801,20 @@
 
       const isScanner = (user.role === 'scanner' || (user.nik && String(user.nik).startsWith('ABSEN')));
       
+      if (isScanner) {
+        document.body.classList.add('is-scanner-mode');
+        const mobNav = document.getElementById('mobile-bottom-nav');
+        if (mobNav) mobNav.classList.add('hidden');
+        const mobToggle = document.getElementById('btn-mobile-sidebar-toggle');
+        if (mobToggle) mobToggle.classList.add('hidden');
+      } else {
+        document.body.classList.remove('is-scanner-mode');
+        const mobNav = document.getElementById('mobile-bottom-nav');
+        if (mobNav) mobNav.classList.remove('hidden');
+        const mobToggle = document.getElementById('btn-mobile-sidebar-toggle');
+        if (mobToggle) mobToggle.classList.remove('hidden');
+      }
+
       // Tampilkan view yang sesuai
       if (typeof window.switchView === 'function') {
         try { window.switchView(isScanner ? 'attendance' : 'dashboard'); } catch(e) {}
@@ -828,7 +879,8 @@
     };
 
     window.quickLoginManager = function(warehouse) {
-      const wh = warehouse || 'MBI';
+      const selectedWhRadio = document.querySelector('input[name="login-warehouse"]:checked');
+      const wh = warehouse || (selectedWhRadio ? selectedWhRadio.value : 'MBI');
       const mgrUser = {
         id: 'mgr-eko',
         name: 'Manager',
@@ -849,6 +901,9 @@
     };
 
     window.handleLogin = function(e) {
+      if (typeof window.mainHandleLogin === 'function' && window.mainHandleLogin !== window.handleLogin) {
+        return window.mainHandleLogin(e);
+      }
       if (e && typeof e.preventDefault === 'function') e.preventDefault();
       const alertEl = document.getElementById('auth-alert');
       if (alertEl) { alertEl.classList.add('hidden'); alertEl.innerHTML = ''; }
@@ -1123,20 +1178,33 @@
   <div id="app-container" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
     
     <!-- Top Navbar (Terkunci di Posisi Atas, Tidak Bergeser Ketika di-Scroll) -->
-    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-4 lg:px-8 py-3 flex items-center justify-between no-print flex-shrink-0">
-      <div class="flex items-center gap-3">
-        <div id="nav-logo-box" class="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0 relative">
+    <header class="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-xs px-3 sm:px-4 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between no-print flex-shrink-0">
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- Mobile Sidebar Hamburger Toggle (Khusus Layar HP & Tablet) -->
+        <button id="btn-mobile-sidebar-toggle" type="button" onclick="toggleMobileSidebar()" class="lg:hidden p-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition flex items-center justify-center shrink-0 cursor-pointer shadow-xs" title="Buka Menu Navigasi" aria-label="Buka Menu Navigasi">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
+        <div id="nav-logo-box" class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shadow-xs overflow-hidden shrink-0 relative">
           <div id="nav-logo-container" class="w-full h-full flex items-center justify-center">
-            <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="width: 32px; height: 32px; display: block;" fill="none">
+              <circle cx="100" cy="38" r="28" fill="#F7B200"/>
+              <rect x="97" y="47" width="62" height="134" rx="31" fill="#24D3E3" transform="rotate(45 128 114)"/>
+              <rect x="41" y="47" width="62" height="134" rx="31" fill="#EE1D78" transform="rotate(-45 72 114)"/>
+            </svg>
           </div>
         </div>
         <div>
-          <h1 class="font-black text-sm sm:text-base leading-none text-slate-900 flex items-center gap-1.5">
+          <h1 class="font-black text-xs sm:text-base leading-none text-slate-900 flex items-center gap-1 sm:gap-1.5 flex-wrap">
             <span id="nav-company-name">Medika Bina Investama</span>
-            <span id="user-warehouse-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200">GUDANG MBI</span>
-            <span id="user-role-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">SUPERVISOR</span>
+            <span id="user-warehouse-badge" class="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded bg-slate-100 text-slate-800 border border-slate-200">GUDANG MBI</span>
+            <span id="user-role-badge" class="px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded bg-slate-900 text-white">SUPERVISOR</span>
           </h1>
-          <p class="text-[11px] text-slate-500 font-medium">Workforce Management System</p>
+          <p class="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5">Workforce Management System</p>
         </div>
       </div>
 
@@ -1181,12 +1249,26 @@
     </header>
 
     <!-- App Body: Sidebar + Main Content -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex overflow-hidden relative">
       
+      <!-- Backdrop Overlay Mobile Menu (Khusus HP & Tablet) -->
+      <div id="mobile-sidebar-backdrop" onclick="closeMobileSidebar()" class="hidden fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-xs transition-opacity lg:hidden"></div>
+
       <!-- Sidebar Navigasi Bersih, Minimalis & Profesional -->
       <aside id="app-sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col justify-between p-4 border-r border-slate-800 no-print flex-shrink-0 custom-scroll overflow-y-auto">
         
         <div class="space-y-4">
+          <!-- Mobile Sidebar Header with Close Button -->
+          <div class="lg:hidden flex items-center justify-between pb-3 mb-2 border-b border-slate-800">
+            <span class="font-black text-xs text-white uppercase tracking-wider">Menu Navigasi</span>
+            <button type="button" onclick="closeMobileSidebar()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer" aria-label="Tutup Menu">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
           <!-- 1. Presensi & Operasional -->
           <div class="space-y-1">
             <p class="sidebar-heading px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">Presensi & Operasional</p>
@@ -3419,6 +3501,30 @@
         </div>
       </main>
     </div>
+
+    <!-- Mobile Bottom Navigation Bar (Khusus Layar HP & Tablet, Praktis & 1-Klik) -->
+    <nav id="mobile-bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 flex items-center justify-around shadow-lg no-print">
+      <button type="button" onclick="switchView('dashboard')" id="mob-nav-dashboard" class="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-900 transition flex-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Dashboard</span>
+      </button>
+      <button type="button" onclick="switchView('attendance')" id="mob-nav-attendance" class="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-500 hover:text-slate-900 transition flex-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Absensi</span>
+      </button>
+      <button type="button" onclick="switchView('leaves')" id="mob-nav-leaves" class="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-500 hover:text-slate-900 transition flex-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Pengajuan</span>
+      </button>
+      <button type="button" onclick="switchView('overtime')" id="mob-nav-overtime" class="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-500 hover:text-slate-900 transition flex-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Lembur</span>
+      </button>
+      <button type="button" onclick="toggleMobileSidebar()" id="mob-nav-more" class="flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-500 hover:text-slate-900 transition flex-1 cursor-pointer">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Menu</span>
+      </button>
+    </nav>
   </div>
 
   <!-- ========================================================= -->
@@ -14227,6 +14333,34 @@
           }
         }
 
+        // Sinkronisasi tombol menu navigasi bawah HP (Mobile Bottom Nav) & Hamburger Toggle
+        const mobNav = document.getElementById('mobile-bottom-nav');
+        const mobToggle = document.getElementById('btn-mobile-sidebar-toggle');
+        if (isScanner) {
+          if (mobNav) mobNav.classList.add('hidden');
+          if (mobToggle) mobToggle.classList.add('hidden');
+        } else {
+          if (mobNav) mobNav.classList.remove('hidden');
+          if (mobToggle) mobToggle.classList.remove('hidden');
+
+          const mobLeaves = document.getElementById('mob-nav-leaves');
+          const mobOt = document.getElementById('mob-nav-overtime');
+          const mobDash = document.getElementById('mob-nav-dashboard');
+
+          if (mobLeaves) {
+            if (canViewLeaves) mobLeaves.classList.remove('hidden');
+            else mobLeaves.classList.add('hidden');
+          }
+          if (mobOt) {
+            if (canViewOt) mobOt.classList.remove('hidden');
+            else mobOt.classList.add('hidden');
+          }
+          if (mobDash) {
+            if (hasAnyAdminMenu || isManagement) mobDash.classList.remove('hidden');
+            else mobDash.classList.add('hidden');
+          }
+        }
+
         // Tombol aksi di modul Data Karyawan
         const btnAddEmp = document.getElementById('btn-add-emp-modal');
         const lblUploadExcel = document.getElementById('lbl-upload-excel');
@@ -14580,6 +14714,9 @@
       try { initFirebaseLiveStream(warehouse); } catch(e) {}
       loginUserSession(mgrUser);
     }
+    window.quickLoginScannerAccount = quickLoginScannerAccount;
+    window.quickLoginAdmin = quickLoginAdmin;
+    window.quickLoginManager = quickLoginManager;
 
     // =========================================================
     // SMART LOGIN DENGAN PENCARIAN FLEKSIBEL (NIK / NAMA / PHONE / EMAIL / USERNAME)
@@ -15163,6 +15300,9 @@
         }
       }
     }
+    window.mainHandleLogin = handleLogin;
+    window.handleLogin = handleLogin;
+    window.loginUserSession = loginUserSession;
 
     function loginUserSession(user) {
       try {
@@ -15603,6 +15743,29 @@
       lucide.createIcons();
     }
 
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('mobile-sidebar-backdrop');
+      if (!sb) return;
+      const isOpen = sb.classList.contains('is-mobile-open');
+      if (isOpen) {
+        sb.classList.remove('is-mobile-open');
+        if (bd) bd.classList.add('hidden');
+      } else {
+        sb.classList.add('is-mobile-open');
+        if (bd) bd.classList.remove('hidden');
+      }
+    }
+    window.toggleMobileSidebar = toggleMobileSidebar;
+
+    function closeMobileSidebar() {
+      const sb = document.getElementById('app-sidebar');
+      const bd = document.getElementById('mobile-sidebar-backdrop');
+      if (sb) sb.classList.remove('is-mobile-open');
+      if (bd) bd.classList.add('hidden');
+    }
+    window.closeMobileSidebar = closeMobileSidebar;
+
     function switchView(viewName) {
       try {
         const isScanner = isUserScanner(currentUser);
@@ -15667,6 +15830,21 @@
           activeNav.classList.add('is-active');
           activeNav.className = 'sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5';
         }
+
+        // Update Navigasi Bawah Layar HP (Mobile Bottom Nav) & Tutup Drawer Menu
+        try {
+          ['dashboard', 'attendance', 'leaves', 'overtime'].forEach(tab => {
+            const btn = document.getElementById('mob-nav-' + tab);
+            if (btn) {
+              if (tab === viewName) {
+                btn.className = 'flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-900 transition flex-1 cursor-pointer font-bold';
+              } else {
+                btn.className = 'flex flex-col items-center justify-center p-1.5 rounded-xl text-slate-500 hover:text-slate-900 transition flex-1 cursor-pointer font-normal';
+              }
+            }
+          });
+          closeMobileSidebar();
+        } catch(e) {}
 
         try { applyRolePermissions(); } catch(e) {}
 
