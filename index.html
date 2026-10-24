@@ -9665,37 +9665,17 @@
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       const docId = attRec.id || `att-${targetWh.toLowerCase()}-${Date.now()}`;
       
-      // 1. Simpan dokumen satuan presensi ke Cloud Firestore
-      saveDocToFirestore(targetWh, 'attendance', docId, attRec).catch(e => {
-        console.warn('[Firestore] Non-blocking scan save warning:', e);
-      });
-
-      // 2. Tembakkan sinyal realtime kilat (hanya ~100 bytes) agar Akun Manajemen langsung terupdate seketika
-      const liveSignalDoc = {
-        updatedAt: new Date().toISOString(),
-        lastRecordId: docId,
-        userName: attRec.userName || '',
-        userNik: attRec.userNik || '',
-        type: attRec.checkOutTime ? 'check_out' : 'check_in',
-        warehouse: targetWh
-      };
-      saveDocToFirestore(targetWh, '_metadata', 'live_signal', liveSignalDoc).catch(() => {});
-
-      // 3. Siaran lokal instan (0ms) untuk jendela/tab di perangkat yang sama
+      // Siaran lokal instan (0ms) untuk jendela/tab di perangkat yang sama tanpa kuota
       try {
         if (typeof BroadcastChannel !== 'undefined') {
-          new BroadcastChannel('wfm_firestore_live_sync').postMessage({ targetWh, docId });
+          new BroadcastChannel('wfm_firebase_live_sync').postMessage({ targetWh, docId });
         }
       } catch(e) {}
     }
 
     function saveUserDocToFirestore(wh, userRec) {
-      if (!userRec) return;
-      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-      const docId = (userRec.nik && userRec.nik.trim()) ? userRec.nik.trim() : (userRec.id || `emp_${Date.now()}`);
-      saveDocToFirestore(targetWh, 'users', docId, userRec).catch(e => {
-        console.warn('[Firestore] Non-blocking user save warning:', e);
-      });
+      // Dinonaktifkan: Manajemen akun kini sepenuhnya disimpan melalui Firebase Realtime Database
+      return;
     }
 
     // =========================================================
@@ -10067,85 +10047,8 @@
     let isFetchingFirestoreSignal = false;
 
     async function checkFirestoreRealtimeUpdates() {
-      if (isFetchingFirestoreSignal) return;
-      const isScanning = (typeof html5QrScanner !== 'undefined' && html5QrScanner !== null);
-      const activePanel = document.querySelector('.view-panel:not(.hidden)');
-      const isAttendancePanel = (activePanel && activePanel.id === 'view-attendance');
-
-      const targetWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
-      isFetchingFirestoreSignal = true;
-
-      try {
-        const signalDoc = await getDocFromFirestore(targetWh, '_metadata', 'live_signal');
-        if (signalDoc && signalDoc.updatedAt) {
-          const prevSignal = lastKnownFirestoreSignal[targetWh] || '';
-          if (!prevSignal) {
-            lastKnownFirestoreSignal[targetWh] = signalDoc.updatedAt;
-            // Sinkronkan radius awal saat inisialisasi jika ada di dokumen sinyal
-            if (signalDoc.radius && Number(signalDoc.radius) > 0) {
-              const curLocal = getWarehouseCoords(targetWh);
-              if (curLocal.radius !== Number(signalDoc.radius)) {
-                syncGPSCoordsFromFirestore(targetWh);
-              }
-            }
-          } else if (signalDoc.updatedAt !== prevSignal) {
-            lastKnownFirestoreSignal[targetWh] = signalDoc.updatedAt;
-
-            // 1. SINYAL PERUBAHAN RADIUS / GPS DETEKSI INSTAN (SEKETIKA DITERAPKAN DI SELURUH HP SCANNER)
-            if (signalDoc.type === 'gps_update' || (signalDoc.radius && Number(signalDoc.radius) > 0)) {
-              const newRadius = Number(signalDoc.radius);
-              const curCoords = getWarehouseCoords(targetWh);
-              if (curCoords.radius !== newRadius) {
-                console.log(`[Firestore Realtime GPS] Radius ${targetWh} diperbarui dari Sinyal Cloud: ${curCoords.radius}m -> ${newRadius}m`);
-                const def = DEFAULT_COORDS[targetWh] || { lat: -6.263295, lng: 106.877066, radius: 100, name: `Gudang ${targetWh}` };
-                const newCoords = {
-                  lat: def.lat,
-                  lng: def.lng,
-                  radius: newRadius,
-                  name: def.name,
-                  updatedAt: signalDoc.updatedAt || new Date().toISOString()
-                };
-                localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(newCoords));
-                localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(newRadius));
-                if (activeWarehouse === targetWh) {
-                  localStorage.setItem('wfm_gps_radius', String(newRadius));
-                }
-                latestCachedGPS = null;
-                updateRegisteredCoordsDisplay();
-                showLiveRealtimeIndicator(`⚡ Radius GPS ${targetWh}: ${newRadius}m`);
-              }
-            }
-
-            // 2. SINYAL PRESENSI BARU DARI HP/SERVER
-            if (signalDoc.lastRecordId) {
-              const newRec = await getDocFromFirestore(targetWh, 'attendance', signalDoc.lastRecordId);
-              if (newRec && (newRec.id || newRec.userName)) {
-                const currentAtts = getWhDB(targetWh, 'attendance', []);
-                const existingIdx = currentAtts.findIndex(a => a && a.id === newRec.id);
-                if (existingIdx >= 0) {
-                  currentAtts[existingIdx] = newRec;
-                } else {
-                  currentAtts.unshift(newRec);
-                }
-                setWhDB(targetWh, 'attendance', currentAtts, true);
-                // Jaga performa 60 FPS kamera HP: jangan render ulang tabel DOM jika kamera pemindai sedang aktif
-                if (!isScanning || !isAttendancePanel) {
-                  renderAllLiveScreens();
-                }
-                showLiveRealtimeIndicator(`⚡ Presensi Terupdate: ${newRec.userName || 'Karyawan'} (${newRec.checkOutTime ? 'Pulang' : 'Masuk'})`);
-              } else if (!isScanning || !isAttendancePanel) {
-                await pullAttendanceFromFirestore(targetWh, false);
-              }
-            } else if (!isScanning || !isAttendancePanel) {
-              await pullAttendanceFromFirestore(targetWh, false);
-            }
-          }
-        }
-      } catch (err) {
-        // Silent catch
-      } finally {
-        isFetchingFirestoreSignal = false;
-      }
+      // Dinonaktifkan: Sinkronisasi realtime kini murni ditangani Firebase Realtime Database & BroadcastChannel
+      return;
     }
 
     function showLiveRealtimeIndicator(msg) {
@@ -10165,21 +10068,7 @@
 
     function startFirestoreRealtimeSync() {
       if (firestoreRealtimeTimer) clearInterval(firestoreRealtimeTimer);
-      // Pengecekan sinyal hemat kuota setiap 45 detik saat layar aktif (BroadcastChannel memberikan pembaruan instan 0ms antar-tab)
-      firestoreRealtimeTimer = setInterval(() => {
-        if (!document.hidden && document.visibilityState === 'visible') {
-          checkFirestoreRealtimeUpdates();
-        }
-      }, 45000);
-
-      try {
-        if (typeof BroadcastChannel !== 'undefined') {
-          const fsBc = new BroadcastChannel('wfm_firestore_live_sync');
-          fsBc.onmessage = () => {
-            try { checkFirestoreRealtimeUpdates(); } catch(e) {}
-          };
-        }
-      } catch(e) {}
+      // Dinonaktifkan: Menghilangkan seluruh interval Firestore
     }
 
     function copyFirestoreRules() {
@@ -12107,8 +11996,12 @@
           const localUpdated = localStorage.getItem(`wfm_${wh.toLowerCase()}_master_updated_at`) || '';
 
           try {
-            // Jika force download atau manual alert, langsung fetch tanpa harus delta check
-            if (isManualAlert || forceDownload === true) {
+            const localUsers = getWhDB(wh, 'users', []);
+            const isLocalEmpty = (!localUsers || localUsers.length === 0);
+
+            // HANYA unduh penuh (150 KB) jika tombol manual ditekan (isManualAlert) ATAU memori lokal benar-benar masih kosong
+            // Ini menekan angka download hingga 99.98% karena saat normal HANYA memeriksa timestamp kecil (30 bytes)
+            if (isManualAlert || (forceDownload === true && isLocalEmpty)) {
               fetchPromises.push(
                 fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
                   .then(r => r.ok ? r.json() : null)
@@ -12199,15 +12092,59 @@
       }
     }
 
-    let firebaseEventSourceMBI = null;
-    let firebaseEventSourceMAI = null;
+    let firebaseEventSource = null;
+    let currentLiveStreamWh = null;
+    let isLiveStreamFetching = false;
+
     function initFirebaseLiveStream(wh = null) {
-      // Dinonaktifkan demi penghematan kuota Firebase (Menghemat >95% bandwidth download).
-      // Sinkronisasi data antar perangkat ditangani secara hemat oleh Smart Timestamp Delta Check (30 Byte) & BroadcastChannel.
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      if (firebaseEventSource && currentLiveStreamWh === targetWh) {
+        return;
+      }
       try {
-        if (firebaseEventSourceMBI) { firebaseEventSourceMBI.close(); firebaseEventSourceMBI = null; }
-        if (firebaseEventSourceMAI) { firebaseEventSourceMAI.close(); firebaseEventSourceMAI = null; }
+        if (firebaseEventSource) {
+          firebaseEventSource.close();
+          firebaseEventSource = null;
+        }
       } catch (err) {}
+
+      if (typeof EventSource === 'undefined') return;
+
+      const endpoint = getFirebaseEndpoint(targetWh);
+      // HANYA DENGARKAN timestamp updatedAt (hanya 30-50 byte per event!)
+      // Ini memberikan notifikasi instan 0.1-0.3 detik saat ada karyawan yang scan absen, dengan kuota data nyaris 0 KB!
+      const streamUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+      currentLiveStreamWh = targetWh;
+
+      try {
+        firebaseEventSource = new EventSource(streamUrl);
+        firebaseEventSource.addEventListener('put', async (e) => {
+          try {
+            if (!e.data || isLiveStreamFetching) return;
+            const parsed = JSON.parse(e.data);
+            const cloudTs = (parsed && typeof parsed === 'object') ? parsed.data : parsed;
+            if (cloudTs && typeof cloudTs === 'string') {
+              const localUpdated = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`) || '';
+              if (cloudTs !== localUpdated) {
+                isLiveStreamFetching = true;
+                if (typeof showLiveRealtimeIndicator === 'function') {
+                  showLiveRealtimeIndicator(`⚡ Presensi Terupdate (${new Date().toLocaleTimeString('id-ID')})`);
+                }
+                await fetchFullDatabaseFromCloud(false, targetWh, false);
+                isLiveStreamFetching = false;
+              }
+            }
+          } catch(errEvt) {
+            isLiveStreamFetching = false;
+          }
+        });
+
+        firebaseEventSource.onerror = () => {
+          // Reconnect otomatis dikelola browser di latar belakang
+        };
+      } catch (errStream) {
+        console.warn('Firebase EventSource stream notice:', errStream);
+      }
     }
 
     function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
@@ -12379,49 +12316,37 @@
 
       const getActiveWhTarget = () => (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
 
-      // Sinkronkan data awal dari Cloud Firestore (Absensi Terkini & Konfigurasi GPS Radius) & Cloud Database
+      // Sinkronkan data awal: Utamakan Firebase RTDB (0 Read Quota Limit) & GPS Coords
       try {
-        pullAttendanceFromFirestore(getActiveWhTarget(), false);
-        pullUsersFromFirestore(getActiveWhTarget(), false).catch(() => {});
         syncGPSCoordsFromFirestore('MBI').catch(() => {});
         syncGPSCoordsFromFirestore('MAI').catch(() => {});
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
+        initFirebaseLiveStream(getActiveWhTarget());
       } catch(e) {}
 
-      // AKTIFKAN SINKRONISASI REALTIME KILAT CLOUD FIRESTORE (2.5 DETIK)
-      try {
-        startFirestoreRealtimeSync();
-      } catch(e) {}
-      
-      // Smart Delta Check hemat kuota & CPU di latar belakang
+      // Smart Delta Check hemat kuota di latar belakang (Hanya memeriksa 30 bytes per menit)
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
-          const activePanel = document.querySelector('.view-panel:not(.hidden)');
-          if (activePanel && activePanel.id === 'view-attendance') {
-            return;
-          }
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
         }
-      }, 35000);
+      }, 60000);
 
-      // Auto-wakeup sync instan saat layar HP dinyalakan atau tab aktif kembali
+      // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 15 detik)
+      let lastWakeupSyncTime = 0;
+      const triggerWakeupSync = () => {
+        const now = Date.now();
+        if (now - lastWakeupSyncTime < 15000) return; // Debounce 15s
+        lastWakeupSyncTime = now;
+        fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
+      };
+
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && document.visibilityState === 'visible') {
-          try {
-            checkFirestoreRealtimeUpdates();
-            const activePanel = document.querySelector('.view-panel:not(.hidden)');
-            if (activePanel && activePanel.id === 'view-attendance') return;
-            fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-          } catch(e) {}
+          try { triggerWakeupSync(); } catch(e) {}
         }
       });
       window.addEventListener('focus', () => {
-        try {
-          checkFirestoreRealtimeUpdates();
-          const activePanel = document.querySelector('.view-panel:not(.hidden)');
-          if (activePanel && activePanel.id === 'view-attendance') return;
-          fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-        } catch(e) {}
+        try { triggerWakeupSync(); } catch(e) {}
       });
 
       window.addEventListener('storage', (e) => {
@@ -14967,9 +14892,11 @@
         } else if (isManagement) {
           // Akun Management (Coordinator, Supervisor, Admin, Manager)
           try { updateWhSwitcherButtons(); } catch (e) {}
+          try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
           switchView('dashboard');
         } else {
           // Akun Karyawan Biasa
+          try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
           switchView('attendance');
         }
 
@@ -15105,7 +15032,6 @@
       try { fetchFullDatabaseFromCloud(false, targetWh); } catch(e) {}
       try {
         if (typeof lastKnownFirestoreSignal !== 'undefined') lastKnownFirestoreSignal[targetWh] = '';
-        if (typeof pullAttendanceFromFirestore === 'function') pullAttendanceFromFirestore(targetWh, false);
       } catch(e) {}
       updateNavbarBrand(targetWh);
       updateWhSwitcherButtons();
@@ -25831,15 +25757,25 @@ function testManualSync() {
       let wh = targetWhMode || 'ALL';
       if (wh === 'CURRENT') wh = activeWarehouse;
 
-      // Nama sheet dibuat persis sama dengan tab pada Google Sheet pengguna (3 Sheet Utama Backup)
+      const sheets = {};
+      const recordAbsenRows = generateRecordAbsenSheetData(wh);
+      // Safety guard: Hanya sertakan RECORD ABSEN jika berisi data (lebih dari sekadar baris header)
+      if (recordAbsenRows && recordAbsenRows.length > 1) {
+        sheets["RECORD ABSEN"] = recordAbsenRows;
+      }
+      const pengajuanRows = generateRekapPengajuanSheetData(wh);
+      if (pengajuanRows && pengajuanRows.length > 1) {
+        sheets["REKAP PENGAJUAN"] = pengajuanRows;
+      }
+      const lemburRows = generateRekapLemburSheetData(wh);
+      if (lemburRows && lemburRows.length > 1) {
+        sheets["REKAP LEMBUR"] = lemburRows;
+      }
+
       return {
         targetWarehouse: wh,
         timestamp: new Date().toISOString(),
-        sheets: {
-          "RECORD ABSEN": generateRecordAbsenSheetData(wh),
-          "REKAP PENGAJUAN": generateRekapPengajuanSheetData(wh),
-          "REKAP LEMBUR": generateRekapLemburSheetData(wh)
-        }
+        sheets: sheets
       };
     }
 
