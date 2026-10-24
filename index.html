@@ -12681,7 +12681,7 @@
       );
     }
 
-    // Hanya Coordinator, Supervisor, Manager, Admin, dan Pos Scanner Presensi yang diizinkan memiliki akun login
+    // Hanya Coordinator, Supervisor, Manager, Admin, Pos Scanner Presensi, dan akun yang memiliki izin modul yang diizinkan login
     function isUserAllowedToLogin(user) {
       if (!user) return false;
       if (isUserAdmin(user)) return true;
@@ -12689,6 +12689,18 @@
       if (isUserSupervisor(user)) return true;
       if (isUserCoordinator(user)) return true;
       if (isUserScanner(user)) return true;
+      
+      // Izin kustom: jika akun telah diberikan hak akses modul tertentu
+      try {
+        if (user.permissions && typeof user.permissions === 'object') {
+          if (Object.values(user.permissions).some(v => v === true)) return true;
+        }
+        const savedPerms = getSavedUserPerms(user.nik || user.id, user.warehouse);
+        if (savedPerms && typeof savedPerms === 'object') {
+          if (Object.values(savedPerms).some(v => v === true)) return true;
+        }
+      } catch(e) {}
+
       return false;
     }
 
@@ -14078,251 +14090,264 @@
     function handleLogin(e) {
       if (e && typeof e.preventDefault === 'function') e.preventDefault();
       
-      const idInput = document.getElementById('login-identifier');
-      const passInput = document.getElementById('login-password');
-      const rawInputId = (idInput ? idInput.value : '').trim();
-      const inputPass = (passInput ? passInput.value : '').trim();
-      const cleanInput = cleanStr(rawInputId);
-
       const alertEl = document.getElementById('auth-alert');
       if (alertEl) {
         alertEl.classList.add('hidden');
         alertEl.innerHTML = '';
       }
 
-      if (!rawInputId) {
-        if (alertEl) {
-          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          alertEl.innerHTML = '<span>Silakan masukkan NIK atau Username Anda.</span>';
-          alertEl.classList.remove('hidden');
-        }
-        return;
-      }
-
-      const selectedWh = document.querySelector('input[name="login-warehouse"]:checked')?.value || activeWarehouse || 'MBI';
-
-      // Ambil user dari database lokal dan sertakan akun master cadangan
-      const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-      const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
-
-      let latestMgrName = 'Manager';
       try {
-        const session = JSON.parse(localStorage.getItem('wfm_active_session') || '{}');
-        if (session && (session.role === 'manager' || session.id === 'mgr-eko' || session.nik === 'MGR001') && session.name) {
-          latestMgrName = session.name;
+        const idInput = document.getElementById('login-identifier');
+        const passInput = document.getElementById('login-password');
+        const rawInputId = (idInput ? idInput.value : '').trim();
+        const inputPass = (passInput ? passInput.value : '').trim();
+        const cleanInput = cleanStr(rawInputId);
+
+        if (!rawInputId) {
+          if (alertEl) {
+            alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+            alertEl.innerHTML = '<span>Silakan masukkan NIK atau Username Anda.</span>';
+            alertEl.classList.remove('hidden');
+          }
+          return;
         }
-      } catch(e) {}
 
-      const mgrMbi = mbiUsers.find(u => isUserManager(u)) || { ...SEED_MANAGER_USER, name: latestMgrName, warehouse: 'MBI' };
-      const mgrMai = maiUsers.find(u => isUserManager(u)) || { ...SEED_MANAGER_USER, name: latestMgrName, warehouse: 'MAI' };
-      const currentWhMgr = selectedWh === 'MAI' ? mgrMai : mgrMbi;
+        let selectedWh = document.querySelector('input[name="login-warehouse"]:checked')?.value || activeWarehouse || 'MBI';
 
-      // ISOLASI KETAT GUDANG:
-      // Hanya mencari user pada gudang yang dipilih (selectedWh).
-      // Akun gudang lain TIDAK BOLEH dicari atau diloginkan secara otomatis!
-      const currentWhUsers = selectedWh === 'MAI' ? maiUsers : mbiUsers;
-      const currentSeedUsers = selectedWh === 'MAI' ? SEED_MAI_USERS : SEED_MBI_USERS;
-      const whUsers = [...currentWhUsers, ...currentSeedUsers, currentWhMgr];
+        // Ambil user dari database lokal dan sertakan akun master cadangan
+        const mbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const maiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
 
-      // Jika input adalah kata kunci akun scanner absen
-      if (cleanInput === 'absen' || cleanInput === 'scanner' || cleanInput.startsWith('absen') || cleanInput.startsWith('scanner')) {
-        const wh = (cleanInput.includes('mai')) ? 'MAI' : ((cleanInput.includes('mbi')) ? 'MBI' : selectedWh);
-        if (wh !== selectedWh) {
-          const r = document.querySelector(`input[name="login-warehouse"][value="${wh}"]`);
-          if (r) { r.checked = true; updateLoginWhStyle(); }
+        let latestMgrName = 'Manager';
+        try {
+          const session = JSON.parse(localStorage.getItem('wfm_active_session') || '{}');
+          if (session && (session.role === 'manager' || session.id === 'mgr-eko' || session.nik === 'MGR001') && session.name) {
+            latestMgrName = session.name;
+          }
+        } catch(e) {}
+
+        const mgrMbi = mbiUsers.find(u => isUserManager(u)) || { ...SEED_MANAGER_USER, name: latestMgrName, warehouse: 'MBI' };
+        const mgrMai = maiUsers.find(u => isUserManager(u)) || { ...SEED_MANAGER_USER, name: latestMgrName, warehouse: 'MAI' };
+        const currentWhMgr = selectedWh === 'MAI' ? mgrMai : mgrMbi;
+
+        // ISOLASI KETAT GUDANG:
+        // Hanya mencari user pada gudang yang dipilih (selectedWh).
+        // Akun gudang lain TIDAK BOLEH dicari atau diloginkan secara otomatis!
+        const currentWhUsers = selectedWh === 'MAI' ? maiUsers : mbiUsers;
+        const currentSeedUsers = selectedWh === 'MAI' ? SEED_MAI_USERS : SEED_MBI_USERS;
+        const whUsers = [...currentWhUsers, ...currentSeedUsers, currentWhMgr];
+
+        // Jika input adalah kata kunci akun scanner absen
+        if (cleanInput === 'absen' || cleanInput === 'scanner' || cleanInput.startsWith('absen') || cleanInput.startsWith('scanner')) {
+          const wh = (cleanInput.includes('mai')) ? 'MAI' : ((cleanInput.includes('mbi')) ? 'MBI' : selectedWh);
+          if (wh !== selectedWh) {
+            const r = document.querySelector(`input[name="login-warehouse"][value="${wh}"]`);
+            if (r) { r.checked = true; updateLoginWhStyle(); }
+          }
+          quickLoginScannerAccount(wh);
+          return;
         }
-        quickLoginScannerAccount(wh);
-        return;
-      }
 
-      let user = null;
+        let user = null;
 
-      // 0. Keyword cepat admin (misal: 'admin', 'admin mbi', 'admin mai', 'administrator', 'adm001', 'admmai', 'adm-mai', 'adm')
-      if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput === 'adminmbi' || cleanInput === 'adminmai' || cleanInput === 'adm001' || cleanInput === 'admmai' || cleanInput === 'adm-mai' || cleanInput === 'admma' || cleanInput === 'adm' || cleanInput.startsWith('admin') || cleanInput.startsWith('adm00')) {
-        let targetWh = selectedWh;
-        if (cleanInput.includes('mai') || cleanInput === 'adm-mai' || cleanInput === 'admmai') {
-          targetWh = 'MAI';
-        } else if (cleanInput.includes('mbi') || cleanInput === 'adm001' || cleanInput === 'admmbi') {
-          targetWh = 'MBI';
+        // 0. Keyword cepat admin (misal: 'admin', 'admin mbi', 'admin mai', 'administrator', 'adm001', 'admmai', 'adm-mai', 'adm')
+        if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput === 'adminmbi' || cleanInput === 'adminmai' || cleanInput === 'adm001' || cleanInput === 'admmai' || cleanInput === 'adm-mai' || cleanInput === 'admma' || cleanInput === 'adm' || cleanInput.startsWith('admin') || cleanInput.startsWith('adm00')) {
+          let targetWh = selectedWh;
+          if (cleanInput.includes('mai') || cleanInput === 'adm-mai' || cleanInput === 'admmai') {
+            targetWh = 'MAI';
+          } else if (cleanInput.includes('mbi') || cleanInput === 'adm001' || cleanInput === 'admmbi') {
+            targetWh = 'MBI';
+          }
+          if (targetWh !== selectedWh) {
+            selectedWh = targetWh;
+            const r = document.querySelector(`input[name="login-warehouse"][value="${targetWh}"]`);
+            if (r) { r.checked = true; updateLoginWhStyle(); }
+          }
+          const targetWhUsers = selectedWh === 'MAI' ? maiUsers : mbiUsers;
+          const targetSeedUsers = selectedWh === 'MAI' ? SEED_MAI_USERS : SEED_MBI_USERS;
+          user = targetWhUsers.find(u => isUserAdmin(u)) || targetSeedUsers[0];
         }
-        if (targetWh !== selectedWh) {
-          selectedWh = targetWh;
-          const r = document.querySelector(`input[name="login-warehouse"][value="${targetWh}"]`);
-          if (r) { r.checked = true; updateLoginWhStyle(); }
+
+        // 0.5 Keyword cepat Manager (misal: 'manager', 'mgr', 'eko', 'managereko', 'mgr001', 'mgreko')
+        if (!user && (
+          cleanInput === 'eko' || cleanInput === 'manager' || cleanInput === 'mgr' ||
+          cleanInput === 'managereko' || cleanInput === 'mgr001' || cleanInput === 'mgreko' ||
+          cleanInput === 'managermbi' || cleanInput === 'managermai' ||
+          cleanInput.includes('manager')
+        )) {
+          user = currentWhUsers.find(u => isUserManager(u)) || { ...SEED_MANAGER_USER, name: 'Manager', warehouse: selectedWh };
         }
-        const targetWhUsers = selectedWh === 'MAI' ? maiUsers : mbiUsers;
-        const targetSeedUsers = selectedWh === 'MAI' ? SEED_MAI_USERS : SEED_MBI_USERS;
-        user = targetWhUsers.find(u => isUserAdmin(u)) || targetSeedUsers[0];
-      }
 
-      // 0.5 Keyword cepat Manager (misal: 'manager', 'mgr', 'eko', 'managereko', 'mgr001', 'mgreko')
-      if (!user && (
-        cleanInput === 'eko' || cleanInput === 'manager' || cleanInput === 'mgr' ||
-        cleanInput === 'managereko' || cleanInput === 'mgr001' || cleanInput === 'mgreko' ||
-        cleanInput === 'managermbi' || cleanInput === 'managermai' ||
-        cleanInput.includes('manager')
-      )) {
-        user = currentWhUsers.find(u => isUserManager(u)) || { ...SEED_MANAGER_USER, name: 'Manager', warehouse: selectedWh };
-      }
+        // 1. Exact match (NIK / Nama / Phone / ID / Email / Username / Barcode) dalam gudang terpilih
+        if (!user) {
+          user = whUsers.find(u => 
+            u && (
+              cleanStr(u.nik) === cleanInput || 
+              cleanStr(u.name) === cleanInput ||
+              cleanStr(u.id) === cleanInput ||
+              (u.barcodeValue && cleanStr(u.barcodeValue) === cleanInput) ||
+              (u.email && cleanStr(u.email) === cleanInput) ||
+              (u.email && cleanStr(u.email.split('@')[0]) === cleanInput) ||
+              (u.phone && cleanStr(u.phone) === cleanInput)
+            )
+          );
+        }
 
-      // 1. Exact match (NIK / Nama / Phone / ID / Email / Username / Barcode) dalam gudang terpilih
-      if (!user) {
-        user = whUsers.find(u => 
-          u && (
-            cleanStr(u.nik) === cleanInput || 
-            cleanStr(u.name) === cleanInput ||
-            cleanStr(u.id) === cleanInput ||
-            (u.barcodeValue && cleanStr(u.barcodeValue) === cleanInput) ||
-            (u.email && cleanStr(u.email) === cleanInput) ||
-            (u.email && cleanStr(u.email.split('@')[0]) === cleanInput) ||
-            (u.phone && cleanStr(u.phone) === cleanInput)
-          )
-        );
-      }
-
-      // 1.5 Match Akhiran NIK dalam gudang terpilih
-      if (!user && cleanInput.length >= 1) {
-        user = whUsers.find(u => {
-          if (!u || !u.nik) return false;
-          const uCleanNik = cleanStr(u.nik);
-          return uCleanNik.endsWith(cleanInput) || uCleanNik === `${selectedWh.toLowerCase()}26${cleanInput.padStart(3, '0')}`;
-        });
-      }
-
-      // 2. Partial word match dalam gudang terpilih
-      if (!user && cleanInput.length >= 2) {
-        user = whUsers.find(u => 
-          u && (
-            cleanStr(u.name).includes(cleanInput) || 
-            cleanInput.includes(cleanStr(u.name)) ||
-            (u.nik && cleanStr(u.nik).includes(cleanInput)) ||
-            (u.id && cleanStr(u.id).includes(cleanInput)) ||
-            (u.email && cleanStr(u.email).includes(cleanInput))
-          )
-        );
-      }
-
-      // 3. Multi-word individual match dalam gudang terpilih
-      if (!user) {
-        const words = rawInputId.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
-        if (words.length > 0) {
+        // 1.5 Match Akhiran NIK dalam gudang terpilih
+        if (!user && cleanInput.length >= 1) {
           user = whUsers.find(u => {
-            if (!u || !u.name) return false;
-            const uName = u.name.toLowerCase();
-            return words.some(w => uName.includes(w));
+            if (!u || !u.nik) return false;
+            const uCleanNik = cleanStr(u.nik);
+            return uCleanNik.endsWith(cleanInput) || uCleanNik === `${selectedWh.toLowerCase()}26${cleanInput.padStart(3, '0')}`;
           });
         }
-      }
 
-      // 4. Smart Cross-Warehouse Fallback: Jika tidak ditemukan di gudang aktif, cari di gudang lain dan otomatis alihkan
-      if (!user) {
-        const otherWh = selectedWh === 'MAI' ? 'MBI' : 'MAI';
-        const otherWhUsers = selectedWh === 'MAI' ? mbiUsers : maiUsers;
-        const existsInOther = otherWhUsers.find(u => 
-          u && (
-            cleanStr(u.nik) === cleanInput || 
-            cleanStr(u.name) === cleanInput ||
-            cleanStr(u.id) === cleanInput ||
-            (u.barcodeValue && cleanStr(u.barcodeValue) === cleanInput) ||
-            (u.email && cleanStr(u.email) === cleanInput)
-          )
-        );
+        // 2. Partial word match dalam gudang terpilih
+        if (!user && cleanInput.length >= 2) {
+          user = whUsers.find(u => 
+            u && (
+              cleanStr(u.name).includes(cleanInput) || 
+              cleanInput.includes(cleanStr(u.name)) ||
+              (u.nik && cleanStr(u.nik).includes(cleanInput)) ||
+              (u.id && cleanStr(u.id).includes(cleanInput)) ||
+              (u.email && cleanStr(u.email).includes(cleanInput))
+            )
+          );
+        }
 
-        if (existsInOther && isUserAllowedToLogin(existsInOther)) {
-          selectedWh = otherWh;
-          const r = document.querySelector(`input[name="login-warehouse"][value="${otherWh}"]`);
+        // 3. Multi-word individual match dalam gudang terpilih
+        if (!user) {
+          const words = rawInputId.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+          if (words.length > 0) {
+            user = whUsers.find(u => {
+              if (!u || !u.name) return false;
+              const uName = u.name.toLowerCase();
+              return words.some(w => uName.includes(w));
+            });
+          }
+        }
+
+        // 4. Smart Cross-Warehouse Fallback: Jika tidak ditemukan di gudang aktif, cari di gudang lain dan otomatis alihkan
+        if (!user) {
+          const otherWh = selectedWh === 'MAI' ? 'MBI' : 'MAI';
+          const otherWhUsers = selectedWh === 'MAI' ? mbiUsers : maiUsers;
+          const existsInOther = otherWhUsers.find(u => 
+            u && (
+              cleanStr(u.nik) === cleanInput || 
+              cleanStr(u.name) === cleanInput ||
+              cleanStr(u.id) === cleanInput ||
+              (u.barcodeValue && cleanStr(u.barcodeValue) === cleanInput) ||
+              (u.email && cleanStr(u.email) === cleanInput)
+            )
+          );
+
+          if (existsInOther && isUserAllowedToLogin(existsInOther)) {
+            selectedWh = otherWh;
+            const r = document.querySelector(`input[name="login-warehouse"][value="${otherWh}"]`);
+            if (r) { r.checked = true; updateLoginWhStyle(); }
+            user = existsInOther;
+          }
+        }
+
+        // Jika user tetap tidak ditemukan:
+        if (!user) {
+          if (alertEl) {
+            alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+            alertEl.innerHTML = `<span>Akun / NIK <b>"${escapeHTML(rawInputId)}"</b> tidak ditemukan di sistem!</span><br><span class="text-[11px] font-normal text-slate-600">Pastikan NIK atau Nama yang Anda masukkan sudah terdaftar.</span>`;
+            alertEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // BLOKIR AKSES LOGIN HANYA JIKA BENAR-BENAR STAFF MURNI TANPA HAK LOGIN
+        const isMgmtUser = isUserAllowedToLogin(user);
+        if (!isMgmtUser) {
+          if (alertEl) {
+            alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
+            alertEl.innerHTML = `<span>Akses Ditolak: Karyawan Staff <b>"${escapeHTML(user.name)}"</b> tidak memiliki hak akses login.</span><br><span class="text-[11px] font-normal text-slate-600">Hak akses login sistem diperuntukkan bagi <b>Coordinator, Supervisor, Manager, Admin, dan Scanner Presensi</b> (atau akun yang diberikan izin modul). Karyawan Staff melakukan absensi lewat Scanner Presensi Gudang.</span>`;
+            alertEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // Cek status aktif/nonaktif akun karyawan (kecuali akun manajemen sistem)
+        if (!isManagementSystemAccount(user) && user.status === 'inactive') {
+          if (alertEl) {
+            alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
+            alertEl.innerHTML = `<span>Akun <b>"${escapeHTML(user.name)}"</b> (NIK: ${escapeHTML(user.nik || user.id)}) berstatus <span class="text-rose-600 font-black">NONAKTIF</span>.</span><br><span class="text-[11px] font-normal text-slate-600">Silakan hubungi Tim HRD / Admin Gudang untuk mengaktifkan kembali akun Anda.</span>`;
+            alertEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        // Sinkronisasi otomatis gudang akun
+        if (user.warehouse && user.warehouse !== selectedWh && !isUserManager(user) && !canAccessMultiWarehouse(user)) {
+          selectedWh = user.warehouse;
+          const r = document.querySelector(`input[name="login-warehouse"][value="${user.warehouse}"]`);
           if (r) { r.checked = true; updateLoginWhStyle(); }
-          user = existsInOther;
         }
-      }
 
-      // Jika user tetap tidak ditemukan:
-      if (!user) {
-        if (alertEl) {
-          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          alertEl.innerHTML = `<span>Akun / NIK <b>"${escapeHTML(rawInputId)}"</b> tidak ditemukan di sistem!</span><br><span class="text-[11px] font-normal text-slate-600">Pastikan NIK atau Nama yang Anda masukkan sudah terdaftar.</span>`;
-          alertEl.classList.remove('hidden');
-        }
-        return;
-      }
+        // Pastikan gudang user sesuai dengan pilihan aktif saat login
+        user.warehouse = isUserManager(user) || canAccessMultiWarehouse(user) ? selectedWh : (user.warehouse || selectedWh);
 
-      // BLOKIR AKSES LOGIN HANYA JIKA BENAR-BENAR STAFF MURNI TANPA HAK LOGIN
-      const isMgmtUser = isUserAllowedToLogin(user);
-      if (!isMgmtUser) {
-        if (alertEl) {
-          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
-          alertEl.innerHTML = `<span>Akses Ditolak: Karyawan Staff <b>"${escapeHTML(user.name)}"</b> tidak memiliki hak akses login.</span><br><span class="text-[11px] font-normal text-slate-600">Hak akses login sistem diperuntukkan bagi <b>Coordinator, Supervisor, Manager, Admin, dan Scanner Presensi</b>. Karyawan Staff melakukan absensi lewat Scanner Presensi Gudang.</span>`;
-          alertEl.classList.remove('hidden');
-        }
-        return;
-      }
+        // VALIDASI DUAL-PASSWORD (SANDI BARU & SANDI LAMA TETAP BISA DIGUNAKAN):
+        const storedPass = (user.password || '').trim();
+        const oldPass = (user.oldPassword || '').trim();
+        const prevList = Array.isArray(user.previousPasswords) ? user.previousPasswords.map(p => (p || '').trim()) : [];
+        let isPasswordCorrect = false;
 
-      // Cek status aktif/nonaktif akun karyawan (kecuali akun manajemen sistem)
-      if (!isManagementSystemAccount(user) && user.status === 'inactive') {
-        if (alertEl) {
-          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
-          alertEl.innerHTML = `<span>Akun <b>"${escapeHTML(user.name)}"</b> (NIK: ${escapeHTML(user.nik || user.id)}) berstatus <span class="text-rose-600 font-black">NONAKTIF</span>.</span><br><span class="text-[11px] font-normal text-slate-600">Silakan hubungi Tim HRD / Admin Gudang untuk mengaktifkan kembali akun Anda.</span>`;
-          alertEl.classList.remove('hidden');
-        }
-        return;
-      }
+        // Dukungan password opsional / default (sesuai panduan form login "(opsional / default: medika123)"):
+        const isDefaultAccountPass = !storedPass || storedPass === 'medika123' || storedPass === 'password123' || storedPass === 'adminmbi123' || storedPass === 'adminmai123' || user.isFirstLogin === true;
+        const testPass = inputPass ? inputPass : (isDefaultAccountPass ? (storedPass || 'medika123') : '');
 
-      // Sinkronisasi otomatis gudang akun
-      if (user.warehouse && user.warehouse !== selectedWh && !isUserManager(user) && !canAccessMultiWarehouse(user)) {
-        selectedWh = user.warehouse;
-        const r = document.querySelector(`input[name="login-warehouse"][value="${user.warehouse}"]`);
-        if (r) { r.checked = true; updateLoginWhStyle(); }
-      }
-
-      // Pastikan gudang user sesuai dengan pilihan aktif saat login
-      user.warehouse = isUserManager(user) || canAccessMultiWarehouse(user) ? selectedWh : (user.warehouse || selectedWh);
-
-      // VALIDASI DUAL-PASSWORD (SANDI BARU & SANDI LAMA TETAP BISA DIGUNAKAN):
-      const storedPass = (user.password || '').trim();
-      const oldPass = (user.oldPassword || '').trim();
-      const prevList = Array.isArray(user.previousPasswords) ? user.previousPasswords.map(p => (p || '').trim()) : [];
-      let isPasswordCorrect = false;
-
-      if (inputPass) {
-        if (storedPass && inputPass === storedPass) {
-          isPasswordCorrect = true;
-        } else if (oldPass && inputPass === oldPass) {
-          isPasswordCorrect = true;
-        } else if (prevList.includes(inputPass)) {
-          isPasswordCorrect = true;
-        } else {
-          // Master & Default fallback password resmi (Sandi lama bawaan sistem yang selalu valid)
-          const isAdmin = isUserAdmin(user);
-          const isMgr = isUserManager(user);
-          const isSpvOrCoord = isUserSupervisor(user) || isUserCoordinator(user);
-          const isScanner = isUserScanner(user);
-
-          if (isAdmin && (inputPass === 'adminmbi123' || inputPass === 'adminmai123' || inputPass === 'medika123' || inputPass === 'password123')) {
+        if (testPass) {
+          if (storedPass && testPass === storedPass) {
             isPasswordCorrect = true;
-          } else if ((isMgr || isSpvOrCoord) && (inputPass === 'medika123' || inputPass === 'password123')) {
+          } else if (oldPass && testPass === oldPass) {
             isPasswordCorrect = true;
-          } else if (isScanner && (inputPass === 'medika123' || inputPass === 'password123')) {
+          } else if (prevList.includes(testPass)) {
             isPasswordCorrect = true;
-          } else if (inputPass === 'medika123' || inputPass === 'password123') {
-            isPasswordCorrect = true;
-          }
-        }
-      }
-
-      if (!isPasswordCorrect) {
-        if (alertEl) {
-          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-          if (!inputPass) {
-            alertEl.innerHTML = `<span>Password wajib diisi untuk login akun <b>${escapeHTML(user.name)}</b>!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan kata sandi akun Anda.</span>`;
           } else {
-            alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> tidak cocok!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password akun Anda yang terdaftar di sistem.</span>`;
+            // Master & Default fallback password resmi (Sandi lama bawaan sistem yang selalu valid)
+            const isAdmin = isUserAdmin(user);
+            const isMgr = isUserManager(user);
+            const isSpvOrCoord = isUserSupervisor(user) || isUserCoordinator(user);
+            const isScanner = isUserScanner(user);
+
+            if (isAdmin && (testPass === 'adminmbi123' || testPass === 'adminmai123' || testPass === 'medika123' || testPass === 'password123')) {
+              isPasswordCorrect = true;
+            } else if ((isMgr || isSpvOrCoord) && (testPass === 'medika123' || testPass === 'password123')) {
+              isPasswordCorrect = true;
+            } else if (isScanner && (testPass === 'medika123' || testPass === 'password123')) {
+              isPasswordCorrect = true;
+            } else if (testPass === 'medika123' || testPass === 'password123') {
+              isPasswordCorrect = true;
+            }
           }
+        }
+
+        if (!isPasswordCorrect) {
+          if (alertEl) {
+            alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+            if (!inputPass) {
+              alertEl.innerHTML = `<span>Password wajib diisi untuk login akun <b>${escapeHTML(user.name)}</b>!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan kata sandi akun Anda.</span>`;
+            } else {
+              alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> tidak cocok!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password akun Anda yang terdaftar di sistem.</span>`;
+            }
+            alertEl.classList.remove('hidden');
+          }
+          return;
+        }
+
+        loginUserSession(user);
+      } catch (loginErr) {
+        console.error('Login process error:', loginErr);
+        if (alertEl) {
+          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+          alertEl.innerHTML = `<span>Terjadi kendala saat login: ${escapeHTML(loginErr.message || 'Silakan coba lagi.')}</span>`;
           alertEl.classList.remove('hidden');
         }
-        return;
       }
-
-      loginUserSession(user);
     }
 
     function handleForceChangePassword(e) {
@@ -14415,9 +14440,14 @@
       
       const currentWhUsers = getWhDB(selectedWh, 'users', selectedWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
 
-      // HANYA tampilkan akun yang berhak login (Coordinator, Supervisor, Manager, Admin, Scanner)
-      // Karyawan Staff tidak ditampilkan agar akun login manajemen aman, ringan, dan tidak disalahgunakan
-      const allowedAccounts = currentWhUsers.filter(u => u && isUserAllowedToLogin(u) && u.role !== 'staff');
+      // HANYA tampilkan akun yang berhak login (Coordinator, Supervisor, Manager, Admin, Scanner, atau akun dengan izin modul)
+      const allowedAccounts = currentWhUsers.filter(u => {
+        if (!u || !isUserAllowedToLogin(u)) return false;
+        if (u.role !== 'staff') return true;
+        if (u.permissions && Object.values(u.permissions).some(v => v === true)) return true;
+        const sp = getSavedUserPerms(u.nik || u.id, u.warehouse);
+        return sp && Object.values(sp).some(v => v === true);
+      });
 
       allowedAccounts.sort((a, b) => {
         if (a.role === 'admin') return -1;
