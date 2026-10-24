@@ -23987,7 +23987,7 @@
       setWhDB(wh, 'attendance', attendances);
 
       // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
-      await saveFullDatabaseToCloud(false, true, true, wh);
+      await saveFullDatabaseToCloud(false, true, true, wh, false, true);
       try { queueAttendanceCloudPush(wh, newRec); } catch (ePush) {}
       if (typeof saveAttendanceDocToFirestore === 'function') {
         saveAttendanceDocToFirestore(wh, newRec);
@@ -24150,7 +24150,7 @@
       setWhDB(targetWh, 'attendance', attendances);
 
       // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
-      await saveFullDatabaseToCloud(false, true, true, targetWh);
+      await saveFullDatabaseToCloud(false, true, true, targetWh, false, true);
       try { queueAttendanceCloudPush(targetWh, existingRec); } catch (ePush) {}
       if (typeof saveAttendanceDocToFirestore === 'function') {
         saveAttendanceDocToFirestore(targetWh, existingRec);
