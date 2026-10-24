@@ -8088,11 +8088,23 @@
       const seenNiks = new Set();
       const cleanList = [];
 
-      // 1. Tempatkan Admin Utama Sistem di awal
-      const foundAdmin = users.find(u => u && (u.id === 'mbi-admin' || u.id === 'mai-admin' || (u.nik && (u.nik.toUpperCase() === 'ADM001' || u.nik.toUpperCase() === 'ADM-MAI')) || cleanStr(u.name) === 'admingudangmbi' || cleanStr(u.name) === 'admingudangmai'));
+      // 1. Tempatkan Admin Utama Sistem di awal (Khusus gudang masing-masing)
+      const targetAdminId = warehouse === 'MBI' ? 'mbi-admin' : 'mai-admin';
+      const targetAdminNik = warehouse === 'MBI' ? 'ADM001' : 'ADM-MAI';
+      const targetAdminName = warehouse === 'MBI' ? 'Admin Gudang MBI' : 'Admin Gudang MAI';
       const seedAdmin = (warehouse === 'MBI' ? { ...SEED_MBI_USERS[0] } : { ...SEED_MAI_USERS[0] });
+
+      const foundAdmin = users.find(u => u && (
+        u.id === targetAdminId || 
+        (u.nik && u.nik.toUpperCase() === targetAdminNik) || 
+        cleanStr(u.name) === cleanStr(targetAdminName) ||
+        (u.warehouse === warehouse && isUserAdmin(u) && !u.id.includes(warehouse === 'MBI' ? 'mai' : 'mbi'))
+      ));
+
       const admin = foundAdmin ? { ...foundAdmin } : { ...seedAdmin };
-      admin.nik = warehouse === 'MBI' ? 'ADM001' : 'ADM-MAI';
+      admin.id = targetAdminId;
+      admin.nik = targetAdminNik;
+      admin.warehouse = warehouse;
       admin.dept = 'Administrator';
       admin.role = 'admin';
       admin.hasAccount = true;
@@ -8100,9 +8112,13 @@
       admin.name = (foundAdmin && foundAdmin.name && foundAdmin.name.trim() !== '') ? foundAdmin.name : seedAdmin.name;
       if (foundAdmin && foundAdmin.phone) admin.phone = foundAdmin.phone;
       if (foundAdmin && foundAdmin.email) admin.email = foundAdmin.email;
-      if (foundAdmin && foundAdmin.password) admin.password = foundAdmin.password;
+      if (warehouse === 'MBI') {
+        admin.password = (foundAdmin && foundAdmin.password && foundAdmin.password !== 'adminmai123') ? foundAdmin.password : (seedAdmin.password || 'adminmbi123');
+      } else {
+        admin.password = (foundAdmin && foundAdmin.password && foundAdmin.password !== 'adminmbi123') ? foundAdmin.password : (seedAdmin.password || 'adminmai123');
+      }
       if (!admin.permissions) {
-        admin.permissions = getSavedUserPerms(admin.nik, warehouse);
+        admin.permissions = getSavedUserPerms(admin.nik, warehouse) || seedAdmin.permissions;
       }
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
@@ -8156,6 +8172,24 @@
         if (u.id === 'mgr-eko' || u.nik === 'MGR001') return false;
         if (u.nik && (u.nik === 'SPV-MBI' || u.nik === 'SPV-MAI')) return false;
         if (u.id === 'mbi-spv' || u.id === 'mai-spv') return false;
+
+        // ISOLASI KETAT GUDANG: Buang akun dari gudang lain agar data karyawan 100% rapi & tidak bercampur
+        const uNik = (u.nik || '').toUpperCase().trim();
+        const uWh = (u.warehouse || '').toUpperCase().trim();
+        const uId = (u.id || '').toLowerCase().trim();
+
+        if (warehouse === 'MBI') {
+          if (uWh === 'MAI') return false;
+          if (uNik.startsWith('MAI')) return false;
+          if (uId.startsWith('mai-')) return false;
+          if (cleanStr(u.name) === 'admingudangmai') return false;
+        } else if (warehouse === 'MAI') {
+          if (uWh === 'MBI') return false;
+          if (uNik.startsWith('MBI')) return false;
+          if (uId.startsWith('mbi-')) return false;
+          if (cleanStr(u.name) === 'admingudangmbi') return false;
+        }
+
         return true;
       });
 
@@ -8430,9 +8464,96 @@
       return [...systemAccounts, ...sortedRegular];
     }
 
+    // Pemisahan otomatis & permanen data karyawan MBI dan MAI agar tidak saling bercampur
+    function separateAndCleanWarehouseData() {
+      try {
+        const rawMbi = localStorage.getItem('wfm_mbi_users');
+        const rawMai = localStorage.getItem('wfm_mai_users');
+        let mbiList = rawMbi ? JSON.parse(rawMbi) : [...SEED_MBI_USERS];
+        let maiList = rawMai ? JSON.parse(rawMai) : [...SEED_MAI_USERS];
+        if (!Array.isArray(mbiList)) mbiList = [...SEED_MBI_USERS];
+        if (!Array.isArray(maiList)) maiList = [...SEED_MAI_USERS];
+
+        let hasMoved = false;
+
+        // 1. Pindahkan karyawan MAI yang tersasar masuk ke MBI
+        const foreignInMbi = mbiList.filter(u => {
+          if (!u || isManagementSystemAccount(u)) return false;
+          const uWh = (u.warehouse || '').toUpperCase().trim();
+          const uNik = (u.nik || '').toUpperCase().trim();
+          const uId = (u.id || '').toLowerCase().trim();
+          return uWh === 'MAI' || uNik.startsWith('MAI') || uId.startsWith('mai-') || cleanStr(u.name) === 'admingudangmai';
+        });
+
+        if (foreignInMbi.length > 0) {
+          foreignInMbi.forEach(fu => {
+            const fuNik = (fu.nik || '').toUpperCase().trim();
+            const fuName = cleanStr(fu.name);
+            const existsInMai = maiList.some(mu => (fuNik && mu.nik && mu.nik.toUpperCase().trim() === fuNik) || (fuName && cleanStr(mu.name) === fuName));
+            if (!existsInMai) {
+              const toAdd = { ...fu, warehouse: 'MAI' };
+              maiList.push(toAdd);
+            }
+          });
+          mbiList = mbiList.filter(u => {
+            if (!u || isManagementSystemAccount(u)) return true;
+            const uWh = (u.warehouse || '').toUpperCase().trim();
+            const uNik = (u.nik || '').toUpperCase().trim();
+            const uId = (u.id || '').toLowerCase().trim();
+            return !(uWh === 'MAI' || uNik.startsWith('MAI') || uId.startsWith('mai-') || cleanStr(u.name) === 'admingudangmai');
+          });
+          hasMoved = true;
+        }
+
+        // 2. Pindahkan karyawan MBI yang tersasar masuk ke MAI (jika ada)
+        const foreignInMai = maiList.filter(u => {
+          if (!u || isManagementSystemAccount(u)) return false;
+          const uWh = (u.warehouse || '').toUpperCase().trim();
+          const uNik = (u.nik || '').toUpperCase().trim();
+          const uId = (u.id || '').toLowerCase().trim();
+          return uWh === 'MBI' || uNik.startsWith('MBI') || uId.startsWith('mbi-') || cleanStr(u.name) === 'admingudangmbi';
+        });
+
+        if (foreignInMai.length > 0) {
+          foreignInMai.forEach(fu => {
+            const fuNik = (fu.nik || '').toUpperCase().trim();
+            const fuName = cleanStr(fu.name);
+            const existsInMbi = mbiList.some(mu => (fuNik && mu.nik && mu.nik.toUpperCase().trim() === fuNik) || (fuName && cleanStr(mu.name) === fuName));
+            if (!existsInMbi) {
+              const toAdd = { ...fu, warehouse: 'MBI' };
+              mbiList.push(toAdd);
+            }
+          });
+          maiList = maiList.filter(u => {
+            if (!u || isManagementSystemAccount(u)) return true;
+            const uWh = (u.warehouse || '').toUpperCase().trim();
+            const uNik = (u.nik || '').toUpperCase().trim();
+            const uId = (u.id || '').toLowerCase().trim();
+            return !(uWh === 'MBI' || uNik.startsWith('MBI') || uId.startsWith('mbi-') || cleanStr(u.name) === 'admingudangmbi');
+          });
+          hasMoved = true;
+        }
+
+        const cleanMbi = deduplicateUserList(mbiList, 'MBI');
+        const cleanMai = deduplicateUserList(maiList, 'MAI');
+
+        if (hasMoved || cleanMbi.length !== mbiList.length || cleanMai.length !== maiList.length) {
+          localStorage.setItem('wfm_mbi_users', JSON.stringify(cleanMbi));
+          localStorage.setItem('wfm_mbi_users_backup', JSON.stringify(cleanMbi));
+          localStorage.setItem('wfm_mai_users', JSON.stringify(cleanMai));
+          localStorage.setItem('wfm_mai_users_backup', JSON.stringify(cleanMai));
+          clearWhDBCache();
+          console.log(`[WarehouseSeparation] Data berhasil dipisahkan! MBI: ${cleanMbi.length} akun, MAI: ${cleanMai.length} akun.`);
+        }
+      } catch (err) {
+        console.warn('[WarehouseSeparation Error]:', err);
+      }
+    }
+
     // Pembersihan otomatis data karyawan duplikat dan data ghost (nama berupa ID)
     function autoPurgeDuplicateAndCorruptEmployees(showAlert = false, shouldRerender = true) {
       try {
+        separateAndCleanWarehouseData();
         let totalCleaned = 0;
         ['MBI', 'MAI'].forEach(wh => {
           const storageKey = `wfm_${wh.toLowerCase()}_users`;
@@ -8454,15 +8575,16 @@
         });
 
         if (totalCleaned > 0 && shouldRerender) {
+          clearWhDBCache();
           if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
           if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
         }
 
         if (showAlert) {
           if (totalCleaned > 0) {
-            alert(`✅ Pembersihan Berhasil!\n\nSebanyak ${totalCleaned} akun ghost / duplikat / korup berhasil dihapus secara permanen.\nDatabase master yang bersih telah diunggah ke Firebase Cloud.`);
+            alert(`✅ Pembersihan Berhasil!\n\nSebanyak ${totalCleaned} akun duplikat / beda gudang berhasil dirapikan secara permanen.\nData Gudang MBI dan MAI kini 100% terpisah rapi.`);
           } else {
-            alert('ℹ️ Data Karyawan Bersih!\n\nTidak ditemukan akun ghost atau data duplikat di sistem.');
+            alert('ℹ️ Data Karyawan Bersih!\n\nData karyawan Gudang MBI dan MAI sudah 100% terpisah rapi.');
           }
         }
       } catch (e) {
@@ -9423,9 +9545,22 @@
       return result;
     }
 
+    const firestoreQuotaSuspended = { MBI: 0, MAI: 0 };
+    function isFirestoreSuspended(wh) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      return firestoreQuotaSuspended[targetWh] && Date.now() < firestoreQuotaSuspended[targetWh];
+    }
+    function suspendFirestoreQuota(wh) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      firestoreQuotaSuspended[targetWh] = Date.now() + 30 * 60 * 1000;
+      console.warn(`[Firestore Quota] Firestore untuk ${targetWh} ditangguhkan sementara (30 menit) karena limit kuota harian tercapai. Sistem beralih penuh ke Firebase RTDB.`);
+    }
+
     async function saveDocToFirestore(wh, collection, docId, data) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      if (isFirestoreSuspended(targetWh)) return false;
       try {
-        const projectId = getFirestoreProjectId(wh);
+        const projectId = getFirestoreProjectId(targetWh);
         const cleanDocId = encodeURIComponent(String(docId).trim());
         const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${cleanDocId}`;
         const body = toFirestoreDoc(data);
@@ -9434,53 +9569,75 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
+        if (res.status === 429 || res.status === 403) {
+          suspendFirestoreQuota(targetWh);
+          return false;
+        }
         return res.ok;
       } catch (err) {
-        console.warn(`[Firestore] Gagal menyimpan ${collection}/${docId} (${wh}):`, err);
+        console.warn(`[Firestore] Gagal menyimpan ${collection}/${docId} (${targetWh}):`, err);
         return false;
       }
     }
 
     async function getDocFromFirestore(wh, collection, docId) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      if (isFirestoreSuspended(targetWh)) return null;
       try {
-        const projectId = getFirestoreProjectId(wh);
+        const projectId = getFirestoreProjectId(targetWh);
         const cleanDocId = encodeURIComponent(String(docId).trim());
         const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${cleanDocId}`;
         const res = await fetch(url, { cache: 'no-store' });
+        if (res.status === 429 || res.status === 403) {
+          suspendFirestoreQuota(targetWh);
+          return null;
+        }
         if (!res.ok) return null;
         const json = await res.json();
         return fromFirestoreDoc(json);
       } catch (err) {
-        console.warn(`[Firestore] Gagal memuat ${collection}/${docId} (${wh}):`, err);
+        console.warn(`[Firestore] Gagal memuat ${collection}/${docId} (${targetWh}):`, err);
         return null;
       }
     }
 
     async function listDocsFromFirestore(wh, collection, pageSize = 300, pageToken = '') {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      if (isFirestoreSuspended(targetWh)) return { docs: [], nextPageToken: null };
       try {
-        const projectId = getFirestoreProjectId(wh);
+        const projectId = getFirestoreProjectId(targetWh);
         let url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}?pageSize=${pageSize}`;
         if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
         const res = await fetch(url, { cache: 'no-store' });
+        if (res.status === 429 || res.status === 403) {
+          suspendFirestoreQuota(targetWh);
+          return { docs: [], nextPageToken: null };
+        }
         if (!res.ok) return { docs: [], nextPageToken: null };
         const json = await res.json();
         const docs = (json.documents || []).map(fromFirestoreDoc).filter(Boolean);
         return { docs, nextPageToken: json.nextPageToken || null };
       } catch (err) {
-        console.warn(`[Firestore] Gagal melihat daftar ${collection} (${wh}):`, err);
+        console.warn(`[Firestore] Gagal melihat daftar ${collection} (${targetWh}):`, err);
         return { docs: [], nextPageToken: null };
       }
     }
 
     async function deleteDocFromFirestore(wh, collection, docId) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      if (isFirestoreSuspended(targetWh)) return false;
       try {
-        const projectId = getFirestoreProjectId(wh);
+        const projectId = getFirestoreProjectId(targetWh);
         const cleanDocId = encodeURIComponent(String(docId).trim());
         const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${cleanDocId}`;
         const res = await fetch(url, { method: 'DELETE' });
+        if (res.status === 429 || res.status === 403) {
+          suspendFirestoreQuota(targetWh);
+          return false;
+        }
         return res.ok;
       } catch (err) {
-        console.warn(`[Firestore] Gagal menghapus ${collection}/${docId} (${wh}):`, err);
+        console.warn(`[Firestore] Gagal menghapus ${collection}/${docId} (${targetWh}):`, err);
         return false;
       }
     }
@@ -9990,12 +10147,12 @@
 
     function startFirestoreRealtimeSync() {
       if (firestoreRealtimeTimer) clearInterval(firestoreRealtimeTimer);
-      // Pengecekan sinyal ultra-ringan setiap 2.5 detik saat layar aktif
+      // Pengecekan sinyal hemat kuota setiap 45 detik saat layar aktif (BroadcastChannel memberikan pembaruan instan 0ms antar-tab)
       firestoreRealtimeTimer = setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
           checkFirestoreRealtimeUpdates();
         }
-      }, 2500);
+      }, 45000);
 
       try {
         if (typeof BroadcastChannel !== 'undefined') {
@@ -10308,21 +10465,25 @@
       localList = (Array.isArray(localList) ? localList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
       cloudList = (Array.isArray(cloudList) ? cloudList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
 
-      // Bersihkan akun ghost yang nama berupa ID jika ada kandidat nama manusia sah
-      const filterGhost = (list) => {
-        const hasHuman = list.some(u => u && !isManagementSystemAccount(u) && isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name));
-        if (hasHuman) {
-          return list.filter(u => {
-            if (!u) return false;
-            if (isManagementSystemAccount(u)) return true;
-            return isLikelyHumanName(u.name) && !isLikelyIdNotName(u.name);
-          });
-        }
-        return list;
+      // Filter list berdasarkan gudang target agar data antar gudang tidak pernah tercampur saat sync cloud
+      const filterWhStrict = (list, targetWh) => {
+        return (list || []).filter(u => {
+          if (!u) return false;
+          if (isUserManager(u)) return true;
+          const uNik = (u.nik || '').toUpperCase().trim();
+          const uWh = (u.warehouse || '').toUpperCase().trim();
+          const uId = (u.id || '').toLowerCase().trim();
+          if (targetWh === 'MBI') {
+            if (uWh === 'MAI' || uNik.startsWith('MAI') || uId.startsWith('mai-') || cleanStr(u.name) === 'admingudangmai') return false;
+          } else if (targetWh === 'MAI') {
+            if (uWh === 'MBI' || uNik.startsWith('MBI') || uId.startsWith('mbi-') || cleanStr(u.name) === 'admingudangmbi') return false;
+          }
+          return true;
+        });
       };
 
-      localList = filterGhost(localList);
-      cloudList = filterGhost(cloudList);
+      localList = filterWhStrict(filterGhost(localList), wh);
+      cloudList = filterWhStrict(filterGhost(cloudList), wh);
 
       const countRegular = (list) => list.filter(u => u && !isManagementSystemAccount(u)).length;
       let localRegCount = countRegular(localList);
@@ -12132,6 +12293,7 @@
 
       // Ensure DB initialized & clean active users from tombstone list
       try {
+        if (typeof separateAndCleanWarehouseData === 'function') separateAndCleanWarehouseData();
         if (typeof unmarkDeletedUser === 'function') unmarkDeletedUser('melinda');
         if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
         if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
@@ -14165,7 +14327,22 @@
           }
           const targetWhUsers = selectedWh === 'MAI' ? maiUsers : mbiUsers;
           const targetSeedUsers = selectedWh === 'MAI' ? SEED_MAI_USERS : SEED_MBI_USERS;
-          user = targetWhUsers.find(u => isUserAdmin(u)) || targetSeedUsers[0];
+
+          // KUNCI MATI ADMIN SESUAI GUDANG TARGET:
+          // Admin MBI HARUS mbi-admin (ADM001), Admin MAI HARUS mai-admin (ADM-MAI)
+          const targetAdminId = selectedWh === 'MAI' ? 'mai-admin' : 'mbi-admin';
+          const targetAdminNik = selectedWh === 'MAI' ? 'ADM-MAI' : 'ADM001';
+          const targetAdminName = selectedWh === 'MAI' ? 'Admin Gudang MAI' : 'Admin Gudang MBI';
+
+          const found = targetWhUsers.find(u => u && (u.id === targetAdminId || (u.nik && u.nik.toUpperCase() === targetAdminNik) || cleanStr(u.name) === cleanStr(targetAdminName))) ||
+                        targetSeedUsers[0];
+
+          user = { ...found, id: targetAdminId, nik: targetAdminNik, warehouse: selectedWh, role: 'admin', dept: 'Administrator' };
+          if (selectedWh === 'MBI') {
+            user.password = (found && found.password && found.password !== 'adminmai123') ? found.password : 'adminmbi123';
+          } else {
+            user.password = (found && found.password && found.password !== 'adminmbi123') ? found.password : 'adminmai123';
+          }
         }
 
         // 0.5 Keyword cepat Manager (misal: 'manager', 'mgr', 'eko', 'managereko', 'mgr001', 'mgreko')
@@ -14242,10 +14419,13 @@
           );
 
           if (existsInOther && isUserAllowedToLogin(existsInOther)) {
-            selectedWh = otherWh;
-            const r = document.querySelector(`input[name="login-warehouse"][value="${otherWh}"]`);
-            if (r) { r.checked = true; updateLoginWhStyle(); }
-            user = existsInOther;
+            // JANGAN alihkan akun admin antar gudang secara otomatis
+            if (!isUserAdmin(existsInOther)) {
+              selectedWh = otherWh;
+              const r = document.querySelector(`input[name="login-warehouse"][value="${otherWh}"]`);
+              if (r) { r.checked = true; updateLoginWhStyle(); }
+              user = existsInOther;
+            }
           }
         }
 
@@ -14280,8 +14460,8 @@
           return;
         }
 
-        // Sinkronisasi otomatis gudang akun
-        if (user.warehouse && user.warehouse !== selectedWh && !isUserManager(user) && !canAccessMultiWarehouse(user)) {
+        // Sinkronisasi otomatis gudang akun (khusus akun non-admin yang terdaftar di gudang tunggal)
+        if (user.warehouse && user.warehouse !== selectedWh && !isUserManager(user) && !canAccessMultiWarehouse(user) && !isUserAdmin(user)) {
           selectedWh = user.warehouse;
           const r = document.querySelector(`input[name="login-warehouse"][value="${user.warehouse}"]`);
           if (r) { r.checked = true; updateLoginWhStyle(); }
