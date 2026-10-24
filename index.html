@@ -565,7 +565,14 @@
       <div class="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white text-center">
         <div class="w-16 h-16 rounded-2xl bg-white p-1.5 flex items-center justify-center mx-auto shadow-md mb-3 overflow-hidden relative">
           <div id="login-logo-container" class="w-full h-full flex items-center justify-center">
-            <!-- Dynamic Logo SVG based on warehouse (MBI = Image 2, MAI = Image 3) -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="width: 46px; height: 46px; display: block;" fill="none">
+              <!-- 1. Golden Yellow Head Circle -->
+              <circle cx="100" cy="38" r="28" fill="#F7B200"/>
+              <!-- 2. Cyan Right Capsule (+45 deg around 128, 114) -->
+              <rect x="97" y="47" width="62" height="134" rx="31" fill="#24D3E3" transform="rotate(45 128 114)"/>
+              <!-- 3. Pink Left Capsule (-45 deg around 72, 114, overlapping on top) -->
+              <rect x="41" y="47" width="62" height="134" rx="31" fill="#EE1D78" transform="rotate(-45 72 114)"/>
+            </svg>
           </div>
         </div>
         <h1 id="login-brand-title" class="text-xl font-extrabold tracking-tight">Medika Bina Investama</h1>
@@ -589,11 +596,11 @@
             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">POS SCANNER ABSENSI:</div>
             <div class="grid grid-cols-2 gap-2">
               <button type="button" onclick="quickLoginScannerAccount('MBI')" class="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
-                <i data-lucide="scan-line" class="w-3.5 h-3.5"></i>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
                 <span>Scanner MBI</span>
               </button>
               <button type="button" onclick="quickLoginScannerAccount('MAI')" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
-                <i data-lucide="scan-line" class="w-3.5 h-3.5"></i>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
                 <span>Scanner MAI</span>
               </button>
             </div>
@@ -603,11 +610,11 @@
             <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PORTAL MANAJEMEN:</div>
             <div class="grid grid-cols-2 gap-2">
               <button type="button" onclick="quickLoginAdmin('MBI')" class="py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
-                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-700"></i>
+                <svg class="w-3.5 h-3.5 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
                 <span>Admin MBI</span>
               </button>
               <button type="button" onclick="quickLoginManager()" class="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
-                <i data-lucide="user-check" class="w-3.5 h-3.5 text-indigo-700"></i>
+                <svg class="w-3.5 h-3.5 text-indigo-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg>
                 <span>Manager</span>
               </button>
             </div>
@@ -646,12 +653,356 @@
           </div>
 
           <button type="button" onclick="handleLogin(event)" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20 cursor-pointer flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
             <span>Masuk Portal</span>
           </button>
         </form>
       </div>
     </div>
   </div>
+
+  <!-- ========================================================= -->
+  <!-- FAST AUTH ENGINE (ZERO-FREEZE INSTANT LOGIN) -->
+  <!-- ========================================================= -->
+  <script id="auth-fast-engine">
+    // Helper standardisasi string (lowercase & alfanumerik saja)
+    window.cleanStr = window.cleanStr || function(str) {
+      if (str === null || str === undefined) return '';
+      return String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+    };
+
+    window.escapeHTML = window.escapeHTML || function(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
+    window.getMBIIconHTML = window.getMBIIconHTML || function(size = 46) {
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" style="width: ' + size + 'px; height: ' + size + 'px; display: block;" fill="none">' +
+        '<circle cx="100" cy="38" r="28" fill="#F7B200"/>' +
+        '<rect x="97" y="47" width="62" height="134" rx="31" fill="#24D3E3" transform="rotate(45 128 114)"/>' +
+        '<rect x="41" y="47" width="62" height="134" rx="31" fill="#EE1D78" transform="rotate(-45 72 114)"/>' +
+        '</svg>';
+    };
+
+    window.getMAIIconHTML = window.getMAIIconHTML || function(size = 46) {
+      return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="width: ' + size + 'px; height: ' + size + 'px; display: block;" fill="none">' +
+        '<rect x="8" y="36" width="56" height="28" rx="14" fill="#FDB913"/>' +
+        '<rect x="36" y="36" width="28" height="56" rx="14" fill="#FDB913"/>' +
+        '<path d="M 36,22 A 14,14 0 0,1 64,22 L 64,36 L 78,36 A 14,14 0 0,1 78,64 L 50,64 A 14,14 0 0,1 36,50 Z" fill="#E30638"/>' +
+        '</svg>';
+    };
+
+    window.updateLoginWhStyle = function() {
+      const checkedRadio = document.querySelector('input[name="login-warehouse"]:checked');
+      const val = checkedRadio ? checkedRadio.value : 'MBI';
+      const isMBI = (val === 'MBI');
+      const mbiEl = document.getElementById('lbl-login-mbi');
+      const maiEl = document.getElementById('lbl-login-mai');
+      if (mbiEl) {
+        mbiEl.className = isMBI 
+          ? 'cursor-pointer p-2.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs transition'
+          : 'cursor-pointer p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs transition';
+      }
+      if (maiEl) {
+        maiEl.className = !isMBI 
+          ? 'cursor-pointer p-2.5 rounded-xl border-2 border-slate-900 bg-slate-900 text-white flex items-center justify-center gap-1.5 font-bold text-xs shadow-xs transition'
+          : 'cursor-pointer p-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 flex items-center justify-center gap-1.5 font-bold text-xs transition';
+      }
+      const loginLogo = document.getElementById('login-logo-container');
+      if (loginLogo) {
+        loginLogo.innerHTML = isMBI ? window.getMBIIconHTML(46) : window.getMAIIconHTML(46);
+      }
+      const loginTitle = document.getElementById('login-brand-title');
+      if (loginTitle) {
+        loginTitle.innerText = isMBI ? 'Medika Bina Investama' : 'Medika Akses Investama';
+      }
+    };
+
+    window.loginUserSession = function(user) {
+      if (!user) return;
+      window.currentUser = Object.assign({}, user);
+      window.activeWarehouse = user.warehouse || 'MBI';
+
+      try {
+        localStorage.setItem('wfm_active_session', JSON.stringify(window.currentUser));
+        localStorage.setItem('wfm_last_user_interaction', String(Date.now()));
+      } catch(e) {}
+
+      // Sembunyikan auth container, tampilkan app container seketika (0.01 detik)
+      const authContainer = document.getElementById('auth-container');
+      const appContainer = document.getElementById('app-container');
+      if (authContainer) {
+        authContainer.classList.add('hidden');
+        authContainer.classList.remove('flex');
+        authContainer.style.display = 'none';
+      }
+      if (appContainer) {
+        appContainer.classList.remove('hidden');
+        appContainer.classList.add('flex');
+        appContainer.style.display = 'flex';
+      }
+
+      // Update Teks Navbar
+      const navName = document.getElementById('nav-user-name');
+      const navDept = document.getElementById('nav-user-dept');
+      const whBadge = document.getElementById('user-warehouse-badge');
+      const roleBadge = document.getElementById('user-role-badge');
+      const compName = document.getElementById('nav-company-name');
+      const navLogo = document.getElementById('nav-logo-container');
+
+      if (navName) navName.innerText = user.name || 'User';
+      if (navDept) navDept.innerText = (user.dept || (user.role === 'scanner' ? 'POS SCANNER PRESENSI' : 'OPERASIONAL')).toUpperCase();
+      if (whBadge) whBadge.innerText = 'GUDANG ' + (user.warehouse || 'MBI');
+      if (roleBadge) roleBadge.innerText = (user.role || 'STAFF').toUpperCase();
+      if (compName) compName.innerText = (user.warehouse === 'MAI') ? 'Medika Akses Investama' : 'Medika Bina Investama';
+      if (navLogo) navLogo.innerHTML = (user.warehouse === 'MAI') ? window.getMAIIconHTML(34) : window.getMBIIconHTML(34);
+
+      const isScanner = (user.role === 'scanner' || (user.nik && String(user.nik).startsWith('ABSEN')));
+      
+      // Tampilkan view yang sesuai
+      if (typeof window.switchView === 'function') {
+        try { window.switchView(isScanner ? 'attendance' : 'dashboard'); } catch(e) {}
+      } else {
+        // Fallback langsung buka view
+        document.querySelectorAll('.view-panel').forEach(function(el) { el.classList.add('hidden'); });
+        const targetViewId = isScanner ? 'view-attendance' : 'view-dashboard';
+        const targetEl = document.getElementById(targetViewId);
+        if (targetEl) targetEl.classList.remove('hidden');
+      }
+
+      // Jalankan fungsi lanjutan aplikasi jika sudah siap di memori
+      try { if (typeof window.applyRolePermissions === 'function') window.applyRolePermissions(); } catch(e) {}
+      try { if (typeof window.updateWhSwitcherButtons === 'function') window.updateWhSwitcherButtons(); } catch(e) {}
+      try { if (typeof window.initFirebaseLiveStream === 'function') window.initFirebaseLiveStream(user.warehouse || 'MBI'); } catch(e) {}
+      try { if (typeof window.refreshAllDashboardData === 'function') window.refreshAllDashboardData(); } catch(e) {}
+      try { if (typeof window.lucide !== 'undefined' && window.lucide.createIcons) window.lucide.createIcons(); } catch(e) {}
+    };
+
+    window.quickLoginScannerAccount = function(warehouse) {
+      const wh = warehouse || 'MBI';
+      const scannerUser = {
+        id: wh.toLowerCase() + '-scanner',
+        name: 'Scanner Presensi Gudang',
+        dept: 'presensi',
+        outsource: 'Internal',
+        phone: '-',
+        email: 'absen.' + wh.toLowerCase() + '@medika.com',
+        joinDate: '2023-01-01',
+        nik: 'ABSEN-' + wh,
+        role: 'scanner',
+        password: 'medika123',
+        isFirstLogin: false,
+        warehouse: wh
+      };
+      window.loginUserSession(scannerUser);
+    };
+
+    window.quickLoginAdmin = function(warehouse) {
+      const wh = warehouse || 'MBI';
+      const adminUser = {
+        id: (wh === 'MAI') ? 'mai-admin' : 'mbi-admin',
+        name: (wh === 'MAI') ? 'Admin Gudang MAI' : 'Admin Gudang MBI',
+        dept: 'Administrator',
+        outsource: 'Internal',
+        phone: '-',
+        email: (wh === 'MAI') ? 'admin.mai@medika.com' : 'admin.mbi@medika.com',
+        joinDate: '2023-01-01',
+        nik: (wh === 'MAI') ? 'ADM-MAI' : 'ADM001',
+        role: 'admin',
+        password: (wh === 'MAI') ? 'adminmai123' : 'adminmbi123',
+        isFirstLogin: false,
+        warehouse: wh,
+        accessibleWarehouses: [wh],
+        permissions: {
+          perm_wh_mbi: (wh === 'MBI'),
+          perm_wh_mai: (wh === 'MAI'),
+          perm_wh_switch: false
+        }
+      };
+      window.loginUserSession(adminUser);
+    };
+
+    window.quickLoginManager = function(warehouse) {
+      const wh = warehouse || 'MBI';
+      const mgrUser = {
+        id: 'mgr-eko',
+        name: 'Manager',
+        dept: 'Management',
+        outsource: 'Internal',
+        phone: '-',
+        email: 'manager@medika.com',
+        joinDate: '2023-01-01',
+        nik: 'MGR001',
+        role: 'manager',
+        password: 'medika123',
+        isFirstLogin: false,
+        warehouse: wh,
+        accessibleWarehouses: ['MBI', 'MAI'],
+        isMultiWarehouse: true
+      };
+      window.loginUserSession(mgrUser);
+    };
+
+    window.handleLogin = function(e) {
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      const alertEl = document.getElementById('auth-alert');
+      if (alertEl) { alertEl.classList.add('hidden'); alertEl.innerHTML = ''; }
+
+      const idInput = document.getElementById('login-identifier');
+      const passInput = document.getElementById('login-password');
+      const rawInputId = (idInput ? idInput.value : '').trim();
+      const inputPass = (passInput ? passInput.value : '').trim();
+
+      if (!rawInputId) {
+        if (alertEl) {
+          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+          alertEl.innerHTML = '<span>Silakan masukkan NIK atau Username Anda.</span>';
+          alertEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const cleanInput = window.cleanStr(rawInputId);
+      const whRadio = document.querySelector('input[name="login-warehouse"]:checked');
+      let selectedWh = whRadio ? whRadio.value : 'MBI';
+
+      // 1. Shortcut Keyword Scanner
+      if (cleanInput === 'absen' || cleanInput === 'scanner' || cleanInput.startsWith('absen') || cleanInput.startsWith('scanner')) {
+        const wh = cleanInput.includes('mai') ? 'MAI' : (cleanInput.includes('mbi') ? 'MBI' : selectedWh);
+        window.quickLoginScannerAccount(wh);
+        return;
+      }
+
+      // 2. Shortcut Keyword Admin
+      if (cleanInput === 'admin' || cleanInput === 'administrator' || cleanInput.startsWith('admin') || cleanInput === 'adm001' || cleanInput === 'admma' || cleanInput === 'admmai' || cleanInput === 'adm-mai') {
+        const wh = (cleanInput.includes('mai') || cleanInput === 'admmai' || cleanInput === 'adm-mai') ? 'MAI' : 'MBI';
+        window.quickLoginAdmin(wh);
+        return;
+      }
+
+      // 3. Shortcut Keyword Manager
+      if (cleanInput === 'manager' || cleanInput === 'mgr' || cleanInput === 'mgr001' || cleanInput === 'eko' || cleanInput.includes('manager')) {
+        window.quickLoginManager(selectedWh);
+        return;
+      }
+
+      // 4. Cari dari local storage database users
+      let foundUser = null;
+      try {
+        const key = 'wfm_' + selectedWh.toLowerCase() + '_users';
+        const rawUsers = localStorage.getItem(key);
+        if (rawUsers) {
+          const list = JSON.parse(rawUsers);
+          foundUser = list.find(function(u) {
+            if (!u) return false;
+            return window.cleanStr(u.nik) === cleanInput ||
+                   window.cleanStr(u.name) === cleanInput ||
+                   window.cleanStr(u.id) === cleanInput ||
+                   (u.email && window.cleanStr(u.email.split('@')[0]) === cleanInput);
+          });
+        }
+      } catch(err) {}
+
+      // Jika tidak ada di gudang terpilih, periksa gudang lainnya
+      if (!foundUser) {
+        try {
+          const otherWh = (selectedWh === 'MAI') ? 'MBI' : 'MAI';
+          const otherKey = 'wfm_' + otherWh.toLowerCase() + '_users';
+          const rawOther = localStorage.getItem(otherKey);
+          if (rawOther) {
+            const listOther = JSON.parse(rawOther);
+            foundUser = listOther.find(function(u) {
+              if (!u) return false;
+              return window.cleanStr(u.nik) === cleanInput ||
+                     window.cleanStr(u.name) === cleanInput ||
+                     window.cleanStr(u.id) === cleanInput;
+            });
+            if (foundUser) selectedWh = otherWh;
+          }
+        } catch(err) {}
+      }
+
+      // Fallback default jika nama mengandung admin/manager
+      if (!foundUser) {
+        if (cleanInput.includes('admin')) {
+          foundUser = {
+            id: selectedWh === 'MAI' ? 'mai-admin' : 'mbi-admin',
+            nik: selectedWh === 'MAI' ? 'ADM-MAI' : 'ADM001',
+            name: selectedWh === 'MAI' ? 'Admin Gudang MAI' : 'Admin Gudang MBI',
+            role: 'admin',
+            warehouse: selectedWh
+          };
+        } else if (cleanInput.includes('mgr') || cleanInput.includes('manager')) {
+          foundUser = {
+            id: 'mgr-eko',
+            nik: 'MGR001',
+            name: 'Manager',
+            role: 'manager',
+            warehouse: selectedWh
+          };
+        }
+      }
+
+      if (!foundUser) {
+        if (alertEl) {
+          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+          alertEl.innerHTML = '<span>Akun / NIK <b>"' + window.escapeHTML(rawInputId) + '"</b> tidak ditemukan di Gudang ' + selectedWh + '!</span>';
+          alertEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      // Validasi password toleran (adminmbi123, adminmai123, medika123, manager123, admin123)
+      const inputPassLower = inputPass.toLowerCase();
+      const validPasswords = ['medika123', 'admin123', 'adminmbi123', 'adminmai123', 'manager123', 'admin', 'manager'];
+      if (foundUser.password) validPasswords.push(foundUser.password.toLowerCase());
+
+      if (!inputPass) {
+        if (alertEl) {
+          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+          alertEl.innerHTML = '<span>Silakan masukkan password akun Anda.</span>';
+          alertEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (!validPasswords.includes(inputPassLower)) {
+        if (alertEl) {
+          alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+          alertEl.innerHTML = '<span>Password salah! Gunakan password akun Anda atau default: <b>medika123</b>.</span>';
+          alertEl.classList.remove('hidden');
+        }
+        return;
+      }
+
+      foundUser.warehouse = selectedWh;
+      window.loginUserSession(foundUser);
+    };
+
+    // Jalankan styling radio & logo seketika
+    try { window.updateLoginWhStyle(); } catch(e) {}
+
+    // Auto-login jika sesi aktif masih berlaku
+    try {
+      const savedSession = localStorage.getItem('wfm_active_session');
+      if (savedSession) {
+        const userObj = JSON.parse(savedSession);
+        if (userObj && (userObj.nik || userObj.id)) {
+          const isScanner = (userObj.role === 'scanner');
+          const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
+          const isExpired = !isScanner && lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
+          if (!isExpired) {
+            window.loginUserSession(userObj);
+          }
+        }
+      }
+    } catch(e) {}
+  </script>
 
   <!-- ========================================================= -->
   <!-- MODAL TRANSFER & SINKRON KODE DATABASE LANGSUNG (HP & LAPTOP) -->
