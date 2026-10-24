@@ -626,7 +626,7 @@
 
           <div>
             <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD</label>
-            <input type="password" id="login-password" placeholder="Masukkan password (opsional / default: medika123)" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin(event);}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+            <input type="password" id="login-password" required placeholder="Masukkan password akun Anda" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLogin(event);}" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
           </div>
 
           <button type="button" onclick="handleLogin(event)" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition shadow-lg shadow-slate-900/20 cursor-pointer flex items-center justify-center gap-2">
@@ -8109,7 +8109,8 @@
       admin.role = 'admin';
       admin.hasAccount = true;
       admin.barcodeValue = admin.nik;
-      admin.name = (foundAdmin && foundAdmin.name && foundAdmin.name.trim() !== '') ? foundAdmin.name : seedAdmin.name;
+      admin.name = targetAdminName;
+      admin.accessibleWarehouses = [warehouse];
       if (foundAdmin && foundAdmin.phone) admin.phone = foundAdmin.phone;
       if (foundAdmin && foundAdmin.email) admin.email = foundAdmin.email;
       if (warehouse === 'MBI') {
@@ -8117,23 +8118,34 @@
       } else {
         admin.password = (foundAdmin && foundAdmin.password && foundAdmin.password !== 'adminmbi123') ? foundAdmin.password : (seedAdmin.password || 'adminmai123');
       }
-      if (!admin.permissions) {
-        admin.permissions = getSavedUserPerms(admin.nik, warehouse) || seedAdmin.permissions;
-      }
+      admin.permissions = {
+        ...(foundAdmin && foundAdmin.permissions ? foundAdmin.permissions : seedAdmin.permissions),
+        perm_wh_mbi: (warehouse === 'MBI'),
+        perm_wh_mai: (warehouse === 'MAI'),
+        perm_wh_switch: false
+      };
       cleanList.push(admin);
       seenNames.add(cleanStr(admin.name));
       if (admin.id) seenIds.add(admin.id);
       seenNiks.add(admin.nik.toUpperCase());
 
       // 2. Tempatkan Akun Dedicated Scanner Absen
-      const scanner = users.find(u => u.id === 'mbi-scanner' || u.id === 'mai-scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.role === 'scanner' && cleanStr(u.name).includes('scanner'))) || (warehouse === 'MBI' ? { ...SEED_MBI_USERS[1] } : { ...SEED_MAI_USERS[1] });
+      const scanner = users.find(u => (u.id === `${warehouse.toLowerCase()}-scanner`) || (u.nik && u.nik === `ABSEN-${warehouse}`) || (u.role === 'scanner' && cleanStr(u.name).includes('scanner'))) || (warehouse === 'MBI' ? { ...SEED_MBI_USERS[1] } : { ...SEED_MAI_USERS[1] });
       if (scanner) {
+        scanner.id = `${warehouse.toLowerCase()}-scanner`;
         scanner.nik = `ABSEN-${warehouse}`;
         scanner.dept = 'presensi';
         scanner.name = 'Scanner Presensi Gudang';
+        scanner.warehouse = warehouse;
+        scanner.accessibleWarehouses = [warehouse];
         scanner.role = 'scanner';
         scanner.hasAccount = true;
         scanner.barcodeValue = scanner.nik;
+        scanner.permissions = {
+          perm_wh_mbi: (warehouse === 'MBI'),
+          perm_wh_mai: (warehouse === 'MAI'),
+          perm_wh_switch: false
+        };
         cleanList.push(scanner);
         seenNames.add(cleanStr(scanner.name));
         if (scanner.id) seenIds.add(scanner.id);
@@ -8461,7 +8473,13 @@
         return nikA.localeCompare(nikB, undefined, { numeric: true, sensitivity: 'base' });
       });
 
-      return [...systemAccounts, ...sortedRegular];
+      const finalAll = [...systemAccounts, ...sortedRegular];
+      finalAll.forEach(u => {
+        if (!u) return;
+        delete u.oldPassword;
+        u.previousPasswords = [];
+      });
+      return finalAll;
     }
 
     // Pemisahan otomatis & permanen data karyawan MBI dan MAI agar tidak saling bercampur
@@ -12258,13 +12276,15 @@
     }
 
     window.onload = async () => {
-      // Auto-purge tombstone usang agar seketika 100% sinkron dengan database cloud yang sudah dirapikan
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v10';
+      // Auto-purge tombstone usang & pemulihan total isolasi admin MBI & MAI
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261024_v11';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_deleted_user_keys');
           localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(['agus setiawan', 'agussetiawan', 'budi santoso', 'budisantoso']));
           localStorage.removeItem('wfm_deleted_attendance_ids');
+          localStorage.removeItem('wfm_mbi_master_updated_at');
+          localStorage.removeItem('wfm_active_session');
           localStorage.setItem('wfm_data_revision', CURRENT_DATA_REVISION);
         } catch(e) {}
       }
@@ -14337,7 +14357,22 @@
           const found = targetWhUsers.find(u => u && (u.id === targetAdminId || (u.nik && u.nik.toUpperCase() === targetAdminNik) || cleanStr(u.name) === cleanStr(targetAdminName))) ||
                         targetSeedUsers[0];
 
-          user = { ...found, id: targetAdminId, nik: targetAdminNik, warehouse: selectedWh, role: 'admin', dept: 'Administrator' };
+          user = {
+            ...found,
+            id: targetAdminId,
+            nik: targetAdminNik,
+            name: targetAdminName,
+            warehouse: selectedWh,
+            role: 'admin',
+            dept: 'Administrator',
+            accessibleWarehouses: [selectedWh],
+            permissions: {
+              ...((found && found.permissions) ? found.permissions : targetSeedUsers[0].permissions),
+              perm_wh_mbi: (selectedWh === 'MBI'),
+              perm_wh_mai: (selectedWh === 'MAI'),
+              perm_wh_switch: false
+            }
+          };
           if (selectedWh === 'MBI') {
             user.password = (found && found.password && found.password !== 'adminmai123') ? found.password : 'adminmbi123';
           } else {
@@ -14470,40 +14505,33 @@
         // Pastikan gudang user sesuai dengan pilihan aktif saat login
         user.warehouse = isUserManager(user) || canAccessMultiWarehouse(user) ? selectedWh : (user.warehouse || selectedWh);
 
-        // VALIDASI DUAL-PASSWORD (SANDI BARU & SANDI LAMA TETAP BISA DIGUNAKAN):
-        const storedPass = (user.password || '').trim();
-        const oldPass = (user.oldPassword || '').trim();
-        const prevList = Array.isArray(user.previousPasswords) ? user.previousPasswords.map(p => (p || '').trim()) : [];
+        // VALIDASI SINGLE-PASSWORD KETAT & AMAN:
+        // Jika akun telah mengganti kata sandi, HANYA kata sandi terbaru yang sah.
+        // Kata sandi lama MUTLAK diblokir dan tidak dapat digunakan lagi oleh siapa pun.
+        let storedPass = (user.password || '').trim();
+        if (!storedPass) {
+          if (isUserAdmin(user)) {
+            storedPass = (selectedWh === 'MAI') ? 'adminmai123' : 'adminmbi123';
+          } else {
+            storedPass = 'medika123';
+          }
+        }
+
         let isPasswordCorrect = false;
 
-        // Dukungan password opsional / default (sesuai panduan form login "(opsional / default: medika123)"):
-        const isDefaultAccountPass = !storedPass || storedPass === 'medika123' || storedPass === 'password123' || storedPass === 'adminmbi123' || storedPass === 'adminmai123' || user.isFirstLogin === true;
-        const testPass = inputPass ? inputPass : (isDefaultAccountPass ? (storedPass || 'medika123') : '');
-
-        if (testPass) {
-          if (storedPass && testPass === storedPass) {
-            isPasswordCorrect = true;
-          } else if (oldPass && testPass === oldPass) {
-            isPasswordCorrect = true;
-          } else if (prevList.includes(testPass)) {
-            isPasswordCorrect = true;
-          } else {
-            // Master & Default fallback password resmi (Sandi lama bawaan sistem yang selalu valid)
-            const isAdmin = isUserAdmin(user);
-            const isMgr = isUserManager(user);
-            const isSpvOrCoord = isUserSupervisor(user) || isUserCoordinator(user);
-            const isScanner = isUserScanner(user);
-
-            if (isAdmin && (testPass === 'adminmbi123' || testPass === 'adminmai123' || testPass === 'medika123' || testPass === 'password123')) {
-              isPasswordCorrect = true;
-            } else if ((isMgr || isSpvOrCoord) && (testPass === 'medika123' || testPass === 'password123')) {
-              isPasswordCorrect = true;
-            } else if (isScanner && (testPass === 'medika123' || testPass === 'password123')) {
-              isPasswordCorrect = true;
-            } else if (testPass === 'medika123' || testPass === 'password123') {
-              isPasswordCorrect = true;
-            }
+        // Input password wajib diisi untuk keamanan akun
+        if (!inputPass) {
+          if (alertEl) {
+            alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
+            alertEl.innerHTML = `<span>Password wajib diisi untuk login akun <b>${escapeHTML(user.name)}</b>!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan kata sandi akun Anda.</span>`;
+            alertEl.classList.remove('hidden');
           }
+          return;
+        }
+
+        // Pencocokan MUTLAK HANYA dengan kata sandi terbaru (Sandi lama dan cadangan diblokir total)
+        if (inputPass === storedPass) {
+          isPasswordCorrect = true;
         }
 
         if (!isPasswordCorrect) {
@@ -14512,7 +14540,7 @@
             if (!inputPass) {
               alertEl.innerHTML = `<span>Password wajib diisi untuk login akun <b>${escapeHTML(user.name)}</b>!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan kata sandi akun Anda.</span>`;
             } else {
-              alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> tidak cocok!</span><br><span class="text-[11px] text-slate-600 font-normal">Gunakan password akun Anda yang terdaftar di sistem.</span>`;
+              alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Kata sandi lama sudah tidak berlaku. Harap gunakan kata sandi terbaru yang telah diperbarui.</span>`;
             }
             alertEl.classList.remove('hidden');
           }
@@ -14553,15 +14581,11 @@
 
       if (idx !== -1) {
         const nowIso = new Date().toISOString();
-        if (users[idx].password && users[idx].password !== p1) {
-          users[idx].oldPassword = users[idx].password;
-          if (!Array.isArray(users[idx].previousPasswords)) users[idx].previousPasswords = [];
-          if (!users[idx].previousPasswords.includes(users[idx].password)) {
-            users[idx].previousPasswords.push(users[idx].password);
-          }
-        }
+        delete users[idx].oldPassword;
+        users[idx].previousPasswords = [];
         users[idx].password = p1;
         users[idx].isFirstLogin = false;
+        users[idx].isPasswordChanged = true;
         users[idx].updatedAt = nowIso;
         setWhDB(warehouse, 'users', users);
         pendingUserForPasswordChange = users[idx];
@@ -14575,15 +14599,11 @@
           let otherUsers = getWhDB(otherWh, 'users', otherWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
           const otherIdx = otherUsers.findIndex(u => (pendingUserForPasswordChange.nik && u.nik === pendingUserForPasswordChange.nik) || (pendingUserForPasswordChange.id && u.id === pendingUserForPasswordChange.id) || (isUserManager(pendingUserForPasswordChange) && isUserManager(u)));
           if (otherIdx !== -1) {
-            if (otherUsers[otherIdx].password && otherUsers[otherIdx].password !== p1) {
-              otherUsers[otherIdx].oldPassword = otherUsers[otherIdx].password;
-              if (!Array.isArray(otherUsers[otherIdx].previousPasswords)) otherUsers[otherIdx].previousPasswords = [];
-              if (!otherUsers[otherIdx].previousPasswords.includes(otherUsers[otherIdx].password)) {
-                otherUsers[otherIdx].previousPasswords.push(otherUsers[otherIdx].password);
-              }
-            }
+            delete otherUsers[otherIdx].oldPassword;
+            otherUsers[otherIdx].previousPasswords = [];
             otherUsers[otherIdx].password = p1;
             otherUsers[otherIdx].isFirstLogin = false;
+            otherUsers[otherIdx].isPasswordChanged = true;
             otherUsers[otherIdx].updatedAt = nowIso;
             setWhDB(otherWh, 'users', otherUsers);
           }
@@ -14815,7 +14835,16 @@
         const latestUser = allUsers.find(u => (user.id && u.id === user.id) || (user.nik && u.nik === user.nik) || (user.name && cleanStr(u.name) === cleanStr(user.name))) || user;
 
         currentUser = { ...latestUser };
-        currentUser.warehouse = currentUser.warehouse || currentWh || 'MBI';
+        if (isUserAdmin(user)) {
+          currentUser.warehouse = currentWh;
+          currentUser.accessibleWarehouses = [currentWh];
+          if (!currentUser.permissions) currentUser.permissions = {};
+          currentUser.permissions.perm_wh_mbi = (currentWh === 'MBI');
+          currentUser.permissions.perm_wh_mai = (currentWh === 'MAI');
+          currentUser.permissions.perm_wh_switch = false;
+        } else {
+          currentUser.warehouse = currentUser.warehouse || currentWh || 'MBI';
+        }
         activeWarehouse = currentUser.warehouse;
         try { updateWhSwitcherButtons(); } catch(e) {}
 
@@ -14825,6 +14854,11 @@
           if (savedPerms) {
             currentUser.permissions = savedPerms;
           }
+        }
+        if (isUserAdmin(currentUser)) {
+          currentUser.permissions.perm_wh_mbi = (currentUser.warehouse === 'MBI');
+          currentUser.permissions.perm_wh_mai = (currentUser.warehouse === 'MAI');
+          currentUser.permissions.perm_wh_switch = false;
         }
 
         try {
@@ -14890,6 +14924,13 @@
               currentUser.dept = newDept;
               if (cloudUser.permissions) currentUser.permissions = cloudUser.permissions;
               if (cloudUser.name) currentUser.name = cloudUser.name;
+              if (isUserAdmin(currentUser)) {
+                currentUser.name = (currentUser.warehouse === 'MBI' ? 'Admin Gudang MBI' : 'Admin Gudang MAI');
+                currentUser.accessibleWarehouses = [currentUser.warehouse];
+                currentUser.permissions.perm_wh_mbi = (currentUser.warehouse === 'MBI');
+                currentUser.permissions.perm_wh_mai = (currentUser.warehouse === 'MAI');
+                currentUser.permissions.perm_wh_switch = false;
+              }
               try { localStorage.setItem('wfm_active_session', JSON.stringify(currentUser)); } catch(e) {}
 
               // Sinkronkan ke daftar database users lokal
@@ -19460,15 +19501,11 @@
         if (isManagementRole) {
           users[idx].hasAccount = true;
           if (customPass) {
-            if (users[idx].password && users[idx].password !== customPass) {
-              users[idx].oldPassword = users[idx].password;
-              if (!Array.isArray(users[idx].previousPasswords)) users[idx].previousPasswords = [];
-              if (!users[idx].previousPasswords.includes(users[idx].password)) {
-                users[idx].previousPasswords.push(users[idx].password);
-              }
-            }
+            delete users[idx].oldPassword;
+            users[idx].previousPasswords = [];
             users[idx].password = customPass;
             users[idx].isFirstLogin = false;
+            users[idx].isPasswordChanged = true;
           } else if (!users[idx].password) {
             users[idx].password = 'medika123';
             users[idx].isFirstLogin = true;
@@ -21466,15 +21503,11 @@
         users[idx].email = newEmail;
         users[idx].updatedAt = nowIso;
         if (p1) {
-          if (users[idx].password && users[idx].password !== p1) {
-            users[idx].oldPassword = users[idx].password;
-            if (!Array.isArray(users[idx].previousPasswords)) users[idx].previousPasswords = [];
-            if (!users[idx].previousPasswords.includes(users[idx].password)) {
-              users[idx].previousPasswords.push(users[idx].password);
-            }
-          }
+          delete users[idx].oldPassword;
+          users[idx].previousPasswords = [];
           users[idx].password = p1;
           users[idx].isFirstLogin = false;
+          users[idx].isPasswordChanged = true;
         }
 
         // Update currentUser session
@@ -21483,10 +21516,11 @@
         currentUser.email = newEmail;
         currentUser.updatedAt = nowIso;
         if (p1) {
-          currentUser.oldPassword = users[idx].oldPassword;
-          currentUser.previousPasswords = users[idx].previousPasswords;
+          delete currentUser.oldPassword;
+          currentUser.previousPasswords = [];
           currentUser.password = p1;
           currentUser.isFirstLogin = false;
+          currentUser.isPasswordChanged = true;
         }
 
         setWhDB(wh, 'users', users);
@@ -21502,15 +21536,11 @@
             otherUsers[otherIdx].email = newEmail;
             otherUsers[otherIdx].updatedAt = nowIso;
             if (p1) {
-              if (otherUsers[otherIdx].password && otherUsers[otherIdx].password !== p1) {
-                otherUsers[otherIdx].oldPassword = otherUsers[otherIdx].password;
-                if (!Array.isArray(otherUsers[otherIdx].previousPasswords)) otherUsers[otherIdx].previousPasswords = [];
-                if (!otherUsers[otherIdx].previousPasswords.includes(otherUsers[otherIdx].password)) {
-                  otherUsers[otherIdx].previousPasswords.push(otherUsers[otherIdx].password);
-                }
-              }
+              delete otherUsers[otherIdx].oldPassword;
+              otherUsers[otherIdx].previousPasswords = [];
               otherUsers[otherIdx].password = p1;
               otherUsers[otherIdx].isFirstLogin = false;
+              otherUsers[otherIdx].isPasswordChanged = true;
             }
             setWhDB(otherWh, 'users', otherUsers);
           } else if (isUserManager(currentUser)) {
