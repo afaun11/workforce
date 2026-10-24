@@ -739,6 +739,8 @@
       if (loginTitle) {
         loginTitle.innerText = isMBI ? 'Medika Bina Investama' : 'Medika Akses Investama';
       }
+    };
+
     window.toggleMobileSidebar = function() {
       const sb = document.getElementById('app-sidebar');
       const bd = document.getElementById('mobile-sidebar-backdrop');
@@ -12493,7 +12495,6 @@
             if (!cloudTimestamp || typeof cloudTimestamp !== 'string') {
               continue;
             }
-            const localUsers = getWhDB(wh, 'users', []);
             const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
             const isLocalIncomplete = (localReg === 0);
             const needFetch = isLocalIncomplete || (cloudTimestamp !== localUpdated);
