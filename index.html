@@ -10241,6 +10241,7 @@
 
     function queueAttendanceCloudPush(wh, rec) {
       if (!rec || !rec.id) return;
+      if (!rec.updatedAt) rec.updatedAt = new Date().toISOString();
       const w = String(wh || rec.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       let list = readAttOutbox().filter(x => !(x.wh === w && x.rec.id === rec.id));
       list.push({
@@ -10259,7 +10260,7 @@
       setTimeout(() => { flushAttendanceOutbox(); }, 3000);
     } catch (eOutbox) {}
 
-    // Gabungkan arsip utama + node live dari cloud. Untuk id yang sama, pilih record yang paling lengkap/terbaru.
+    // Gabungkan arsip utama + node live dari cloud. Untuk id yang sama, prioritaskan record yang memiliki jam pulang (checkOutTime) atau data paling baru.
     function combineCloudAttendanceWithLive(arr, liveObj) {
       const base = normalizeFirebaseArray(arr);
       if (!liveObj || typeof liveObj !== 'object') return base;
@@ -10268,12 +10269,19 @@
       const keyOf = r => r.id || `${(r.userNik || '').toUpperCase()}_${r.date || ''}_${r.checkInTime || ''}`;
       const pick = (a, b) => {
         if (!a) return b;
-        if (a.updatedAt && !b.updatedAt) return a;
-        if (b.updatedAt && !a.updatedAt) return b;
-        if (a.updatedAt && b.updatedAt) return String(b.updatedAt) >= String(a.updatedAt) ? b : a;
-        if (b.checkOutTime && !a.checkOutTime) return b;
-        if (a.checkOutTime && !b.checkOutTime) return a;
-        return b;
+        if (!b) return a;
+        // Prioritas 1: Jika salah satu memiliki checkOutTime yang sah, pertahankan checkOutTime tersebut agar tidak tertimpa check-in kosong!
+        const hasOutA = !!(a.checkOutTime && a.checkOutTime !== '-' && a.checkOutTime !== '');
+        const hasOutB = !!(b.checkOutTime && b.checkOutTime !== '-' && b.checkOutTime !== '');
+        if (hasOutB && !hasOutA) return { ...a, ...b };
+        if (hasOutA && !hasOutB) return { ...b, ...a, checkOutTime: a.checkOutTime };
+
+        // Prioritas 2: Jika keduanya punya checkOutTime atau keduanya belum pulang, pilih data dengan updatedAt terbaru
+        const timeA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        if (timeB > timeA) return { ...a, ...b };
+        if (timeA > timeB) return { ...b, ...a };
+        return { ...a, ...b };
       };
       const map = new Map();
       base.forEach(r => { if (r && typeof r === 'object') map.set(keyOf(r), r); });
@@ -10283,6 +10291,46 @@
         map.set(k, pick(map.get(k), r));
       });
       return Array.from(map.values());
+    }
+
+    // SINKRONISASI RINGAN LIVE DELTA (Hanya mengambil node live absensi < 5 KB tanpa membebani kamera/DOM)
+    let isLiveDeltaSyncing = false;
+    async function syncAttendanceLiveDelta(wh = null) {
+      if (isLiveDeltaSyncing) return false;
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      const { w, base, node } = getAttLiveNodes(targetWh);
+      isLiveDeltaSyncing = true;
+      try {
+        const ctrl = new AbortController();
+        const tmr = setTimeout(() => ctrl.abort(), 6000);
+        const res = await fetch(`${node}.json?t=${Date.now()}`, {
+          cache: 'no-store',
+          signal: ctrl.signal
+        });
+        clearTimeout(tmr);
+        if (!res.ok) return false;
+        const liveObj = await res.json();
+        if (!liveObj || typeof liveObj !== 'object') return false;
+
+        const currentAtt = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+        const mergedAtt = combineCloudAttendanceWithLive(currentAtt, liveObj);
+        
+        // Simpan langsung ke memori lokal browser (skipCloudSave = true agar tidak memicu re-upload siklus)
+        setWhDB(targetWh, 'attendance', mergedAtt, true);
+
+        // Perbarui list mini di bawah scanner jika layar scanner sedang terbuka (sangat ringan < 1ms)
+        try {
+          if (typeof renderScannerTodayRecords === 'function') {
+            renderScannerTodayRecords();
+          }
+        } catch (eR) {}
+
+        return true;
+      } catch (eDelta) {
+        return false;
+      } finally {
+        isLiveDeltaSyncing = false;
+      }
     }
 
     // Perapian otomatis (hanya Admin/Manager): bila node live menumpuk, pindahkan record yang sudah FINAL ke arsip utama
@@ -10960,8 +11008,13 @@
           map.set(key, localItem);
         } else {
           const cloudItem = map.get(key);
-          const merged = { ...localItem, ...cloudItem };
-          if (localItem.checkOutTime && !cloudItem.checkOutTime) {
+          const hasOutLocal = !!(localItem.checkOutTime && localItem.checkOutTime !== '-' && localItem.checkOutTime !== '');
+          const hasOutCloud = !!(cloudItem.checkOutTime && cloudItem.checkOutTime !== '-' && cloudItem.checkOutTime !== '');
+          
+          const merged = { ...cloudItem, ...localItem };
+          if (hasOutCloud && !hasOutLocal) {
+            merged.checkOutTime = cloudItem.checkOutTime;
+          } else if (hasOutLocal) {
             merged.checkOutTime = localItem.checkOutTime;
           }
           map.set(key, merged);
@@ -12644,8 +12697,10 @@
 
     async function fetchFullDatabaseFromCloud(forceAlert = false, targetWarehouse = null, forceDownload = false) {
       const isManualAlert = (forceAlert === true);
-      // Optimasi Performa HP: Jangan lakukan background fetch/parsing saat kamera scanner sedang aktif
+      // Optimasi Performa HP: Jangan lakukan background fetch penuh (150 KB & DOM render) saat kamera scanner sedang aktif
       if (!isManualAlert && html5QrScanner) {
+        // Alih-alih memutus sinkronisasi total, lakukan sinkronisasi delta live absensi yang super ringan (< 5 KB)
+        try { syncAttendanceLiveDelta(targetWarehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI')); } catch(e) {}
         return;
       }
       updateCloudSyncStatusBadge('syncing');
@@ -17258,7 +17313,7 @@
       processAttendanceScan(trimmed);
     }
 
-    function processAttendanceScan(nikCode) {
+    async function processAttendanceScan(nikCode) {
       const now = new Date();
       const todayStr = getLocalDateString(now);
       const currentWh = (activeWarehouse || 'MBI').toUpperCase();
@@ -17406,11 +17461,10 @@
       }
 
       const targetWh = scannerWh;
-      const attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+      let attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
 
       // 1. FILTER & URUTKAN SELURUH RIWAYAT PRESENSI KARYAWAN SECARA KRONOLOGIS TERBARU (DESCENDING)
-      // Pencarian KETAT & AMAN: Mencegah NIK tertukar atau satu karyawan menutup sesi karyawan lain
-      const userAtts = attendances.filter(a => 
+      const findUserAtts = (list) => (list || []).filter(a => 
         (a.userId && a.userId === matchedUser.id) ||
         (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
         (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase() && (!a.userName || cleanStr(a.userName) === cleanStr(matchedUser.name)))
@@ -17420,15 +17474,12 @@
         return tB - tA;
       });
 
+      let userAtts = findUserAtts(attendances);
+
       // 2. IDENTIFIKASI SESI AKTIF (MENDUKUNG 100% SEMUA SHIFT TERMASUK SHIFT MALAM LINTAS HARI)
-      // Kriteria Sesi Aktif:
-      // a. Memiliki jam masuk (checkInTime)
-      // b. Belum absen pulang (checkOutTime kosong / null / '-')
-      // c. Belum ditandai secara eksplisit sebagai Miss Scan
-      // d. Durasi berjalan masih dalam batas wajar shift aktif (< 18 Jam / MAX_ACTIVE_SHIFT_MS)
       const MAX_ACTIVE_SHIFT_MS = 18 * 60 * 60 * 1000;
       
-      const activeOpenSession = userAtts.find(a => {
+      const findOpenSession = (atts) => (atts || []).find(a => {
         if (!a || !a.checkInTime) return false;
         if (a.checkOutTime && a.checkOutTime !== '-' && a.checkOutTime !== '') return false;
         if (a.notes && a.notes.toLowerCase().includes('miss scan')) return false;
@@ -17438,6 +17489,22 @@
         const elapsed = now.getTime() - inMs;
         return (elapsed >= 0 && elapsed < MAX_ACTIVE_SHIFT_MS);
       });
+
+      let activeOpenSession = findOpenSession(userAtts);
+
+      // JARING PENGAMAN MULTI-DEVICE (Cross-Device Rescue):
+      // Jika mode Absen Pulang dan sesi belum ditemukan di memori lokal HP (misal absen masuk di HP lain atau sinyal sempat offline),
+      // lakukan pencarian delta live kilat ke database cloud sebelum memunculkan peringatan 'Belum Absen Masuk'
+      if (selectedAttendanceType === 'check_out' && !activeOpenSession) {
+        try {
+          const synced = await syncAttendanceLiveDelta(targetWh);
+          if (synced) {
+            attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+            userAtts = findUserAtts(attendances);
+            activeOpenSession = findOpenSession(userAtts);
+          }
+        } catch (eRescue) {}
+      }
 
       if (selectedAttendanceType === 'check_in') {
         // ==========================================
@@ -17540,7 +17607,8 @@
           checkInTime: now.toISOString(),
           checkOutTime: null,
           checkInStatus: isLate ? 'late' : 'on_time',
-          notes: (document.getElementById('att-notes')?.value || '').trim()
+          notes: (document.getElementById('att-notes')?.value || '').trim(),
+          updatedAt: now.toISOString()
         });
 
         const notesInput = document.getElementById('att-notes');
@@ -17606,6 +17674,7 @@
           }
 
           activeOpenSession.checkOutTime = now.toISOString();
+          activeOpenSession.updatedAt = now.toISOString();
           activeOpenSession.userNik = matchedUser.nik;
           activeOpenSession.userName = matchedUser.name;
           activeOpenSession.userId = matchedUser.id;
@@ -18433,6 +18502,9 @@
     function setAttendanceType(type) {
       selectedAttendanceType = type;
       unlockAudioContextOnGesture();
+      if (type === 'check_out') {
+        try { syncAttendanceLiveDelta(activeWarehouse); } catch (eDelta) {}
+      }
       const isIn = type === 'check_in';
       const btnIn = document.getElementById('btn-type-in');
       const btnOut = document.getElementById('btn-type-out');
