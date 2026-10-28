@@ -1761,12 +1761,8 @@
                       </div>
                     </div>
 
-                    <!-- Tombol Kontrol Kamera (Ganti Kamera & Tutup) -->
-                    <div class="pt-2 flex items-center justify-center gap-2">
-                      <button type="button" id="btn-switch-camera" onclick="switchCameraLens()" class="hidden px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                        <span id="btn-switch-camera-text">Ganti Kamera</span>
-                      </button>
+                    <!-- Tombol Tutup Kamera -->
+                    <div class="pt-2 flex items-center justify-center">
                       <button type="button" onclick="stopScanner()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center shadow-2xs">
                         <span>Tutup Kamera</span>
                       </button>
@@ -17464,8 +17460,7 @@
           statusText: `Khusus Gudang ${userWh}`
         });
         playAttendanceErrorSound('Beda gudang penempatan');
-        stopScanner();
-        setTimeout(() => { isScanProcessing = false; }, 2500);
+        setTimeout(() => { isScanProcessing = false; }, 2000);
         return;
       }
 
@@ -17557,7 +17552,6 @@
             });
           }
           playAttendanceErrorSound('Sudah absen masuk');
-          stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -17585,7 +17579,6 @@
             statusText: 'Sudah Selesai Shift'
           });
           playAttendanceErrorSound('Shift hari ini sudah selesai');
-          stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -17677,7 +17670,6 @@
               statusText: 'Baru Tap Masuk'
             });
             playAttendanceErrorSound('Baru saja absen masuk');
-            stopScanner();
             setTimeout(() => { isScanProcessing = false; }, 2000);
             return;
           }
@@ -17753,7 +17745,6 @@
             });
             playAttendanceErrorSound('Belum absen masuk');
           }
-          stopScanner();
           setTimeout(() => { isScanProcessing = false; }, 2000);
           return;
         }
@@ -17794,33 +17785,46 @@
       if (gunTimeEl) gunTimeEl.innerText = nowFormatted;
       if (gunCard) gunCard.classList.remove('hidden');
 
-      // Tampilkan kartu bukti presensi sukses di Standby Wrapper & otomatis tutup kamera
+      // Tampilkan kartu bukti presensi sukses di Standby Wrapper & Gun Wrapper
       if (card) card.classList.remove('hidden');
       if (standbyIcon) standbyIcon.classList.add('hidden');
       if (standbyTitle) standbyTitle.innerText = selectedAttendanceType === 'check_in' ? 'Absen Masuk Berhasil Dicatat!' : 'Absen Pulang Berhasil Dicatat!';
-      if (standbySubtitle) standbySubtitle.innerText = `Presensi ${matchedUser.name} (${matchedUser.nik || ''}) sukses tersimpan ke sistem. Kamera otomatis ditutup untuk mencegah scan ganda. Tekan tombol di bawah untuk membuka kamera karyawan berikutnya.`;
-      if (btnOpenText) btnOpenText.innerText = 'Buka Kamera untuk Absen Berikutnya';
+      if (standbySubtitle) standbySubtitle.innerText = `Presensi ${matchedUser.name} (${matchedUser.nik || ''}) sukses tersimpan ke sistem.`;
 
-      // Selalu tutup kamera secara otomatis setelah ID card terscan
-      stopScanner();
+      // Visual feedback langsung di kamera (Kamera tetap nyala mulus tanpa lag & tanpa layar blank!)
+      const boxBorder = document.getElementById('scanner-box-border');
+      const boxTag = document.getElementById('scanner-box-tag');
+      const camStatus = document.getElementById('cam-status-msg');
 
-      // Render update data presensi hari ini secara instan
+      if (camStatus) {
+        camStatus.innerHTML = `<span class="text-emerald-700 font-extrabold">✅ Presensi ${selectedAttendanceType === 'check_in' ? 'Masuk' : 'Pulang'} Sukses:</span> <span class="text-slate-900 font-bold">${matchedUser.name}</span> (${nowFormatted})`;
+      }
+      if (boxBorder) {
+        boxBorder.className = 'w-[270px] h-48 sm:w-[310px] sm:h-52 border-4 border-emerald-400 bg-emerald-500/20 rounded-3xl flex items-center justify-center transition-all duration-200 shadow-lg shadow-emerald-500/30';
+      }
+      if (boxTag) {
+        boxTag.innerText = 'BERHASIL TERCATAT!';
+        boxTag.className = 'text-[11px] text-white bg-emerald-600 px-3 py-1 rounded-lg font-mono font-extrabold tracking-wider shadow-md';
+      }
+
+      // Render update data presensi hari ini secara instan (sangat ringan < 1ms)
       renderScannerTodayRecords();
-      refreshAllDashboardData();
 
-      // Tunda rendering tabel laporan & matrix besar di background agar UI pos scanner tetap super enteng & instan
+      // Kembalikan tampilan kamera siap untuk scan karyawan berikutnya setelah 1.2 detik
       setTimeout(() => {
-        try {
-          renderRecordsTable();
-          renderMatrixTable();
-        } catch (e) {}
-      }, 350);
-
-      // Jeda anti-double scan sebelum menerima barcode karyawan berikutnya
-      setTimeout(() => {
+        if (boxBorder) {
+          boxBorder.className = 'w-[270px] h-48 sm:w-[310px] sm:h-52 border-2 border-emerald-400 border-dashed rounded-3xl animate-pulse flex items-center justify-center';
+        }
+        if (boxTag) {
+          boxTag.innerText = 'SCAN BARCODE / QR';
+          boxTag.className = 'text-[10px] text-emerald-200 bg-slate-900/90 px-2.5 py-1 rounded-lg font-mono font-bold tracking-wide';
+        }
+        if (camStatus) {
+          camStatus.innerText = 'Arahkan kamera ke Barcode ID Card Karyawan berikutnya...';
+        }
         isScanProcessing = false;
         resetVerificationState();
-      }, 1000);
+      }, 1200);
     }
 
     // =========================================================
@@ -18297,11 +18301,8 @@
     }
 
     // =========================================================
-    // KAMERA SCANNER (BUKA, GANTI & TUTUP) - MULTI-DEVICE IPHONE, ANDROID & LAPTOP
+    // KAMERA SCANNER - ULTRA FAST MULTI-DEVICE (IPHONE, ANDROID & LAPTOP)
     // =========================================================
-    let availableCameras = [];
-    let currentCameraIndex = 0;
-    let isCameraSwitching = false;
 
     // Deteksi apakah perangkat adalah Laptop / Desktop (tanpa kamera belakang bawaan)
     function isLaptopOrDesktopDevice() {
@@ -18311,40 +18312,7 @@
       return !isMobile && !isMacTablet;
     }
 
-    async function switchCameraLens() {
-      if (isCameraSwitching) return;
-      isCameraSwitching = true;
-      try {
-        if (!availableCameras || availableCameras.length <= 1) {
-          try {
-            availableCameras = await Html5Qrcode.getCameras();
-          } catch(e) {}
-        }
-        if (!availableCameras || availableCameras.length <= 1) {
-          showProfessionalAttendanceToast({
-            isWarning: true,
-            title: 'Hanya 1 Kamera',
-            subtitle: 'Perangkat ini hanya memiliki 1 kamera yang terdeteksi aktif.'
-          });
-          return;
-        }
-
-        currentCameraIndex = (currentCameraIndex + 1) % availableCameras.length;
-        const nextCam = availableCameras[currentCameraIndex];
-        
-        const statusMsg = document.getElementById('cam-status-msg');
-        if (statusMsg) statusMsg.innerText = `Beralih ke: ${nextCam.label || ('Kamera ' + (currentCameraIndex + 1))}...`;
-
-        await stopScanner(true);
-        await startScanner(nextCam.id);
-      } catch (err) {
-        console.warn('Gagal beralih kamera:', err);
-      } finally {
-        isCameraSwitching = false;
-      }
-    }
-
-    async function startScanner(targetCameraId = null) {
+    async function startScanner() {
       // Tarik konfigurasi GPS terbaru dari Cloud Firestore secara instan
       try {
         const curWh = (activeWarehouse || (typeof currentUser !== 'undefined' && currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
@@ -18391,25 +18359,6 @@
       try {
         if (typeof Html5Qrcode !== 'undefined') {
           const isLaptop = isLaptopOrDesktopDevice();
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-          // Cek daftar kamera hardware yang terpasang di perangkat
-          try {
-            const devs = await Html5Qrcode.getCameras();
-            if (devs && Array.isArray(devs) && devs.length > 0) {
-              availableCameras = devs;
-            }
-          } catch (eDevs) {}
-
-          // Tombol Ganti Kamera muncul jika perangkat punya lebih dari 1 kamera
-          const switchBtn = document.getElementById('btn-switch-camera');
-          if (switchBtn) {
-            if (availableCameras && availableCameras.length > 1) {
-              switchBtn.classList.remove('hidden');
-            } else {
-              switchBtn.classList.add('hidden');
-            }
-          }
 
           // Format barcode esensial ID Card: QR Code & 1D Barcode
           const supportedFormats = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
@@ -18432,13 +18381,12 @@
           html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
           preloadGPSLocation();
 
-          // Konfigurasi scan optimal responsif untuk semua ukuran layar & jenis kamera (tanpa hardcode facingMode)
+          // Konfigurasi scan optimal responsif untuk semua ukuran layar & jenis kamera
           const scanConfig = {
-            fps: 20, // 20 FPS untuk respons kilat
+            fps: 24, // 24 FPS untuk respons kilat
             qrbox: (viewfinderWidth, viewfinderHeight) => {
               const minDim = Math.min(viewfinderWidth, viewfinderHeight);
               if (minDim <= 0) return { width: 220, height: 220 };
-              // Responsif: Maksimal 85% dari viewport dan tidak boleh melebihi dimensi container agar tidak crash
               const edge = Math.floor(minDim * 0.85);
               const boxDim = Math.max(160, Math.min(edge, minDim - 10));
               return { width: boxDim, height: boxDim };
@@ -18446,104 +18394,49 @@
             disableFlip: isLaptop // Di laptop jangan flip mirror agar barcode kartu tidak terbalik
           };
 
-          // Tentukan kamera prioritas yang optimal
-          let primaryCameraConfig = null;
+          // ATURAN DEFAULT MUTLAK:
+          // HP (Android & iPhone): SELALU KAMERA BELAKANG (environment)
+          // Laptop / Desktop: KAMERA DEPAN (webcam / user)
+          const primaryCameraConfig = isLaptop ? { facingMode: "user" } : { facingMode: "environment" };
 
-          if (targetCameraId) {
-            primaryCameraConfig = targetCameraId;
-            const idx = availableCameras.findIndex(c => c.id === targetCameraId);
-            if (idx >= 0) currentCameraIndex = idx;
-          } else if (isLaptop) {
-            // LAPTOP: Gunakan webcam pertama atau facingMode user
-            if (availableCameras.length > 0) {
-              primaryCameraConfig = availableCameras[0].id;
-              currentCameraIndex = 0;
-            } else {
-              primaryCameraConfig = { facingMode: "user" };
-            }
-          } else {
-            // HP (IPHONE / ANDROID): Cari kamera belakang utama (1x) dan hindari ultra-wide (0.5x) yang buram
-            const backCameras = availableCameras.filter(c => /back|rear|belakang|environment/i.test(c.label || ''));
-            // Pada iPhone filter khusus: pilih lensa standard/wide utama dan hindari ultra-wide yang tidak bisa fokus jarak dekat
-            const mainBack = backCameras.find(c => !/ultra|0\.5|tele|depth/i.test(c.label || '')) || backCameras[0];
-            
-            if (mainBack) {
-              primaryCameraConfig = mainBack.id;
-              currentCameraIndex = availableCameras.findIndex(c => c.id === mainBack.id);
-            } else if (availableCameras.length > 0) {
-              primaryCameraConfig = availableCameras[0].id;
-              currentCameraIndex = 0;
-            } else {
-              primaryCameraConfig = { facingMode: "environment" };
-            }
-          }
+          let started = false;
 
-          // Fungsi internal untuk memulai stream dengan urutan fallback cerdas
-          const tryStartCamera = async (camCfg) => {
-            return await html5QrScanner.start(
-              camCfg,
+          try {
+            await html5QrScanner.start(
+              primaryCameraConfig,
               scanConfig,
               (decodedText) => { processScannedText(decodedText); },
               () => {}
             );
-          };
-
-          let started = false;
-
-          // 1. Coba kamera utama pilihan
-          try {
-            await tryStartCamera(primaryCameraConfig);
             started = true;
           } catch (errPrimary) {
             console.warn('Gagal start kamera utama, mencoba fallback:', errPrimary);
           }
 
-          // 2. Fallback tier 2: jika laptop coba facingMode user, jika HP coba facingMode environment
+          // Fallback cerdas jika mode utama ditolak oleh hardware/browser
           if (!started) {
             try {
               try { html5QrScanner.clear(); } catch(e) {}
               if (qrReaderContainer) qrReaderContainer.innerHTML = '';
               html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
-              const fb1 = isLaptop ? { facingMode: "user" } : { facingMode: "environment" };
-              await tryStartCamera(fb1);
+              const fallbackConfig = isLaptop ? { facingMode: "environment" } : { facingMode: "user" };
+              await html5QrScanner.start(
+                fallbackConfig,
+                scanConfig,
+                (decodedText) => { processScannedText(decodedText); },
+                () => {}
+              );
               started = true;
-            } catch (errFb1) {
-              console.warn('Fallback 1 gagal:', errFb1);
-            }
-          }
-
-          // 3. Fallback tier 3: balikkan facingMode (user <-> environment)
-          if (!started) {
-            try {
-              try { html5QrScanner.clear(); } catch(e) {}
-              if (qrReaderContainer) qrReaderContainer.innerHTML = '';
-              html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
-              const fb2 = isLaptop ? { facingMode: "environment" } : { facingMode: "user" };
-              await tryStartCamera(fb2);
-              started = true;
-            } catch (errFb2) {
-              console.warn('Fallback 2 gagal:', errFb2);
-            }
-          }
-
-          // 4. Fallback tier 4: Coba ID kamera pertama tanpa filter atau konfigurasi bebas
-          if (!started && availableCameras.length > 0) {
-            try {
-              try { html5QrScanner.clear(); } catch(e) {}
-              if (qrReaderContainer) qrReaderContainer.innerHTML = '';
-              html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
-              await tryStartCamera(availableCameras[0].id);
-              started = true;
-            } catch (errFb3) {
-              console.warn('Fallback 3 gagal:', errFb3);
+            } catch (errFallback) {
+              console.warn('Fallback kamera gagal:', errFallback);
             }
           }
 
           if (!started) {
-            throw new Error('Semua opsi kamera telah dicoba namun perangkat menolak akses video. Pastikan izin kamera aktif.');
+            throw new Error('Akses kamera ditolak oleh browser atau tidak tersedia.');
           }
 
-          // Pasang atribut playsinline & muted wajib untuk iOS Safari agar video tidak pause atau fullscreen
+          // Pasang atribut playsinline & muted wajib untuk iOS Safari agar video berjalan mulus tanpa pause
           const applyVideoAttributes = () => {
             const vidEl = document.querySelector('#qr-reader video');
             if (vidEl) {
@@ -18593,7 +18486,7 @@
       }
     }
 
-    async function stopScanner(keepWrapperVisible = false) {
+    async function stopScanner() {
       if (html5QrScanner) {
         try {
           await html5QrScanner.stop();
@@ -18617,15 +18510,11 @@
         if (qrCont) qrCont.innerHTML = '';
       } catch (e) {}
 
-      if (!keepWrapperVisible) {
-        // Sembunyikan video container dan tampilkan standby wrapper
-        const videoWrapper = document.getElementById('camera-video-wrapper');
-        const standbyWrapper = document.getElementById('camera-standby-wrapper');
-        if (videoWrapper) videoWrapper.classList.add('hidden');
-        if (standbyWrapper) standbyWrapper.classList.remove('hidden');
-        const switchBtn = document.getElementById('btn-switch-camera');
-        if (switchBtn) switchBtn.classList.add('hidden');
-      }
+      // Sembunyikan video container dan tampilkan standby wrapper
+      const videoWrapper = document.getElementById('camera-video-wrapper');
+      const standbyWrapper = document.getElementById('camera-standby-wrapper');
+      if (videoWrapper) videoWrapper.classList.add('hidden');
+      if (standbyWrapper) standbyWrapper.classList.remove('hidden');
 
       if (window.lucide) lucide.createIcons();
     }
