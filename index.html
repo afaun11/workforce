@@ -13051,12 +13051,9 @@
         setVal('leave-end-date', realToday);
 
         updateRealtimeDashboardDate();
-        setInterval(() => {
-          const d = new Date();
-          const el = document.getElementById('live-clock');
-          if (el) el.innerText = d.toLocaleTimeString('id-ID') + ' WIB';
-          updateRealtimeDashboardDate();
-        }, 1000);
+        if (!window._globalClockInterval) {
+          window._globalClockInterval = setInterval(updateRealtimeDashboardDate, 1000);
+        }
       } catch(e) {}
 
       try { renderLocationQRCode(); } catch(e) {}
@@ -16182,26 +16179,33 @@
       }
     }
 
+    let _lastClockDay = -1;
+    let _cachedDateStr = '';
     function updateRealtimeDashboardDate() {
       const now = new Date();
+      const curDay = now.getDate();
       const dateEl = document.getElementById('dash-date-text');
-      const timeEl = document.getElementById('dash-time-text');
-      const liveClockEl = document.getElementById('live-clock');
       if (dateEl) {
-        dateEl.innerText = now.toLocaleDateString('id-ID', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        });
+        if (curDay !== _lastClockDay || !_cachedDateStr) {
+          _lastClockDay = curDay;
+          _cachedDateStr = now.toLocaleDateString('id-ID', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+        }
+        dateEl.innerText = _cachedDateStr;
       }
-      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
-      if (timeEl) {
-        timeEl.innerText = timeStr;
-      }
-      if (liveClockEl) {
-        liveClockEl.innerText = timeStr;
-      }
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const timeStr = `${hh}:${mm}:${ss} WIB`;
+
+      const timeEl = document.getElementById('dash-time-text');
+      if (timeEl) timeEl.innerText = timeStr;
+      const liveClockEl = document.getElementById('live-clock');
+      if (liveClockEl) liveClockEl.innerText = timeStr;
     }
 
     function navigateToPendingApproval(type) {
@@ -18114,6 +18118,8 @@
       }, 40);
     }
 
+    let scannerTodayLimit = 30;
+
     function toggleTodayScanHistory() {
       const panel = document.getElementById('today-scan-history-panel');
       const icon = document.getElementById('history-chevron-icon');
@@ -18125,6 +18131,7 @@
         panel.classList.remove('hidden');
         if (icon) icon.classList.add('rotate-180');
         if (label) label.innerText = 'Tutup Daftar';
+        scannerTodayLimit = 30;
         renderScannerTodayRecords();
       } else {
         panel.classList.add('hidden');
@@ -18132,6 +18139,11 @@
         if (label) label.innerText = 'Lihat Daftar Absen';
       }
       lucide.createIcons();
+    }
+
+    function showAllScannerTodayRecords() {
+      scannerTodayLimit = 99999;
+      renderScannerTodayRecords();
     }
 
     function renderScannerTodayRecords() {
@@ -18195,8 +18207,14 @@
         whLabel.innerText = `Gudang ${targetWh}`;
       }
 
+      // Jika panel sedang tertutup, hentikan di sini agar tidak membebani CPU & DOM!
+      const panel = document.getElementById('today-scan-history-panel');
+      if (panel && panel.classList.contains('hidden')) {
+        return;
+      }
+
       // 1. Dirty check data presensi agar tidak me-rebuild DOM jika data tidak berubah sama sekali
-      const attHash = `${targetWh}_today_${recentAtt.length}_` + recentAtt.map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
+      const attHash = `${targetWh}_today_${recentAtt.length}_${scannerTodayLimit}_` + recentAtt.slice(0, scannerTodayLimit).map(a => `${a.id || a.userNik}_${a.checkInTime || ''}_${a.checkOutTime || ''}_${a.checkInStatus || ''}`).join('|');
       if (container.dataset.lastAttHash === attHash && container.children.length > 0) {
         return; // Data sama persis, pertahankan elemen DOM dan posisi scroll pengguna 100%!
       }
@@ -18211,6 +18229,8 @@
         container.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-200">Belum ada riwayat scan absensi hari ini di Gudang ${targetWh}.</div>`;
         return;
       }
+
+      const displayedAtt = recentAtt.slice(0, scannerTodayLimit);
 
       let html = `
         <div class="overflow-x-auto custom-scroll bg-white rounded-2xl border border-slate-200 shadow-2xs">
@@ -18239,7 +18259,7 @@
         if (u.id) userMap.set(u.id, u);
       });
 
-      recentAtt.forEach((a, idx) => {
+      displayedAtt.forEach((a, idx) => {
         let dateFormatted = a.date || '-';
         if (a.date && a.date.includes('-')) {
           const parts = a.date.split('-');
@@ -18288,6 +18308,17 @@
           </table>
         </div>
       `;
+
+      if (recentAtt.length > displayedAtt.length) {
+        html += `
+          <div class="p-3 text-center bg-slate-100/70 rounded-xl border border-slate-200 mt-2.5 flex items-center justify-between flex-wrap gap-2">
+            <span class="text-xs text-slate-600 font-medium">Menampilkan ${displayedAtt.length} dari ${recentAtt.length} data scan absensi hari ini.</span>
+            <button type="button" onclick="showAllScannerTodayRecords()" class="text-xs font-bold text-blue-700 hover:text-blue-900 bg-white hover:bg-blue-50 border border-blue-200 px-3.5 py-1.5 rounded-xl transition shadow-2xs">
+              Tampilkan Semua (${recentAtt.length} Data)
+            </button>
+          </div>
+        `;
+      }
 
       container.innerHTML = html;
       lucide.createIcons();
@@ -18391,7 +18422,7 @@
 
           // Konfigurasi scan optimal responsif untuk semua ukuran layar & jenis kamera
           const scanConfig = {
-            fps: 24, // 24 FPS untuk respons kilat
+            fps: 12, // 12 FPS: sangat responsif (<100ms), hemat CPU 50%, mencegah panas & lag di HP/laptop
             qrbox: (viewfinderWidth, viewfinderHeight) => {
               const minDim = Math.min(viewfinderWidth, viewfinderHeight);
               if (minDim <= 0) return { width: 220, height: 220 };
@@ -18402,47 +18433,14 @@
             disableFlip: !isMobile // Di laptop jangan flip mirror agar barcode kartu tidak terbalik
           };
 
-          // TENTUKAN KAMERA DENGAN PRIORITAS MUTLAK:
-          // HP (Android & iPhone): 100% WAJIB KAMERA BELAKANG!
-          // Laptop / Desktop: KAMERA DEPAN (Webcam)
-          let primaryCameraConfig = null;
-
-          try {
-            const devs = await Html5Qrcode.getCameras();
-            if (devs && Array.isArray(devs) && devs.length > 0) {
-              if (isMobile) {
-                // Di HP: Cari perangkat yang labelnya merujuk ke kamera belakang
-                const backCams = devs.filter(d => {
-                  const lbl = (d.label || '').toLowerCase();
-                  if (/front|depan|face|selfie|user/i.test(lbl)) return false;
-                  if (/back|rear|belakang|environment/i.test(lbl)) return true;
-                  return true; // kandidat kamera belakang
-                });
-
-                // Pilih kamera belakang utama (hindari 0.5x ultra-wide jika ada pilihan)
-                const mainBack = backCams.find(d => !/ultra|0\.5|tele|depth/i.test((d.label || '').toLowerCase())) || backCams[0];
-                if (mainBack && mainBack.id) {
-                  primaryCameraConfig = mainBack.id;
-                }
-              } else {
-                // Di Laptop: Pilih webcam depan
-                const frontCams = devs.filter(d => /front|depan|face|user|webcam|integrated/i.test((d.label || '').toLowerCase()));
-                const mainFront = frontCams[0] || devs[0];
-                if (mainFront && mainFront.id) {
-                  primaryCameraConfig = mainFront.id;
-                }
-              }
-            }
-          } catch(eCams) {}
-
-          // Jika ID kamera belum didapat dari getCameras, gunakan facingMode murni:
-          if (!primaryCameraConfig) {
-            primaryCameraConfig = isMobile ? { facingMode: { exact: "environment" } } : { facingMode: "user" };
-          }
+          // TENTUKAN KAMERA DENGAN PRIORITAS KILAT (INSTANT START):
+          // HP (Android & iPhone): LANGSUNG BUKA KAMERA BELAKANG TANPA MENUNGGU ENUMERASI PERANGKAT!
+          // Laptop / Desktop: LANGSUNG KAMERA DEPAN (Webcam)
+          const primaryCameraConfig = isMobile ? { facingMode: "environment" } : { facingMode: "user" };
 
           let started = false;
 
-          // Percobaan 1: Kamera utama yang dipilih
+          // Percobaan 1: Kamera utama langsung tanpa delay enumerasi (~200ms instan)
           try {
             await html5QrScanner.start(
               primaryCameraConfig,
@@ -18452,16 +18450,16 @@
             );
             started = true;
           } catch (errPrimary) {
-            console.warn('Percobaan 1 kamera gagal:', errPrimary);
+            console.warn('Percobaan 1 kamera langsung gagal, mencoba fallback constraint:', errPrimary);
           }
 
-          // Percobaan 2: Fallback terarah (DI HP TETAP HANYA KAMERA BELAKANG, JANGAN PERNAH KE KAMERA DEPAN!)
+          // Percobaan 2: Fallback ideal constraint (DI HP TETAP HANYA KAMERA BELAKANG)
           if (!started) {
             try {
               try { html5QrScanner.clear(); } catch(e) {}
               if (qrReaderContainer) qrReaderContainer.innerHTML = '';
               html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
-              const retryConfig1 = isMobile ? { facingMode: "environment" } : { facingMode: "user" };
+              const retryConfig1 = isMobile ? { facingMode: { ideal: "environment" } } : { facingMode: { ideal: "user" } };
               await html5QrScanner.start(
                 retryConfig1,
                 scanConfig,
@@ -18474,22 +18472,39 @@
             }
           }
 
-          // Percobaan 3: Fallback ideal constraint (DI HP TETAP HANYA KAMERA BELAKANG)
+          // Percobaan 3: Fallback ke enumerasi device getCameras jika browser memerlukan deviceId eksplisit
           if (!started) {
             try {
               try { html5QrScanner.clear(); } catch(e) {}
               if (qrReaderContainer) qrReaderContainer.innerHTML = '';
               html5QrScanner = new Html5Qrcode("qr-reader", scannerInitOptions);
-              const retryConfig2 = isMobile ? { facingMode: { ideal: "environment" } } : { facingMode: { ideal: "user" } };
-              await html5QrScanner.start(
-                retryConfig2,
-                scanConfig,
-                (decodedText) => { processScannedText(decodedText); },
-                () => {}
-              );
-              started = true;
+              const devs = await Html5Qrcode.getCameras();
+              let selectedDevId = null;
+              if (devs && Array.isArray(devs) && devs.length > 0) {
+                if (isMobile) {
+                  const backCams = devs.filter(d => {
+                    const lbl = (d.label || '').toLowerCase();
+                    return !(/front|depan|face|selfie|user/i.test(lbl));
+                  });
+                  const mainBack = backCams.find(d => !/ultra|0\.5|tele|depth/i.test((d.label || '').toLowerCase())) || backCams[0] || devs[0];
+                  selectedDevId = mainBack ? mainBack.id : devs[0].id;
+                } else {
+                  const frontCams = devs.filter(d => /front|depan|face|user|webcam|integrated/i.test((d.label || '').toLowerCase()));
+                  const mainFront = frontCams[0] || devs[0];
+                  selectedDevId = mainFront ? mainFront.id : devs[0].id;
+                }
+              }
+              if (selectedDevId) {
+                await html5QrScanner.start(
+                  selectedDevId,
+                  scanConfig,
+                  (decodedText) => { processScannedText(decodedText); },
+                  () => {}
+                );
+                started = true;
+              }
             } catch (errRetry2) {
-              console.warn('Percobaan 3 kamera gagal:', errRetry2);
+              console.warn('Percobaan 3 kamera via getCameras gagal:', errRetry2);
             }
           }
 
@@ -27574,8 +27589,12 @@ function testManualSync() {
     try { tryAutoLoadLocalFolderAudio(); } catch(e) {}
     try { updateNavbarBrand(); } catch(e) {}
     try { updateLoginWhStyle(); } catch(e) {}
-    try { updateRealtimeDashboardDate(); } catch(e) {}
-    try { setInterval(updateRealtimeDashboardDate, 1000); } catch(e) {}
+    try {
+      updateRealtimeDashboardDate();
+      if (!window._globalClockInterval) {
+        window._globalClockInterval = setInterval(updateRealtimeDashboardDate, 1000);
+      }
+    } catch(e) {}
 
     // REVISION SENTINEL & AUTO HEALING MASTER ABSENSI MBI
     const CURRENT_DATA_REVISION = 'wfm_rev_20261020_v10';
