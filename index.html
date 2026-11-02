@@ -8698,6 +8698,9 @@
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+            if (u.permissions && typeof u.permissions === 'object') {
+              existing.permissions = { ...(existing.permissions || {}), ...u.permissions };
+            }
             if (u.status === 'inactive' || existing.status === 'inactive' || u.isActive === false || existing.isActive === false) {
               const uTime = u.updatedAt ? new Date(u.updatedAt).getTime() : 0;
               const exTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
@@ -8727,6 +8730,9 @@
             if ((!existing.phone || existing.phone === '-') && u.phone && u.phone !== '-') existing.phone = u.phone;
             if (!existing.email && u.email) existing.email = u.email;
             if ((!existing.joinDate || existing.joinDate === '-') && u.joinDate && u.joinDate !== '-') existing.joinDate = u.joinDate;
+            if (u.permissions && typeof u.permissions === 'object') {
+              existing.permissions = { ...(existing.permissions || {}), ...u.permissions };
+            }
             if (u.status === 'inactive' || existing.status === 'inactive' || u.isActive === false || existing.isActive === false) {
               const uTime = u.updatedAt ? new Date(u.updatedAt).getTime() : 0;
               const exTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
@@ -8761,6 +8767,12 @@
         if (normNik) seenNiks.add(normNik);
         if (u.id) seenIds.add(u.id);
 
+        // Pastikan hak akses tersimpan tetap terikat pada karyawan
+        if (!u.permissions) {
+          const sp = getSavedUserPerms(u.nik || u.id, warehouse);
+          if (sp && typeof sp === 'object') u.permissions = sp;
+        }
+
         // Penyesuaian peran dan departemen karyawan
         const uRole = (u.role || 'staff').toLowerCase().trim();
         const uDept = (u.dept || '').toLowerCase().trim();
@@ -8787,8 +8799,15 @@
         } else {
           u.dept = u.dept || 'Warehouse Staff';
           u.role = 'staff';
-          u.hasAccount = false;
-          u.password = '';
+          const hasCustomPerms = (u.permissions && typeof u.permissions === 'object' && Object.values(u.permissions).some(v => v === true)) ||
+                                 (getSavedUserPerms(u.nik || u.id, warehouse) && Object.values(getSavedUserPerms(u.nik || u.id, warehouse)).some(v => v === true));
+          if (hasCustomPerms) {
+            u.hasAccount = true;
+            if (!u.password) u.password = 'medika123';
+          } else {
+            u.hasAccount = false;
+            u.password = '';
+          }
         }
 
         if (u.joinDate && /^\d{4,5}(\.\d+)?$/.test(String(u.joinDate).trim())) {
@@ -11262,10 +11281,27 @@
             }
           }
 
-          if (loc.permissions && typeof loc.permissions === 'object') {
-            merged.permissions = { ...(cloudMatch.permissions || {}), ...loc.permissions };
+          // Prioritas hak akses: jika Cloud lebih baru (diubah oleh Admin), adopsi Cloud 100%!
+          if (isCloudNewer && cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
+            merged.permissions = { ...cloudMatch.permissions };
+          } else if (isLocalNewer && loc.permissions && typeof loc.permissions === 'object') {
+            merged.permissions = { ...loc.permissions };
           } else if (cloudMatch.permissions && typeof cloudMatch.permissions === 'object') {
             merged.permissions = { ...cloudMatch.permissions };
+          } else if (loc.permissions && typeof loc.permissions === 'object') {
+            merged.permissions = { ...loc.permissions };
+          }
+          if (merged.permissions && merged.nik) {
+            try {
+              localStorage.setItem(`wfm_perm_${wh.toLowerCase()}_${merged.nik.toUpperCase().trim()}`, JSON.stringify(merged.permissions));
+              localStorage.setItem(`wfm_perm_${merged.nik.toUpperCase().trim()}`, JSON.stringify(merged.permissions));
+            } catch(e) {}
+          }
+          // Jika akun yang diperbarui izinnya adalah akun yang sedang aktif login, terapkan seketika
+          if (currentUser && ((merged.nik && currentUser.nik && merged.nik.toUpperCase() === currentUser.nik.toUpperCase()) || (merged.id && currentUser.id && merged.id === currentUser.id))) {
+            currentUser.permissions = { ...(merged.permissions || {}) };
+            try { localStorage.setItem('wfm_active_session', JSON.stringify(currentUser)); } catch(e) {}
+            try { applyRolePermissions(); } catch(e) {}
           }
           resultList.push(merged);
         } else {
@@ -13814,19 +13850,24 @@
     function isLoginManagementAccount(u) {
       if (!u) return false;
       if (isUserAdmin(u) || isUserManager(u)) return true;
+      if (isUserScanner(u)) return false;
       const role = (u.role || '').toLowerCase().trim();
       const dept = (u.dept || '').toLowerCase().trim();
       const nik = (u.nik || u.id || '').toString().toUpperCase().trim();
-      const name = (u.name || '').toLowerCase().trim();
       
       const isSpv = role === 'supervisor' || role.includes('supervisor') || role === 'spv' || dept.includes('supervisor') || dept.includes('spv') || nik.startsWith('SPV');
       const isCoord = role === 'coordinator' || role.includes('coordinator') || role.includes('cordinator') || role.includes('koordinator') || dept.includes('coordinator') || dept.includes('cordinator') || dept.includes('koordinator') || nik.startsWith('CRD');
       const isMgr = role === 'manager' || (dept.includes('manager') && role === 'manager') || nik === 'MGR001' || nik.startsWith('MGR');
       const isAdminRole = role === 'admin' || role === 'superadmin' || dept.includes('admin') || nik.startsWith('ADM');
-      const hasExplicitAccount = (u.hasAccount === true && role !== 'staff' && role !== 'scanner');
-      const hasCustomPass = !!(u.password && String(u.password).trim().length > 0 && role !== 'staff' && role !== 'scanner');
+      const hasExplicitAccount = (u.hasAccount === true && role !== 'scanner');
+      const hasCustomPass = !!(u.password && String(u.password).trim().length > 0 && role !== 'scanner');
+      const hasCustomPerms = !!(u.permissions && Object.values(u.permissions).some(v => v === true));
+      const hasSavedPerms = !!(() => {
+        const sp = getSavedUserPerms(u.nik || u.id, u.warehouse);
+        return sp && Object.values(sp).some(v => v === true);
+      })();
 
-      return isSpv || isCoord || isMgr || isAdminRole || hasExplicitAccount || hasCustomPass || u.isMultiWarehouse === true;
+      return isSpv || isCoord || isMgr || isAdminRole || hasExplicitAccount || hasCustomPass || u.isMultiWarehouse === true || hasCustomPerms || hasSavedPerms;
     }
 
     function populatePermissionAccountDropdown(selectedNik = null) {
@@ -13855,19 +13896,17 @@
       }
 
       mbiUsers.forEach(u => {
-        if (u && isLoginManagementAccount(u)) {
-          const userNik = (u.nik || u.id || u.name || '').toString().trim();
-          if (userNik) {
-            map.set(`MBI_${userNik}`, { ...u, warehouse: 'MBI', nik: u.nik || userNik });
-          }
+        if (!u || isUserScanner(u)) return;
+        const userNik = (u.nik || u.id || u.name || '').toString().trim();
+        if (userNik) {
+          map.set(`MBI_${userNik}`, { ...u, warehouse: 'MBI', nik: u.nik || userNik });
         }
       });
       maiUsers.forEach(u => {
-        if (u && isLoginManagementAccount(u)) {
-          const userNik = (u.nik || u.id || u.name || '').toString().trim();
-          if (userNik) {
-            map.set(`MAI_${userNik}`, { ...u, warehouse: 'MAI', nik: u.nik || userNik });
-          }
+        if (!u || isUserScanner(u)) return;
+        const userNik = (u.nik || u.id || u.name || '').toString().trim();
+        if (userNik) {
+          map.set(`MAI_${userNik}`, { ...u, warehouse: 'MAI', nik: u.nik || userNik });
         }
       });
 
@@ -13879,6 +13918,11 @@
         if (isUserManager(b)) return 1;
         if (isUserSupervisor(a)) return -1;
         if (isUserSupervisor(b)) return 1;
+        if (isUserCoordinator(a)) return -1;
+        if (isUserCoordinator(b)) return 1;
+        const aHasPerms = (a.permissions && Object.values(a.permissions).some(v => v === true)) ? 1 : 0;
+        const bHasPerms = (b.permissions && Object.values(b.permissions).some(v => v === true)) ? 1 : 0;
+        if (aHasPerms !== bHasPerms) return bHasPerms - aHasPerms;
         return (a.name || '').localeCompare(b.name || '');
       });
 
@@ -14331,6 +14375,11 @@
       }
 
       const nowIso = new Date().toISOString();
+      // Jika akun staf diberikan hak izin khusus, aktifkan hasAccount dan password default agar bisa login
+      if (Object.values(currentEditingPermissions).some(v => v === true)) {
+        users[idx].hasAccount = true;
+        if (!users[idx].password) users[idx].password = 'medika123';
+      }
       users[idx].permissions = { ...currentEditingPermissions };
       users[idx].updatedAt = nowIso;
       setWhDB(actualWh, 'users', users);
@@ -15599,14 +15648,13 @@
         activeWarehouse = currentUser.warehouse;
         try { updateWhSwitcherButtons(); } catch(e) {}
 
-        // Pastikan hak akses tersimpan dimuat ke sesi
-        if (!currentUser.permissions || Object.keys(currentUser.permissions).length === 0) {
-          const savedPerms = getSavedUserPerms(currentUser.nik || currentUser.id, currentUser.warehouse);
-          if (savedPerms) {
-            currentUser.permissions = savedPerms;
-          }
+        // Pastikan hak akses tersimpan dimuat ke sesi secara lengkap
+        const savedPerms = getSavedUserPerms(currentUser.nik || currentUser.id, currentUser.warehouse);
+        if (savedPerms && typeof savedPerms === 'object') {
+          currentUser.permissions = { ...(currentUser.permissions || {}), ...savedPerms };
         }
         if (isUserAdmin(currentUser)) {
+          if (!currentUser.permissions) currentUser.permissions = {};
           currentUser.permissions.perm_wh_mbi = (currentUser.warehouse === 'MBI');
           currentUser.permissions.perm_wh_mai = (currentUser.warehouse === 'MAI');
           currentUser.permissions.perm_wh_switch = false;
@@ -15663,51 +15711,14 @@
         try { applyRolePermissions(); } catch (e) { console.warn('applyRolePermissions error:', e); }
         try { updateNavbarBrand(currentUser.warehouse); } catch (e) { console.warn('updateNavbarBrand error:', e); }
 
-        // Auto-Sync Data Akun dari Cloud Firestore (agar perubahan role, departemen, atau izin seperti Supervisor langsung aktif seketika tanpa perlu clear cache)
-        if (currentUser && currentUser.nik && typeof getDocFromFirestore === 'function') {
-          const userNikKey = currentUser.nik;
-          const userTargetWh = currentUser.warehouse || currentWh || 'MBI';
-          getDocFromFirestore(userTargetWh, 'users', userNikKey).then(cloudUser => {
-            if (cloudUser && (cloudUser.role !== currentUser.role || cloudUser.dept !== currentUser.dept || (cloudUser.permissions && JSON.stringify(cloudUser.permissions) !== JSON.stringify(currentUser.permissions)))) {
-              const newRole = cloudUser.role || currentUser.role;
-              const newDept = cloudUser.dept || currentUser.dept;
-              currentUser.role = newRole;
-              currentUser.dept = newDept;
-              if (cloudUser.permissions) currentUser.permissions = cloudUser.permissions;
-              if (cloudUser.name) currentUser.name = cloudUser.name;
-              if (isUserAdmin(currentUser)) {
-                currentUser.name = (currentUser.warehouse === 'MBI' ? 'Admin Gudang MBI' : 'Admin Gudang MAI');
-                currentUser.accessibleWarehouses = [currentUser.warehouse];
-                currentUser.permissions.perm_wh_mbi = (currentUser.warehouse === 'MBI');
-                currentUser.permissions.perm_wh_mai = (currentUser.warehouse === 'MAI');
-                currentUser.permissions.perm_wh_switch = false;
-              }
-              try { localStorage.setItem('wfm_active_session', JSON.stringify(currentUser)); } catch(e) {}
-
-              // Sinkronkan ke daftar database users lokal
-              try {
-                const targetWhKey = userTargetWh.toLowerCase();
-                const uList = getWhDB(targetWhKey, 'users', []);
-                const uIdx = uList.findIndex(u => (u.nik && u.nik.toUpperCase() === userNikKey.toUpperCase()) || (u.id && u.id === currentUser.id));
-                if (uIdx !== -1) {
-                  uList[uIdx].role = newRole;
-                  uList[uIdx].dept = newDept;
-                  if (cloudUser.permissions) uList[uIdx].permissions = cloudUser.permissions;
-                  localStorage.setItem(`wfm_${targetWhKey}_users`, JSON.stringify(uList));
-                }
-              } catch(e) {}
-
-              // Perbarui teks navbar dan badge secara real-time
-              const navDept = document.getElementById('nav-user-dept');
-              if (navDept && !isUserScanner(currentUser) && !isUserManager(currentUser)) {
-                navDept.innerText = `${(newDept || 'STAFF').toUpperCase()} - ${(newRole || 'STAFF').toUpperCase()}`;
-              }
-              const roleBadge = document.getElementById('user-role-badge');
-              if (roleBadge) roleBadge.innerText = (newRole || 'STAFF').toUpperCase();
-              try { applyRolePermissions(); } catch (e) {}
-              try { if (typeof renderAccountSettingsForm === 'function') renderAccountSettingsForm(); } catch (e) {}
-            }
-          }).catch(e => console.warn('[Firestore] Live user sync skipped:', e));
+        // Sinkronisasi hak akses tersimpan (fallback) jika belum ada di sesi
+        if (!currentUser.permissions || Object.keys(currentUser.permissions).length === 0) {
+          const savedPerms = getSavedUserPerms(currentUser.nik || currentUser.id, currentUser.warehouse);
+          if (savedPerms && typeof savedPerms === 'object') {
+            currentUser.permissions = savedPerms;
+            try { localStorage.setItem('wfm_active_session', JSON.stringify(currentUser)); } catch(e) {}
+            try { applyRolePermissions(); } catch(e) {}
+          }
         }
 
         if (isUserScanner(currentUser)) {
