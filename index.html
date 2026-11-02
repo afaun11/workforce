@@ -12018,9 +12018,15 @@
         if (endpoint) {
           const nowIso = new Date().toISOString();
           const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_leaves.json`);
+          const genericTargetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/leaves.json`);
           const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
           await Promise.allSettled([
             fetch(targetUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(leavesList)
+            }),
+            fetch(genericTargetUrl, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(leavesList)
@@ -12037,7 +12043,7 @@
         console.warn('syncLeavesToCloud notice:', err);
       }
       try {
-        await saveFullDatabaseToCloud(false, true, false, wh);
+        await saveFullDatabaseToCloud(false, true, true, wh);
       } catch(e) {}
       try {
         if (typeof BroadcastChannel !== 'undefined') {
@@ -12061,9 +12067,15 @@
         if (endpoint) {
           const nowIso = new Date().toISOString();
           const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_overtime.json`);
+          const genericTargetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/overtime.json`);
           const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
           await Promise.allSettled([
             fetch(targetUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(overtimeList)
+            }),
+            fetch(genericTargetUrl, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(overtimeList)
@@ -12080,7 +12092,7 @@
         console.warn('syncOvertimeToCloud notice:', err);
       }
       try {
-        await saveFullDatabaseToCloud(false, true, false, wh);
+        await saveFullDatabaseToCloud(false, true, true, wh);
       } catch(e) {}
       try {
         if (typeof BroadcastChannel !== 'undefined') {
