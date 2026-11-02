@@ -9911,6 +9911,8 @@
               localStorage.setItem(storageKey, JSON.stringify(cleaned));
             }
             result = cleaned;
+          } else if ((key === 'leaves' || key === 'overtime' || key === 'attendance') && Array.isArray(parsed)) {
+            result = parsed.filter(item => item && typeof item === 'object');
           }
           whDBCache.set(storageKey, result);
           return result;
@@ -9922,7 +9924,11 @@
       }
 
       // Jika data memang belum pernah ada di storage
-      const cleanedDefault = key === 'users' && Array.isArray(defaultVal) ? deduplicateUserList(defaultVal, warehouse) : (defaultVal !== undefined ? defaultVal : []);
+      const cleanedDefault = key === 'users' && Array.isArray(defaultVal) 
+        ? deduplicateUserList(defaultVal, warehouse) 
+        : ((key === 'leaves' || key === 'overtime' || key === 'attendance') && Array.isArray(defaultVal)
+          ? defaultVal.filter(item => item && typeof item === 'object')
+          : (defaultVal !== undefined ? defaultVal : []));
       localStorage.setItem(storageKey, JSON.stringify(cleanedDefault));
       whDBCache.set(storageKey, cleanedDefault);
       return cleanedDefault;
@@ -11377,7 +11383,7 @@
     }
 
     let lastAppliedCloudUpdatedAt = null;
-    function applyIncomingDatabase(db) {
+    function applyIncomingDatabase(db, sourceWh = null) {
       if (!db || typeof db !== 'object' || Array.isArray(db)) return;
       clearWhDBCache();
       isApplyingFromCloud = true;
@@ -11459,15 +11465,21 @@
       let hasOtChanged = false;
       let hasLeavesChanged = false;
 
-      // PROSES DATA GUDANG MBI (JIKA DIKIRIM DARI SERVER MBI)
-      if (db.mbi_users !== undefined || db.mbi_attendance !== undefined || db.mbi_attendance_live !== undefined || db.mbi_overtime !== undefined || db.mbi_leaves !== undefined) {
-        if (db.mbi_users !== undefined) {
-          const cloudMbiRaw = normalizeFirebaseArray(db.mbi_users);
+      // PROSES DATA GUDANG MBI (JIKA DIKIRIM DARI SERVER MBI ATAU DATABASE MBI)
+      const rawMbiUsers = db.mbi_users !== undefined ? db.mbi_users : ((sourceWh === 'MBI' || !sourceWh) ? db.users : undefined);
+      const rawMbiAtt = db.mbi_attendance !== undefined ? db.mbi_attendance : ((sourceWh === 'MBI' || !sourceWh) ? db.attendance : undefined);
+      const rawMbiAttLive = db.mbi_attendance_live !== undefined ? db.mbi_attendance_live : ((sourceWh === 'MBI' || !sourceWh) ? db.attendance_live : undefined);
+      const rawMbiOt = db.mbi_overtime !== undefined ? db.mbi_overtime : ((sourceWh === 'MBI' || !sourceWh) ? db.overtime : undefined);
+      const rawMbiLeaves = db.mbi_leaves !== undefined ? db.mbi_leaves : ((sourceWh === 'MBI' || !sourceWh) ? db.leaves : undefined);
+
+      if (rawMbiUsers !== undefined || rawMbiAtt !== undefined || rawMbiAttLive !== undefined || rawMbiOt !== undefined || rawMbiLeaves !== undefined) {
+        if (rawMbiUsers !== undefined) {
+          const cloudMbiRaw = normalizeFirebaseArray(rawMbiUsers);
           if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
             const localMbiUsers = getWhDB('MBI', 'users', []);
             const cleanMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiRaw, 'MBI', db.updatedAt);
             cleanMbiUsers.forEach(u => {
-              if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+              if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
                 u.name = 'Scanner Presensi Gudang';
               }
             });
@@ -11479,8 +11491,8 @@
             }
           }
         }
-        if (db.mbi_attendance !== undefined || db.mbi_attendance_live !== undefined) {
-          const rawCloudMbiAtt = combineCloudAttendanceWithLive(db.mbi_attendance, db.mbi_attendance_live);
+        if (rawMbiAtt !== undefined || rawMbiAttLive !== undefined) {
+          const rawCloudMbiAtt = combineCloudAttendanceWithLive(rawMbiAtt, rawMbiAttLive);
           const localMbiAtt = getWhDB('MBI', 'attendance', []);
           const mergedMbiAtt = mergeAttendanceArrays(localMbiAtt, rawCloudMbiAtt);
           const newMbiAtt = JSON.stringify(mergedMbiAtt);
@@ -11489,8 +11501,12 @@
             hasAttChanged = true;
           }
         }
-        if (db.mbi_overtime !== undefined) {
-          const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), normalizeFirebaseArray(db.mbi_overtime));
+        if (rawMbiOt !== undefined) {
+          const rawCloudOt = normalizeFirebaseArray(rawMbiOt);
+          if (typeof untrackDeletedOvertime === 'function') {
+            untrackDeletedOvertime(rawCloudOt);
+          }
+          const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), rawCloudOt);
           const newMbiOt = JSON.stringify(mergedMbiOt);
           if (currMbiOt !== newMbiOt) {
             localStorage.setItem('wfm_mbi_overtime', newMbiOt);
@@ -11498,8 +11514,12 @@
             hasOtChanged = true;
           }
         }
-        if (db.mbi_leaves !== undefined) {
-          const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), normalizeFirebaseArray(db.mbi_leaves));
+        if (rawMbiLeaves !== undefined) {
+          const rawCloudLeaves = normalizeFirebaseArray(rawMbiLeaves);
+          if (typeof untrackDeletedLeaves === 'function') {
+            untrackDeletedLeaves(rawCloudLeaves);
+          }
+          const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), rawCloudLeaves);
           const newMbiLeaves = JSON.stringify(mergedMbiLeaves);
           if (currMbiLeaves !== newMbiLeaves) {
             localStorage.setItem('wfm_mbi_leaves', newMbiLeaves);
@@ -11509,15 +11529,21 @@
         }
       }
 
-      // PROSES DATA GUDANG MAI (JIKA DIKIRIM DARI SERVER MAI)
-      if (db.mai_users !== undefined || db.mai_attendance !== undefined || db.mai_attendance_live !== undefined || db.mai_overtime !== undefined || db.mai_leaves !== undefined) {
-        if (db.mai_users !== undefined) {
-          const cloudMaiRaw = normalizeFirebaseArray(db.mai_users);
+      // PROSES DATA GUDANG MAI (JIKA DIKIRIM DARI SERVER MAI ATAU DATABASE MAI)
+      const rawMaiUsers = db.mai_users !== undefined ? db.mai_users : (sourceWh === 'MAI' ? db.users : undefined);
+      const rawMaiAtt = db.mai_attendance !== undefined ? db.mai_attendance : (sourceWh === 'MAI' ? db.attendance : undefined);
+      const rawMaiAttLive = db.mai_attendance_live !== undefined ? db.mai_attendance_live : (sourceWh === 'MAI' ? db.attendance_live : undefined);
+      const rawMaiOt = db.mai_overtime !== undefined ? db.mai_overtime : (sourceWh === 'MAI' ? db.overtime : undefined);
+      const rawMaiLeaves = db.mai_leaves !== undefined ? db.mai_leaves : (sourceWh === 'MAI' ? db.leaves : undefined);
+
+      if (rawMaiUsers !== undefined || rawMaiAtt !== undefined || rawMaiAttLive !== undefined || rawMaiOt !== undefined || rawMaiLeaves !== undefined) {
+        if (rawMaiUsers !== undefined) {
+          const cloudMaiRaw = normalizeFirebaseArray(rawMaiUsers);
           if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0) {
             const localMaiUsers = getWhDB('MAI', 'users', []);
             const cleanMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiRaw, 'MAI', db.updatedAt);
             cleanMaiUsers.forEach(u => {
-              if (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner'))) {
+              if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
                 u.name = 'Scanner Presensi Gudang';
               }
             });
@@ -11529,8 +11555,8 @@
             }
           }
         }
-        if (db.mai_attendance !== undefined || db.mai_attendance_live !== undefined) {
-          const rawCloudMaiAtt = combineCloudAttendanceWithLive(db.mai_attendance, db.mai_attendance_live);
+        if (rawMaiAtt !== undefined || rawMaiAttLive !== undefined) {
+          const rawCloudMaiAtt = combineCloudAttendanceWithLive(rawMaiAtt, rawMaiAttLive);
           const localMaiAtt = getWhDB('MAI', 'attendance', []);
           const mergedMaiAtt = mergeAttendanceArrays(localMaiAtt, rawCloudMaiAtt);
           const newMaiAtt = JSON.stringify(mergedMaiAtt);
@@ -11539,8 +11565,12 @@
             hasAttChanged = true;
           }
         }
-        if (db.mai_overtime !== undefined) {
-          const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), normalizeFirebaseArray(db.mai_overtime));
+        if (rawMaiOt !== undefined) {
+          const rawCloudOt = normalizeFirebaseArray(rawMaiOt);
+          if (typeof untrackDeletedOvertime === 'function') {
+            untrackDeletedOvertime(rawCloudOt);
+          }
+          const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), rawCloudOt);
           const newMaiOt = JSON.stringify(mergedMaiOt);
           if (currMaiOt !== newMaiOt) {
             localStorage.setItem('wfm_mai_overtime', newMaiOt);
@@ -11548,8 +11578,12 @@
             hasOtChanged = true;
           }
         }
-        if (db.mai_leaves !== undefined) {
-          const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), normalizeFirebaseArray(db.mai_leaves));
+        if (rawMaiLeaves !== undefined) {
+          const rawCloudLeaves = normalizeFirebaseArray(rawMaiLeaves);
+          if (typeof untrackDeletedLeaves === 'function') {
+            untrackDeletedLeaves(rawCloudLeaves);
+          }
+          const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), rawCloudLeaves);
           const newMaiLeaves = JSON.stringify(mergedMaiLeaves);
           if (currMaiLeaves !== newMaiLeaves) {
             localStorage.setItem('wfm_mai_leaves', newMaiLeaves);
@@ -12889,10 +12923,13 @@
           try {
             const localUsers = getWhDB(wh, 'users', []);
             const isLocalEmpty = (!localUsers || localUsers.length === 0);
+            const localLeaves = getWhDB(wh, 'leaves', []);
+            const localOt = getWhDB(wh, 'overtime', []);
+            const isLocalLeavesEmpty = (!localLeaves || localLeaves.length === 0);
+            const isLocalOtEmpty = (!localOt || localOt.length === 0);
 
-            // HANYA unduh penuh (150 KB) jika tombol manual ditekan (isManualAlert) ATAU memori lokal benar-benar masih kosong
-            // Ini menekan angka download hingga 99.98% karena saat normal HANYA memeriksa timestamp kecil (30 bytes)
-            if (isManualAlert || (forceDownload === true && isLocalEmpty)) {
+            // Unduh penuh jika tombol manual ditekan (isManualAlert), dipaksa unduh (forceDownload), memori lokal kosong, ATAU tabel cuti/lembur belum pernah terunduh
+            if (isManualAlert || forceDownload === true || isLocalEmpty || isLocalLeavesEmpty || isLocalOtEmpty) {
               fetchPromises.push(
                 fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
                   .then(r => r.ok ? r.json() : null)
@@ -12913,7 +12950,7 @@
             }
             const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
             const isLocalIncomplete = (localReg === 0);
-            const needFetch = isLocalIncomplete || (cloudTimestamp !== localUpdated);
+            const needFetch = isLocalIncomplete || isLocalLeavesEmpty || isLocalOtEmpty || (cloudTimestamp !== localUpdated);
 
             if (needFetch) {
               fetchPromises.push(
@@ -12933,7 +12970,7 @@
           const results = await Promise.allSettled(fetchPromises);
           results.forEach(res => {
             if (res.status === 'fulfilled' && res.value && res.value.db) {
-              applyIncomingDatabase(res.value.db);
+              applyIncomingDatabase(res.value.db, res.value.wh);
               try { maybeCompactAttendanceLive(res.value.wh, res.value.db); } catch (eCompact) {}
               if (res.value.wh === 'MBI') {
                 localStorage.setItem('wfm_mbi_master_updated_at', res.value.ts || res.value.db.updatedAt || new Date().toISOString());
@@ -12951,9 +12988,8 @@
 
         if (loaded) {
           lastCloudFetchErrorStatus = null;
-          // HANYA re-render jika benar-benar ada data baru yang masuk dari cloud!
-          // Jika data di server masih sama, TIDAK perlu mengulang render seluruh tabel agar UI tetap super lancar & tidak freeze!
-          if (hasNewDataApplied || isManualAlert) {
+          // HANYA re-render jika benar-benar ada data baru yang masuk dari cloud atau dipaksa refresh!
+          if (hasNewDataApplied || isManualAlert || forceDownload) {
             try {
               renderAllLiveScreens();
             } catch(eRender) {}
@@ -16414,13 +16450,15 @@
       updateRealtimeDashboardDate();
       const todayStr = getLocalDateString(new Date());
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const regularUsers = users.filter(u => !isManagementSystemAccount(u));
+      const regularUsers = (users || []).filter(u => u && !isManagementSystemAccount(u));
       const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
-      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const rawLeaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const leaves = Array.isArray(rawLeaves) ? rawLeaves.filter(l => l && typeof l === 'object') : [];
+      const rawOvertimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const overtimes = Array.isArray(rawOvertimes) ? rawOvertimes.filter(o => o && typeof o === 'object') : [];
 
-      const todayAtt = attendances.filter(a => a && a.date === todayStr && !isAttendanceMarkedDeleted(a));
-      const todayLeaves = leaves.filter(l => l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr);
+      const todayAtt = (attendances || []).filter(a => a && a.date === todayStr && !isAttendanceMarkedDeleted(a));
+      const todayLeaves = leaves.filter(l => l && l.status === 'approved' && l.startDate <= todayStr && l.endDate >= todayStr);
 
       const statTotal = document.getElementById('stat-total-emp');
       if (statTotal) statTotal.innerText = `${regularUsers.length} Orang`;
@@ -23220,9 +23258,11 @@
       const searchQ = (document.getElementById('report-leave-search')?.value || '').toLowerCase().trim();
 
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const rawLeaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const leaves = Array.isArray(rawLeaves) ? rawLeaves.filter(lv => lv && typeof lv === 'object') : [];
 
       const filtered = leaves.filter(lv => {
+        if (!lv) return false;
         const inDate = (!startStr || lv.startDate >= startStr || lv.endDate >= startStr) && (!endStr || lv.startDate <= endStr || lv.endDate <= endStr);
         const inType = !typeFilter || lv.type === typeFilter;
         const inStatus = !statusFilter || lv.status === statusFilter;
@@ -23469,8 +23509,10 @@
       const statusFilter = document.getElementById('report-ot-status-filter')?.value || '';
       const searchQ = (document.getElementById('report-ot-search')?.value || '').toLowerCase().trim();
 
-      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const rawOvertimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const overtimes = Array.isArray(rawOvertimes) ? rawOvertimes.filter(o => o && typeof o === 'object') : [];
       const filtered = overtimes.filter(o => {
+        if (!o) return false;
         const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
         const inStatus = !statusFilter || o.status === statusFilter;
         const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
@@ -23479,6 +23521,7 @@
 
       // Urutkan lembur: Tanggal terbaru di atas, lalu jam mulai
       filtered.sort((a, b) => {
+        if (!a || !b) return 0;
         if (a.date !== b.date) return (b.date || '').localeCompare(a.date || '');
         return (a.startTime || '').localeCompare(b.startTime || '');
       });
@@ -25412,9 +25455,11 @@
 
     function renderLeavesTable() {
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const rawLeaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
+      const leaves = Array.isArray(rawLeaves) ? rawLeaves.filter(lv => lv && typeof lv === 'object') : [];
       const searchQ = (document.getElementById('leave-table-search')?.value || '').toLowerCase().trim();
       const tbody = document.getElementById('leave-table-body');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       const canApproveSpv = hasPermission('perm_approve_leave_spv');
@@ -25422,6 +25467,7 @@
       const canReject = hasPermission('perm_reject_submission');
 
       let filtered = leaves.filter(lv => {
+        if (!lv) return false;
         const matchesSearch = !searchQ || (lv.userName && lv.userName.toLowerCase().includes(searchQ)) || (lv.userNik && lv.userNik.toLowerCase().includes(searchQ)) || (lv.reason && lv.reason.toLowerCase().includes(searchQ));
         if (!matchesSearch) return false;
 
@@ -25437,6 +25483,7 @@
 
       // Sort pending items to the top so Supervisor & Manager can immediately take action
       filtered.sort((a, b) => {
+        if (!a || !b) return 0;
         const isAPending = a.status === 'pending' || a.status === 'pending_manager';
         const isBPending = b.status === 'pending' || b.status === 'pending_manager';
         if (isAPending && !isBPending) return -1;
@@ -25768,8 +25815,10 @@
       const searchQ = (document.getElementById('ot-filter-search')?.value || '').toLowerCase().trim();
       const statusFilter = document.getElementById('ot-filter-status')?.value || '';
       const users = getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-      const overtimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const rawOvertimes = getWhDB(activeWarehouse, 'overtime', activeWarehouse === 'MBI' ? SEED_MBI_OVERTIMES : []);
+      const overtimes = Array.isArray(rawOvertimes) ? rawOvertimes.filter(o => o && typeof o === 'object') : [];
       const tbody = document.getElementById('ot-table-body');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       const canApproveSpv = hasPermission('perm_approve_ot_spv');
@@ -25777,6 +25826,7 @@
       const canReject = hasPermission('perm_reject_submission');
 
       let filtered = overtimes.filter(o => {
+        if (!o) return false;
         const isPendingFilter = (statusFilter === 'pending_all' || statusFilter === 'pending' || statusFilter === 'pending_manager');
         const inDate = isPendingFilter ? true : ((!startStr || o.date >= startStr) && (!endStr || o.date <= endStr));
         const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
@@ -25791,6 +25841,7 @@
 
       // Sort pending items to the top so Supervisor & Manager can immediately take action
       filtered.sort((a, b) => {
+        if (!a || !b) return 0;
         const isAPending = a.status === 'pending' || a.status === 'pending_manager';
         const isBPending = b.status === 'pending' || b.status === 'pending_manager';
         if (isAPending && !isBPending) return -1;
