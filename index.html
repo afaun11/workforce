@@ -8471,6 +8471,25 @@
       return false;
     }
 
+    function untrackDeletedLeaves(itemsOrIds) {
+      if (!itemsOrIds) return;
+      const keys = getDeletedLeaveIds();
+      if (keys.size === 0) return;
+      const list = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds];
+      let removed = false;
+      list.forEach(item => {
+        if (!item) return;
+        if (typeof item === 'string') {
+          if (keys.delete(item.trim().toLowerCase())) removed = true;
+        } else if (typeof item === 'object') {
+          if (item.id && keys.delete(String(item.id).trim().toLowerCase())) removed = true;
+          const compKey = `${(item.userNik || '').toUpperCase()}_${item.startDate || ''}_${item.type || ''}`.toLowerCase();
+          if (keys.delete(compKey)) removed = true;
+        }
+      });
+      if (removed) saveDeletedLeaveIds(keys);
+    }
+
     // =========================================================
     // REKAP LEMBUR: TOMBSTONE TRACKING ENGINE
     // =========================================================
@@ -8507,6 +8526,25 @@
         }
       });
       saveDeletedOvertimeIds(keys);
+    }
+
+    function untrackDeletedOvertime(itemsOrIds) {
+      if (!itemsOrIds) return;
+      const keys = getDeletedOvertimeIds();
+      if (keys.size === 0) return;
+      const list = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds];
+      let removed = false;
+      list.forEach(item => {
+        if (!item) return;
+        if (typeof item === 'string') {
+          if (keys.delete(item.trim().toLowerCase())) removed = true;
+        } else if (typeof item === 'object') {
+          if (item.id && keys.delete(String(item.id).trim().toLowerCase())) removed = true;
+          const compKey = `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`.toLowerCase();
+          if (keys.delete(compKey)) removed = true;
+        }
+      });
+      if (removed) saveDeletedOvertimeIds(keys);
     }
 
     function isOvertimeMarkedDeleted(item) {
@@ -11066,7 +11104,7 @@
           const cloudPrio = statusPriority[cloudItem.status] || 0;
           const localPrio = statusPriority[localItem.status] || 0;
           const status = cloudPrio >= localPrio ? cloudItem.status : localItem.status;
-          map.set(key, { ...cloudItem, ...localItem, status });
+          map.set(key, { ...localItem, ...cloudItem, status });
         }
       });
       return Array.from(map.values());
@@ -11091,7 +11129,7 @@
           const cloudPrio = statusPriority[cloudItem.status] || 0;
           const localPrio = statusPriority[localItem.status] || 0;
           const status = cloudPrio >= localPrio ? cloudItem.status : localItem.status;
-          map.set(key, { ...cloudItem, ...localItem, status });
+          map.set(key, { ...localItem, ...cloudItem, status });
         }
       });
       return Array.from(map.values());
@@ -11456,6 +11494,7 @@
           const newMbiOt = JSON.stringify(mergedMbiOt);
           if (currMbiOt !== newMbiOt) {
             localStorage.setItem('wfm_mbi_overtime', newMbiOt);
+            whDBCache.set('wfm_mbi_overtime', mergedMbiOt);
             hasOtChanged = true;
           }
         }
@@ -11464,6 +11503,7 @@
           const newMbiLeaves = JSON.stringify(mergedMbiLeaves);
           if (currMbiLeaves !== newMbiLeaves) {
             localStorage.setItem('wfm_mbi_leaves', newMbiLeaves);
+            whDBCache.set('wfm_mbi_leaves', mergedMbiLeaves);
             hasLeavesChanged = true;
           }
         }
@@ -11504,6 +11544,7 @@
           const newMaiOt = JSON.stringify(mergedMaiOt);
           if (currMaiOt !== newMaiOt) {
             localStorage.setItem('wfm_mai_overtime', newMaiOt);
+            whDBCache.set('wfm_mai_overtime', mergedMaiOt);
             hasOtChanged = true;
           }
         }
@@ -11512,6 +11553,7 @@
           const newMaiLeaves = JSON.stringify(mergedMaiLeaves);
           if (currMaiLeaves !== newMaiLeaves) {
             localStorage.setItem('wfm_mai_leaves', newMaiLeaves);
+            whDBCache.set('wfm_mai_leaves', mergedMaiLeaves);
             hasLeavesChanged = true;
           }
         }
@@ -11928,6 +11970,92 @@
 
       if (cloudSaveTimeout) clearTimeout(cloudSaveTimeout);
       cloudSaveTimeout = setTimeout(executeSave, 250);
+    }
+
+    async function syncLeavesToCloud(warehouse, leavesList) {
+      const wh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      const whLower = wh.toLowerCase();
+      try {
+        if (typeof untrackDeletedLeaves === 'function') {
+          untrackDeletedLeaves(leavesList);
+        }
+        setWhDB(wh, 'leaves', leavesList, true);
+        const endpoint = getFirebaseEndpoint(wh);
+        if (endpoint) {
+          const nowIso = new Date().toISOString();
+          const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_leaves.json`);
+          const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+          await Promise.allSettled([
+            fetch(targetUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(leavesList)
+            }),
+            fetch(tsUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(nowIso)
+            })
+          ]);
+          localStorage.setItem(`wfm_${whLower}_master_updated_at`, nowIso);
+        }
+      } catch (err) {
+        console.warn('syncLeavesToCloud notice:', err);
+      }
+      try {
+        await saveFullDatabaseToCloud(false, true, false, wh);
+      } catch(e) {}
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
+        }
+      } catch(e) {}
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+    }
+
+    async function syncOvertimeToCloud(warehouse, overtimeList) {
+      const wh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      const whLower = wh.toLowerCase();
+      try {
+        if (typeof untrackDeletedOvertime === 'function') {
+          untrackDeletedOvertime(overtimeList);
+        }
+        setWhDB(wh, 'overtime', overtimeList, true);
+        const endpoint = getFirebaseEndpoint(wh);
+        if (endpoint) {
+          const nowIso = new Date().toISOString();
+          const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_overtime.json`);
+          const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+          await Promise.allSettled([
+            fetch(targetUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(overtimeList)
+            }),
+            fetch(tsUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(nowIso)
+            })
+          ]);
+          localStorage.setItem(`wfm_${whLower}_master_updated_at`, nowIso);
+        }
+      } catch (err) {
+        console.warn('syncOvertimeToCloud notice:', err);
+      }
+      try {
+        await saveFullDatabaseToCloud(false, true, false, wh);
+      } catch(e) {}
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
+        }
+      } catch(e) {}
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
     }
 
     async function initializeAndUploadToFirebase() {
@@ -13081,7 +13209,7 @@
         setVal('report-ot-start', effectiveStartForRecords);
         setVal('report-ot-end', effectiveEndForRecords);
         setVal('ot-filter-start', effectiveStartForRecords);
-        setVal('ot-filter-end', effectiveEndForRecords);
+        setVal('ot-filter-end', lastDayStr);
         setVal('ot-date', realToday);
         setVal('leave-start-date', realToday);
         setVal('leave-end-date', realToday);
@@ -15730,6 +15858,14 @@
           // Akun Management (Coordinator, Supervisor, Admin, Manager)
           try { updateWhSwitcherButtons(); } catch (e) {}
           try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
+          try {
+            fetchFullDatabaseFromCloud(false, currentUser.warehouse, true).then(() => {
+              if (isUserManager(currentUser)) {
+                const otherWh = currentUser.warehouse === 'MBI' ? 'MAI' : 'MBI';
+                fetchFullDatabaseFromCloud(false, otherWh, false);
+              }
+            });
+          } catch(e) {}
           try { switchView('dashboard'); } catch (e) {}
         } else {
           // Akun Karyawan Biasa
@@ -15866,7 +16002,7 @@
       }
       activeWarehouse = targetWh;
       try { initFirebaseLiveStream(targetWh); } catch(e) {}
-      try { fetchFullDatabaseFromCloud(false, targetWh); } catch(e) {}
+      try { fetchFullDatabaseFromCloud(false, targetWh, true); } catch(e) {}
       try {
         if (typeof lastKnownFirestoreSignal !== 'undefined') lastKnownFirestoreSignal[targetWh] = '';
       } catch(e) {}
@@ -16153,8 +16289,12 @@
             switchReportTab(targetTab);
           } catch(e) {}
         }
-        if (viewName === 'leaves') { try { renderLeavesTable(); } catch(e) {} }
+        if (viewName === 'leaves') {
+          try { fetchFullDatabaseFromCloud(false, activeWarehouse, false); } catch(e) {}
+          try { renderLeavesTable(); } catch(e) {}
+        }
         if (viewName === 'overtime') {
+          try { fetchFullDatabaseFromCloud(false, activeWarehouse, false); } catch(e) {}
           try {
             renderOvertimeEmployeeGrid();
             renderOvertimeTable();
@@ -16254,6 +16394,10 @@
         }
         const searchInput = document.getElementById('ot-filter-search');
         if (searchInput) searchInput.value = '';
+        const filterStart = document.getElementById('ot-filter-start');
+        if (filterStart) filterStart.value = '';
+        const filterEnd = document.getElementById('ot-filter-end');
+        if (filterEnd) filterEnd.value = '';
         renderOvertimeTable();
 
         setTimeout(() => {
@@ -25234,9 +25378,8 @@
       };
 
       leaves.unshift(newLeave);
-      setWhDB(activeWarehouse, 'leaves', leaves);
-      saveFullDatabaseToCloud();
-      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      untrackDeletedLeaves(newLeave);
+      syncLeavesToCloud(activeWarehouse, leaves);
 
       document.getElementById('leave-reason').value = '';
       const alertEl = document.getElementById('leave-alert');
@@ -25442,9 +25585,7 @@
         alert(`✅ Pengajuan berhasil disetujui tahap 1 oleh ${currentUser.name}!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       }
 
-      setWhDB(activeWarehouse, 'leaves', leaves);
-      saveFullDatabaseToCloud();
-      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      syncLeavesToCloud(activeWarehouse, leaves);
       if (typeof renderLeavesTable === 'function') renderLeavesTable();
       if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
       if (typeof renderMatrixTable === 'function') renderMatrixTable();
@@ -25606,9 +25747,8 @@
         }
       });
 
-      setWhDB(activeWarehouse, 'overtime', overtimes);
-      saveFullDatabaseToCloud();
-      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      untrackDeletedOvertime(overtimes);
+      syncOvertimeToCloud(activeWarehouse, overtimes);
       document.getElementById('ot-reason-select').value = 'Menyelesaikan Orderan';
       toggleOvertimeManualReason('Menyelesaikan Orderan');
       selectAllOvertimeEmployees(false);
@@ -25637,7 +25777,8 @@
       const canReject = hasPermission('perm_reject_submission');
 
       let filtered = overtimes.filter(o => {
-        const inDate = (!startStr || o.date >= startStr) && (!endStr || o.date <= endStr);
+        const isPendingFilter = (statusFilter === 'pending_all' || statusFilter === 'pending' || statusFilter === 'pending_manager');
+        const inDate = isPendingFilter ? true : ((!startStr || o.date >= startStr) && (!endStr || o.date <= endStr));
         const inSearch = !searchQ || (o.userName && o.userName.toLowerCase().includes(searchQ)) || (o.userNik && o.userNik.toLowerCase().includes(searchQ)) || (o.dept && o.dept.toLowerCase().includes(searchQ));
         let inStatus = true;
         if (statusFilter === 'pending_all') {
@@ -25809,9 +25950,7 @@
         alert(`✅ Pengajuan lembur ${item.userName} (${item.date}) berhasil disetujui tahap 1 oleh ${currentUser.name}!\nDiteruskan ke Manager untuk persetujuan akhir (Final Approval).`);
       }
 
-      setWhDB(activeWarehouse, 'overtime', overtimes);
-      saveFullDatabaseToCloud();
-      if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+      syncOvertimeToCloud(activeWarehouse, overtimes);
       if (typeof renderOvertimeTable === 'function') renderOvertimeTable();
       if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
     }
