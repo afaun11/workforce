@@ -11060,7 +11060,7 @@
       }
     }
 
-    // 1. SMART MERGE ABSENSI (Kunci ID / NIK+Tanggal+JamMasuk)
+    // 1. SMART MERGE ABSENSI (CLOUD-FIRST SSOT AUTHORITATIVE ENGINE)
     function mergeAttendanceArrays(localList, cloudList) {
       const map = new Map();
       (cloudList || []).forEach(item => {
@@ -11068,23 +11068,52 @@
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
         map.set(key, item);
       });
+
+      // Ambil daftar ID yang sedang dalam antrean upload offline (Outbox)
+      const outboxIds = new Set();
+      try {
+        if (typeof readAttOutbox === 'function') {
+          readAttOutbox().forEach(x => { if (x && x.rec && x.rec.id) outboxIds.add(String(x.rec.id)); });
+        }
+      } catch(e) {}
+
+      const todayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(new Date()) : new Date().toISOString().split('T')[0];
+      const yesterdayObj = new Date();
+      yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+      const yesterdayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(yesterdayObj) : yesterdayObj.toISOString().split('T')[0];
+
+      const cloudHasRecords = (cloudList && cloudList.length > 0);
+
       // Data lokal menggabungkan record yang sah ke dalam peta
       (localList || []).forEach(localItem => {
         if (!localItem || isAttendanceMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.checkInTime || ''}`;
+
         if (!map.has(key)) {
-          map.set(key, localItem);
+          // ANTI-RECORD ZOMBIE: Jika Cloud sudah memiliki data presensi,
+          // JANGAN membangkitkan record lokal usang dari minggu/bulan lalu yang sudah tidak ada di Cloud.
+          // HANYA pertahankan record lokal jika sedang menunggu dikirim di Outbox ATAU hasil tap hari ini/kemarin.
+          const isPendingOutbox = localItem.id && outboxIds.has(String(localItem.id));
+          const isRecentDate = (localItem.date === todayStr || localItem.date === yesterdayStr);
+          if (!cloudHasRecords || isPendingOutbox || isRecentDate) {
+            map.set(key, localItem);
+          }
         } else {
+          // CLOUD FIRST AUTHORITATIVE: Utamakan data Cloud sebagai SSOT
           const cloudItem = map.get(key);
           const hasOutLocal = !!(localItem.checkOutTime && localItem.checkOutTime !== '-' && localItem.checkOutTime !== '');
           const hasOutCloud = !!(cloudItem.checkOutTime && cloudItem.checkOutTime !== '-' && cloudItem.checkOutTime !== '');
-          
-          const merged = { ...cloudItem, ...localItem };
-          if (hasOutCloud && !hasOutLocal) {
+
+          // Data Cloud menimpa atribut lokal ({ ...localItem, ...cloudItem }) agar koreksi nama, NIK, status, keterangan dari Cloud tidak tertimpa data lokal usang!
+          const merged = { ...localItem, ...cloudItem };
+
+          // Jam pulang diutamakan dari Cloud, kecuali Cloud belum ada dan lokal memiliki jam pulang yang sah
+          if (hasOutCloud) {
             merged.checkOutTime = cloudItem.checkOutTime;
           } else if (hasOutLocal) {
             merged.checkOutTime = localItem.checkOutTime;
           }
+
           map.set(key, merged);
         }
       });
@@ -11099,11 +11128,16 @@
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.startDate || ''}_${item.type || ''}`;
         map.set(key, item);
       });
+      const cloudHasRecords = (cloudList && cloudList.length > 0);
       (localList || []).forEach(localItem => {
         if (!localItem || isLeaveMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.startDate || ''}_${localItem.type || ''}`;
         if (!map.has(key)) {
-          map.set(key, localItem);
+          const createdTime = (localItem.createdAt && !isNaN(new Date(localItem.createdAt).getTime())) ? new Date(localItem.createdAt).getTime() : 0;
+          const isRecentlyCreatedOffline = (Date.now() - createdTime < 86400000 || localItem._pendingSync);
+          if (!cloudHasRecords || isRecentlyCreatedOffline) {
+            map.set(key, localItem);
+          }
         } else {
           const cloudItem = map.get(key);
           const statusPriority = { approved: 3, rejected: 3, pending_manager: 2, pending: 1 };
@@ -11124,11 +11158,16 @@
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`;
         map.set(key, item);
       });
+      const cloudHasRecords = (cloudList && cloudList.length > 0);
       (localList || []).forEach(localItem => {
         if (!localItem || isOvertimeMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.startTime || ''}`;
         if (!map.has(key)) {
-          map.set(key, localItem);
+          const createdTime = (localItem.createdAt && !isNaN(new Date(localItem.createdAt).getTime())) ? new Date(localItem.createdAt).getTime() : 0;
+          const isRecentlyCreatedOffline = (Date.now() - createdTime < 86400000 || localItem._pendingSync);
+          if (!cloudHasRecords || isRecentlyCreatedOffline) {
+            map.set(key, localItem);
+          }
         } else {
           const cloudItem = map.get(key);
           const statusPriority = { approved: 3, rejected: 3, pending_manager: 2, pending: 1 };
@@ -11240,32 +11279,37 @@
           if (cloudMatch.nik) matchedCloudNiks.add(String(cloudMatch.nik).toUpperCase().trim());
           if (cloudMatch.name) matchedCloudNames.add(cleanStr(cloudMatch.name));
 
-          const locTime = loc.updatedAt ? new Date(loc.updatedAt).getTime() : 0;
-          const cloudTime = cloudMatch.updatedAt ? new Date(cloudMatch.updatedAt).getTime() : 0;
-          const isLocalNewer = (locTime > cloudTime);
-          const isCloudNewer = (cloudTime > locTime);
+          const locTime = (loc.updatedAt && !isNaN(new Date(loc.updatedAt).getTime())) ? new Date(loc.updatedAt).getTime() : 0;
+          const cloudTime = (cloudMatch.updatedAt && !isNaN(new Date(cloudMatch.updatedAt).getTime())) ? new Date(cloudMatch.updatedAt).getTime() : 0;
+          const isLocalExplicitlyNewer = (locTime > 0 && cloudTime > 0 && locTime > cloudTime);
 
-          const merged = isLocalNewer ? { ...cloudMatch, ...loc } : { ...loc, ...cloudMatch };
+          const merged = isLocalExplicitlyNewer ? { ...cloudMatch, ...loc } : { ...loc, ...cloudMatch };
 
-          if (isLocalNewer) {
+          if (isLocalExplicitlyNewer) {
             merged.name = loc.name || cloudMatch.name;
+            merged.dept = loc.dept || loc.department || cloudMatch.dept || cloudMatch.department;
+            merged.department = merged.dept;
+            merged.outsource = loc.outsource !== undefined ? loc.outsource : cloudMatch.outsource;
+            merged.role = loc.role || cloudMatch.role;
             merged.phone = loc.phone || cloudMatch.phone;
             merged.email = loc.email || cloudMatch.email;
             if (loc.password) merged.password = loc.password;
             merged.updatedAt = loc.updatedAt;
-          } else if (isCloudNewer) {
+          } else {
+            // CLOUD-FIRST SSOT: Adopsi data terbaru dari Cloud sebagai sumber kebenaran utama
             if (cloudMatch.name && isLikelyHumanName(cloudMatch.name)) {
               merged.name = cloudMatch.name;
+            } else if (!merged.name && loc.name) {
+              merged.name = loc.name;
             }
+            merged.dept = cloudMatch.dept || cloudMatch.department || loc.dept || loc.department;
+            merged.department = merged.dept;
+            if (cloudMatch.outsource !== undefined) merged.outsource = cloudMatch.outsource;
+            if (cloudMatch.role) merged.role = cloudMatch.role;
             if (cloudMatch.phone) merged.phone = cloudMatch.phone;
             if (cloudMatch.email) merged.email = cloudMatch.email;
             if (cloudMatch.password) merged.password = cloudMatch.password;
-            merged.updatedAt = cloudMatch.updatedAt;
-          } else {
-            merged.name = (loc.name && isLikelyHumanName(loc.name)) ? loc.name : (cloudMatch.name || loc.name);
-            merged.phone = (loc.phone && loc.phone !== '-') ? loc.phone : (cloudMatch.phone || loc.phone);
-            merged.email = (loc.email && loc.email !== '-') ? loc.email : (cloudMatch.email || loc.email);
-            merged.password = loc.password || cloudMatch.password;
+            merged.updatedAt = cloudMatch.updatedAt || loc.updatedAt || new Date().toISOString();
           }
 
           // Prioritas Sinkronisasi NIK:
@@ -11349,7 +11393,24 @@
           }
           resultList.push(merged);
         } else {
-          resultList.push(loc);
+          // Karyawan lokal ini TIDAK ditemukan di Cloud
+          // 1. Akun manajemen sistem (Admin, Scanner, Manager) SELALU DIPERTAHANKAN 100% agar login tidak pernah gagal!
+          if (isManagementSystemAccount(loc)) {
+            resultList.push(loc);
+          } else if (cloudRegCount === 0) {
+            // Jika Cloud kosong / belum ada karyawan reguler, pertahankan lokal (Data Shield)
+            resultList.push(loc);
+          } else {
+            // Cloud SUDAH memiliki karyawan reguler (>0), tetapi karyawan lokal ini TIDAK ADA di Cloud.
+            // Cek apakah karyawan ini baru saja dibuat offline secara lokal dalam 1 jam terakhir:
+            const createdTime = (loc.createdAt && !isNaN(new Date(loc.createdAt).getTime())) ? new Date(loc.createdAt).getTime() : 0;
+            const isRecentlyCreatedOffline = (Date.now() - createdTime < 3600000 && loc._pendingSync);
+            if (isRecentlyCreatedOffline) {
+              resultList.push(loc);
+            } else {
+              console.log(`[SmartSync] Menghapus data karyawan usang dari penyimpanan lokal karena tidak ada di Cloud: ${loc.name} (${loc.nik})`);
+            }
+          }
         }
       });
 
@@ -11489,6 +11550,7 @@
               localStorage.setItem('wfm_mbi_users_backup', newMbiUsers);
               hasUsersChanged = true;
             }
+            whDBCache.set('wfm_mbi_users', cleanMbiUsers);
           }
         }
         if (rawMbiAtt !== undefined || rawMbiAttLive !== undefined) {
@@ -11500,6 +11562,7 @@
             localStorage.setItem('wfm_mbi_attendance', newMbiAtt);
             hasAttChanged = true;
           }
+          whDBCache.set('wfm_mbi_attendance', mergedMbiAtt);
         }
         if (rawMbiOt !== undefined) {
           const rawCloudOt = normalizeFirebaseArray(rawMbiOt);
@@ -11553,6 +11616,7 @@
               localStorage.setItem('wfm_mai_users_backup', newMaiUsers);
               hasUsersChanged = true;
             }
+            whDBCache.set('wfm_mai_users', cleanMaiUsers);
           }
         }
         if (rawMaiAtt !== undefined || rawMaiAttLive !== undefined) {
@@ -11564,6 +11628,7 @@
             localStorage.setItem('wfm_mai_attendance', newMaiAtt);
             hasAttChanged = true;
           }
+          whDBCache.set('wfm_mai_attendance', mergedMaiAtt);
         }
         if (rawMaiOt !== undefined) {
           const rawCloudOt = normalizeFirebaseArray(rawMaiOt);
