@@ -10383,13 +10383,19 @@
         const currentAtt = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
         const mergedAtt = combineCloudAttendanceWithLive(currentAtt, liveObj);
         
-        // Simpan langsung ke memori lokal browser (skipCloudSave = true agar tidak memicu re-upload siklus)
-        setWhDB(targetWh, 'attendance', mergedAtt, true);
+        // Simpan langsung ke memori lokal & cache browser (skipCloudSave = true agar tidak memicu re-upload siklus)
+        const hasAttDeltaChanged = JSON.stringify(mergedAtt) !== JSON.stringify(currentAtt);
+        if (hasAttDeltaChanged) {
+          setWhDB(targetWh, 'attendance', mergedAtt, true);
+        }
 
-        // Perbarui list mini di bawah scanner jika layar scanner sedang terbuka (sangat ringan < 1ms)
+        // Perbarui antarmuka yang sedang dilihat (Scanner, Dashboard, atau Record Absen)
         try {
           if (typeof renderScannerTodayRecords === 'function') {
             renderScannerTodayRecords();
+          }
+          if (hasAttDeltaChanged && typeof renderAllLiveScreens === 'function') {
+            renderAllLiveScreens();
           }
         } catch (eR) {}
 
@@ -12118,6 +12124,87 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
+    }
+
+    async function syncAttendanceToCloud(warehouse, attendancesList, record = null) {
+      const wh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      const whLower = wh.toLowerCase();
+      try {
+        const deletedAttKeys = getDeletedAttendanceIds();
+        const cleanList = (attendancesList || []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys));
+
+        // 1. Simpan ke database lokal dan cache memori seketika
+        setWhDB(wh, 'attendance', cleanList, true);
+        try {
+          localStorage.setItem(`wfm_${whLower}_attendance_backup`, JSON.stringify(cleanList));
+        } catch(eBackup) {}
+
+        // 2. Langsung dorong ke Firebase RTDB leaf nodes
+        const endpoint = getFirebaseEndpoint(wh);
+        if (endpoint) {
+          const nowIso = new Date().toISOString();
+          const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_attendance.json`);
+          const genericTargetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/attendance.json`);
+          const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
+
+          const fetchTasks = [
+            fetch(targetUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(cleanList)
+            }),
+            fetch(genericTargetUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(cleanList)
+            }),
+            fetch(tsUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(nowIso)
+            })
+          ];
+
+          // Simpan juga record ke live node delta jika ada record spesifik
+          if (record && record.id) {
+            const { node } = getAttLiveNodes(wh);
+            fetchTasks.push(
+              fetch(`${node}/${safeAttLiveKey(record.id)}.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(record)
+              })
+            );
+          }
+
+          await Promise.allSettled(fetchTasks);
+          try {
+            localStorage.setItem(`wfm_${whLower}_master_updated_at`, nowIso);
+            localStorage.setItem('wfm_master_updated_at', nowIso);
+          } catch(eLs) {}
+        }
+      } catch (err) {
+        console.warn('syncAttendanceToCloud notice:', err);
+      }
+
+      // 3. Simpan juga via saveFullDatabaseToCloud dengan attendance flags
+      try {
+        await saveFullDatabaseToCloud(false, true, true, wh, false, true, true);
+      } catch(eSave) {}
+
+      // 4. Siarkan sinyal seketika ke antarmuka Management di tab / perangkat lain (0ms)
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
+        }
+      } catch(eBc) {}
+
+      // 5. Trigger Google Sheet Auto Sync
+      if (typeof triggerGoogleSheetAutoSync === 'function') {
+        triggerGoogleSheetAutoSync(true);
+      }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
     }
 
     async function syncOvertimeToCloud(warehouse, overtimeList) {
@@ -12167,6 +12254,7 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
     }
 
     async function initializeAndUploadToFirebase() {
@@ -12820,28 +12908,11 @@
       };
     }
 
-    async function syncMbiAttendanceFromGoogleSheetMaster(forceAlert = false, targetWh = null) {
-      const wh = (targetWh || activeWarehouse || 'MBI').toUpperCase();
-      if (wh === 'MAI') {
-        updateCloudSyncStatusBadge('syncing');
-        try {
-          await fetchFullDatabaseFromCloud(false, 'MAI', true);
-          updateCloudSyncStatusBadge('synced');
-          renderAllLiveScreens();
-          if (forceAlert) {
-            const maiAtt = getWhDB('MAI', 'attendance', []);
-            alert(`⚡ SUKSES MEMULIHKAN MASTER ABSEN GUDANG MAI DARI FIREBASE CLOUD!\n\n` +
-                  `✓ Total Data Absensi Sah: ${maiAtt.length} Record Presensi\n` +
-                  `✓ Tersimpan aman di LocalStorage & Firebase Cloud 24/7.\n\n` +
-                  `Semua perangkat sekarang membaca data yang sama persis tanpa perlu clear cache.`);
-          }
-        } catch(e) {
-          updateCloudSyncStatusBadge('synced');
-        }
-        return;
-      }
+    async function syncAttendanceFromGoogleSheetMaster(forceAlert = false, targetWh = null) {
+      const wh = (targetWh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       updateCloudSyncStatusBadge('syncing');
-      const gsheetCsvUrl = 'https://docs.google.com/spreadsheets/d/1-QzoIehfLvtLJSx8w0mLX4itGbGChk-6OHly2JTJZ5o/gviz/tq?tqx=out:csv&sheet=RECORD%20ABSEN&t=' + Date.now();
+      const sheetId = (wh === 'MAI') ? GOOGLE_SPREADSHEET_ID_MAI : GOOGLE_SPREADSHEET_ID_MBI;
+      const gsheetCsvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=RECORD%20ABSEN&t=${Date.now()}`;
       
       try {
         const res = await fetch(gsheetCsvUrl, { cache: 'no-store' });
@@ -12876,7 +12947,7 @@
           return result;
         };
 
-        const users = getWhDB('MBI', 'users', SEED_MBI_USERS);
+        const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
         const parsedGSheetRecords = [];
 
         for (let i = 1; i < rawLines.length; i++) {
@@ -12885,12 +12956,12 @@
           if (rec) parsedGSheetRecords.push(rec);
         }
 
-        // Ambil riwayat lokal & Firebase yang ada sekarang untuk memastikan tidak ada data lama yang hilang
-        const localMbiAtt = getWhDB('MBI', 'attendance', []);
+        // Ambil riwayat lokal yang ada sekarang
+        const localAtt = getWhDB(wh, 'attendance', []);
         const attMap = new Map();
 
         // 1. Masukkan data lokal terlebih dahulu
-        (localMbiAtt || []).forEach(item => {
+        (localAtt || []).forEach(item => {
           if (!item) return;
           const k = `${(item.userNik || '').toUpperCase().trim()}__${item.date || ''}__${(item.checkInTime || '').substring(0, 16)}`;
           attMap.set(k, item);
@@ -12927,48 +12998,28 @@
           return tb - ta;
         });
 
-        // 5. Simpan ke LocalStorage & bersihkan tombstone usang
-        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(unifiedList));
-        localStorage.setItem('wfm_mbi_attendance_backup', JSON.stringify(unifiedList));
-        localStorage.removeItem('wfm_deleted_attendance_ids');
-
-        const nowIso = new Date().toISOString();
-        localStorage.setItem('wfm_mbi_master_updated_at', nowIso);
-        localStorage.setItem('wfm_master_updated_at', nowIso);
-
-        // 6. Langsung simpan & bersihkan Firebase RTDB MBI seketika (Hapus 229 tombstone di Cloud!)
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        try {
-          await fetch(mbiEndpoint, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              mbi_attendance: unifiedList,
-              deleted_attendance_ids: [],
-              updatedAt: nowIso
-            })
-          });
-        } catch(eUpload) {
-          console.warn('Firebase patch after GSheet sync warning:', eUpload);
-        }
+        // 5. Simpan ke database lokal dan push ke Firebase Cloud seketika
+        await syncAttendanceToCloud(wh, unifiedList);
 
         updateCloudSyncStatusBadge('synced');
         renderAllLiveScreens();
 
         if (forceAlert) {
-          alert(`⚡ SUKSES MEMULIHKAN MASTER ABSEN MBI DARI GOOGLE SHEET!\n\n` +
+          alert(`⚡ SUKSES MENYINKRONKAN MASTER ABSEN GUDANG ${wh} DARI GOOGLE SHEET!\n\n` +
                 `✓ Total Data Absensi Sah: ${unifiedList.length} Record Presensi\n` +
                 `✓ Data Absensi Hari Ini: ${unifiedList.filter(a => a.date === getLocalDateString(new Date())).length} Karyawan\n` +
-                `✓ Tombstone Usang Firebase Telah Dibersihkan (100% Bersih)\n` +
                 `✓ Tersimpan aman di LocalStorage & Firebase Cloud 24/7.\n\n` +
-                `Semua perangkat sekarang membaca data yang sama persis tanpa perlu clear cache.`);
+                `Semua perangkat Management sekarang membaca data yang sama persis.`);
         }
       } catch (err) {
-        console.error('syncMbiAttendanceFromGoogleSheetMaster error:', err);
+        console.error('syncAttendanceFromGoogleSheetMaster error:', err);
         updateCloudSyncStatusBadge('local');
         if (forceAlert) {
-          alert('⚠️ Gagal menyinkronkan dari Google Sheet: ' + err.message);
+          alert(`⚠️ Gagal menyinkronkan dari Google Sheet Gudang ${wh}: ` + err.message);
         }
+      }
+    }
+    const syncMbiAttendanceFromGoogleSheetMaster = syncAttendanceFromGoogleSheetMaster;
       }
     }
 
@@ -13381,7 +13432,13 @@
       if (typeof BroadcastChannel !== 'undefined') {
         try {
           const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
-          syncBc.onmessage = () => { try { fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false); } catch(e) {} };
+          syncBc.onmessage = () => {
+            try {
+              fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true).then(() => {
+                if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+              });
+            } catch(e) {}
+          };
         } catch(e) {}
       }
 
@@ -15964,6 +16021,8 @@
 
         if (isUserScanner(currentUser)) {
           // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
+          try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
+          try { fetchFullDatabaseFromCloud(false, currentUser.warehouse, true); } catch(e) {}
           try { switchView('attendance'); } catch (e) {}
           try { renderScannerTodayRecords(); } catch (e) {}
           try { stopScanner(); } catch (e) {}
@@ -15983,6 +16042,7 @@
         } else {
           // Akun Karyawan Biasa
           try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
+          try { fetchFullDatabaseFromCloud(false, currentUser.warehouse, true); } catch(e) {}
           try { switchView('attendance'); } catch (e) {}
         }
 
@@ -16398,6 +16458,9 @@
         if (viewName === 'employees') { try { renderEmployeeTable(); } catch(e) {} }
         if (viewName === 'reports-group') {
           try {
+            fetchFullDatabaseFromCloud(false, activeWarehouse, false).then(() => {
+              if (activeReportTab === 'records') renderRecordsTable();
+            });
             const targetTab = activeReportTab || 'records';
             switchReportTab(targetTab);
           } catch(e) {}
@@ -16430,7 +16493,12 @@
         }
 
         if (viewName === 'dashboard') {
-          try { refreshAllDashboardData(); } catch(e) {}
+          try {
+            fetchFullDatabaseFromCloud(false, activeWarehouse, false).then(() => {
+              refreshAllDashboardData();
+            });
+            refreshAllDashboardData();
+          } catch(e) {}
         }
         try {
           if (typeof safeCreateIcons === 'function') safeCreateIcons({ root: activeView });
@@ -17592,6 +17660,91 @@
       processAttendanceScan(trimmed);
     }
 
+    async function rescueActiveOpenSessionFromCloud(warehouse, matchedUser) {
+      if (!matchedUser) return null;
+      const wh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      const whLower = wh.toLowerCase();
+      const endpoint = getFirebaseEndpoint(wh);
+      if (!endpoint) return null;
+
+      const MAX_ACTIVE_SHIFT_MS = 18 * 60 * 60 * 1000;
+      const nowMs = Date.now();
+
+      const isMatch = (r) => {
+        if (!r || !r.checkInTime) return false;
+        if (r.checkOutTime && r.checkOutTime !== '-' && r.checkOutTime !== '') return false;
+        if (r.notes && r.notes.toLowerCase().includes('miss scan')) return false;
+        if (r.checkInStatus === 'miss_scan') return false;
+
+        const inMs = parseSafeTimeMs(r.checkInTime, r.date) || new Date(r.checkInTime).getTime();
+        if (isNaN(inMs) || inMs <= 0) return false;
+        const elapsed = nowMs - inMs;
+        if (elapsed < 0 || elapsed >= MAX_ACTIVE_SHIFT_MS) return false;
+
+        const uId = matchedUser.id ? String(matchedUser.id).trim().toLowerCase() : '';
+        const uNik = matchedUser.nik ? String(matchedUser.nik).trim().toUpperCase() : '';
+        const uName = matchedUser.name ? cleanStr(matchedUser.name) : '';
+
+        const rId = r.userId ? String(r.userId).trim().toLowerCase() : '';
+        const rNik = r.userNik ? String(r.userNik).trim().toUpperCase() : '';
+        const rName = r.userName ? cleanStr(r.userName) : '';
+
+        if (uId && rId && uId === rId) return true;
+        if (uNik && rNik && uNik === rNik) return true;
+        if (uName && rName && uName === rName) return true;
+        return false;
+      };
+
+      try {
+        const ctrl = new AbortController();
+        const tmr = setTimeout(() => ctrl.abort(), 4000);
+
+        // Periksa secara paralel: live node dan array attendance utama di Firebase Cloud
+        const { node } = getAttLiveNodes(wh);
+        const liveUrl = `${node}.json?t=${nowMs}`;
+        const mainUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_attendance.json?t=${nowMs}`);
+
+        const [resLive, resMain] = await Promise.allSettled([
+          fetch(liveUrl, { cache: 'no-store', signal: ctrl.signal }).then(r => r.ok ? r.json() : null),
+          fetch(mainUrl, { cache: 'no-store', signal: ctrl.signal }).then(r => r.ok ? r.json() : null)
+        ]);
+        clearTimeout(tmr);
+
+        const candidates = [];
+        if (resLive.status === 'fulfilled' && resLive.value && typeof resLive.value === 'object') {
+          const list = Array.isArray(resLive.value) ? resLive.value : Object.values(resLive.value);
+          list.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+        }
+        if (resMain.status === 'fulfilled' && resMain.value && Array.isArray(resMain.value)) {
+          resMain.value.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+        }
+
+        if (candidates.length > 0) {
+          // Pilih kandidat dengan waktu checkIn terbaru
+          candidates.sort((a, b) => {
+            const ta = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
+            const tb = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
+            return tb - ta;
+          });
+          const bestSession = candidates[0];
+
+          // Integrasikan ke database lokal HP saat ini agar langsung tersimpan di memori dan cache
+          const localAtt = getWhDB(wh, 'attendance', []);
+          const existingIdx = localAtt.findIndex(x => x && (x.id === bestSession.id || (x.userNik === bestSession.userNik && x.date === bestSession.date)));
+          if (existingIdx >= 0) {
+            localAtt[existingIdx] = { ...localAtt[existingIdx], ...bestSession };
+          } else {
+            localAtt.unshift(bestSession);
+          }
+          setWhDB(wh, 'attendance', localAtt, true);
+          return bestSession;
+        }
+      } catch (e) {
+        console.warn('rescueActiveOpenSessionFromCloud notice:', e);
+      }
+      return null;
+    }
+
     async function processAttendanceScan(nikCode) {
       const now = new Date();
       const todayStr = getLocalDateString(now);
@@ -17770,16 +17923,16 @@
 
       let activeOpenSession = findOpenSession(userAtts);
 
-      // JARING PENGAMAN MULTI-DEVICE (Cross-Device Rescue):
-      // Jika mode Absen Pulang dan sesi belum ditemukan di memori lokal HP (misal absen masuk di HP lain atau sinyal sempat offline),
-      // lakukan pencarian delta live kilat ke database cloud sebelum memunculkan peringatan 'Belum Absen Masuk'
-      if (selectedAttendanceType === 'check_out' && !activeOpenSession) {
+      // JARING PENGAMAN MULTI-DEVICE CLOUD (Cross-Device Rescue 24 Jam):
+      // Jika sesi aktif belum ditemukan di memori lokal HP (misal karyawan absen masuk di HP lain),
+      // segera cari sesi terbuka langsung ke Firebase Cloud sebelum memutuskan status presensi!
+      if (!activeOpenSession) {
         try {
-          const synced = await syncAttendanceLiveDelta(targetWh);
-          if (synced) {
+          const rescued = await rescueActiveOpenSessionFromCloud(targetWh, matchedUser);
+          if (rescued) {
             attendances = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
             userAtts = findUserAtts(attendances);
-            activeOpenSession = findOpenSession(userAtts);
+            activeOpenSession = rescued;
           }
         } catch (eRescue) {}
       }
@@ -17863,8 +18016,7 @@
           expiredOpenSession.checkOutTime = null;
           expiredOpenSession.notes = expiredOpenSession.notes ? (expiredOpenSession.notes.includes('Miss Scan') ? expiredOpenSession.notes : expiredOpenSession.notes + ' (Miss Scan)') : 'Miss Scan';
           setWhDB(targetWh, 'attendance', attendances);
-          saveFullDatabaseToCloud(false, true);
-          try { queueAttendanceCloudPush(targetWh, expiredOpenSession); } catch (ePush) {}
+          try { syncAttendanceToCloud(targetWh, attendances, expiredOpenSession); } catch (ePush) {}
         }
 
         // KARYAWAN MEMBUAT ABSEN MASUK BARU PADA SEMUA JAM (00:00 - 23:59 WIB)
@@ -17916,8 +18068,7 @@
           if (typeof saveAttendanceDocToFirestore === 'function') {
             saveAttendanceDocToFirestore(targetWh, newlyAddedRecord);
           }
-          queueAttendanceCloudPush(targetWh, newlyAddedRecord);
-          if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+          syncAttendanceToCloud(targetWh, attendances, newlyAddedRecord);
         }, 20);
       } else {
         // ==========================================
@@ -17983,8 +18134,7 @@
             if (typeof saveAttendanceDocToFirestore === 'function') {
               saveAttendanceDocToFirestore(targetWh, activeOpenSession);
             }
-            queueAttendanceCloudPush(targetWh, activeOpenSession);
-            if (typeof triggerGoogleSheetAutoSync === 'function') triggerGoogleSheetAutoSync(true);
+            syncAttendanceToCloud(targetWh, attendances, activeOpenSession);
           }, 20);
         } else {
           // KASUS 2: Tidak ada sesi terbuka (Sudah pulang sebelumnya ATAU Belum masuk)
@@ -21178,6 +21328,7 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
 
       renderRecordsTable();
       renderMatrixTable();
@@ -22864,7 +23015,14 @@
         if (!canOt) btnOtEl.classList.add('hidden');
       }
 
-      if (isRecord) renderRecordsTable();
+      if (isRecord) {
+        renderRecordsTable();
+        try {
+          syncAttendanceLiveDelta(activeWarehouse).then(changed => {
+            if (changed) renderRecordsTable();
+          });
+        } catch(e) {}
+      }
       else if (isMatrix) {
         populateMatrixOSDropdown(true);
         renderMatrixTable();
@@ -23318,6 +23476,7 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
 
       window.selectedReportLeaveIds.clear();
       updateSelectedReportLeavesCount();
@@ -23571,6 +23730,7 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
 
       window.selectedReportOtIds.clear();
       updateSelectedReportOvertimeCount();
@@ -24189,6 +24349,7 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
 
       window.selectedRecordIds.clear();
       updateSelectedRecordsCount();
@@ -24263,6 +24424,7 @@
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
+      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
 
       if (window.selectedRecordIds) {
         window.selectedRecordIds.delete(id);
@@ -24430,13 +24592,9 @@
       setWhDB(wh, 'attendance', attendances);
 
       // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
-      await saveFullDatabaseToCloud(false, true, true, wh, false, true);
-      try { queueAttendanceCloudPush(wh, newRec); } catch (ePush) {}
+      await syncAttendanceToCloud(wh, attendances, newRec);
       if (typeof saveAttendanceDocToFirestore === 'function') {
         saveAttendanceDocToFirestore(wh, newRec);
-      }
-      if (typeof triggerGoogleSheetAutoSync === 'function') {
-        triggerGoogleSheetAutoSync(true);
       }
 
       closeManualAttendanceModal();
@@ -24593,13 +24751,9 @@
       setWhDB(targetWh, 'attendance', attendances);
 
       // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
-      await saveFullDatabaseToCloud(false, true, true, targetWh, false, true);
-      try { queueAttendanceCloudPush(targetWh, existingRec); } catch (ePush) {}
+      await syncAttendanceToCloud(targetWh, attendances, existingRec);
       if (typeof saveAttendanceDocToFirestore === 'function') {
         saveAttendanceDocToFirestore(targetWh, existingRec);
-      }
-      if (typeof triggerGoogleSheetAutoSync === 'function') {
-        triggerGoogleSheetAutoSync(true);
       }
 
       closeEditAttendanceModal();
