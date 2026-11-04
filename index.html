@@ -1083,6 +1083,10 @@
               Kirim dari Laptop
             </button>
           </div>
+          <button onclick="syncAttendanceFromGoogleSheetMaster(true)" class="w-full mt-2 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Sinkronkan Riwayat Absensi dari Backup Sheet</span>
+          </button>
         </div>
 
         <!-- Opsi 2: Salin / Tempel Kode (Alternatif Offline / WhatsApp) -->
@@ -2058,6 +2062,10 @@
                         <button id="btn-delete-selected-records" type="button" onclick="deleteSelectedRecords()" class="hidden h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5 opacity-50 pointer-events-none" title="Hapus Catatan Presensi Terpilih (Khusus Admin)">
                           <i data-lucide="trash-2" class="w-4 h-4"></i>
                           <span>Hapus Pilihan (<span id="count-selected-records-badge">0</span>)</span>
+                        </button>
+                        <button type="button" onclick="syncAttendanceFromGoogleSheetMaster(true)" class="h-9 px-4 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Sinkronkan & Rekonsiliasi Data Absensi Lengkap dari Backup Google Sheet">
+                          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                          <span>Sinkronkan Backup Sheet</span>
                         </button>
                         <button type="button" onclick="openManualAttendanceModal()" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Input Presensi Manual Karyawan (Khusus Admin / Koreksi Absen)">
                           <i data-lucide="plus-circle" class="w-4 h-4"></i>
@@ -11093,10 +11101,15 @@
     // 1. SMART MERGE ABSENSI (CLOUD-FIRST SSOT AUTHORITATIVE ENGINE)
     function mergeAttendanceArrays(localList, cloudList) {
       const map = new Map();
+      const dayMap = new Map();
+
       (cloudList || []).forEach(item => {
         if (!item || isAttendanceMarkedDeleted(item)) return;
         const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
         map.set(key, item);
+        if (item.userNik && item.date) {
+          dayMap.set(`${item.userNik.toUpperCase().trim()}__${item.date}`, key);
+        }
       });
 
       // Ambil daftar ID yang sedang dalam antrean upload offline (Outbox)
@@ -11118,8 +11131,10 @@
       (localList || []).forEach(localItem => {
         if (!localItem || isAttendanceMarkedDeleted(localItem)) return;
         const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.checkInTime || ''}`;
+        const dayK = (localItem.userNik && localItem.date) ? `${localItem.userNik.toUpperCase().trim()}__${localItem.date}` : null;
+        const matchedKey = map.has(key) ? key : (dayK && dayMap.has(dayK) ? dayMap.get(dayK) : null);
 
-        if (!map.has(key)) {
+        if (!matchedKey) {
           // ANTI-RECORD ZOMBIE: Jika Cloud sudah memiliki data presensi,
           // JANGAN membangkitkan record lokal usang dari minggu/bulan lalu yang sudah tidak ada di Cloud.
           // HANYA pertahankan record lokal jika sedang menunggu dikirim di Outbox ATAU hasil tap hari ini/kemarin.
@@ -11127,10 +11142,11 @@
           const isRecentDate = (localItem.date === todayStr || localItem.date === yesterdayStr);
           if (!cloudHasRecords || isPendingOutbox || isRecentDate) {
             map.set(key, localItem);
+            if (dayK) dayMap.set(dayK, key);
           }
         } else {
           // CLOUD FIRST AUTHORITATIVE: Utamakan data Cloud sebagai SSOT
-          const cloudItem = map.get(key);
+          const cloudItem = map.get(matchedKey);
           const hasOutLocal = !!(localItem.checkOutTime && localItem.checkOutTime !== '-' && localItem.checkOutTime !== '');
           const hasOutCloud = !!(cloudItem.checkOutTime && cloudItem.checkOutTime !== '-' && cloudItem.checkOutTime !== '');
 
@@ -11144,7 +11160,7 @@
             merged.checkOutTime = localItem.checkOutTime;
           }
 
-          map.set(key, merged);
+          map.set(matchedKey, merged);
         }
       });
       return Array.from(map.values());
@@ -11856,10 +11872,18 @@
         if (navLabel) navLabel.innerText = 'Firebase: Rules 401 ⚠️';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-pulse';
       } else {
-        if (authStatus) authStatus.innerText = 'Firebase: Standby';
-        if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-slate-400';
-        if (navLabel) navLabel.innerText = 'Firebase: Standby';
-        if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        const isOnline = (typeof navigator !== 'undefined') ? navigator.onLine : true;
+        if (isOnline) {
+          if (authStatus) authStatus.innerText = 'Firebase: Cloud 24/7 Terhubung ⚡';
+          if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+          if (navLabel) navLabel.innerText = 'Firebase: 24/7 ⚡';
+          if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+        } else {
+          if (authStatus) authStatus.innerText = 'Firebase: Offline (Lokal)';
+          if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+          if (navLabel) navLabel.innerText = 'Firebase: Offline';
+          if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        }
       }
     }
 
@@ -12984,24 +13008,38 @@
         const localAtt = getWhDB(wh, 'attendance', []);
         const attMap = new Map();
 
-        // 1. Masukkan data lokal terlebih dahulu
+        // 1. Masukkan data lokal terlebih dahulu (kunci primer NIK + Tanggal)
         (localAtt || []).forEach(item => {
           if (!item) return;
-          const k = `${(item.userNik || '').toUpperCase().trim()}__${item.date || ''}__${(item.checkInTime || '').substring(0, 16)}`;
+          const k = (item.userNik && item.date)
+            ? `${(item.userNik || '').toUpperCase().trim()}__${item.date}`
+            : (item.id || `${(item.userNik || '').toUpperCase()}__${item.date || ''}__${item.checkInTime || ''}`);
           attMap.set(k, item);
         });
 
-        // 2. Padukan data resmi dari Google Sheet (SSOT Live)
+        // 2. Padukan data resmi dari Google Sheet (SSOT Live & Rekonsiliasi Jam Pulang)
         parsedGSheetRecords.forEach(gsRec => {
-          const k = `${gsRec.userNik.toUpperCase().trim()}__${gsRec.date}__${(gsRec.checkInTime || '').substring(0, 16)}`;
+          const k = (gsRec.userNik && gsRec.date)
+            ? `${gsRec.userNik.toUpperCase().trim()}__${gsRec.date}`
+            : (gsRec.id || `${gsRec.userNik.toUpperCase().trim()}__${gsRec.date}__${gsRec.checkInTime || ''}`);
           if (!attMap.has(k)) {
             attMap.set(k, gsRec);
           } else {
             const existing = attMap.get(k);
             const merged = { ...existing, ...gsRec };
-            // Pertahankan jam tap keluar jika lokal punya tapi Sheet sedang shift
-            if (existing.checkOutTime && !gsRec.checkOutTime) {
+            // Pertahankan jam tap keluar jika salah satu sudah memiliki record pulang yang sah
+            if (gsRec.checkOutTime && gsRec.checkOutTime !== '-' && gsRec.checkOutTime !== '') {
+              merged.checkOutTime = gsRec.checkOutTime;
+            } else if (existing.checkOutTime && existing.checkOutTime !== '-' && existing.checkOutTime !== '') {
               merged.checkOutTime = existing.checkOutTime;
+            }
+            // Pertahankan jam masuk paling awal yang valid
+            if (existing.checkInTime && gsRec.checkInTime) {
+              const ta = new Date(existing.checkInTime).getTime();
+              const tb = new Date(gsRec.checkInTime).getTime();
+              if (!isNaN(ta) && !isNaN(tb) && ta < tb) {
+                merged.checkInTime = existing.checkInTime;
+              }
             }
             attMap.set(k, merged);
           }
@@ -13136,6 +13174,13 @@
           loaded = true;
         }
 
+        for (const wh of whList) {
+          try { await syncAttendanceLiveDelta(wh); } catch(eDelta) {}
+          if (isManualAlert || forceDownload) {
+            try { await syncAttendanceFromGoogleSheetMaster(false, wh); } catch(eGs) {}
+          }
+        }
+
         if (loaded) {
           lastCloudFetchErrorStatus = null;
           // HANYA re-render jika benar-benar ada data baru yang masuk dari cloud atau dipaksa refresh!
@@ -13195,8 +13240,12 @@
 
       try {
         firebaseEventSource = new EventSource(streamUrl);
+        firebaseEventSource.onopen = () => {
+          updateCloudSyncStatusBadge('synced');
+        };
         let pendingRefetch = false;
         firebaseEventSource.addEventListener('put', async (e) => {
+          updateCloudSyncStatusBadge('synced');
           try {
             if (!e.data) return;
             if (isLiveStreamFetching) {
@@ -13418,22 +13467,25 @@
         syncGPSCoordsFromFirestore('MAI').catch(() => {});
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
         initFirebaseLiveStream(getActiveWhTarget());
+        syncAttendanceFromGoogleSheetMaster(false, getActiveWhTarget());
       } catch(e) {}
 
       // Smart Delta Check hemat kuota di latar belakang (Hanya memeriksa 30 bytes per menit)
       setInterval(() => {
         if (!document.hidden && document.visibilityState === 'visible') {
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
+          try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
         }
-      }, 15000);
+      }, 12000);
 
-      // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 15 detik)
+      // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 10 detik)
       let lastWakeupSyncTime = 0;
       const triggerWakeupSync = () => {
         const now = Date.now();
-        if (now - lastWakeupSyncTime < 15000) return; // Debounce 15s
+        if (now - lastWakeupSyncTime < 10000) return; // Debounce 10s
         lastWakeupSyncTime = now;
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
+        try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
       };
 
       document.addEventListener('visibilitychange', () => {
@@ -16045,6 +16097,7 @@
           // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
           try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
           try { fetchFullDatabaseFromCloud(false, currentUser.warehouse, true); } catch(e) {}
+          try { syncAttendanceFromGoogleSheetMaster(false, currentUser.warehouse); } catch(e) {}
           try { switchView('attendance'); } catch (e) {}
           try { renderScannerTodayRecords(); } catch (e) {}
           try { stopScanner(); } catch (e) {}
@@ -16054,9 +16107,11 @@
           try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
           try {
             fetchFullDatabaseFromCloud(false, currentUser.warehouse, true).then(() => {
+              try { syncAttendanceFromGoogleSheetMaster(false, currentUser.warehouse); } catch(e) {}
               if (isUserManager(currentUser)) {
                 const otherWh = currentUser.warehouse === 'MBI' ? 'MAI' : 'MBI';
                 fetchFullDatabaseFromCloud(false, otherWh, false);
+                try { syncAttendanceFromGoogleSheetMaster(false, otherWh); } catch(e) {}
               }
             });
           } catch(e) {}
