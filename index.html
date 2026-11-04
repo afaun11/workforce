@@ -9906,13 +9906,37 @@
           const parsed = JSON.parse(data);
           let result = parsed;
           if (key === 'users' && Array.isArray(parsed)) {
-            const cleaned = deduplicateUserList(parsed, warehouse);
+            let cleaned = deduplicateUserList(parsed, warehouse);
+            if (cleaned.length === 0) {
+              try {
+                const bkp = localStorage.getItem(`wfm_${warehouse.toLowerCase()}_users_backup`);
+                if (bkp) {
+                  const bkpList = JSON.parse(bkp);
+                  if (Array.isArray(bkpList) && bkpList.length > 0) cleaned = deduplicateUserList(bkpList, warehouse);
+                }
+              } catch(eBkp) {}
+              if (cleaned.length === 0 && defaultVal && Array.isArray(defaultVal) && defaultVal.length > 0) {
+                cleaned = deduplicateUserList(defaultVal, warehouse);
+              }
+            }
             if (cleaned.length !== parsed.length) {
               localStorage.setItem(storageKey, JSON.stringify(cleaned));
             }
             result = cleaned;
           } else if ((key === 'leaves' || key === 'overtime' || key === 'attendance') && Array.isArray(parsed)) {
             result = parsed.filter(item => item && typeof item === 'object');
+            if (result.length === 0) {
+              try {
+                const bkp = localStorage.getItem(`wfm_${warehouse.toLowerCase()}_${key}_backup`);
+                if (bkp) {
+                  const bkpList = JSON.parse(bkp);
+                  if (Array.isArray(bkpList) && bkpList.length > 0) result = bkpList.filter(item => item && typeof item === 'object');
+                }
+              } catch(eBkp) {}
+              if (result.length === 0 && defaultVal && Array.isArray(defaultVal) && defaultVal.length > 0) {
+                result = defaultVal.filter(item => item && typeof item === 'object');
+              }
+            }
           }
           whDBCache.set(storageKey, result);
           return result;
@@ -13020,8 +13044,6 @@
       }
     }
     const syncMbiAttendanceFromGoogleSheetMaster = syncAttendanceFromGoogleSheetMaster;
-      }
-    }
 
 
     let lastCloudFetchErrorStatus = null;
