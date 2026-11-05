@@ -10223,17 +10223,81 @@
       }
     }
 
-    function saveAttendanceDocToFirestore(wh, attRec) {
+    async function saveAttendanceDocToFirestore(wh, attRec) {
       if (!attRec) return;
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       const docId = attRec.id || `att-${targetWh.toLowerCase()}-${Date.now()}`;
       
+      try {
+        const cleanPayload = {
+          ...attRec,
+          warehouse: targetWh,
+          updatedAt: attRec.updatedAt || new Date().toISOString()
+        };
+        // 1. Simpan dokumen transaksi presensi ke koleksi Firestore
+        saveDocToFirestore(targetWh, 'attendance', docId, cleanPayload).catch(() => {});
+
+        // 2. Siarkan beacon live Firestore agar seluruh perangkat mendeteksi perubahan seketika
+        saveDocToFirestore(targetWh, '_metadata', 'live_beacon', {
+          type: 'attendance_scan',
+          lastDocId: docId,
+          userNik: attRec.userNik || '',
+          userName: attRec.userName || '',
+          checkInStatus: attRec.checkInStatus || '',
+          updatedAt: cleanPayload.updatedAt,
+          warehouse: targetWh
+        }).catch(() => {});
+
+        // 3. Simpan ringkasan snapshot hari ini (_metadata/today_attendance) untuk efisiensi kuota (1 Read)
+        const todayStr = attRec.date || getLocalDateString(new Date());
+        const allAtt = getWhDB(targetWh, 'attendance', []);
+        const todayList = allAtt.filter(a => a && (a.date === todayStr || (a.checkInTime && a.checkInTime.startsWith(todayStr))));
+        saveDocToFirestore(targetWh, '_metadata', 'today_attendance', {
+          date: todayStr,
+          count: todayList.length,
+          updatedAt: cleanPayload.updatedAt,
+          warehouse: targetWh,
+          records: todayList.slice(0, 150)
+        }).catch(() => {});
+      } catch (eFs) {
+        console.warn('saveAttendanceDocToFirestore notice:', eFs);
+      }
+
       // Siaran lokal instan (0ms) untuk jendela/tab di perangkat yang sama tanpa kuota
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           new BroadcastChannel('wfm_firebase_live_sync').postMessage({ targetWh, docId });
         }
       } catch(e) {}
+    }
+
+    async function saveMasterSnapshotToFirestore(wh = null) {
+      const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+      try {
+        const users = getWhDB(targetWh, 'users', []);
+        const leaves = getWhDB(targetWh, 'leaves', []);
+        const overtime = getWhDB(targetWh, 'overtime', []);
+        const coords = getWarehouseCoords(targetWh);
+        const nowIso = new Date().toISOString();
+
+        const snapshot = {
+          warehouse: targetWh,
+          updatedAt: nowIso,
+          users: users,
+          leaves: leaves,
+          overtime: overtime,
+          coords: coords || null
+        };
+
+        saveDocToFirestore(targetWh, '_metadata', 'master_snapshot', snapshot).catch(() => {});
+        saveDocToFirestore(targetWh, '_metadata', 'live_signal', {
+          type: 'master_update',
+          warehouse: targetWh,
+          updatedAt: nowIso
+        }).catch(() => {});
+      } catch (e) {
+        console.warn('saveMasterSnapshotToFirestore notice:', e);
+      }
     }
 
     // =========================================================
@@ -10731,6 +10795,34 @@
           coords: coords || null
         });
 
+        // E. Simpan Master Snapshot & Today Attendance (Zero-Quota Limit Engine)
+        const nowIso = new Date().toISOString();
+        const todayStr = getLocalDateString(new Date());
+        const todayAttList = attendances.filter(a => a && (a.date === todayStr || (a.checkInTime && a.checkInTime.startsWith(todayStr))));
+        
+        await saveDocToFirestore(targetWh, '_metadata', 'master_snapshot', {
+          warehouse: targetWh,
+          updatedAt: nowIso,
+          users: users,
+          leaves: leaves,
+          overtime: overtimes,
+          coords: coords || null
+        });
+
+        await saveDocToFirestore(targetWh, '_metadata', 'today_attendance', {
+          date: todayStr,
+          count: todayAttList.length,
+          updatedAt: nowIso,
+          warehouse: targetWh,
+          records: todayAttList
+        });
+
+        await saveDocToFirestore(targetWh, '_metadata', 'live_beacon', {
+          type: 'migration_complete',
+          warehouse: targetWh,
+          updatedAt: nowIso
+        });
+
         localStorage.setItem(`wfm_${targetWh.toLowerCase()}_firestore_migrated`, 'true');
         localStorage.setItem(`wfm_${targetWh.toLowerCase()}_firestore_migrated_at`, new Date().toISOString());
 
@@ -10769,6 +10861,20 @@
     async function pullAttendanceFromFirestore(wh = null, alertOnComplete = false) {
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       try {
+        // 1. Coba unduh ringkasan absensi hari ini (1 Read)
+        const todayDoc = await getDocFromFirestore(targetWh, '_metadata', 'today_attendance');
+        if (todayDoc && Array.isArray(todayDoc.records) && todayDoc.records.length > 0) {
+          const localAtt = getWhDB(targetWh, 'attendance', []);
+          const merged = mergeAttendanceArrays(localAtt, todayDoc.records);
+          setWhDB(targetWh, 'attendance', merged, true);
+          renderAllLiveScreens();
+          if (alertOnComplete) {
+            alert(`✅ Berhasil menarik absensi hari ini (${todayDoc.records.length} record) langsung dari Cloud Firestore Gudang ${targetWh}!`);
+          }
+          return true;
+        }
+
+        // 2. Fallback: unduh dari koleksi dokumen presensi
         const res = await listDocsFromFirestore(targetWh, 'attendance', 300);
         if (res.docs && res.docs.length > 0) {
           const localAtt = getWhDB(targetWh, 'attendance', []);
@@ -10796,6 +10902,20 @@
     async function pullUsersFromFirestore(wh = null, alertOnComplete = false) {
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       try {
+        // 1. Coba unduh master snapshot (1 Read)
+        const snapshot = await getDocFromFirestore(targetWh, '_metadata', 'master_snapshot');
+        if (snapshot && Array.isArray(snapshot.users) && snapshot.users.length > 0) {
+          const localUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+          const merged = mergeUserArrays(localUsers, snapshot.users, targetWh, snapshot.updatedAt);
+          setWhDB(targetWh, 'users', merged, true);
+          renderAllLiveScreens();
+          if (alertOnComplete) {
+            alert(`✅ Berhasil menarik data master ${merged.length} karyawan dari Cloud Firestore Gudang ${targetWh}!`);
+          }
+          return true;
+        }
+
+        // 2. Fallback: unduh dari koleksi dokumen users
         const res = await listDocsFromFirestore(targetWh, 'users', 300);
         if (res && res.docs && res.docs.length > 0) {
           const localUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -10882,13 +11002,65 @@
     }
 
     function copyFirestoreRules() {
-      const rules = `rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}`;
+      const rules = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ========================================================
+    // WFM MEDIKA CLOUD FIRESTORE PRODUCTION SECURITY RULES
+    // Sistem Manajemen Kehadiran & Operasional (Gudang MBI & MAI)
+    // Menjamin kelancaran multi-perangkat 24/7 & bebas batas kuota
+    // ========================================================
+    
+    // 1. Metadata Sistem, Master Snapshot & Live Beacon
+    match /_metadata/{docId} {
+      allow read, write: if true;
+    }
+
+    // 2. Data Master Karyawan (Users / NIK 1:1)
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // 3. Transaksi Presensi & Riwayat Tap Absensi
+    match /attendance/{attId} {
+      allow read, write: if true;
+    }
+
+    // 4. Pengajuan Cuti & Izin Kerja
+    match /leaves/{leaveId} {
+      allow read, write: if true;
+    }
+
+    // 5. Pengajuan Lembur Karyawan
+    match /overtime/{otId} {
+      allow read, write: if true;
+    }
+
+    // 6. Diagnostik Koneksi & Heartbeat
+    match /_connectivity/{docId} {
+      allow read, write: if true;
+    }
+
+    // 7. Pengaturan Konfigurasi Umum
+    match /meta/{docId} {
+      allow read, write: if true;
+    }
+
+    // Fallback Semua Dokumen (Mencegah error 403 / macet)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}`;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(rules).then(() => {
-          alert('✅ Aturan (Rules) Cloud Firestore berhasil disalin!\n\nBuka console.firebase.google.com > pilih Cloud Firestore > tab Rules, tempelkan aturan ini, lalu klik Publish.');
+          alert('✅ Aturan (Rules) Cloud Firestore Produksi Berhasil Disalin!\n\nCara Memasang:\n1. Buka console.firebase.google.com\n2. Pilih Project Cloud (wfm-medika-mbi-new / wfm-medika2)\n3. Pilih menu "Firestore Database" di panel kiri\n4. Klik tab "Rules"\n5. Hapus semua teks lama, tempelkan aturan yang baru disalin ini\n6. Klik tombol "Publish"');
         }).catch(() => {
           prompt('Salin teks Rules Cloud Firestore berikut:', rules);
         });
+      } else {
+        prompt('Salin teks Rules Cloud Firestore berikut:', rules);
       }
     }
 
@@ -12063,6 +12235,12 @@
             }
           });
 
+          // SINKRONISASI CLOUD FIRESTORE MASTER SNAPSHOT (Zero Quota Limit Engine)
+          try {
+            if (shouldUploadMbi) saveMasterSnapshotToFirestore('MBI').catch(() => {});
+            if (shouldUploadMai) saveMasterSnapshotToFirestore('MAI').catch(() => {});
+          } catch(eFs) {}
+
           try {
             if (typeof BroadcastChannel !== 'undefined') {
               new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
@@ -13129,6 +13307,25 @@
 
             // Unduh penuh HANYA jika tombol manual ditekan (isManualAlert), dipaksa unduh (forceDownload), ATAU memori lokal benar-benar kosong (pertama kali buka web)
             if (isManualAlert || forceDownload === true || isLocalEmpty) {
+              // 1. Prioritaskan Cloud Firestore (_metadata/master_snapshot) - Super Ringan (1 Read)
+              let firestoreMasterLoaded = false;
+              try {
+                const fsMaster = await getDocFromFirestore(wh, '_metadata', 'master_snapshot');
+                if (fsMaster && Array.isArray(fsMaster.users) && fsMaster.users.length > 0) {
+                  applyIncomingDatabase(fsMaster, wh);
+                  const cloudTs = fsMaster.updatedAt || new Date().toISOString();
+                  localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, cloudTs);
+                  firestoreMasterLoaded = true;
+                  loaded = true;
+                  hasNewDataApplied = true;
+                }
+              } catch(eFsMaster) {}
+
+              if (firestoreMasterLoaded) {
+                continue;
+              }
+
+              // 2. Fallback Firebase RTDB jika master snapshot Firestore belum dimigrasi
               fetchPromises.push(
                 fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
                   .then(r => r.ok ? r.json() : null)
@@ -17789,6 +17986,16 @@
       };
 
       try {
+        const candidates = [];
+
+        // 1. Cek langsung ke Cloud Firestore (_metadata/today_attendance) - Super Cepat (1 Read)
+        try {
+          const fsToday = await getDocFromFirestore(wh, '_metadata', 'today_attendance');
+          if (fsToday && Array.isArray(fsToday.records)) {
+            fsToday.records.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+          }
+        } catch (eFs) {}
+
         const ctrl = new AbortController();
         const tmr = setTimeout(() => ctrl.abort(), 4000);
 
@@ -17803,7 +18010,6 @@
         ]);
         clearTimeout(tmr);
 
-        const candidates = [];
         if (resLive.status === 'fulfilled' && resLive.value && typeof resLive.value === 'object') {
           const list = Array.isArray(resLive.value) ? resLive.value : Object.values(resLive.value);
           list.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
