@@ -13126,22 +13126,18 @@
           try {
             const localUsers = getWhDB(wh, 'users', []);
             const isLocalEmpty = (!localUsers || localUsers.length === 0);
-            const localLeaves = getWhDB(wh, 'leaves', []);
-            const localOt = getWhDB(wh, 'overtime', []);
-            const isLocalLeavesEmpty = (!localLeaves || localLeaves.length === 0);
-            const isLocalOtEmpty = (!localOt || localOt.length === 0);
 
-            // Unduh penuh jika tombol manual ditekan (isManualAlert), dipaksa unduh (forceDownload), memori lokal kosong, ATAU tabel cuti/lembur belum pernah terunduh
-            if (isManualAlert || forceDownload === true || isLocalEmpty || isLocalLeavesEmpty || isLocalOtEmpty) {
+            // Unduh penuh HANYA jika tombol manual ditekan (isManualAlert), dipaksa unduh (forceDownload), ATAU memori lokal benar-benar kosong (pertama kali buka web)
+            if (isManualAlert || forceDownload === true || isLocalEmpty) {
               fetchPromises.push(
                 fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
                   .then(r => r.ok ? r.json() : null)
-                  .then(db => ({ wh, db, ts: new Date().toISOString() }))
+                  .then(db => ({ wh, db, ts: (db && db.updatedAt) ? db.updatedAt : new Date().toISOString() }))
               );
               continue;
             }
 
-            // SMART DELTA CHECK: Cek timestamp ringan (hanya 30 bytes)
+            // SMART DELTA CHECK: Cek timestamp ringan (hanya ~30 bytes)
             const checkRes = await fetch(updatedUrl + '?t=' + Date.now(), { cache: 'no-store' });
             if (!checkRes.ok) {
               // Jika server offline / limit / respons tidak ok, JANGAN unduh database utuh!
@@ -13151,17 +13147,18 @@
             if (!cloudTimestamp || typeof cloudTimestamp !== 'string') {
               continue;
             }
-            const localReg = localUsers.filter(u => u && !isManagementSystemAccount(u)).length;
-            const isLocalIncomplete = (localReg === 0);
-            const needFetch = isLocalIncomplete || isLocalLeavesEmpty || isLocalOtEmpty || (cloudTimestamp !== localUpdated);
 
-            if (needFetch) {
-              fetchPromises.push(
-                fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
-                  .then(r => r.ok ? r.json() : null)
-                  .then(db => ({ wh, db, ts: cloudTimestamp }))
-              );
+            // Jika timestamp Cloud SAMA dengan timestamp lokal, data sudah identik 100% -> STOP! KUOTA 0 KB
+            if (cloudTimestamp === localUpdated) {
+              continue;
             }
+
+            // Hanya unduh database jika timestamp Cloud benar-benar berubah (ada perubahan nyata dari perangkat lain)
+            fetchPromises.push(
+              fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
+                .then(r => r.ok ? r.json() : null)
+                .then(db => ({ wh, db, ts: cloudTimestamp }))
+            );
           } catch(errDelta) {
             console.warn(`Delta check notice for ${wh}:`, errDelta);
             // JANGAN download database utuh jika delta check error/offline agar kuota tidak bocor
@@ -13495,13 +13492,13 @@
           fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
           try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
         }
-      }, 12000);
+      }, 60000);
 
-      // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 10 detik)
+      // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 25 detik)
       let lastWakeupSyncTime = 0;
       const triggerWakeupSync = () => {
         const now = Date.now();
-        if (now - lastWakeupSyncTime < 10000) return; // Debounce 10s
+        if (now - lastWakeupSyncTime < 25000) return; // Debounce 25s
         lastWakeupSyncTime = now;
         fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
         try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
