@@ -12946,14 +12946,13 @@
       const finalUserId = matchedUser ? matchedUser.id : `mbi-user-${rawNik.toLowerCase()}`;
 
       let notes = rawNotes
-        .replace(/Normal\s*-\s*Sedang Shift/gi, '')
-        .replace(/Late In\s*-\s*Sedang Shift/gi, '')
-        .replace(/Normal\s*-\s*Sudah Pulang/gi, '')
-        .replace(/Late In\s*-\s*Sudah Pulang/gi, '')
+        .replace(/(Normal|Late In)\s*-\s*(Sedang Shift|Sudah Pulang|Miss Scan)/gi, '')
+        .replace(/Miss Scan/gi, '')
+        .replace(/[()|]/g, '')
         .trim();
 
       if (isMissScan) {
-        notes = notes ? `${notes} | Miss Scan` : 'Miss Scan';
+        notes = notes ? `${notes} (Miss Scan)` : 'Miss Scan';
       }
 
       return {
