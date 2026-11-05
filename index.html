@@ -11922,29 +11922,29 @@ service cloud.firestore {
       } else if (status === 'uploading') {
         if (authStatus) authStatus.innerText = 'Firebase: Menyimpan ke Cloud...';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-sky-400 animate-pulse';
-        if (navLabel) navLabel.innerText = 'Firebase: Simpan...';
+        if (navLabel) navLabel.innerText = 'Firestore: Simpan...';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-sky-400 animate-pulse';
       } else if (status === 'synced') {
-        if (authStatus) authStatus.innerText = 'Firebase: Cloud 24/7 Terhubung ⚡';
+        if (authStatus) authStatus.innerText = 'Firestore Cloud: Terhubung ⚡';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-        if (navLabel) navLabel.innerText = 'Firebase: 24/7 ⚡';
+        if (navLabel) navLabel.innerText = 'Firestore: 24/7 ⚡';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
       } else if (status === 'permission_denied') {
-        if (authStatus) authStatus.innerText = 'Firebase: Rules 401 (Terkunci) ⚠️';
+        if (authStatus) authStatus.innerText = 'Firestore: Rules Terkunci (Line Error) ⚠️';
         if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-ping';
-        if (navLabel) navLabel.innerText = 'Firebase: Rules 401 ⚠️';
+        if (navLabel) navLabel.innerText = 'Firestore: Rules ⚠️';
         if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-rose-500 animate-pulse';
       } else {
         const isOnline = (typeof navigator !== 'undefined') ? navigator.onLine : true;
         if (isOnline) {
-          if (authStatus) authStatus.innerText = 'Firebase: Cloud 24/7 Terhubung ⚡';
+          if (authStatus) authStatus.innerText = 'Firestore Cloud: Terhubung ⚡';
           if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
-          if (navLabel) navLabel.innerText = 'Firebase: 24/7 ⚡';
+          if (navLabel) navLabel.innerText = 'Firestore: 24/7 ⚡';
           if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
         } else {
-          if (authStatus) authStatus.innerText = 'Firebase: Offline (Lokal)';
+          if (authStatus) authStatus.innerText = 'Firestore: Offline (Lokal)';
           if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-slate-400';
-          if (navLabel) navLabel.innerText = 'Firebase: Offline';
+          if (navLabel) navLabel.innerText = 'Firestore: Offline';
           if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-slate-400';
         }
       }
@@ -18123,6 +18123,21 @@ service cloud.firestore {
         } catch (eRescue) {}
       }
 
+      // SMART AUTO-SWITCH TO CHECK-OUT:
+      // Jika karyawan sudah absen masuk sebelumnya (termasuk pagi/siang tadi > 15 menit lalu),
+      // dan saat ini tombol scanner masih terpilih "Absen Masuk":
+      // Otomatis arahkan ke "Absen Pulang" agar jam pulang langsung tercatat tanpa miss scan!
+      if (selectedAttendanceType === 'check_in' && activeOpenSession) {
+        const inMs = parseSafeTimeMs(activeOpenSession.checkInTime, activeOpenSession.date) || new Date(activeOpenSession.checkInTime).getTime();
+        const diffMs = Math.max(0, now.getTime() - inMs);
+        if (diffMs >= 15 * 60 * 1000) {
+          selectedAttendanceType = 'check_out';
+          if (typeof setAttendanceType === 'function') {
+            try { setAttendanceType('check_out'); } catch (eType) {}
+          }
+        }
+      }
+
       if (selectedAttendanceType === 'check_in') {
         // ==========================================
         // MODE ABSEN MASUK (CHECK_IN) - 24 JAM PENUH
@@ -18292,6 +18307,20 @@ service cloud.firestore {
           activeOpenSession.userId = matchedUser.id;
           activeOpenSession.dept = matchedUser.dept;
           activeOpenSession.outsource = matchedUser.outsource || activeOpenSession.outsource || 'Internal';
+
+          // Sinkronisasi mutlak ke array attendances lokal untuk mencegah reference detached
+          const existIdx = attendances.findIndex(x => x && (
+            (activeOpenSession.id && x.id === activeOpenSession.id) ||
+            (x.userNik && activeOpenSession.userNik && x.userNik.toUpperCase() === activeOpenSession.userNik.toUpperCase() && (!x.checkOutTime || x.checkOutTime === '-' || x.checkOutTime === '')) ||
+            (x.userId && activeOpenSession.userId && x.userId === activeOpenSession.userId && (!x.checkOutTime || x.checkOutTime === '-' || x.checkOutTime === ''))
+          ));
+
+          if (existIdx >= 0) {
+            attendances[existIdx] = { ...attendances[existIdx], ...activeOpenSession };
+            activeOpenSession = attendances[existIdx];
+          } else {
+            attendances.unshift(activeOpenSession);
+          }
 
           // 1. Simpan ke database lokal seketika (skipCloudSave = true)
           setWhDB(targetWh, 'attendance', attendances, true);
