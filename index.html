@@ -11329,7 +11329,9 @@
 
           const locTime = (loc.updatedAt && !isNaN(new Date(loc.updatedAt).getTime())) ? new Date(loc.updatedAt).getTime() : 0;
           const cloudTime = (cloudMatch.updatedAt && !isNaN(new Date(cloudMatch.updatedAt).getTime())) ? new Date(cloudMatch.updatedAt).getTime() : 0;
-          const isLocalExplicitlyNewer = (locTime > 0 && cloudTime > 0 && locTime > cloudTime);
+          const isLocalNewer = (locTime > 0 && cloudTime > 0 && locTime > cloudTime);
+          const isCloudNewer = (cloudTime > 0 && locTime > 0 && cloudTime > locTime);
+          const isLocalExplicitlyNewer = isLocalNewer;
 
           const merged = isLocalExplicitlyNewer ? { ...cloudMatch, ...loc } : { ...loc, ...cloudMatch };
 
@@ -13375,15 +13377,19 @@
     }
 
     window.onload = async () => {
-      // Auto-purge tombstone usang & pemulihan total isolasi admin MBI & MAI
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261024_v11';
+      // Auto-purge tombstone usang & sinkronisasi ulang total seluruh perangkat ke Cloud SSOT
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261105_v1';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_deleted_user_keys');
           localStorage.setItem('wfm_deleted_user_keys', JSON.stringify(['agus setiawan', 'agussetiawan', 'budi santoso', 'budisantoso']));
           localStorage.removeItem('wfm_deleted_attendance_ids');
           localStorage.removeItem('wfm_mbi_master_updated_at');
-          localStorage.removeItem('wfm_active_session');
+          localStorage.removeItem('wfm_mai_master_updated_at');
+          localStorage.removeItem('wfm_mbi_users');
+          localStorage.removeItem('wfm_mai_users');
+          localStorage.removeItem('wfm_mbi_attendance');
+          localStorage.removeItem('wfm_mai_attendance');
           localStorage.setItem('wfm_data_revision', CURRENT_DATA_REVISION);
         } catch(e) {}
       }
