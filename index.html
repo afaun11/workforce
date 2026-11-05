@@ -10221,34 +10221,14 @@
     }
 
     async function putAttendanceLiveRecord(wh, rec) {
-      const { w, base, node } = getAttLiveNodes(wh);
-      const ctrl = new AbortController();
-      const tmr = setTimeout(() => ctrl.abort(), 20000);
+      if (!rec) return true;
       try {
-        const r1 = await fetch(`${node}/${safeAttLiveKey(rec.id)}.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(rec),
-          signal: ctrl.signal
-        });
-        if (!r1.ok) return false;
-        const nowIso = new Date().toISOString();
-        const r2 = await fetch(`${base}/updatedAt.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nowIso),
-          signal: ctrl.signal
-        });
-        if (!r2.ok) return false;
-        try {
-          localStorage.setItem(`wfm_${w.toLowerCase()}_master_updated_at`, nowIso);
-          localStorage.setItem('wfm_master_updated_at', nowIso);
-        } catch (eLs) {}
+        if (typeof saveAttendanceDocToFirestore === 'function') {
+          await saveAttendanceDocToFirestore(wh, rec);
+        }
         return true;
       } catch (e) {
         return false;
-      } finally {
-        clearTimeout(tmr);
       }
     }
 
@@ -10346,45 +10326,24 @@
       return Array.from(map.values());
     }
 
-    // SINKRONISASI RINGAN LIVE DELTA (Hanya mengambil node live absensi < 5 KB tanpa membebani kamera/DOM)
+    // SINKRONISASI RINGAN LIVE DELTA (Cloud Firestore _metadata/today_attendance - 1 Read Super Ringan)
     let isLiveDeltaSyncing = false;
     async function syncAttendanceLiveDelta(wh = null) {
       if (isLiveDeltaSyncing) return false;
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-      const { w, base, node } = getAttLiveNodes(targetWh);
       isLiveDeltaSyncing = true;
       try {
-        const ctrl = new AbortController();
-        const tmr = setTimeout(() => ctrl.abort(), 6000);
-        const res = await fetch(`${node}.json?t=${Date.now()}`, {
-          cache: 'no-store',
-          signal: ctrl.signal
-        });
-        clearTimeout(tmr);
-        if (!res.ok) return false;
-        const liveObj = await res.json();
-        if (!liveObj || typeof liveObj !== 'object') return false;
-
-        const currentAtt = getWhDB(targetWh, 'attendance', targetWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
-        const mergedAtt = combineCloudAttendanceWithLive(currentAtt, liveObj);
-        
-        // Simpan langsung ke memori lokal & cache browser (skipCloudSave = true agar tidak memicu re-upload siklus)
-        const hasAttDeltaChanged = JSON.stringify(mergedAtt) !== JSON.stringify(currentAtt);
-        if (hasAttDeltaChanged) {
-          setWhDB(targetWh, 'attendance', mergedAtt, true);
+        if (typeof pullAttendanceFromFirestore === 'function') {
+          const changed = await pullAttendanceFromFirestore(targetWh);
+          if (changed) {
+            try {
+              if (typeof renderScannerTodayRecords === 'function') renderScannerTodayRecords();
+              if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+            } catch(eR) {}
+            return true;
+          }
         }
-
-        // Perbarui antarmuka yang sedang dilihat (Scanner, Dashboard, atau Record Absen)
-        try {
-          if (typeof renderScannerTodayRecords === 'function') {
-            renderScannerTodayRecords();
-          }
-          if (hasAttDeltaChanged && typeof renderAllLiveScreens === 'function') {
-            renderAllLiveScreens();
-          }
-        } catch (eR) {}
-
-        return true;
+        return false;
       } catch (eDelta) {
         return false;
       } finally {
@@ -12074,59 +12033,19 @@ service cloud.firestore {
         let lastStatusCode = 200;
 
         try {
-          const fetchList = [];
+          // SINKRONISASI CLOUD FIRESTORE MASTER SNAPSHOT (Zero Quota Limit Engine - 1 Write per Gudang)
           if (shouldUploadMbi) {
-            const ctrlMbi = new AbortController();
-            const tmrMbi = setTimeout(() => ctrlMbi.abort(), 7000);
-            fetchList.push(
-              fetch(mbiEndpoint, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(mbiPayload),
-                signal: ctrlMbi.signal
-              }).then(r => { clearTimeout(tmrMbi); return { target: 'MBI', ok: r.ok, status: r.status }; })
-                .catch(err => { clearTimeout(tmrMbi); return { target: 'MBI', ok: false, status: 0, err }; })
-            );
+            await saveMasterSnapshotToFirestore('MBI');
+            mbiSuccess = true;
+            lastSentMbiPayloadHash = currentMbiHash;
+            localStorage.setItem('wfm_mbi_master_updated_at', nowIso);
           }
           if (shouldUploadMai) {
-            const ctrlMai = new AbortController();
-            const tmrMai = setTimeout(() => ctrlMai.abort(), 7000);
-            fetchList.push(
-              fetch(maiEndpoint, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(maiPayload),
-                signal: ctrlMai.signal
-              }).then(r => { clearTimeout(tmrMai); return { target: 'MAI', ok: r.ok, status: r.status }; })
-                .catch(err => { clearTimeout(tmrMai); return { target: 'MAI', ok: false, status: 0, err }; })
-            );
+            await saveMasterSnapshotToFirestore('MAI');
+            maiSuccess = true;
+            lastSentMaiPayloadHash = currentMaiHash;
+            localStorage.setItem('wfm_mai_master_updated_at', nowIso);
           }
-
-          const results = await Promise.allSettled(fetchList);
-          results.forEach(item => {
-            if (item.status === 'fulfilled' && item.value) {
-              if (item.value.ok) {
-                if (item.value.target === 'MBI') {
-                  mbiSuccess = true;
-                  lastSentMbiPayloadHash = currentMbiHash;
-                  localStorage.setItem('wfm_mbi_master_updated_at', nowIso);
-                }
-                if (item.value.target === 'MAI') {
-                  maiSuccess = true;
-                  lastSentMaiPayloadHash = currentMaiHash;
-                  localStorage.setItem('wfm_mai_master_updated_at', nowIso);
-                }
-              } else if (item.value.status) {
-                lastStatusCode = item.value.status;
-              }
-            }
-          });
-
-          // SINKRONISASI CLOUD FIRESTORE MASTER SNAPSHOT (Zero Quota Limit Engine)
-          try {
-            if (shouldUploadMbi) saveMasterSnapshotToFirestore('MBI').catch(() => {});
-            if (shouldUploadMai) saveMasterSnapshotToFirestore('MAI').catch(() => {});
-          } catch(eFs) {}
 
           try {
             if (typeof BroadcastChannel !== 'undefined') {
@@ -12134,7 +12053,7 @@ service cloud.firestore {
             }
           } catch (e) {}
         } catch (e) {
-          console.warn('Firebase upload error:', e);
+          console.warn('Firestore master upload error:', e);
         }
 
         isSavingToCloud = false;
@@ -12196,43 +12115,19 @@ service cloud.firestore {
 
     async function syncLeavesToCloud(warehouse, leavesList) {
       const wh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-      const whLower = wh.toLowerCase();
       try {
         if (typeof untrackDeletedLeaves === 'function') {
           untrackDeletedLeaves(leavesList);
         }
         setWhDB(wh, 'leaves', leavesList, true);
-        const endpoint = getFirebaseEndpoint(wh);
-        if (endpoint) {
-          const nowIso = new Date().toISOString();
-          const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_leaves.json`);
-          const genericTargetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/leaves.json`);
-          const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
-          await Promise.allSettled([
-            fetch(targetUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(leavesList)
-            }),
-            fetch(genericTargetUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(leavesList)
-            }),
-            fetch(tsUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(nowIso)
-            })
-          ]);
-          localStorage.setItem(`wfm_${whLower}_master_updated_at`, nowIso);
+        
+        // Simpan langsung ke Cloud Firestore Master Snapshot (Ringan & Cepat)
+        if (typeof saveMasterSnapshotToFirestore === 'function') {
+          saveMasterSnapshotToFirestore(wh);
         }
       } catch (err) {
         console.warn('syncLeavesToCloud notice:', err);
       }
-      try {
-        await saveFullDatabaseToCloud(false, true, true, wh);
-      } catch(e) {}
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
@@ -12241,7 +12136,6 @@ service cloud.firestore {
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
-      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
     }
 
     async function syncAttendanceToCloud(warehouse, attendancesList, record = null) {
@@ -12260,118 +12154,46 @@ service cloud.firestore {
           }
         } catch(eGuard) {}
 
-        // 1. Simpan ke database lokal dan cache memori seketika
+        // 1. Simpan ke database lokal dan cache memori seketika (0ms)
         setWhDB(wh, 'attendance', finalPushList, true);
         try {
           localStorage.setItem(`wfm_${whLower}_attendance_backup`, JSON.stringify(finalPushList));
         } catch(eBackup) {}
 
-        // 2. Langsung dorong ke Firebase RTDB leaf nodes
-        const endpoint = getFirebaseEndpoint(wh);
-        if (endpoint) {
-          const nowIso = new Date().toISOString();
-          const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_attendance.json`);
-          const genericTargetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/attendance.json`);
-          const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
-
-          const fetchTasks = [
-            fetch(targetUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(finalPushList)
-            }),
-            fetch(genericTargetUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(finalPushList)
-            }),
-            fetch(tsUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(nowIso)
-            })
-          ];
-
-          // Simpan juga record ke live node delta jika ada record spesifik
-          if (record && record.id) {
-            const { node } = getAttLiveNodes(wh);
-            fetchTasks.push(
-              fetch(`${node}/${safeAttLiveKey(record.id)}.json`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(record)
-              })
-            );
-          }
-
-          await Promise.allSettled(fetchTasks);
-          try {
-            localStorage.setItem(`wfm_${whLower}_master_updated_at`, nowIso);
-            localStorage.setItem('wfm_master_updated_at', nowIso);
-          } catch(eLs) {}
+        // 2. Simpan seketika ke Cloud Firestore Dokumen Presensi (1 Write Super Hemat)
+        if (typeof saveAttendanceDocToFirestore === 'function' && record) {
+          saveAttendanceDocToFirestore(wh, record);
         }
       } catch (err) {
         console.warn('syncAttendanceToCloud notice:', err);
       }
 
-      // 3. Simpan juga via saveFullDatabaseToCloud dengan attendance flags
-      try {
-        await saveFullDatabaseToCloud(false, true, true, wh, false, true, true);
-      } catch(eSave) {}
-
-      // 4. Siarkan sinyal seketika ke antarmuka Management di tab / perangkat lain (0ms)
+      // 3. Siarkan sinyal seketika ke antarmuka Management di tab / jendela lain (0ms)
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
         }
       } catch(eBc) {}
 
-      // 5. Trigger Google Sheet Auto Sync
+      // 4. Trigger Google Sheet Auto Sync secara non-blocking
       if (typeof triggerGoogleSheetAutoSync === 'function') {
-        triggerGoogleSheetAutoSync(true);
+        triggerGoogleSheetAutoSync(false);
       }
-      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
     }
 
     async function syncOvertimeToCloud(warehouse, overtimeList) {
       const wh = (warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-      const whLower = wh.toLowerCase();
       try {
         if (typeof untrackDeletedOvertime === 'function') {
           untrackDeletedOvertime(overtimeList);
         }
         setWhDB(wh, 'overtime', overtimeList, true);
-        const endpoint = getFirebaseEndpoint(wh);
-        if (endpoint) {
-          const nowIso = new Date().toISOString();
-          const targetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_overtime.json`);
-          const genericTargetUrl = endpoint.replace('/wfm_database.json', `/wfm_database/overtime.json`);
-          const tsUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
-          await Promise.allSettled([
-            fetch(targetUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(overtimeList)
-            }),
-            fetch(genericTargetUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(overtimeList)
-            }),
-            fetch(tsUrl, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(nowIso)
-            })
-          ]);
-          localStorage.setItem(`wfm_${whLower}_master_updated_at`, nowIso);
+        if (typeof saveMasterSnapshotToFirestore === 'function') {
+          saveMasterSnapshotToFirestore(wh);
         }
       } catch (err) {
         console.warn('syncOvertimeToCloud notice:', err);
       }
-      try {
-        await saveFullDatabaseToCloud(false, true, true, wh);
-      } catch(e) {}
       try {
         if (typeof BroadcastChannel !== 'undefined') {
           new BroadcastChannel('wfm_firebase_live_sync').postMessage('update');
@@ -12380,7 +12202,6 @@ service cloud.firestore {
       if (typeof triggerGoogleSheetAutoSync === 'function') {
         triggerGoogleSheetAutoSync(true);
       }
-      try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
     }
 
     async function initializeAndUploadToFirebase() {
@@ -13168,112 +12989,46 @@ service cloud.firestore {
 
     async function fetchFullDatabaseFromCloud(forceAlert = false, targetWarehouse = null, forceDownload = false) {
       const isManualAlert = (forceAlert === true);
-      // Optimasi Performa HP: Jangan lakukan background fetch penuh (150 KB & DOM render) saat kamera scanner sedang aktif
+      // Optimasi Performa HP: Jangan lakukan background fetch penuh saat kamera scanner sedang aktif
       if (!isManualAlert && html5QrScanner) {
-        // Alih-alih memutus sinkronisasi total, lakukan sinkronisasi delta live absensi yang super ringan (< 5 KB)
-        try { syncAttendanceLiveDelta(targetWarehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI')); } catch(e) {}
         return;
       }
       updateCloudSyncStatusBadge('syncing');
       let loaded = false;
       let syncSummary = '';
+      let hasNewDataApplied = false;
       
       const whList = targetWarehouse ? [targetWarehouse.toUpperCase()] : ['MBI', 'MAI'];
 
       try {
-        const fetchPromises = [];
-
         for (const wh of whList) {
-          const endpoint = getFirebaseEndpoint(wh);
-          const updatedUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
           const localUpdated = localStorage.getItem(`wfm_${wh.toLowerCase()}_master_updated_at`) || '';
+          const localUsers = getWhDB(wh, 'users', []);
+          const isLocalEmpty = (!localUsers || localUsers.length === 0);
 
           try {
-            const localUsers = getWhDB(wh, 'users', []);
-            const isLocalEmpty = (!localUsers || localUsers.length === 0);
-
-            // Unduh penuh HANYA jika tombol manual ditekan (isManualAlert), dipaksa unduh (forceDownload), ATAU memori lokal benar-benar kosong (pertama kali buka web)
-            if (isManualAlert || forceDownload === true || isLocalEmpty) {
-              // 1. Prioritaskan Cloud Firestore (_metadata/master_snapshot) - Super Ringan (1 Read)
-              let firestoreMasterLoaded = false;
-              try {
-                const fsMaster = await getDocFromFirestore(wh, '_metadata', 'master_snapshot');
-                if (fsMaster && Array.isArray(fsMaster.users) && fsMaster.users.length > 0) {
-                  applyIncomingDatabase(fsMaster, wh);
-                  const cloudTs = fsMaster.updatedAt || new Date().toISOString();
-                  localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, cloudTs);
-                  firestoreMasterLoaded = true;
-                  loaded = true;
-                  hasNewDataApplied = true;
-                }
-              } catch(eFsMaster) {}
-
-              if (firestoreMasterLoaded) {
-                continue;
-              }
-
-              // 2. Fallback Firebase RTDB jika master snapshot Firestore belum dimigrasi
-              fetchPromises.push(
-                fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
-                  .then(r => r.ok ? r.json() : null)
-                  .then(db => ({ wh, db, ts: (db && db.updatedAt) ? db.updatedAt : new Date().toISOString() }))
-              );
-              continue;
-            }
-
-            // SMART DELTA CHECK: Cek timestamp ringan (hanya ~30 bytes)
-            const checkRes = await fetch(updatedUrl + '?t=' + Date.now(), { cache: 'no-store' });
-            if (!checkRes.ok) {
-              // Jika server offline / limit / respons tidak ok, JANGAN unduh database utuh!
-              continue;
-            }
-            const cloudTimestamp = await checkRes.json();
-            if (!cloudTimestamp || typeof cloudTimestamp !== 'string') {
-              continue;
-            }
-
-            // Jika timestamp Cloud SAMA dengan timestamp lokal, data sudah identik 100% -> STOP! KUOTA 0 KB
-            if (cloudTimestamp === localUpdated) {
-              continue;
-            }
-
-            // Hanya unduh database jika timestamp Cloud benar-benar berubah (ada perubahan nyata dari perangkat lain)
-            fetchPromises.push(
-              fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' })
-                .then(r => r.ok ? r.json() : null)
-                .then(db => ({ wh, db, ts: cloudTimestamp }))
-            );
-          } catch(errDelta) {
-            console.warn(`Delta check notice for ${wh}:`, errDelta);
-            // JANGAN download database utuh jika delta check error/offline agar kuota tidak bocor
-          }
-        }
-
-        let hasNewDataApplied = false;
-        if (fetchPromises.length > 0) {
-          const results = await Promise.allSettled(fetchPromises);
-          results.forEach(res => {
-            if (res.status === 'fulfilled' && res.value && res.value.db) {
-              applyIncomingDatabase(res.value.db, res.value.wh);
-              try { maybeCompactAttendanceLive(res.value.wh, res.value.db); } catch (eCompact) {}
-              if (res.value.wh === 'MBI') {
-                localStorage.setItem('wfm_mbi_master_updated_at', res.value.ts || res.value.db.updatedAt || new Date().toISOString());
-              } else {
-                localStorage.setItem('wfm_mai_master_updated_at', res.value.ts || res.value.db.updatedAt || new Date().toISOString());
+            // 1. Prioritaskan Cloud Firestore (_metadata/master_snapshot) - 1 Read, Super Ringan
+            const fsMaster = await getDocFromFirestore(wh, '_metadata', 'master_snapshot');
+            if (fsMaster && Array.isArray(fsMaster.users) && fsMaster.users.length > 0) {
+              const cloudTs = fsMaster.updatedAt || new Date().toISOString();
+              if (isManualAlert || forceDownload || isLocalEmpty || cloudTs !== localUpdated) {
+                applyIncomingDatabase(fsMaster, wh);
+                localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, cloudTs);
+                hasNewDataApplied = true;
               }
               loaded = true;
-              hasNewDataApplied = true;
             }
-          });
-        } else {
-          // Data di server sudah sama persis (0 KB diunduh, kuota 100% aman)
-          loaded = true;
-        }
 
-        for (const wh of whList) {
-          try { await syncAttendanceLiveDelta(wh); } catch(eDelta) {}
-          if (isManualAlert || forceDownload) {
-            try { await syncAttendanceFromGoogleSheetMaster(false, wh); } catch(eGs) {}
+            // 2. Tarik juga presensi hari ini dari Firestore (_metadata/today_attendance) - 1 Read
+            if (typeof pullAttendanceFromFirestore === 'function') {
+              const attPulled = await pullAttendanceFromFirestore(wh);
+              if (attPulled) {
+                loaded = true;
+                hasNewDataApplied = true;
+              }
+            }
+          } catch(eFs) {
+            console.warn(`Firestore pull warning for ${wh}:`, eFs);
           }
         }
 
@@ -13292,7 +13047,7 @@ service cloud.firestore {
           syncSummary = `\n• ${currentMBI.length} Karyawan MBI & ${currentMAI.length} Karyawan MAI\n• ${currentOt.length} Data Lemburan\n• ${currentAtt.length} Data Riwayat Absensi`;
         }
       } catch (e) {
-        console.warn('Smart delta fetch error:', e);
+        console.warn('Smart Firestore delta fetch error:', e);
       }
 
       if (loaded) {
@@ -13303,9 +13058,9 @@ service cloud.firestore {
 
       if (isManualAlert) {
         if (loaded) {
-          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Server telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
+          alert(`✅ Sinkronisasi Berhasil!\nData terbaru dari Cloud Firestore telah digabungkan ke perangkat ini:${syncSummary}\nSemua data kini 100% sinkron dan sama.`);
         } else {
-          alert('⚠️ Gagal terhubung ke Cloud Database. Pastikan laptop/HP terhubung ke internet dan Rules Firebase sudah .read: true & .write: true.');
+          alert('⚠️ Gagal terhubung ke Cloud Database Firestore. Pastikan koneksi internet aktif dan Rules Firestore sudah terpasang.');
         }
       }
     }
@@ -13314,11 +13069,12 @@ service cloud.firestore {
     let currentLiveStreamWh = null;
     let isLiveStreamFetching = false;
 
+    let firestoreBeaconPollTimer = null;
     function initFirebaseLiveStream(wh = null) {
       const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
-      if (firebaseEventSource && currentLiveStreamWh === targetWh) {
-        return;
-      }
+      currentLiveStreamWh = targetWh;
+
+      // Hentikan koneksi EventSource lama jika masih menggantung
       try {
         if (firebaseEventSource) {
           firebaseEventSource.close();
@@ -13326,69 +13082,28 @@ service cloud.firestore {
         }
       } catch (err) {}
 
-      if (typeof EventSource === 'undefined') return;
+      updateCloudSyncStatusBadge('synced');
 
-      const endpoint = getFirebaseEndpoint(targetWh);
-      // HANYA DENGARKAN timestamp updatedAt (hanya 30-50 byte per event!)
-      // Ini memberikan notifikasi instan 0.1-0.3 detik saat ada karyawan yang scan absen, dengan kuota data nyaris 0 KB!
-      const streamUrl = endpoint.replace('/wfm_database.json', '/wfm_database/updatedAt.json');
-      currentLiveStreamWh = targetWh;
-
-      try {
-        firebaseEventSource = new EventSource(streamUrl);
-        firebaseEventSource.onopen = () => {
-          updateCloudSyncStatusBadge('synced');
-        };
-        let pendingRefetch = false;
-        firebaseEventSource.addEventListener('put', async (e) => {
-          updateCloudSyncStatusBadge('synced');
-          try {
-            if (!e.data) return;
-            if (isLiveStreamFetching) {
-              // Ada scan baru saat unduhan sebelumnya masih berjalan: jangan diabaikan, unduh ulang setelah selesai
-              pendingRefetch = true;
-              return;
+      // Gantikan dengan listener Firestore Live Beacon ultra-ringan (tanpa koneksi gantung, hemat baterai & kuota)
+      if (firestoreBeaconPollTimer) clearInterval(firestoreBeaconPollTimer);
+      firestoreBeaconPollTimer = setInterval(async () => {
+        if (document.hidden || document.visibilityState !== 'visible') return;
+        try {
+          const beacon = await getDocFromFirestore(targetWh, '_metadata', 'live_beacon');
+          if (beacon && beacon.updatedAt) {
+            const localTs = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`) || '';
+            if (beacon.updatedAt !== localTs) {
+              localStorage.setItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`, beacon.updatedAt);
+              if (typeof pullAttendanceFromFirestore === 'function') {
+                await pullAttendanceFromFirestore(targetWh);
+              }
+              if (typeof renderAllLiveScreens === 'function') {
+                renderAllLiveScreens();
+              }
             }
-            const parsed = JSON.parse(e.data);
-            const cloudTs = (parsed && typeof parsed === 'object') ? parsed.data : parsed;
-            if (cloudTs && typeof cloudTs === 'string') {
-              let guardLoop = 0;
-              do {
-                pendingRefetch = false;
-                const localUpdated = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`) || '';
-                if (cloudTs === localUpdated && guardLoop === 0) break;
-                isLiveStreamFetching = true;
-                if (guardLoop === 0 && typeof showLiveRealtimeIndicator === 'function') {
-                  showLiveRealtimeIndicator(`⚡ Presensi Terupdate (${new Date().toLocaleTimeString('id-ID')})`);
-                }
-                try {
-                  await fetchFullDatabaseFromCloud(false, targetWh, false);
-                } finally {
-                  isLiveStreamFetching = false;
-                }
-                guardLoop++;
-              } while (pendingRefetch && guardLoop < 4);
-            }
-          } catch(errEvt) {
-            isLiveStreamFetching = false;
           }
-        });
-
-        firebaseEventSource.onerror = () => {
-          // Jika koneksi live benar-benar tertutup (HP/laptop sempat tidur), sambungkan ulang otomatis
-          try {
-            if (firebaseEventSource && firebaseEventSource.readyState === 2) {
-              const whToRestore = targetWh;
-              try { firebaseEventSource.close(); } catch (eClose) {}
-              firebaseEventSource = null;
-              currentLiveStreamWh = null;
-              setTimeout(() => { try { initFirebaseLiveStream(whToRestore); } catch (eRe) {} }, 3000);
-            }
-          } catch (eErr) {}
-        };
-      } catch (errStream) {
-        console.warn('Firebase EventSource stream notice:', errStream);
-      }
+        } catch (eBeacon) {}
+      }, 45000); // Polling hemat 45 detik hanya saat layar aktif
     }
 
     function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
@@ -13498,17 +13213,20 @@ service cloud.firestore {
 
       // Ensure DB initialized & clean active users from tombstone list
       try {
-        if (typeof separateAndCleanWarehouseData === 'function') separateAndCleanWarehouseData();
-        if (typeof unmarkDeletedUser === 'function') unmarkDeletedUser('melinda');
-        if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
-        if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
-        if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
-        if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
-        if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts();
-        if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs();
-        if (typeof realignAllAttendanceRecordsWithMaster === 'function') realignAllAttendanceRecordsWithMaster();
-        if (typeof sanitizeEmployeesData === 'function') sanitizeEmployeesData();
-        if (typeof repairAndSanitizeAttendanceRecords === 'function') repairAndSanitizeAttendanceRecords();
+        if (!window._hasRunBootSanitize) {
+          window._hasRunBootSanitize = true;
+          if (typeof separateAndCleanWarehouseData === 'function') separateAndCleanWarehouseData();
+          if (typeof unmarkDeletedUser === 'function') unmarkDeletedUser('melinda');
+          if (typeof sanitizeDeletedUserKeysWithActiveUsers === 'function') sanitizeDeletedUserKeysWithActiveUsers();
+          if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames();
+          if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS();
+          if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(false);
+          if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts();
+          if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs();
+          if (typeof realignAllAttendanceRecordsWithMaster === 'function') realignAllAttendanceRecordsWithMaster();
+          if (typeof sanitizeEmployeesData === 'function') sanitizeEmployeesData();
+          if (typeof repairAndSanitizeAttendanceRecords === 'function') repairAndSanitizeAttendanceRecords();
+        }
       } catch(e) {
         console.warn('DB sanitize warning:', e);
       }
@@ -16635,19 +16353,14 @@ service cloud.firestore {
         if (viewName === 'employees') { try { renderEmployeeTable(); } catch(e) {} }
         if (viewName === 'reports-group') {
           try {
-            fetchFullDatabaseFromCloud(false, activeWarehouse, false).then(() => {
-              if (activeReportTab === 'records') renderRecordsTable();
-            });
             const targetTab = activeReportTab || 'records';
             switchReportTab(targetTab);
           } catch(e) {}
         }
         if (viewName === 'leaves') {
-          try { fetchFullDatabaseFromCloud(false, activeWarehouse, false); } catch(e) {}
           try { renderLeavesTable(); } catch(e) {}
         }
         if (viewName === 'overtime') {
-          try { fetchFullDatabaseFromCloud(false, activeWarehouse, false); } catch(e) {}
           try {
             renderOvertimeEmployeeGrid();
             renderOvertimeTable();
@@ -16671,9 +16384,6 @@ service cloud.firestore {
 
         if (viewName === 'dashboard') {
           try {
-            fetchFullDatabaseFromCloud(false, activeWarehouse, false).then(() => {
-              refreshAllDashboardData();
-            });
             refreshAllDashboardData();
           } catch(e) {}
         }
@@ -17875,35 +17585,13 @@ service cloud.firestore {
       try {
         const candidates = [];
 
-        // 1. Cek langsung ke Cloud Firestore (_metadata/today_attendance) - Super Cepat (1 Read)
+        // 1. Cek langsung ke Cloud Firestore (_metadata/today_attendance) - Super Cepat (1 Read, < 100ms)
         try {
           const fsToday = await getDocFromFirestore(wh, '_metadata', 'today_attendance');
           if (fsToday && Array.isArray(fsToday.records)) {
             fsToday.records.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
           }
         } catch (eFs) {}
-
-        const ctrl = new AbortController();
-        const tmr = setTimeout(() => ctrl.abort(), 4000);
-
-        // Periksa secara paralel: live node dan array attendance utama di Firebase Cloud
-        const { node } = getAttLiveNodes(wh);
-        const liveUrl = `${node}.json?t=${nowMs}`;
-        const mainUrl = endpoint.replace('/wfm_database.json', `/wfm_database/${whLower}_attendance.json?t=${nowMs}`);
-
-        const [resLive, resMain] = await Promise.allSettled([
-          fetch(liveUrl, { cache: 'no-store', signal: ctrl.signal }).then(r => r.ok ? r.json() : null),
-          fetch(mainUrl, { cache: 'no-store', signal: ctrl.signal }).then(r => r.ok ? r.json() : null)
-        ]);
-        clearTimeout(tmr);
-
-        if (resLive.status === 'fulfilled' && resLive.value && typeof resLive.value === 'object') {
-          const list = Array.isArray(resLive.value) ? resLive.value : Object.values(resLive.value);
-          list.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
-        }
-        if (resMain.status === 'fulfilled' && resMain.value && Array.isArray(resMain.value)) {
-          resMain.value.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
-        }
 
         if (candidates.length > 0) {
           // Pilih kandidat dengan waktu checkIn terbaru
@@ -28261,11 +27949,14 @@ function testManualSync() {
     }
 
     // Inisialisasi otomatis status Google Sheet, Audio Setting, Pembersihan Duplikat & Sinkronisasi Suara saat halaman dimuat
-    try { if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(); } catch(e) {}
-    try { if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts(); } catch(e) {}
-    try { if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs(); } catch(e) {}
-    try { if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames(); } catch(e) {}
-    try { if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS(); } catch(e) {}
+    if (!window._hasRunBootSanitize) {
+      window._hasRunBootSanitize = true;
+      try { if (typeof autoPurgeDuplicateAndCorruptEmployees === 'function') autoPurgeDuplicateAndCorruptEmployees(); } catch(e) {}
+      try { if (typeof restoreSeparateMelindaAndManagerAccounts === 'function') restoreSeparateMelindaAndManagerAccounts(); } catch(e) {}
+      try { if (typeof lockAndHarmonizeAllEmployeeNIKs === 'function') lockAndHarmonizeAllEmployeeNIKs(); } catch(e) {}
+      try { if (typeof repairCorruptedEmployeeNames === 'function') repairCorruptedEmployeeNames(); } catch(e) {}
+      try { if (typeof autoMigrateAndPersistAllEmployeeOS === 'function') autoMigrateAndPersistAllEmployeeOS(); } catch(e) {}
+    }
     try { getGoogleSheetWebhookUrl(); } catch(e) {}
     try { getWarehouseCoords('MBI'); getWarehouseCoords('MAI'); updateRegisteredCoordsDisplay(); } catch(e) {}
     try { preloadGPSLocation(); } catch(e) {}
