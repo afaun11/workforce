@@ -12184,10 +12184,19 @@
         const deletedAttKeys = getDeletedAttendanceIds();
         const cleanList = (attendancesList || []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys));
 
-        // 1. Simpan ke database lokal dan cache memori seketika
-        setWhDB(wh, 'attendance', cleanList, true);
+        // DataShield Protection: Jangan biarkan array di Cloud berkurang jika ada perangkat dengan data parsial
+        let finalPushList = cleanList;
         try {
-          localStorage.setItem(`wfm_${whLower}_attendance_backup`, JSON.stringify(cleanList));
+          const cachedBackup = JSON.parse(localStorage.getItem(`wfm_${whLower}_attendance_backup`) || '[]');
+          if (Array.isArray(cachedBackup) && cachedBackup.length > finalPushList.length) {
+            finalPushList = mergeAttendanceArrays(finalPushList, cachedBackup);
+          }
+        } catch(eGuard) {}
+
+        // 1. Simpan ke database lokal dan cache memori seketika
+        setWhDB(wh, 'attendance', finalPushList, true);
+        try {
+          localStorage.setItem(`wfm_${whLower}_attendance_backup`, JSON.stringify(finalPushList));
         } catch(eBackup) {}
 
         // 2. Langsung dorong ke Firebase RTDB leaf nodes
@@ -12202,12 +12211,12 @@
             fetch(targetUrl, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(cleanList)
+              body: JSON.stringify(finalPushList)
             }),
             fetch(genericTargetUrl, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(cleanList)
+              body: JSON.stringify(finalPushList)
             }),
             fetch(tsUrl, {
               method: 'PUT',
@@ -12319,9 +12328,10 @@
       const deletedAttKeys = getDeletedAttendanceIds();
       const deletedKeys = getDeletedUserKeys();
 
+      // Data Master yang diunggah ke Cloud HANYA Master Karyawan, Departemen, Koordinat & Pengaturan
+      // DILARANG MENYERTAKAN attendance agar tidak menimpa/menghapus riwayat absen live yang ada di Cloud!
       const mbiPayload = {
         mbi_users: mbiUsers,
-        mbi_attendance: getWhDB('MBI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
         mbi_leaves: getWhDB('MBI', 'leaves', []),
         mbi_overtime: getWhDB('MBI', 'overtime', []),
         mbi_coords: getWarehouseCoords('MBI'),
@@ -12333,7 +12343,6 @@
 
       const maiPayload = {
         mai_users: maiUsers,
-        mai_attendance: getWhDB('MAI', 'attendance', []).filter(a => a && !isAttendanceMarkedDeleted(a, deletedAttKeys)),
         mai_leaves: getWhDB('MAI', 'leaves', []),
         mai_overtime: getWhDB('MAI', 'overtime', []),
         mai_coords: getWarehouseCoords('MAI'),
@@ -12347,14 +12356,15 @@
         const mbiEndpoint = getFirebaseEndpoint('MBI');
         const maiEndpoint = getFirebaseEndpoint('MAI');
 
+        // Gunakan PATCH (BUKAN PUT) agar HANYA memperbarui data master tanpa menimpa node attendance di Cloud!
         const [mbiRes, maiRes] = await Promise.allSettled([
           fetch(mbiEndpoint, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(mbiPayload)
           }),
           fetch(maiEndpoint, {
-            method: 'PUT',
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(maiPayload)
           })
@@ -12368,7 +12378,7 @@
           alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE KEDUA FIREBASE CLOUD!\n\n` +
                 `✓ Database MBI: ${mbiUsers.length} Karyawan (Tersimpan di wfm-medika-mbi)\n` +
                 `✓ Database MAI: ${maiUsers.length} Karyawan (Tersimpan di wfm-medika2)\n` +
-                `✓ Kuota Terpisah 100% Bebas Limit!\n\n` +
+                `✓ Riwayat Absensi Karyawan 100% Aman & Terlindungi (Tidak ditimpa).\n\n` +
                 `Semua HP & laptop sekarang dapat terhubung lancar 24/7.`);
           renderAllLiveScreens();
         } else {
@@ -12398,7 +12408,9 @@
           if (dbData && typeof dbData === 'object') {
             const prefix = wh.toLowerCase();
             const cloudUsers = normalizeFirebaseArray(dbData[`${prefix}_users`]);
-            const cloudAtt = normalizeFirebaseArray(dbData[`${prefix}_attendance`]);
+            const rawCloudAtt = combineCloudAttendanceWithLive(dbData[`${prefix}_attendance`], dbData[`${prefix}_attendance_live`]);
+            const localAtt = getWhDB(wh, 'attendance', []);
+            const cleanCloudAtt = mergeAttendanceArrays(localAtt, rawCloudAtt);
             const cloudOt = normalizeFirebaseArray(dbData[`${prefix}_overtime`]);
             const cloudLeaves = normalizeFirebaseArray(dbData[`${prefix}_leaves`]);
 
@@ -12406,8 +12418,8 @@
               localStorage.setItem(`wfm_${prefix}_users`, JSON.stringify(cloudUsers));
               localStorage.setItem(`wfm_${prefix}_users_backup`, JSON.stringify(cloudUsers));
             }
-            localStorage.setItem(`wfm_${prefix}_attendance`, JSON.stringify(cloudAtt));
-            localStorage.setItem(`wfm_${prefix}_attendance_backup`, JSON.stringify(cloudAtt));
+            localStorage.setItem(`wfm_${prefix}_attendance`, JSON.stringify(cleanCloudAtt));
+            localStorage.setItem(`wfm_${prefix}_attendance_backup`, JSON.stringify(cleanCloudAtt));
             localStorage.setItem(`wfm_${prefix}_overtime`, JSON.stringify(cloudOt));
             localStorage.setItem(`wfm_${prefix}_leaves`, JSON.stringify(cloudLeaves));
             if (dbData[`${prefix}_coords`]) localStorage.setItem(`wfm_${prefix}_coords`, JSON.stringify(dbData[`${prefix}_coords`]));
@@ -26965,15 +26977,25 @@ function testManualSync() {
         if (webhookUrlMbi) {
           const payloadMbi = compileBackupPayload('MBI');
           const targetUrlMbi = cleanGoogleScriptUrl(webhookUrlMbi) || webhookUrlMbi;
-          tasks.push(
-            fetch(targetUrlMbi, {
-              method: 'POST',
-              mode: 'no-cors',
-              cache: 'no-cache',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify(payloadMbi)
-            }).catch(e => console.warn('MBI GSheet sync notice:', e))
-          );
+          const lastRowsMbi = parseInt(localStorage.getItem('wfm_max_pushed_sheet_rows_MBI') || '0', 10);
+          const curRowsMbi = payloadMbi.sheets && payloadMbi.sheets["RECORD ABSEN"] ? payloadMbi.sheets["RECORD ABSEN"].length : 0;
+
+          // DataShield Sheet: Jangan timpa Google Sheet jika jumlah baris absen lokal lebih sedikit
+          if (lastRowsMbi > 1 && curRowsMbi < lastRowsMbi) {
+            console.warn(`[DataShield Sheet] Pengiriman Google Sheet MBI ditunda: baris lokal (${curRowsMbi}) lebih sedikit dari master (${lastRowsMbi}). Menjalankan rekonsiliasi data...`);
+            try { syncAttendanceFromGoogleSheetMaster(false, 'MBI'); } catch(e) {}
+          } else {
+            if (curRowsMbi > 0) localStorage.setItem('wfm_max_pushed_sheet_rows_MBI', String(curRowsMbi));
+            tasks.push(
+              fetch(targetUrlMbi, {
+                method: 'POST',
+                mode: 'no-cors',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadMbi)
+              }).catch(e => console.warn('MBI GSheet sync notice:', e))
+            );
+          }
         }
 
         // 2. Sync Gudang MAI ke Google Sheet MAI
@@ -26981,15 +27003,25 @@ function testManualSync() {
         if (webhookUrlMai) {
           const payloadMai = compileBackupPayload('MAI');
           const targetUrlMai = cleanGoogleScriptUrl(webhookUrlMai) || webhookUrlMai;
-          tasks.push(
-            fetch(targetUrlMai, {
-              method: 'POST',
-              mode: 'no-cors',
-              cache: 'no-cache',
-              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-              body: JSON.stringify(payloadMai)
-            }).catch(e => console.warn('MAI GSheet sync notice:', e))
-          );
+          const lastRowsMai = parseInt(localStorage.getItem('wfm_max_pushed_sheet_rows_MAI') || '0', 10);
+          const curRowsMai = payloadMai.sheets && payloadMai.sheets["RECORD ABSEN"] ? payloadMai.sheets["RECORD ABSEN"].length : 0;
+
+          // DataShield Sheet: Jangan timpa Google Sheet jika jumlah baris absen lokal lebih sedikit
+          if (lastRowsMai > 1 && curRowsMai < lastRowsMai) {
+            console.warn(`[DataShield Sheet] Pengiriman Google Sheet MAI ditunda: baris lokal (${curRowsMai}) lebih sedikit dari master (${lastRowsMai}). Menjalankan rekonsiliasi data...`);
+            try { syncAttendanceFromGoogleSheetMaster(false, 'MAI'); } catch(e) {}
+          } else {
+            if (curRowsMai > 0) localStorage.setItem('wfm_max_pushed_sheet_rows_MAI', String(curRowsMai));
+            tasks.push(
+              fetch(targetUrlMai, {
+                method: 'POST',
+                mode: 'no-cors',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadMai)
+              }).catch(e => console.warn('MAI GSheet sync notice:', e))
+            );
+          }
         }
 
         try {
