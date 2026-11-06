@@ -9843,6 +9843,33 @@
    }, 50);
   }
 
+  function ensureMasterBaseline(userList, warehouse) {
+   const wh = (warehouse || 'MBI').toUpperCase();
+   const seedList = wh === 'MBI' ? (typeof SEED_MBI_USERS !== 'undefined' ? SEED_MBI_USERS : []) : (typeof SEED_MAI_USERS !== 'undefined' ? SEED_MAI_USERS : []);
+   const userMap = new Map();
+   (userList || []).forEach(u => {
+    if (u && u.nik) userMap.set(String(u.nik).toUpperCase().trim(), u);
+   });
+   seedList.forEach(s => {
+    if (!s || !s.nik) return;
+    const sNik = String(s.nik).toUpperCase().trim();
+    if (!userMap.has(sNik)) {
+     userMap.set(sNik, { ...s });
+    } else {
+     const ex = userMap.get(sNik);
+     if (s.outsource && s.outsource !== 'Internal' && (!ex.outsource || ex.outsource === 'Internal')) {
+      ex.outsource = s.outsource;
+     }
+     if (s.name && (!ex.name || isLikelyIdNotName(ex.name))) {
+      ex.name = s.name;
+     }
+     if (s.role && !ex.role) ex.role = s.role;
+     if (s.dept && (!ex.dept || ex.dept === 'Staff')) ex.dept = s.dept;
+    }
+   });
+   return deduplicateUserList(Array.from(userMap.values()), wh);
+  }
+
   function getWhDB(warehouse, key, defaultVal) {
    const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
    if (whDBCache.has(storageKey)) {
@@ -9855,6 +9882,11 @@
      let result = parsed;
      if (key === 'users' && Array.isArray(parsed)) {
       let cleaned = deduplicateUserList(parsed, warehouse);
+      const minCount = warehouse === 'MBI' ? 130 : 54;
+      if (cleaned.length < minCount) {
+       cleaned = ensureMasterBaseline(cleaned, warehouse);
+       try { localStorage.setItem(storageKey, JSON.stringify(cleaned)); } catch(e) {}
+      }
       if (cleaned.length === 0) {
        try {
         const bkp = localStorage.getItem(`wfm_${warehouse.toLowerCase()}_users_backup`);
@@ -10213,14 +10245,14 @@
 
     // DataShield Anti-Shrink: Karyawan master TIDAK PERNAH BOLEH berkurang di bawah master seed (130 MBI / 54 MAI)
     if (!users || users.length < minMasterCount) {
-     users = mergeUserArrays(seedUsers, users || [], targetWh);
+     users = ensureMasterBaseline(users || [], targetWh);
      setWhDB(targetWh, 'users', users, true);
     }
 
     // DataShield Device Isolation: Akun management yang memiliki wewenang dapat mengelola karyawan sesuai pengaturan hak akses
     const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && (isUserAdmin(currentUser) || isUserManager(currentUser) || hasPermission('perm_emp_edit') || hasPermission('perm_emp_add')));
-    if (!isUserAdminAuthorized) {
-     users = mergeUserArrays(seedUsers, users, targetWh);
+    if (!isUserAdminAuthorized || users.length < minMasterCount) {
+     users = ensureMasterBaseline(users, targetWh);
     }
 
     // DataShield: Pastikan vendor outsourcing (Staffinc & ADP) tidak tertimpa menjadi 'Internal'
@@ -11606,7 +11638,8 @@ service cloud.firestore {
     } else {
      // Karyawan lokal ini TIDAK ditemukan di Cloud
      // 1. Akun manajemen sistem (Admin, Scanner, Manager) SELALU DIPERTAHANKAN 100% agar login tidak pernah gagal!
-     if (isManagementSystemAccount(loc)) {
+     const isOfficialMaster = (wh === 'MBI' && loc.nik && /^MBI26-\d{3}$/i.test(loc.nik)) || (wh === 'MAI' && loc.nik && /^MAI26-\d{3}$/i.test(loc.nik));
+     if (isManagementSystemAccount(loc) || isOfficialMaster) {
       resultList.push(loc);
      } else if (cloudRegCount === 0) {
       // Jika Cloud kosong / belum ada karyawan reguler, pertahankan lokal (Data Shield)
@@ -11651,7 +11684,12 @@ service cloud.firestore {
     }
    });
 
-   return deduplicateUserList(resultList, wh);
+   const finalCleaned = deduplicateUserList(resultList, wh);
+   const targetMin = wh === 'MBI' ? 130 : 54;
+   if (finalCleaned.length < targetMin) {
+    return ensureMasterBaseline(finalCleaned, wh);
+   }
+   return finalCleaned;
   }
 
   let lastAppliedCloudUpdatedAt = null;
@@ -11747,15 +11785,9 @@ service cloud.firestore {
    if (rawMbiUsers !== undefined || rawMbiAtt !== undefined || rawMbiAttLive !== undefined || rawMbiOt !== undefined || rawMbiLeaves !== undefined) {
     if (rawMbiUsers !== undefined) {
      let cloudMbiRaw = normalizeFirebaseArray(rawMbiUsers);
-     if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
-      if (cloudMbiRaw.length < 130) {
-       cloudMbiRaw = mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI');
-      }
-      // CLOUD-FIRST SSOT: Selalu jadikan database Cloud + SEED master resmi sebagai acuan tunggal
-      let cleanMbiUsers = mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI', db.updatedAt);
-      if (cleanMbiUsers.length < 130) {
-       cleanMbiUsers = mergeUserArrays(SEED_MBI_USERS, cleanMbiUsers, 'MBI');
-      }
+      if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
+       cloudMbiRaw = ensureMasterBaseline(cloudMbiRaw, 'MBI');
+       let cleanMbiUsers = ensureMasterBaseline(mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI', db.updatedAt), 'MBI');
       cleanMbiUsers.forEach(u => {
        if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
         u.name = 'Scanner Presensi Gudang';
@@ -11818,10 +11850,10 @@ service cloud.firestore {
 
    if (rawMaiUsers !== undefined || rawMaiAtt !== undefined || rawMaiAttLive !== undefined || rawMaiOt !== undefined || rawMaiLeaves !== undefined) {
     if (rawMaiUsers !== undefined) {
-     const cloudMaiRaw = normalizeFirebaseArray(rawMaiUsers);
-     if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0) {
-      const localMaiUsers = getWhDB('MAI', 'users', []);
-      const cleanMaiUsers = mergeUserArrays(localMaiUsers, cloudMaiRaw, 'MAI', db.updatedAt);
+     let cloudMaiRaw = normalizeFirebaseArray(rawMaiUsers);
+      if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0) {
+       cloudMaiRaw = ensureMasterBaseline(cloudMaiRaw, 'MAI');
+       const cleanMaiUsers = ensureMasterBaseline(mergeUserArrays(SEED_MAI_USERS, cloudMaiRaw, 'MAI', db.updatedAt), 'MAI');
       cleanMaiUsers.forEach(u => {
        if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
         u.name = 'Scanner Presensi Gudang';
