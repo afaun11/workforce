@@ -10368,51 +10368,20 @@
       }
     }
 
-    // Perapian otomatis (hanya Admin/Manager): bila node live menumpuk, pindahkan record yang sudah FINAL ke arsip utama
-    let attCompactRunning = false;
+    // Perapian otomatis: Cloud Firestore menangani transaksi presensi secara atomic
     async function maybeCompactAttendanceLive(wh, db) {
-      if (attCompactRunning) return;
-      try {
-        const w = String(wh || '').toUpperCase();
-        if (!w || !db) return;
-        const live = db[`${w.toLowerCase()}_attendance_live`];
-        if (!live || typeof live !== 'object') return;
-        const keys = Object.keys(live);
-        if (keys.length < 150) return;
-        if (!(isUserAdmin(currentUser) || isUserManager(currentUser))) return;
-        attCompactRunning = true;
-
-        const merged = getWhDB(w, 'attendance', []);
-        const present = new Set((merged || []).map(r => r && r.id).filter(Boolean));
-        const nowMs = Date.now();
-        const finalKeys = keys.filter(k => {
-          const r = live[k];
-          if (!r || !r.id || !present.has(r.id)) return false;
-          if (r.checkOutTime) return (nowMs - new Date(r.checkOutTime).getTime()) > 10 * 60 * 1000;
-          return (nowMs - new Date(r.checkInTime).getTime()) > 20 * 60 * 60 * 1000;
-        });
-        if (!finalKeys.length) return;
-
-        const { base, node } = getAttLiveNodes(w);
-        const put = await fetch(`${base}/${w.toLowerCase()}_attendance.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(merged)
-        });
-        if (!put.ok) return;
-        await Promise.all(finalKeys.map(k =>
-          fetch(`${node}/${encodeURIComponent(k)}.json`, { method: 'DELETE' }).catch(() => {})
-        ));
-      } catch (e) {
-        // aman diabaikan: data live tetap tersimpan di cloud
-      } finally {
-        attCompactRunning = false;
-      }
+      return;
     }
 
-    function saveUserDocToFirestore(wh, userRec) {
-      // Dinonaktifkan: Manajemen akun kini sepenuhnya disimpan melalui Firebase Realtime Database
-      return;
+    async function saveUserDocToFirestore(wh, userRec) {
+      if (!userRec) return;
+      const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+      const docId = (userRec.nik && userRec.nik.trim()) ? userRec.nik.trim() : (userRec.id || `emp_${Date.now()}`);
+      return saveDocToFirestore(targetWh, 'users', docId, {
+        ...userRec,
+        warehouse: targetWh,
+        updatedAt: new Date().toISOString()
+      });
     }
 
     // =========================================================
@@ -10783,8 +10752,8 @@
         let localAtt = getWhDB(targetWh, 'attendance', []);
         const hasArchiveLoaded = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_attendance_archive_loaded`) === 'true';
 
-        // 1. Cek & muat arsip riwayat jika belum ada di lokal atau data presensi lokal masih sedikit (< 200 record)
-        if (!hasArchiveLoaded || localAtt.length < 200) {
+        // 1. Cek & muat arsip riwayat jika belum ada di lokal atau data presensi lokal masih sedikit (< 1000 record)
+        if (!hasArchiveLoaded || localAtt.length < 1000 || alertOnComplete) {
           try {
             const archiveDoc = await getDocFromFirestore(targetWh, '_metadata', 'attendance_archive');
             if (archiveDoc && archiveDoc.payload) {
@@ -11248,15 +11217,9 @@ service cloud.firestore {
         const matchedKey = map.has(key) ? key : (dayK && dayMap.has(dayK) ? dayMap.get(dayK) : null);
 
         if (!matchedKey) {
-          // ANTI-RECORD ZOMBIE: Jika Cloud sudah memiliki data presensi,
-          // JANGAN membangkitkan record lokal usang dari minggu/bulan lalu yang sudah tidak ada di Cloud.
-          // HANYA pertahankan record lokal jika sedang menunggu dikirim di Outbox ATAU hasil tap hari ini/kemarin.
-          const isPendingOutbox = localItem.id && outboxIds.has(String(localItem.id));
-          const isRecentDate = (localItem.date === todayStr || localItem.date === yesterdayStr);
-          if (!cloudHasRecords || isPendingOutbox || isRecentDate) {
-            map.set(key, localItem);
-            if (dayK) dayMap.set(dayK, key);
-          }
+          // PERTAHANKAN SELURUH RECORD PRESENSI HISTORIS LOKAL (JANGAN PERNAH DIHAPUS)
+          map.set(key, localItem);
+          if (dayK) dayMap.set(dayK, key);
         } else {
           // CLOUD FIRST AUTHORITATIVE: Utamakan data Cloud sebagai SSOT
           const cloudItem = map.get(matchedKey);
@@ -12268,9 +12231,9 @@ service cloud.firestore {
         }
       } catch(eBc) {}
 
-      // 4. Trigger Google Sheet Auto Sync secara non-blocking
-      if (typeof triggerGoogleSheetAutoSync === 'function') {
-        triggerGoogleSheetAutoSync(false);
+      // 4. Trigger Google Sheet Auto Sync secara langsung sebagai cadangan konsisten
+      if (typeof syncGoogleSheetDirectly === 'function') {
+        syncGoogleSheetDirectly();
       }
     }
 
@@ -12334,169 +12297,49 @@ service cloud.firestore {
       };
 
       try {
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        const maiEndpoint = getFirebaseEndpoint('MAI');
-
-        // Gunakan PATCH (BUKAN PUT) agar HANYA memperbarui data master tanpa menimpa node attendance di Cloud!
-        const [mbiRes, maiRes] = await Promise.allSettled([
-          fetch(mbiEndpoint, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(mbiPayload)
-          }),
-          fetch(maiEndpoint, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(maiPayload)
-          })
-        ]);
-
-        const mbiOk = mbiRes.status === 'fulfilled' && mbiRes.value.ok;
-        const maiOk = maiRes.status === 'fulfilled' && maiRes.value.ok;
-
-        if (mbiOk || maiOk) {
-          updateCloudSyncStatusBadge('synced');
-          alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE KEDUA FIREBASE CLOUD!\n\n` +
-                `✓ Database MBI: ${mbiUsers.length} Karyawan (Tersimpan di wfm-medika-mbi)\n` +
-                `✓ Database MAI: ${maiUsers.length} Karyawan (Tersimpan di wfm-medika2)\n` +
-                `✓ Riwayat Absensi Karyawan 100% Aman & Terlindungi (Tidak ditimpa).\n\n` +
-                `Semua HP & laptop sekarang dapat terhubung lancar 24/7.`);
-          renderAllLiveScreens();
-        } else {
-          updateCloudSyncStatusBadge('permission_denied');
-          alert('⚠️ Gagal mengunggah ke Firebase. Pastikan Aturan Rules pada kedua project Firebase sudah .read: true & .write: true lalu klik Publish.');
-        }
+        await saveMasterSnapshotToFirestore('MBI');
+        await saveMasterSnapshotToFirestore('MAI');
+        updateCloudSyncStatusBadge('synced');
+        alert(`🚀 SUKSES MENGUNGGAH MASTER DATABASE KE CLOUD FIRESTORE!\n\n` +
+              `✓ Database MBI: ${mbiUsers.length} Karyawan (Tersimpan di wfm-medika-mbi-new)\n` +
+              `✓ Database MAI: ${maiUsers.length} Karyawan (Tersimpan di wfm-medika2)\n` +
+              `✓ Riwayat Absensi Karyawan 100% Aman & Terlindungi (Tidak ditimpa).\n\n` +
+              `Semua HP & laptop sekarang terhubung langsung ke Cloud Firestore 24/7.`);
+        renderAllLiveScreens();
       } catch (err) {
         updateCloudSyncStatusBadge('local');
-        alert('Gagal menghubungi Firebase: ' + err.message + '\nPastikan laptop terhubung ke internet.');
+        alert('Gagal menghubungi Firestore: ' + err.message + '\nPastikan terhubung ke internet.');
       }
     }
 
     async function purgeAndReloadFromFirebase(targetWh = null) {
       const wh = (targetWh || activeWarehouse || 'MBI').toUpperCase();
-      if (!confirm(`Apakah Anda ingin menyinkronkan & memuat ulang database murni Gudang ${wh} dari Google Firebase Cloud ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi Gudang ${wh} dari Cloud akan dimuat ulang agar 100% sama.`)) {
+      if (!confirm(`Apakah Anda ingin menyinkronkan & memuat ulang database murni Gudang ${wh} dari Cloud Firestore ke perangkat ini?\n\nData karyawan dan riwayat absensi resmi Gudang ${wh} dari Cloud akan dimuat ulang agar 100% sama.`)) {
         return;
       }
 
       updateCloudSyncStatusBadge('syncing');
       try {
-        const endpoint = getFirebaseEndpoint(wh);
-        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
-        let loaded = false;
-
-        if (res.ok) {
-          const dbData = await res.json();
-          if (dbData && typeof dbData === 'object') {
-            const prefix = wh.toLowerCase();
-            const cloudUsers = normalizeFirebaseArray(dbData[`${prefix}_users`]);
-            const rawCloudAtt = combineCloudAttendanceWithLive(dbData[`${prefix}_attendance`], dbData[`${prefix}_attendance_live`]);
-            const localAtt = getWhDB(wh, 'attendance', []);
-            const cleanCloudAtt = mergeAttendanceArrays(localAtt, rawCloudAtt);
-            const cloudOt = normalizeFirebaseArray(dbData[`${prefix}_overtime`]);
-            const cloudLeaves = normalizeFirebaseArray(dbData[`${prefix}_leaves`]);
-
-            if (cloudUsers.length > 0) {
-              localStorage.setItem(`wfm_${prefix}_users`, JSON.stringify(cloudUsers));
-              localStorage.setItem(`wfm_${prefix}_users_backup`, JSON.stringify(cloudUsers));
-            }
-            localStorage.setItem(`wfm_${prefix}_attendance`, JSON.stringify(cleanCloudAtt));
-            localStorage.setItem(`wfm_${prefix}_attendance_backup`, JSON.stringify(cleanCloudAtt));
-            localStorage.setItem(`wfm_${prefix}_overtime`, JSON.stringify(cloudOt));
-            localStorage.setItem(`wfm_${prefix}_leaves`, JSON.stringify(cloudLeaves));
-            if (dbData[`${prefix}_coords`]) localStorage.setItem(`wfm_${prefix}_coords`, JSON.stringify(dbData[`${prefix}_coords`]));
-            localStorage.setItem(`wfm_${prefix}_master_updated_at`, dbData.updatedAt || new Date().toISOString());
-            loaded = true;
-          }
-        }
-
-        try {
-          if (typeof realignAllAttendanceRecordsWithMaster === 'function') {
-            realignAllAttendanceRecordsWithMaster(wh);
-          }
-        } catch(eRealign) {}
+        await fetchFullDatabaseFromCloud(false, wh, true);
+        await syncAttendanceArchiveFromCloud(wh, false);
+        await pullAttendanceFromFirestore(wh, false);
 
         renderAllLiveScreens();
         updateCloudSyncStatusBadge('synced');
 
-        alert(`✅ SUKSES MEMUAT DATA GUDANG ${wh} DARI FIREBASE CLOUD!\n\n` +
+        alert(`✅ SUKSES MEMUAT DATA GUDANG ${wh} DARI CLOUD FIRESTORE!\n\n` +
               `• Gudang: ${wh}\n` +
-              `• Server: ${endpoint}\n` +
-              `• Status: ${loaded ? 'Berhasil Terhubung & Termuat' : 'Standby'}\n\n` +
+              `• Backend Cloud: Google Cloud Firestore (24/7 SSOT)\n\n` +
               `Semua data di perangkat ini sekarang 100% SINKRON & SAMA dengan Cloud Server.`);
       } catch (err) {
-        console.error('Purge and reload error:', err);
-        alert(`⚠️ Gagal terhubung ke Firebase Cloud Gudang ${wh}: ` + err.message + '\nData di perangkat ini tetap aman.');
         updateCloudSyncStatusBadge('local');
+        alert('Gagal memuat data dari Cloud Firestore: ' + err.message);
       }
     }
 
     async function testFirebaseConnection() {
-      const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
-      const statusEl = document.getElementById('firebase-diag-status');
-      if (statusEl) {
-        statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-2';
-        statusEl.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-600 shrink-0"></i> <span>Menguji respon koneksi ke Database Gudang ${currentWh}...</span>`;
-        statusEl.classList.remove('hidden');
-        lucide.createIcons();
-      }
-
-      const endpoint = getFirebaseEndpoint(currentWh);
-
-      try {
-        const tStart = Date.now();
-        const res = await fetch(endpoint + '?t=' + Date.now(), { cache: 'no-store' });
-        const latency = Date.now() - tStart;
-        const isOk = res.ok;
-        let data = isOk ? await res.json() : null;
-
-        const countKey = `${currentWh.toLowerCase()}_users`;
-        const attKey = `${currentWh.toLowerCase()}_attendance`;
-        const empCount = data && data[countKey] ? data[countKey].length : 0;
-        const attCount = data && data[attKey] ? data[attKey].length : 0;
-
-        if (isOk) {
-          if (statusEl) {
-            statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-emerald-50 text-emerald-900 border border-emerald-300 space-y-1.5';
-            statusEl.innerHTML = `
-              <div class="flex items-center gap-2">
-                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 shrink-0"></i>
-                <span>✅ <b>Firebase Cloud Gudang ${currentWh} Aktif & Normal!</b> (Respon: ${latency}ms)</span>
-              </div>
-              <p class="text-[11px] text-emerald-800 font-normal pl-6">
-                Database terhubung sempurna: <b>${empCount} Karyawan ${currentWh}</b>, <b>${attCount} Total Record Absensi</b>.
-              </p>
-            `;
-            statusEl.classList.remove('hidden');
-            lucide.createIcons();
-          }
-          updateCloudSyncStatusBadge('synced');
-          alert(`✅ KONEKSI DATABASE GUDANG ${currentWh} BERHASIL!\n\n• Respon: ${latency}ms\n• Status: 200 OK (Online)\n• Database: ${endpoint}\n• Total Karyawan: ${empCount} orang\n• Total Riwayat Absensi: ${attCount} record\n\nSemua perangkat HP & laptop Gudang ${currentWh} siap bertukar data otomatis.`);
-        } else {
-          updateCloudSyncStatusBadge('permission_denied');
-          if (statusEl) {
-            statusEl.className = 'p-4 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300 space-y-1.5';
-            statusEl.innerHTML = `
-              <div class="flex items-center gap-2">
-                <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600 shrink-0"></i>
-                <span>⚠️ <b>Akses Firebase Rules Terkunci (HTTP ${res.status})</b></span>
-              </div>
-              <p class="text-[11px] text-rose-800 font-normal pl-6">
-                Pastikan Rules pada database Firebase Gudang ${currentWh} sudah diatur .read: true dan .write: true, lalu klik Publish.
-              </p>
-            `;
-            statusEl.classList.remove('hidden');
-            lucide.createIcons();
-          }
-          alert(`⚠️ Akses Firebase Rules Terkunci (HTTP ${res.status}).\n\nPastikan tab Rules di console.firebase.google.com pada project Gudang ${currentWh} sudah diubah .read: true dan .write: true lalu klik Publish.`);
-        }
-      } catch (err) {
-        if (statusEl) {
-          statusEl.className = 'p-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-900 border border-rose-300';
-          statusEl.innerHTML = `<span>⚠️ Gagal menghubungi Firebase Gudang ${currentWh}: ${err.message}.</span>`;
-          statusEl.classList.remove('hidden');
-        }
-        updateCloudSyncStatusBadge('local');
-        alert(`⚠️ Gagal menghubungi Firebase Gudang ${currentWh}: ${err.message}`);
+      if (typeof testFirestoreConnection === 'function') {
+        return testFirestoreConnection();
       }
     }
 
@@ -13265,8 +13108,8 @@ service cloud.firestore {
     }
 
     window.onload = async () => {
-      // Auto-purge tombstone usang & sinkronisasi ulang total seluruh perangkat ke Cloud SSOT
-      const CURRENT_DATA_REVISION = 'wfm_rev_20261105_v1';
+      // Auto-purge tombstone usang & sinkronisasi ulang total seluruh perangkat ke Cloud Firestore SSOT
+      const CURRENT_DATA_REVISION = 'wfm_rev_20261106_v2';
       if (localStorage.getItem('wfm_data_revision') !== CURRENT_DATA_REVISION) {
         try {
           localStorage.removeItem('wfm_deleted_user_keys');
@@ -13276,8 +13119,8 @@ service cloud.firestore {
           localStorage.removeItem('wfm_mai_master_updated_at');
           localStorage.removeItem('wfm_mbi_users');
           localStorage.removeItem('wfm_mai_users');
-          localStorage.removeItem('wfm_mbi_attendance');
-          localStorage.removeItem('wfm_mai_attendance');
+          localStorage.removeItem('wfm_mbi_attendance_archive_loaded');
+          localStorage.removeItem('wfm_mai_attendance_archive_loaded');
           localStorage.setItem('wfm_data_revision', CURRENT_DATA_REVISION);
         } catch(e) {}
       }
@@ -23452,38 +23295,7 @@ service cloud.firestore {
         else remainingMai.push(...filtered);
       });
 
-      // Timpa langsung di Firebase RTDB dengan PUT agar index array lama benar-benar lenyap
-      try {
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        const maiEndpoint = getFirebaseEndpoint('MAI');
-        const putPromises = [];
-        if (mbiEndpoint) {
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_leaves.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMbi)
-          }).catch(e => {}));
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_leave_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedLeaveIds()))
-          }).catch(e => {}));
-        }
-        if (maiEndpoint) {
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_leaves.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMai)
-          }).catch(e => {}));
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_leave_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedLeaveIds()))
-          }).catch(e => {}));
-        }
-        await Promise.allSettled(putPromises);
-      } catch(e) {}
-
+      // Sinkronkan ke Cloud Firestore
       await saveFullDatabaseToCloud(false, true, true);
 
       if (typeof triggerGoogleSheetAutoSync === 'function') {
@@ -23706,38 +23518,7 @@ service cloud.firestore {
         else remainingMai.push(...filtered);
       });
 
-      // Timpa langsung di Firebase RTDB dengan PUT agar index array lama benar-benar lenyap
-      try {
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        const maiEndpoint = getFirebaseEndpoint('MAI');
-        const putPromises = [];
-        if (mbiEndpoint) {
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_overtime.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMbi)
-          }).catch(e => {}));
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_overtime_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedOvertimeIds()))
-          }).catch(e => {}));
-        }
-        if (maiEndpoint) {
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_overtime.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMai)
-          }).catch(e => {}));
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_overtime_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedOvertimeIds()))
-          }).catch(e => {}));
-        }
-        await Promise.allSettled(putPromises);
-      } catch(e) {}
-
+      // Sinkronkan ke Cloud Firestore
       await saveFullDatabaseToCloud(false, true, true);
 
       if (typeof triggerGoogleSheetAutoSync === 'function') {
@@ -24325,38 +24106,7 @@ service cloud.firestore {
         else remainingMai.push(...filtered);
       });
 
-      // Timpa langsung di Firebase RTDB dengan PUT agar index array lama benar-benar lenyap
-      try {
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        const maiEndpoint = getFirebaseEndpoint('MAI');
-        const putPromises = [];
-        if (mbiEndpoint) {
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_attendance.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMbi)
-          }).catch(e => {}));
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
-          }).catch(e => {}));
-        }
-        if (maiEndpoint) {
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_attendance.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMai)
-          }).catch(e => {}));
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
-          }).catch(e => {}));
-        }
-        await Promise.allSettled(putPromises);
-      } catch(e) {}
-
+      // Sinkronkan ke Cloud Firestore
       await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
       if (typeof triggerGoogleSheetAutoSync === 'function') {
@@ -24398,39 +24148,7 @@ service cloud.firestore {
         else remainingMai.push(...filtered);
       });
 
-      // Timpa langsung array di Firebase RTDB dengan PUT
-      try {
-        const mbiEndpoint = getFirebaseEndpoint('MBI');
-        const maiEndpoint = getFirebaseEndpoint('MAI');
-        const putPromises = [];
-        if (mbiEndpoint) {
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/mbi_attendance.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMbi)
-          }).catch(e => {}));
-          putPromises.push(fetch(mbiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
-          }).catch(e => {}));
-        }
-        if (maiEndpoint) {
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/mai_attendance.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(remainingMai)
-          }).catch(e => {}));
-          putPromises.push(fetch(maiEndpoint.replace('.json', '/deleted_attendance_ids.json'), {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Array.from(getDeletedAttendanceIds()))
-          }).catch(e => {}));
-        }
-        await Promise.allSettled(putPromises);
-      } catch(e) {}
-
-      // Simpan ke Firebase Cloud dengan isExplicitAdminAttendanceReset = true
+      // Sinkronkan ke Cloud Firestore
       await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
       // Langsung update Google Spreadsheet seketika
