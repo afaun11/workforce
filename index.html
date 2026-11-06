@@ -11751,8 +11751,8 @@ service cloud.firestore {
       if (cloudMbiRaw.length < 130) {
        cloudMbiRaw = mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI');
       }
-      const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
-      let cleanMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiRaw, 'MBI', db.updatedAt);
+      // CLOUD-FIRST SSOT: Selalu jadikan database Cloud + SEED master resmi sebagai acuan tunggal
+      let cleanMbiUsers = mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI', db.updatedAt);
       if (cleanMbiUsers.length < 130) {
        cleanMbiUsers = mergeUserArrays(SEED_MBI_USERS, cleanMbiUsers, 'MBI');
       }
@@ -12270,9 +12270,11 @@ service cloud.firestore {
     }
     setWhDB(wh, 'leaves', leavesList, true);
     
-    // Simpan langsung ke Cloud Firestore Master Snapshot (Ringan & Cepat)
-    if (typeof saveMasterSnapshotToFirestore === 'function') {
-     saveMasterSnapshotToFirestore(wh);
+    // Simpan langsung ke Cloud Firestore Koleksi Leaves (Isolasi data cuti murni)
+    if (Array.isArray(leavesList) && typeof saveDocToFirestore === 'function') {
+     leavesList.forEach(l => {
+      if (l && l.id) saveDocToFirestore(wh, 'leaves', l.id, { ...l, warehouse: wh }).catch(() => {});
+     });
     }
    } catch (err) {
     console.warn('syncLeavesToCloud notice:', err);
@@ -12337,8 +12339,11 @@ service cloud.firestore {
      untrackDeletedOvertime(overtimeList);
     }
     setWhDB(wh, 'overtime', overtimeList, true);
-    if (typeof saveMasterSnapshotToFirestore === 'function') {
-     saveMasterSnapshotToFirestore(wh);
+    // Simpan langsung ke Cloud Firestore Koleksi Overtime (Isolasi data lembur murni)
+    if (Array.isArray(overtimeList) && typeof saveDocToFirestore === 'function') {
+     overtimeList.forEach(o => {
+      if (o && o.id) saveDocToFirestore(wh, 'overtime', o.id, { ...o, warehouse: wh }).catch(() => {});
+     });
     }
    } catch (err) {
     console.warn('syncOvertimeToCloud notice:', err);
@@ -13039,10 +13044,15 @@ service cloud.firestore {
       // 1. Prioritaskan Cloud Firestore (_metadata/master_snapshot) - 1 Read, Super Ringan
       const fsMaster = await getDocFromFirestore(wh, '_metadata', 'master_snapshot');
       if (fsMaster && Array.isArray(fsMaster.users) && fsMaster.users.length > 0) {
+       const minMasterCount = wh === 'MBI' ? 130 : 54;
+       const seedUsers = wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
+       if (fsMaster.users.length < minMasterCount) {
+        fsMaster.users = mergeUserArrays(seedUsers, fsMaster.users, wh);
+       }
        const cloudTs = fsMaster.updatedAt || new Date().toISOString();
        if (isManualAlert || forceDownload || isLocalEmpty || cloudTs !== localUpdated) {
         applyIncomingDatabase(fsMaster, wh);
-        localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, cloudTs);
+        localStorage.setItem(wfm__master_updated_at, cloudTs);
         hasNewDataApplied = true;
        }
        loaded = true;
@@ -26756,15 +26766,13 @@ function testManualSync() {
      const lastRowsMbi = parseInt(localStorage.getItem('wfm_max_pushed_sheet_rows_MBI') || '0', 10);
      const curRowsMbi = payloadMbi.sheets && payloadMbi.sheets["RECORD ABSEN"] ? payloadMbi.sheets["RECORD ABSEN"].length : 0;
 
-     // DataShield Sheet: Jangan timpa Google Sheet jika jumlah baris absen lokal lebih sedikit atau arsip belum termuat
-     const minSafeRows = 1350; // Master MBI minimal 1.350 baris agar tidak menimpa riwayat
-     if (curRowsMbi < minSafeRows && (lastRowsMbi > 1 || lastRowsMbi === 0)) {
-      console.warn(`[DataShield Sheet] Pengiriman Google Sheet MBI ditunda: baris lokal (${curRowsMbi}) belum memuat arsip. Menjalankan rekonsiliasi data...`);
-      try { syncAttendanceFromGoogleSheetMaster(false, 'MBI'); } catch(e) {}
-     } else if (lastRowsMbi > 1 && curRowsMbi < lastRowsMbi) {
-      console.warn(`[DataShield Sheet] Pengiriman Google Sheet MBI ditunda: baris lokal (${curRowsMbi}) lebih sedikit dari master (${lastRowsMbi}). Menjalankan rekonsiliasi data...`);
-      try { syncAttendanceFromGoogleSheetMaster(false, 'MBI'); } catch(e) {}
-     } else {
+     const hasMbiData = payloadMbi.sheets && (
+      (payloadMbi.sheets["RECORD ABSEN"] && payloadMbi.sheets["RECORD ABSEN"].length > 1) ||
+      (payloadMbi.sheets["REKAP PENGAJUAN"] && payloadMbi.sheets["REKAP PENGAJUAN"].length > 1) ||
+      (payloadMbi.sheets["REKAP LEMBUR"] && payloadMbi.sheets["REKAP LEMBUR"].length > 1)
+     );
+
+     if (hasMbiData) {
       if (curRowsMbi > 0) localStorage.setItem('wfm_max_pushed_sheet_rows_MBI', String(Math.max(lastRowsMbi, curRowsMbi)));
       tasks.push(
        fetch(targetUrlMbi, {
@@ -26786,14 +26794,13 @@ function testManualSync() {
      const lastRowsMai = parseInt(localStorage.getItem('wfm_max_pushed_sheet_rows_MAI') || '0', 10);
      const curRowsMai = payloadMai.sheets && payloadMai.sheets["RECORD ABSEN"] ? payloadMai.sheets["RECORD ABSEN"].length : 0;
 
-     // DataShield Sheet: Jangan timpa Google Sheet jika jumlah baris absen lokal lebih sedikit atau arsip belum termuat
-     if (curRowsMai < minSafeRows && (lastRowsMai > 1 || lastRowsMai === 0)) {
-      console.warn(`[DataShield Sheet] Pengiriman Google Sheet MAI ditunda: baris lokal (${curRowsMai}) belum memuat arsip. Menjalankan rekonsiliasi data...`);
-      try { syncAttendanceFromGoogleSheetMaster(false, 'MAI'); } catch(e) {}
-     } else if (lastRowsMai > 1 && curRowsMai < lastRowsMai) {
-      console.warn(`[DataShield Sheet] Pengiriman Google Sheet MAI ditunda: baris lokal (${curRowsMai}) lebih sedikit dari master (${lastRowsMai}). Menjalankan rekonsiliasi data...`);
-      try { syncAttendanceFromGoogleSheetMaster(false, 'MAI'); } catch(e) {}
-     } else {
+     const hasMaiData = payloadMai.sheets && (
+      (payloadMai.sheets["RECORD ABSEN"] && payloadMai.sheets["RECORD ABSEN"].length > 1) ||
+      (payloadMai.sheets["REKAP PENGAJUAN"] && payloadMai.sheets["REKAP PENGAJUAN"].length > 1) ||
+      (payloadMai.sheets["REKAP LEMBUR"] && payloadMai.sheets["REKAP LEMBUR"].length > 1)
+     );
+
+     if (hasMaiData) {
       if (curRowsMai > 0) localStorage.setItem('wfm_max_pushed_sheet_rows_MAI', String(Math.max(lastRowsMai, curRowsMai)));
       tasks.push(
        fetch(targetUrlMai, {
