@@ -8191,11 +8191,21 @@
           }
         }
       } catch (e) {}
-      // SANITIZE: Bersihkan Dinarya & NIK 118 dari memori lokal agar tidak pernah terhapus
-      const forbiddenKeys = ['dinarya', 'mbi26118', 'mbi26-118', 'mbi1792229164411', 'mbi-1792229164411', 'mbi-1790828522744-116-dxyq', 'mbi1790828522744116dxyq'];
+      // SINGLE SOURCE OF TRUTH: Lindungi seluruh karyawan sah SEED master agar tidak pernah masuk daftar terhapus
+      const allSeeds = (typeof SEED_MBI_USERS !== 'undefined' ? SEED_MBI_USERS : []).concat(typeof SEED_MAI_USERS !== 'undefined' ? SEED_MAI_USERS : []);
       let hadForbidden = false;
-      forbiddenKeys.forEach(fk => {
-        if (setKeys.has(fk)) { setKeys.delete(fk); hadForbidden = true; }
+      allSeeds.forEach(s => {
+        if (!s) return;
+        const keysToRemove = [
+          s.nik, s.barcodeValue, s.id, s.name,
+          cleanStr(s.nik), cleanStr(s.name), cleanStr(s.id)
+        ];
+        keysToRemove.forEach(k => {
+          if (k) {
+            const lk = String(k).trim().toLowerCase();
+            if (setKeys.has(lk)) { setKeys.delete(lk); hadForbidden = true; }
+          }
+        });
       });
       if (hadForbidden) {
         try {
@@ -10197,21 +10207,21 @@
     async function saveMasterSnapshotToFirestore(wh = null, isExplicitAdminAction = false) {
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       try {
+        // ATURAN 1 MUTLAK: Perangkat pengguna biasa (staf, scanner, laptop viewing) DILARANG KERAS mengunggah master karyawan ke Cloud!
+        const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && isUserAdmin(currentUser));
+        if (!isUserAdminAuthorized) {
+          console.warn([DataShield Block] Perangkat non-admin () diblokir dari mengunggah master karyawan ke Cloud.);
+          return;
+        }
+
         const seedUsers = targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
         const minMasterCount = targetWh === 'MBI' ? 130 : 54;
         let users = getWhDB(targetWh, 'users', seedUsers);
 
-        // DataShield Anti-Shrink: Karyawan master TIDAK PERNAH BOLEH berkurang di bawah master seed (130 MBI / 54 MAI)
+        // ATURAN 2 MUTLAK: Cloud adalah Single Source of Truth, jumlah karyawan TIDAK BOLEH susut di bawah master seed (130 MBI / 54 MAI)
         if (!users || users.length < minMasterCount) {
           users = mergeUserArrays(seedUsers, users || [], targetWh);
           setWhDB(targetWh, 'users', users, true);
-        }
-
-        // DataShield Device Isolation: Lindungi dari penimpaan cache lokal perangkat user biasa / scanner / stale cache
-        const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && isUserAdmin(currentUser));
-        if (!isUserAdminAuthorized) {
-          // Selalu padukan dengan master seed agar tidak ada satupun karyawan yang hilang karena cache perangkat lokal
-          users = mergeUserArrays(seedUsers, users, targetWh);
         }
 
         // DataShield: Pastikan vendor outsourcing (Staffinc & ADP) tidak tertimpa menjadi 'Internal'
@@ -11376,8 +11386,9 @@ service cloud.firestore {
     // 4. SMART MERGE MASTER KARYAWAN & DATA SHIELD ANTI-HILANG (2-WAY BIDIRECTIONAL SYNC)
     function mergeUserArrays(localList, cloudList, wh, cloudUpdatedAt = '') {
       const deletedKeys = getDeletedUserKeys();
+      // SINGLE SOURCE OF TRUTH: Data cloud adalah master sah, TIDAK BOLEH dipotong oleh cache tombstone lokal perangkat!
       localList = (Array.isArray(localList) ? localList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
-      cloudList = (Array.isArray(cloudList) ? cloudList : []).filter(u => !isUserMarkedDeleted(u, deletedKeys));
+      cloudList = Array.isArray(cloudList) ? cloudList.filter(u => u && u.nik) : [];
 
       // Filter list berdasarkan gudang target agar data antar gudang tidak pernah tercampur saat sync cloud
       const filterWhStrict = (list, targetWh) => {
@@ -12132,6 +12143,13 @@ service cloud.firestore {
         const filterWh = targetWarehouse ? targetWarehouse.toUpperCase() : null;
         let shouldUploadMbi = (filterWh === null || filterWh === 'MBI') && (isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash);
         let shouldUploadMai = (filterWh === null || filterWh === 'MAI') && (isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash);
+
+        // ATURAN 1 MUTLAK: Perangkat pengguna biasa (staf, scanner, laporan) DILARANG mengunggah master karyawan ke Cloud!
+        const isUserAuthorizedAdmin = typeof currentUser !== 'undefined' && currentUser && isUserAdmin(currentUser);
+        if (!isUserAuthorizedAdmin && !isExplicitAdminMasterReset && !isManualAlert) {
+          shouldUploadMbi = false;
+          shouldUploadMai = false;
+        }
 
         // DATA SHIELD GUARD RAILS: Mencegah penimpaan data Cloud hanya jika data lokal benar-benar kosong (0) akibat crash
         if (shouldUploadMbi && safeMbiUsers.length === 0 && !isExplicitAdminMasterReset) {
