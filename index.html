@@ -10207,21 +10207,20 @@
     async function saveMasterSnapshotToFirestore(wh = null, isExplicitAdminAction = false) {
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       try {
-        // ATURAN 1 MUTLAK: Perangkat pengguna biasa (staf, scanner, laptop viewing) DILARANG KERAS mengunggah master karyawan ke Cloud!
-        const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && isUserAdmin(currentUser));
-        if (!isUserAdminAuthorized) {
-          console.warn([DataShield Block] Perangkat non-admin () diblokir dari mengunggah master karyawan ke Cloud.);
-          return;
-        }
-
         const seedUsers = targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
         const minMasterCount = targetWh === 'MBI' ? 130 : 54;
         let users = getWhDB(targetWh, 'users', seedUsers);
 
-        // ATURAN 2 MUTLAK: Cloud adalah Single Source of Truth, jumlah karyawan TIDAK BOLEH susut di bawah master seed (130 MBI / 54 MAI)
+        // DataShield Anti-Shrink: Karyawan master TIDAK PERNAH BOLEH berkurang di bawah master seed (130 MBI / 54 MAI)
         if (!users || users.length < minMasterCount) {
           users = mergeUserArrays(seedUsers, users || [], targetWh);
           setWhDB(targetWh, 'users', users, true);
+        }
+
+        // DataShield Device Isolation: Akun management yang memiliki wewenang dapat mengelola karyawan sesuai pengaturan hak akses
+        const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && (isUserAdmin(currentUser) || isUserManager(currentUser) || hasPermission('perm_emp_edit') || hasPermission('perm_emp_add')));
+        if (!isUserAdminAuthorized) {
+          users = mergeUserArrays(seedUsers, users, targetWh);
         }
 
         // DataShield: Pastikan vendor outsourcing (Staffinc & ADP) tidak tertimpa menjadi 'Internal'
@@ -12143,13 +12142,6 @@ service cloud.firestore {
         const filterWh = targetWarehouse ? targetWarehouse.toUpperCase() : null;
         let shouldUploadMbi = (filterWh === null || filterWh === 'MBI') && (isManualAlert || effectiveForceMaster || currentMbiHash !== lastSentMbiPayloadHash);
         let shouldUploadMai = (filterWh === null || filterWh === 'MAI') && (isManualAlert || effectiveForceMaster || currentMaiHash !== lastSentMaiPayloadHash);
-
-        // ATURAN 1 MUTLAK: Perangkat pengguna biasa (staf, scanner, laporan) DILARANG mengunggah master karyawan ke Cloud!
-        const isUserAuthorizedAdmin = typeof currentUser !== 'undefined' && currentUser && isUserAdmin(currentUser);
-        if (!isUserAuthorizedAdmin && !isExplicitAdminMasterReset && !isManualAlert) {
-          shouldUploadMbi = false;
-          shouldUploadMai = false;
-        }
 
         // DATA SHIELD GUARD RAILS: Mencegah penimpaan data Cloud hanya jika data lokal benar-benar kosong (0) akibat crash
         if (shouldUploadMbi && safeMbiUsers.length === 0 && !isExplicitAdminMasterReset) {
