@@ -10194,16 +10194,26 @@
       } catch(e) {}
     }
 
-    async function saveMasterSnapshotToFirestore(wh = null) {
+    async function saveMasterSnapshotToFirestore(wh = null, isExplicitAdminAction = false) {
       const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
       try {
         const seedUsers = targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
+        const minMasterCount = targetWh === 'MBI' ? 130 : 54;
         let users = getWhDB(targetWh, 'users', seedUsers);
-        // DataShield: Jika data lokal kurang dari seed master (129 MBI / 54 MAI), padukan agar tidak susut
-        if (!users || users.length < seedUsers.length) {
+
+        // DataShield Anti-Shrink: Karyawan master TIDAK PERNAH BOLEH berkurang di bawah master seed (130 MBI / 54 MAI)
+        if (!users || users.length < minMasterCount) {
           users = mergeUserArrays(seedUsers, users || [], targetWh);
           setWhDB(targetWh, 'users', users, true);
         }
+
+        // DataShield Device Isolation: Lindungi dari penimpaan cache lokal perangkat user biasa / scanner / stale cache
+        const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && isUserAdmin(currentUser));
+        if (!isUserAdminAuthorized) {
+          // Selalu padukan dengan master seed agar tidak ada satupun karyawan yang hilang karena cache perangkat lokal
+          users = mergeUserArrays(seedUsers, users, targetWh);
+        }
+
         // DataShield: Pastikan vendor outsourcing (Staffinc & ADP) tidak tertimpa menjadi 'Internal'
         const seedMap = new Map();
         seedUsers.forEach(s => { if (s && s.nik) seedMap.set(s.nik.toUpperCase().trim(), s); });
@@ -10825,6 +10835,9 @@
           localAtt = getWhDB(targetWh, 'attendance', []);
           const merged = mergeAttendanceArrays(localAtt, todayDoc.records);
           setWhDB(targetWh, 'attendance', merged, true);
+          try {
+            localStorage.setItem(wfm__today_attendance, JSON.stringify(todayDoc.records));
+          } catch(e) {}
           renderAllLiveScreens();
           if (alertOnComplete) {
             alert(`Ã¢Å“â€¦ Berhasil menarik absensi hari ini (${todayDoc.records.length} record) & total ${merged.length} riwayat dari Cloud Firestore Gudang ${targetWh}!`);
@@ -10863,8 +10876,16 @@
         // 1. Coba unduh master snapshot (1 Read)
         const snapshot = await getDocFromFirestore(targetWh, '_metadata', 'master_snapshot');
         if (snapshot && Array.isArray(snapshot.users) && snapshot.users.length > 0) {
-          const localUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-          const merged = mergeUserArrays(localUsers, snapshot.users, targetWh, snapshot.updatedAt);
+          const minMasterCount = targetWh === 'MBI' ? 130 : 54;
+          let cloudUsers = snapshot.users;
+          if (cloudUsers.length < minMasterCount) {
+            cloudUsers = mergeUserArrays(seedUsers, cloudUsers, targetWh);
+          }
+          const localUsers = getWhDB(targetWh, 'users', seedUsers);
+          let merged = mergeUserArrays(localUsers, cloudUsers, targetWh, snapshot.updatedAt);
+          if (merged.length < minMasterCount) {
+            merged = mergeUserArrays(seedUsers, merged, targetWh);
+          }
           setWhDB(targetWh, 'users', merged, true);
           renderAllLiveScreens();
           if (alertOnComplete) {
@@ -11715,10 +11736,16 @@ service cloud.firestore {
 
       if (rawMbiUsers !== undefined || rawMbiAtt !== undefined || rawMbiAttLive !== undefined || rawMbiOt !== undefined || rawMbiLeaves !== undefined) {
         if (rawMbiUsers !== undefined) {
-          const cloudMbiRaw = normalizeFirebaseArray(rawMbiUsers);
+          let cloudMbiRaw = normalizeFirebaseArray(rawMbiUsers);
           if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
-            const localMbiUsers = getWhDB('MBI', 'users', []);
-            const cleanMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiRaw, 'MBI', db.updatedAt);
+            if (cloudMbiRaw.length < 130) {
+              cloudMbiRaw = mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI');
+            }
+            const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+            let cleanMbiUsers = mergeUserArrays(localMbiUsers, cloudMbiRaw, 'MBI', db.updatedAt);
+            if (cleanMbiUsers.length < 130) {
+              cleanMbiUsers = mergeUserArrays(SEED_MBI_USERS, cleanMbiUsers, 'MBI');
+            }
             cleanMbiUsers.forEach(u => {
               if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
                 u.name = 'Scanner Presensi Gudang';
@@ -26720,7 +26747,7 @@ function testManualSync() {
           const curRowsMbi = payloadMbi.sheets && payloadMbi.sheets["RECORD ABSEN"] ? payloadMbi.sheets["RECORD ABSEN"].length : 0;
 
           // DataShield Sheet: Jangan timpa Google Sheet jika jumlah baris absen lokal lebih sedikit atau arsip belum termuat
-          const minSafeRows = 500;
+          const minSafeRows = 1350; // Master MBI minimal 1.350 baris agar tidak menimpa riwayat
           if (curRowsMbi < minSafeRows && (lastRowsMbi > 1 || lastRowsMbi === 0)) {
             console.warn(`[DataShield Sheet] Pengiriman Google Sheet MBI ditunda: baris lokal (${curRowsMbi}) belum memuat arsip. Menjalankan rekonsiliasi data...`);
             try { syncAttendanceFromGoogleSheetMaster(false, 'MBI'); } catch(e) {}
@@ -26923,7 +26950,17 @@ function testManualSync() {
 
       whList.forEach(wh => {
         const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
-        const rawAttendances = getWhDB(wh, 'attendance', wh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+        let rawAttendances = getWhDB(wh, 'attendance', wh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
+        try {
+          const todayKey = wfm__today_attendance;
+          const todayRaw = localStorage.getItem(todayKey);
+          if (todayRaw) {
+            const todayList = JSON.parse(todayRaw);
+            if (Array.isArray(todayList) && todayList.length > 0) {
+              rawAttendances = mergeAttendanceArrays(rawAttendances || [], todayList);
+            }
+          }
+        } catch(e) {}
         const attendances = (rawAttendances || []).filter(a => a && !isAttendanceMarkedDeleted(a));
         const sorted = [...attendances].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.checkInTime || '').localeCompare(a.checkInTime || ''));
 
