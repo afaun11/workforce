@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="id">
 <head>
  <meta charset="UTF-8">
@@ -11397,67 +11397,78 @@ service cloud.firestore {
   // =========================================================
   const MAX_SHIFT_MS = 16 * 60 * 60 * 1000;
 
-  function parseSafeTimeMs(timeVal, dateVal) {
-   if (!timeVal || timeVal === '-' || timeVal === '') return null;
-   if (typeof timeVal === 'number') return isNaN(timeVal) ? null : timeVal;
-   if (typeof timeVal === 'string') {
-    const cleanT = timeVal.trim();
-    if (cleanT.includes('T') && (cleanT.endsWith('Z') || cleanT.includes('+') || cleanT.includes('-'))) {
+   function parseSafeTimeMs(timeVal, dateVal) {
+    if (!timeVal || timeVal === '-' || timeVal === '') return null;
+    if (typeof timeVal === 'number') return isNaN(timeVal) ? null : timeVal;
+    if (typeof timeVal === 'string') {
+     const cleanT = timeVal.trim();
+     if (cleanT.includes('T') && (cleanT.endsWith('Z') || cleanT.includes('+') || cleanT.includes('-'))) {
+      const t = new Date(cleanT).getTime();
+      if (!isNaN(t)) return t;
+     }
+     const timeClean = cleanT.replace(/\./g, ':');
+     const safeDate = dateVal || '2026-01-01';
+     if (/^\d{1,2}:\d{1,2}(:\d{1,2})?$/.test(timeClean)) {
+      const parts = timeClean.split(':');
+      const hh = parts[0].padStart(2, '0');
+      const mm = parts[1].padStart(2, '0');
+      const ss = (parts[2] || '00').padStart(2, '0');
+      const isoStr = `${safeDate}T${hh}:${mm}:${ss}+07:00`;
+      const t = new Date(isoStr).getTime();
+      if (!isNaN(t)) return t;
+     }
      const t = new Date(cleanT).getTime();
      if (!isNaN(t)) return t;
     }
-    const timeClean = cleanT.replace(/\./g, ':');
-    if (dateVal && /^\d{1,2}:\d{1,2}(:\d{1,2})?$/.test(timeClean)) {
-     const parts = timeClean.split(':');
-     const hh = parts[0].padStart(2, '0');
-     const mm = parts[1].padStart(2, '0');
-     const ss = (parts[2] || '00').padStart(2, '0');
-     const isoStr = `${dateVal}T${hh}:${mm}:${ss}+07:00`;
-     const t = new Date(isoStr).getTime();
-     if (!isNaN(t)) return t;
+    return null;
+   }
+
+   function getAttendanceDurationInfo(rec) {
+    if (!rec || !rec.checkInTime) {
+     return {
+      durationMinutes: 0,
+      durationStr: '-',
+      effectiveMinutes: 0,
+      effectiveHours: 0,
+      statusOut: 'Belum Masuk',
+      isMissScan: false,
+      isOngoing: false
+     };
     }
-    const t = new Date(cleanT).getTime();
-    if (!isNaN(t)) return t;
-   }
-   return null;
-  }
 
-  function getAttendanceDurationInfo(rec) {
-   if (!rec || !rec.checkInTime) {
-    return {
-     durationMinutes: 0,
-     durationStr: '-',
-     effectiveMinutes: 0,
-     effectiveHours: 0,
-     statusOut: 'Belum Masuk',
-     isMissScan: false,
-     isOngoing: false
-    };
-   }
+    // Sesi yang eksplisit ditandai Miss Scan
+    const isExplicitMissScan = (rec.notes && rec.notes.toLowerCase().includes('miss scan')) ||
+                  rec.checkInStatus === 'miss_scan' ||
+                  rec.status === 'Miss Scan';
 
-   // Sesi yang eksplisit ditandai Miss Scan
-   const isExplicitMissScan = (rec.notes && rec.notes.toLowerCase().includes('miss scan')) ||
-                 rec.checkInStatus === 'miss_scan' ||
-                 rec.status === 'Miss Scan';
+    if (rec.checkOutTime && !isExplicitMissScan) {
+     const inMs = parseSafeTimeMs(rec.checkInTime, rec.date) || new Date(rec.checkInTime).getTime();
+     let outMs = parseSafeTimeMs(rec.checkOutTime, rec.date) || new Date(rec.checkOutTime).getTime();
 
-   if (rec.checkOutTime && !isExplicitMissScan) {
-    const inMs = parseSafeTimeMs(rec.checkInTime, rec.date) || new Date(rec.checkInTime).getTime();
-    const outMs = parseSafeTimeMs(rec.checkOutTime, rec.date) || new Date(rec.checkOutTime).getTime();
-    const diffMs = (inMs && outMs && outMs >= inMs) ? (outMs - inMs) : 0;
-    const grossMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
-    const hrs = Math.floor(grossMins / 60);
-    const mins = grossMins % 60;
-    // Potongan 1 jam istirahat jika durasi kotor >= 5 jam (300 menit)
-    const effMins = grossMins >= 300 ? Math.max(0, grossMins - 60) : grossMins;
-    return {
-     durationMinutes: grossMins,
-     durationStr: `${hrs} Jam ${mins} Mnt`,
-     effectiveMinutes: effMins,
-     effectiveHours: Math.round((effMins / 60) * 10) / 10,
-     statusOut: 'Sudah Pulang',
-     isMissScan: false,
-     isOngoing: false
-    };
+     // Penanganan Shift Malam Lintas Hari (Overnight Shift):
+     // Jika outMs lebih kecil dari inMs (misal masuk 20:05 kemarin dan keluar 06:00 pagi berikutnya),
+     // maka outMs berada pada keesokan harinya (+ 24 jam)
+     if (inMs && outMs && outMs < inMs) {
+      if ((outMs + 24 * 3600 * 1000) - inMs <= 20 * 3600 * 1000) {
+       outMs += 24 * 3600 * 1000;
+      }
+     }
+
+     const diffMs = (inMs && outMs && outMs >= inMs) ? (outMs - inMs) : 0;
+     const grossMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+     const hrs = Math.floor(grossMins / 60);
+     const mins = grossMins % 60;
+     // Potongan 1 jam istirahat jika durasi kotor >= 5 jam (300 menit)
+     const effMins = grossMins >= 300 ? Math.max(0, grossMins - 60) : grossMins;
+     return {
+      durationMinutes: grossMins,
+      durationStr: `${hrs} Jam ${mins} Mnt`,
+      effectiveMinutes: effMins,
+      effectiveHours: Math.round((effMins / 60) * 10) / 10,
+      statusOut: 'Sudah Pulang',
+      isMissScan: false,
+      isOngoing: false
+     };
    } else {
     const inMs = parseSafeTimeMs(rec.checkInTime, rec.date) || new Date(rec.checkInTime).getTime();
     const elapsedMs = (!isNaN(inMs) && inMs > 0) ? Math.max(0, Date.now() - inMs) : 0;
@@ -23377,7 +23388,7 @@ service cloud.firestore {
     const dateMap = {};
     empAtts.forEach(a => {
      if (!dateMap[a.date]) {
-      dateMap[a.date] = { checkInTime: a.checkInTime, checkOutTime: a.checkOutTime };
+      dateMap[a.date] = { checkInTime: a.checkInTime, checkOutTime: a.checkOutTime, date: a.date, notes: a.notes, status: a.status };
      } else {
       if (a.checkInTime && (!dateMap[a.date].checkInTime || new Date(a.checkInTime) < new Date(dateMap[a.date].checkInTime))) {
        dateMap[a.date].checkInTime = a.checkInTime;
@@ -23385,9 +23396,9 @@ service cloud.firestore {
       if (a.checkOutTime && (!dateMap[a.date].checkOutTime || new Date(a.checkOutTime) > new Date(dateMap[a.date].checkOutTime))) {
        dateMap[a.date].checkOutTime = a.checkOutTime;
       }
+      if (a.notes && !dateMap[a.date].notes) dateMap[a.date].notes = a.notes;
      }
     });
-
     const uniqueDates = Object.keys(dateMap);
     const daysPresent = uniqueDates.length;
     if (daysPresent > 0) totalActiveEmployees++;
