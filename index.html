@@ -8535,6 +8535,7 @@
 
   function deduplicateUserList(users, warehouse = 'MBI') {
    if (!Array.isArray(users)) return [];
+    users = enforceNikIntegrity(users, warehouse === 'MBI' ? (typeof SEED_MBI_USERS !== 'undefined' ? SEED_MBI_USERS : []) : (typeof SEED_MAI_USERS !== 'undefined' ? SEED_MAI_USERS : []));
    const seenNames = new Set();
    const seenIds = new Set();
    const seenNiks = new Set();
@@ -9327,22 +9328,22 @@
         const aId = (a.userId || '').toString().trim();
 
         let matchedMaster = null;
-        // Prioritas 1: NIK Karyawan sebagai Primary Key Mutlak (Barcode ID Card)
-        if (aNik && nikToUserMap.has(aNik)) {
-         matchedMaster = nikToUserMap.get(aNik);
-        }
-        // Prioritas 2: Cocokkan dari ID Sistem
-        else if (aId && idToUserMap.has(aId)) {
+        // Prioritas 1: ID Sistem karyawan (permanen, tidak pernah berubah)
+        if (aId && idToUserMap.has(aId)) {
          matchedMaster = idToUserMap.get(aId);
         }
-        // Prioritas 3: Fallback hanya jika NIK dan ID kosong, cocokkan dari Nama
+        // Prioritas 2: NIK (Barcode ID Card)
+        else if (aNik && nikToUserMap.has(aNik)) {
+         matchedMaster = nikToUserMap.get(aNik);
+        }
+        // Prioritas 3: Fallback nama hanya jika ID dan NIK tidak dikenal
         else if (aName && !isLikelyIdNotName(aName) && nameToUserMap.has(cleanStr(aName))) {
          matchedMaster = nameToUserMap.get(cleanStr(aName));
         }
 
         if (matchedMaster) {
          // Jika matched dari NIK, NIK asli SELALU dipertahankan mutlak dan tidak boleh bergeser
-         const targetNik = (aNik && nikToUserMap.has(aNik)) ? aNik : (matchedMaster.nik || a.userNik);
+         const targetNik = matchedMaster.nik || a.userNik;
          // Proteksi akun sistem non-absen bawaan (Hanya Admin dan Scanner yang tidak tap presensi)
          const nonAttendingNiks = new Set(['ADM001', 'ADM-MAI', 'ABSEN-MBI', 'ABSEN-MAI']);
          if (nonAttendingNiks.has(targetNik)) {
@@ -9687,27 +9688,20 @@
       }
      }
 
-     // Cari user master: Utamakan NAMA manusia sah agar tidak tergeser NIK
-     let matchedUser = null;
-     if (a.userName && !isLikelyIdNotName(a.userName)) {
-      matchedUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
-     }
-     if (!matchedUser && a.userId) {
-      matchedUser = users.find(u => u.id === a.userId);
-     }
-     if (!matchedUser && a.userNik) {
-      matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
-     }
-
-     if (matchedUser) {
-      const targetNik = matchedUser.nik || a.userNik;
-      const nonAttendingNiks = new Set(['MBI26-122', 'MBI26-123', 'MBI26-125', 'MBI26-009', 'MBI26-040', 'MBI26-073', 'MBI26-077', 'MBI26-112']);
-      if (nonAttendingNiks.has(targetNik)) {
-       a.__isDeletedGhost = true;
-       hasChanges = true;
-       return;
+     // Cari user master: ID sistem (permanen) -> NIK -> nama (fallback). Riwayat TIDAK PERNAH dihapus karena status karyawan.
+      let matchedUser = null;
+      if (a.userId) {
+       matchedUser = users.find(u => u.id === a.userId);
       }
-      const userOS = matchedUser.outsource || 'Internal';
+      if (!matchedUser && a.userNik) {
+       matchedUser = users.find(u => u.nik && u.nik.toUpperCase() === a.userNik.toUpperCase());
+      }
+      if (!matchedUser && a.userName && !isLikelyIdNotName(a.userName)) {
+       matchedUser = users.find(u => cleanStr(u.name) === cleanStr(a.userName));
+      }
+
+      if (matchedUser) {
+       const userOS = matchedUser.outsource || 'Internal';
       if (a.userName !== matchedUser.name || a.userNik !== matchedUser.nik || a.userId !== matchedUser.id || a.dept !== matchedUser.dept || a.outsource !== userOS) {
        a.userName = matchedUser.name;
        a.userNik = matchedUser.nik;
@@ -9843,18 +9837,166 @@
    }, 50);
   }
 
+  function enforceNikIntegrity(list, seedList) {
+   // NIK milik sebuah karyawan (berdasarkan ID sistem permanen) TIDAK BOLEH berubah / tertukar.
+   const seedById = new Map();
+   (seedList || []).forEach(s => { if (s && s.id && s.nik) seedById.set(String(s.id).trim(), s); });
+   const out = [];
+   (list || []).forEach(u => {
+    if (!u) return;
+    const s = u.id ? seedById.get(String(u.id).trim()) : null;
+    if (s && String(u.nik || '').toUpperCase().trim() !== String(s.nik).toUpperCase().trim()) {
+     u = { ...u, nik: s.nik, barcodeValue: s.nik };
+    }
+    out.push(u);
+   });
+   return out;
+  }
+
+  function getInactiveRegistry(warehouse) {
+   try {
+    const raw = localStorage.getItem(`wfm_${String(warehouse || 'MBI').toLowerCase()}_inactive_registry`);
+    if (!raw) return { loaded: false, set: new Set() };
+    const o = JSON.parse(raw);
+    return { loaded: true, set: new Set((o && Array.isArray(o.niks) ? o.niks : []).map(n => String(n).toUpperCase().trim())) };
+   } catch (e) {
+    return { loaded: false, set: new Set() };
+   }
+  }
+
+  function isNikInactiveRegistered(nik) {
+   if (!nik) return false;
+   const n = String(nik).toUpperCase().trim();
+   return getInactiveRegistry('MBI').set.has(n) || getInactiveRegistry('MAI').set.has(n);
+  }
+
+  function applyInactiveRegistryToList(list, warehouse) {
+   // Daftar nonaktif di Cloud adalah SATU-SATUNYA sumber kebenaran status aktif/nonaktif.
+   const reg = getInactiveRegistry(warehouse);
+   if (!reg.loaded || !Array.isArray(list)) return list;
+   list.forEach(u => {
+    if (!u || !u.nik || (typeof isManagementSystemAccount === 'function' && isManagementSystemAccount(u))) return;
+    const inactive = reg.set.has(String(u.nik).toUpperCase().trim());
+    u.status = inactive ? 'inactive' : 'active';
+    u.isActive = !inactive;
+   });
+   return list;
+  }
+
+  async function publishInactiveRegistryToCloud(warehouse, usersList) {
+   const wh = String(warehouse || 'MBI').toUpperCase();
+   const users = Array.isArray(usersList) ? usersList : getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+   const niks = users
+    .filter(u => u && u.nik && !(typeof isManagementSystemAccount === 'function' && isManagementSystemAccount(u)) && (u.status === 'inactive' || u.isActive === false))
+    .map(u => String(u.nik).toUpperCase().trim());
+   const updatedAt = new Date().toISOString();
+   try { localStorage.setItem(`wfm_${wh.toLowerCase()}_inactive_registry`, JSON.stringify({ niks, updatedAt })); } catch (e) {}
+   try { await saveDocToFirestore(wh, '_metadata', 'inactive_registry', { warehouse: wh, niks, updatedAt }); } catch (e) { console.warn('publishInactiveRegistry notice:', e); }
+  }
+
+  async function pullInactiveRegistryFromCloud(warehouse) {
+   const wh = String(warehouse || 'MBI').toUpperCase();
+   try {
+    const doc = await getDocFromFirestore(wh, '_metadata', 'inactive_registry');
+    if (doc && Array.isArray(doc.niks)) {
+     localStorage.setItem(`wfm_${wh.toLowerCase()}_inactive_registry`, JSON.stringify({ niks: doc.niks, updatedAt: doc.updatedAt || '' }));
+     clearWhDBCache();
+     const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+     try {
+      localStorage.setItem(`wfm_${wh.toLowerCase()}_users`, JSON.stringify(users));
+      localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(users));
+     } catch (e) {}
+     clearWhDBCache();
+     return true;
+    }
+   } catch (e) { console.warn('pullInactiveRegistry notice:', e); }
+   return false;
+  }
+
+  function buildEmployeeIdentityIndex(users) {
+   const byId = new Map(), byNik = new Map(), byName = new Map();
+   (users || []).forEach(u => {
+    if (!u) return;
+    if (u.id) byId.set(String(u.id).trim(), u);
+    if (u.nik) byNik.set(String(u.nik).trim().toUpperCase(), u);
+    if (u.name && !isLikelyIdNotName(u.name)) {
+     const k = cleanStr(u.name);
+     if (!byName.has(k)) byName.set(k, u);
+    }
+   });
+   return { byId, byNik, byName };
+  }
+
+  function resolveRecordOwner(rec, idx) {
+   // Satu identitas tunggal: ID sistem (permanen) -> NIK -> nama (fallback terakhir). TIDAK PERNAH menandai 2 karyawan sekaligus.
+   if (!rec || !idx) return null;
+   const rid = rec.userId ? String(rec.userId).trim() : '';
+   if (rid && idx.byId.has(rid)) return idx.byId.get(rid);
+   const rnik = rec.userNik ? String(rec.userNik).trim().toUpperCase() : '';
+   if (rnik && idx.byNik.has(rnik)) return idx.byNik.get(rnik);
+   const rname = rec.userName ? cleanStr(rec.userName) : '';
+   if (rname && !isLikelyIdNotName(rec.userName) && idx.byName.has(rname)) return idx.byName.get(rname);
+   return null;
+  }
+
+  function matrixKeyForUser(u) {
+   if (!u) return '';
+   if (u.id && String(u.id).startsWith('ORPH:')) return String(u.id);
+   return (u.nik ? String(u.nik).toUpperCase().trim() : '') || cleanStr(u.name) || String(u.id || '');
+  }
+
+  function matrixOrphanKey(rec) {
+   const n = rec && rec.userNik ? String(rec.userNik).toUpperCase().trim() : '';
+   return 'ORPH:' + (n || cleanStr((rec && rec.userName) || ''));
+  }
+
+  function buildMatrixAttendanceSet(attendances, idx) {
+   const set = new Set();
+   (attendances || []).forEach(a => {
+    if (!a || isAttendanceMarkedDeleted(a)) return;
+    let opDate = (a.date && /^\d{4}-\d{2}-\d{2}$/.test(a.date)) ? a.date : '';
+    if (!opDate && a.checkInTime) opDate = getLocalDateString(new Date(a.checkInTime));
+    if (!opDate) return;
+    const owner = resolveRecordOwner(a, idx);
+    const key = owner ? matrixKeyForUser(owner) : matrixOrphanKey(a);
+    if (key) set.add(`${key}__${opDate}`);
+   });
+   return set;
+  }
+
+  function buildMatrixLeaveMap(leaves, idx) {
+   const map = new Map();
+   (leaves || []).forEach(l => {
+    if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
+    const owner = resolveRecordOwner(l, idx);
+    const key = owner ? matrixKeyForUser(owner) : matrixOrphanKey(l);
+    if (!key) return;
+    getDatesInRange(l.startDate, l.endDate).forEach(ld => {
+     map.set(`${key}__${getLocalDateString(ld)}`, l.type);
+    });
+   });
+   return map;
+  }
+
   function ensureMasterBaseline(userList, warehouse) {
    const wh = (warehouse || 'MBI').toUpperCase();
    const seedList = wh === 'MBI' ? (typeof SEED_MBI_USERS !== 'undefined' ? SEED_MBI_USERS : []) : (typeof SEED_MAI_USERS !== 'undefined' ? SEED_MAI_USERS : []);
+   const reg = getInactiveRegistry(wh);
+   const list = enforceNikIntegrity(userList || [], seedList);
    const userMap = new Map();
-   (userList || []).forEach(u => {
-    if (u && u.nik) userMap.set(String(u.nik).toUpperCase().trim(), u);
+   const noNikUsers = [];
+   list.forEach(u => {
+    if (!u) return;
+    if (u.nik) userMap.set(String(u.nik).toUpperCase().trim(), u);
+    else noNikUsers.push(u);
    });
    seedList.forEach(s => {
     if (!s || !s.nik) return;
     const sNik = String(s.nik).toUpperCase().trim();
     if (!userMap.has(sNik)) {
-     userMap.set(sNik, { ...s });
+     const copy = { ...s };
+     if (reg.loaded && reg.set.has(sNik)) { copy.status = 'inactive'; copy.isActive = false; }
+     userMap.set(sNik, copy);
     } else {
      const ex = userMap.get(sNik);
      if (s.outsource && s.outsource !== 'Internal' && (!ex.outsource || ex.outsource === 'Internal')) {
@@ -9867,7 +10009,9 @@
      if (s.dept && (!ex.dept || ex.dept === 'Staff')) ex.dept = s.dept;
     }
    });
-   return deduplicateUserList(Array.from(userMap.values()), wh);
+   const out = deduplicateUserList(Array.from(userMap.values()).concat(noNikUsers), wh);
+   applyInactiveRegistryToList(out, wh);
+   return out;
   }
 
   function getWhDB(warehouse, key, defaultVal) {
@@ -9902,6 +10046,7 @@
       if (cleaned.length !== parsed.length) {
        localStorage.setItem(storageKey, JSON.stringify(cleaned));
       }
+      applyInactiveRegistryToList(cleaned, warehouse);
       result = cleaned;
      } else if ((key === 'leaves' || key === 'overtime' || key === 'attendance') && Array.isArray(parsed)) {
       result = parsed.filter(item => item && typeof item === 'object');
@@ -11685,11 +11830,7 @@ service cloud.firestore {
    });
 
    const finalCleaned = deduplicateUserList(resultList, wh);
-   const targetMin = wh === 'MBI' ? 130 : 54;
-   if (finalCleaned.length < targetMin) {
-    return ensureMasterBaseline(finalCleaned, wh);
-   }
-   return finalCleaned;
+   return ensureMasterBaseline(finalCleaned, wh);
   }
 
   let lastAppliedCloudUpdatedAt = null;
@@ -13090,7 +13231,10 @@ service cloud.firestore {
        loaded = true;
       }
 
-      // 2. Tarik juga presensi hari ini dari Firestore (_metadata/today_attendance) - 1 Read
+      // 1b. Tarik daftar karyawan NONAKTIF resmi dari Cloud (sumber kebenaran tunggal status aktif/nonaktif)
+       try { await pullInactiveRegistryFromCloud(wh); } catch(eReg) {}
+
+       // 2. Tarik juga presensi hari ini dari Firestore (_metadata/today_attendance) - 1 Read
       if (typeof pullAttendanceFromFirestore === 'function') {
        const attPulled = await pullAttendanceFromFirestore(wh);
        if (attPulled) {
@@ -15521,7 +15665,7 @@ service cloud.firestore {
     }
 
     // Cek status aktif/nonaktif akun karyawan (kecuali akun manajemen sistem)
-    if (!isManagementSystemAccount(user) && user.status === 'inactive') {
+    if (!isManagementSystemAccount(user) && (user.status === 'inactive' || isNikInactiveRegistered(user.nik))) {
      if (alertEl) {
       alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-amber-50 text-amber-900 border border-amber-300 font-semibold text-center';
       alertEl.innerHTML = `<span>Akun <b>"${escapeHTML(user.name)}"</b> (NIK: ${escapeHTML(user.nik || user.id)}) berstatus <span class="text-rose-600 font-black">NONAKTIF</span>.</span><br><span class="text-[11px] font-normal text-slate-600">Silakan hubungi Tim HRD / Admin Gudang untuk mengaktifkan kembali akun Anda.</span>`;
@@ -17789,26 +17933,38 @@ service cloud.firestore {
     extractedNik = nikMatch[0].toUpperCase().replace(/\s+/g, '');
    }
 
-   function isUserMatch(u) {
-    if (!u) return false;
-    const uNik = (u.nik || '').toUpperCase().trim();
-    const uBarcode = (u.barcodeValue || '').toUpperCase().trim();
-    const uId = (u.id || '').trim();
-    const uCleanAlphaNum = uNik.replace(/[^A-Z0-9]/g, '');
-    const uCleanBarcodeAlphaNum = uBarcode.replace(/[^A-Z0-9]/g, '');
+   function isExactCodeMatch(u) {
+     if (!u) return false;
+     const uNik = (u.nik || '').toUpperCase().trim();
+     const uBarcode = (u.barcodeValue || '').toUpperCase().trim();
+     const uId = (u.id || '').trim();
+     const uCleanAlphaNum = uNik.replace(/[^A-Z0-9]/g, '');
+     const uCleanBarcodeAlphaNum = uBarcode.replace(/[^A-Z0-9]/g, '');
+     if (uNik && (uNik === cleanUpper || (cleanAlphaNum && uCleanAlphaNum === cleanAlphaNum))) return true;
+     if (uBarcode && (uBarcode === cleanUpper || (cleanAlphaNum && uCleanBarcodeAlphaNum === cleanAlphaNum))) return true;
+     if (extractedNik && (uNik === extractedNik || uCleanAlphaNum === extractedNik.replace(/[^A-Z0-9]/g, ''))) return true;
+     if (uId && (uId === scannedNik || uId === rawCode)) return true;
+     return false;
+    }
+    function isNameOnlyMatch(u) {
+     if (!u || !u.name) return false;
+     const cn = cleanStr(u.name);
+     return !!cn && (cn === cleanStr(scannedNik) || (scannedName && cn === cleanStr(scannedName)) || cn === cleanStr(rawCode));
+    }
 
-    if (uNik && (uNik === cleanUpper || uCleanAlphaNum === cleanAlphaNum)) return true;
-    if (uBarcode && (uBarcode === cleanUpper || uCleanBarcodeAlphaNum === cleanAlphaNum)) return true;
-    if (extractedNik && (uNik === extractedNik || uCleanAlphaNum === extractedNik.replace(/[^A-Z0-9]/g, ''))) return true;
-    if (uId && (uId === scannedNik || uId === rawCode)) return true;
-    if (u.name && (cleanStr(u.name) === cleanStr(scannedNik) || cleanStr(u.name) === cleanStr(scannedName) || cleanStr(u.name) === cleanStr(rawCode))) return true;
-    if (cleanAlphaNum.length >= 4 && uCleanAlphaNum && uCleanAlphaNum.endsWith(cleanAlphaNum)) return true;
-    return false;
-   }
-
-   let matchedUser = primaryUsers.find(isUserMatch);
-   if (!matchedUser) {
-    matchedUser = secondaryUsers.find(isUserMatch);
+    // Tahap 1: kode/NIK/barcode PERSIS (prioritas mutlak, gudang aktif dahulu)
+    let matchedUser = primaryUsers.find(isExactCodeMatch) || secondaryUsers.find(isExactCodeMatch) || null;
+    // Tahap 2: nama (hanya jika kode bukan NIK yang dikenal)
+    if (!matchedUser) {
+     matchedUser = primaryUsers.find(isNameOnlyMatch) || secondaryUsers.find(isNameOnlyMatch) || null;
+    }
+    // Tahap 3: sufiks nomor parsial -> hanya diterima jika HANYA ADA SATU kandidat (mencegah NIK tertukar)
+    if (!matchedUser && cleanAlphaNum.length >= 6) {
+     const suffixCandidates = allUsers.filter(u => u && u.nik && u.nik.toUpperCase().replace(/[^A-Z0-9]/g, '').endsWith(cleanAlphaNum));
+     if (suffixCandidates.length === 1) matchedUser = suffixCandidates[0];
+    }
+    if (!matchedUser) {
+     matchedUser = null;
    }
 
    if (!matchedUser) {
@@ -17829,7 +17985,7 @@ service cloud.firestore {
    }
 
    // Validasi Status Aktif Karyawan
-   if (!isManagementSystemAccount(matchedUser) && (matchedUser.status === 'inactive' || matchedUser.isActive === false)) {
+   if (!isManagementSystemAccount(matchedUser) && (matchedUser.status === 'inactive' || matchedUser.isActive === false || isNikInactiveRegistered(matchedUser.nik))) {
     const gunCard = document.getElementById('last-gun-success-card');
     if (gunCard) gunCard.classList.add('hidden');
     showProfessionalAttendanceToast({
@@ -20476,7 +20632,8 @@ service cloud.firestore {
    user.isActive = isActivating;
    user.updatedAt = new Date().toISOString();
 
-   setWhDB(actualWh, 'users', users);
+   const registryPublishPromise = publishInactiveRegistryToCloud(actualWh, users);
+    setWhDB(actualWh, 'users', users);
    localStorage.setItem(`wfm_${actualWh.toLowerCase()}_users_backup`, JSON.stringify(users));
    const nowIso = new Date().toISOString();
    localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
@@ -20525,7 +20682,8 @@ service cloud.firestore {
     }
    });
 
-   setWhDB(targetWh, 'users', users);
+   const bulkRegistryPromise = publishInactiveRegistryToCloud(targetWh, users);
+    setWhDB(targetWh, 'users', users);
    localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(users));
    const nowIso = new Date().toISOString();
    localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
@@ -24827,6 +24985,7 @@ service cloud.firestore {
    const name = (u.name || '').trim();
    if (!name) return false;
    if (typeof isUserMarkedDeleted === 'function' && isUserMarkedDeleted(u)) return false;
+    if (u.status === 'inactive' || u.isActive === false || (typeof isNikInactiveRegistered === 'function' && isNikInactiveRegistered(u.nik))) return false;
    const role = (u.role || '').toLowerCase().trim();
    const nik = (u.nik || '').toUpperCase().trim();
    const dept = (u.dept || '').toLowerCase().trim();
@@ -24939,53 +25098,45 @@ service cloud.firestore {
     if (nameKey) seenNames.add(nameKey);
    });
 
-   // 2. Hubungkan & periksa data kehadiran untuk melengkapi OS karyawan atau menambahkan staf yang tercatat di absensi
-   attendances.forEach(a => {
-    if (!a || isAttendanceMarkedDeleted(a)) return;
-    const aNik = a.userNik ? a.userNik.toUpperCase().trim() : '';
-    const aName = a.userName ? a.userName.trim() : '';
-    const aCleanName = cleanStr(aName);
-    const aOS = a.outsource ? a.outsource.trim() : '';
+   // 2. Hubungkan data kehadiran ke karyawan MASTER lewat identitas tunggal (ID -> NIK -> Nama).
+    //    Karyawan nonaktif TIDAK dimunculkan kembali hanya karena punya riwayat absen.
+    const identityIdx = buildEmployeeIdentityIndex(users);
+    attendances.forEach(a => {
+     if (!a || isAttendanceMarkedDeleted(a)) return;
+     const aNik = a.userNik ? a.userNik.toUpperCase().trim() : '';
+     const aName = a.userName ? a.userName.trim() : '';
+     const aCleanName = cleanStr(aName);
+     const aOS = a.outsource ? a.outsource.trim() : '';
 
-    if (!aName && !aNik) return;
-    if (aNik.startsWith('ADM') || aNik.startsWith('ABSEN') || aNik === 'MGR001') return;
-    if (aCleanName === 'admingudangmbi' || aCleanName === 'admingudangmai' || aCleanName === 'scannerpresensigudang' || aCleanName === 'eko') return;
+     if (!aName && !aNik) return;
+     if (aNik.startsWith('ADM') || aNik.startsWith('ABSEN') || aNik === 'MGR001') return;
+     if (aCleanName === 'admingudangmbi' || aCleanName === 'admingudangmai' || aCleanName === 'scannerpresensigudang' || aCleanName === 'eko') return;
 
-    let matchedEmp = null;
-    if (aNik && empMap.has(aNik)) matchedEmp = empMap.get(aNik);
-    else if (aCleanName && empMap.has(aCleanName)) matchedEmp = empMap.get(aCleanName);
-    else {
-     for (const [k, emp] of empMap.entries()) {
-      if ((aNik && emp.nik && emp.nik.toUpperCase() === aNik) ||
-        (aCleanName && cleanStr(emp.name) === aCleanName)) {
-       matchedEmp = emp;
-       break;
+     const owner = resolveRecordOwner(a, identityIdx);
+     if (owner) {
+      const matchedEmp = empMap.get(matrixKeyForUser(owner));
+      if (matchedEmp && (!matchedEmp.outsource || matchedEmp.outsource === '-' || matchedEmp.outsource === 'Internal') && aOS && aOS !== '-' && aOS !== 'Internal') {
+       matchedEmp.outsource = normalizeOSName(aOS);
       }
+      return;
      }
-    }
 
-    if (matchedEmp) {
-     if ((!matchedEmp.outsource || matchedEmp.outsource === '-' || matchedEmp.outsource === 'Internal') && aOS && aOS !== '-' && aOS !== 'Internal') {
-      matchedEmp.outsource = normalizeOSName(aOS);
+     // Rekaman yatim (tidak ada di master sama sekali)
+     const orphanKey = matrixOrphanKey(a);
+     if (!empMap.has(orphanKey)) {
+      empMap.set(orphanKey, {
+       id: orphanKey,
+       nik: a.userNik || '',
+       name: a.userName || `Karyawan (${a.userNik || '-'})`,
+       dept: a.dept || 'Warehouse Staff',
+       role: 'staff',
+       outsource: normalizeOSName(aOS || 'Internal'),
+       warehouse
+      });
      }
-    } else {
-     const newKey = aNik || aCleanName;
-     const newEmp = {
-      id: a.userId || `att-user-${Date.now()}-${Math.random()}`,
-      nik: a.userNik || '',
-      name: a.userName || `Karyawan (${a.userNik || '-'})`,
-      dept: a.dept || 'Warehouse Staff',
-      role: 'staff',
-      outsource: normalizeOSName(aOS || 'Internal'),
-      warehouse
-     };
-     empMap.set(newKey, newEmp);
-     if (aNik) seenNiks.add(aNik);
-     if (aCleanName) seenNames.add(aCleanName);
-    }
-   });
+    });
 
-   const matrixList = Array.from(empMap.values());
+    const matrixList = Array.from(empMap.values());
    matrixList.sort((a, b) => {
     const nikA = (a.nik || a.id || '').toUpperCase().trim();
     const nikB = (b.nik || b.id || '').toUpperCase().trim();
@@ -25140,36 +25291,10 @@ service cloud.firestore {
     headerHTML += `</tr>`;
     thead.innerHTML = headerHTML;
 
-    // Optimasi O(1): Indexing kehadiran ke dalam Set (Mendukung tanggal operasional & tanggal checkIn lokal)
-    const attSet = new Set();
-    attendances.forEach(a => {
-     if (!a) return;
-     const opDate = a.date;
-     const localCheckInDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
-     const datesToRegister = [opDate];
-     if (localCheckInDate && localCheckInDate !== opDate) datesToRegister.push(localCheckInDate);
-
-     datesToRegister.forEach(dVal => {
-      if (!dVal) return;
-      if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${dVal}`);
-      if (a.userName) attSet.add(`${cleanStr(a.userName)}__${dVal}`);
-      if (a.userId) attSet.add(`${a.userId}__${dVal}`);
-     });
-    });
-
-    // Optimasi O(1): Indexing cuti/sakit yang sudah disetujui ke dalam Map
-    const leaveMap = new Map();
-    leaves.forEach(l => {
-     if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
-     const lDates = getDatesInRange(l.startDate, l.endDate);
-     lDates.forEach(ld => {
-      const ldStr = getLocalDateString(ld);
-      const type = l.type;
-      if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
-      if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
-      if (l.userId) leaveMap.set(`${l.userId}__${ldStr}`, type);
-     });
-    });
+    // Indeks kehadiran & cuti berbasis IDENTITAS TUNGGAL karyawan (1 rekaman = 1 karyawan = 1 tanggal)
+    const matrixIdentityIdx = buildEmployeeIdentityIndex(getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS));
+    const attSet = buildMatrixAttendanceSet(attendances, matrixIdentityIdx);
+    const leaveMap = buildMatrixLeaveMap(leaves, matrixIdentityIdx);
 
     // Filter karyawan sesuai OS yang dipilih (misal ADP, Staffinc, Internal, dll.)
     let regularUsers = allMatrixUsers;
@@ -25216,17 +25341,13 @@ service cloud.firestore {
       const uId = user.id || '';
 
       dateKeys.forEach(dStr => {
-       const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
-              (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
-              (uId && attSet.has(`${uId}__${dStr}`));
+       const isAtt = attSet.has(`${matrixKeyForUser(user)}__${dStr}`);
 
        if (isAtt) {
         totalHariKerja += 1;
         rowHTML += `<td class="p-1 border-r border-b border-slate-200 font-black text-slate-900 bg-slate-50">1</td>`;
        } else {
-        const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
-                 (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
-                 (uId && leaveMap.get(`${uId}__${dStr}`));
+        const leaveType = leaveMap.get(`${matrixKeyForUser(user)}__${dStr}`);
         if (leaveType === 'sakit') {
          rowHTML += `<td class="p-1 border-r border-b border-slate-200 font-black text-slate-800 bg-slate-100">S</td>`;
         } else if (leaveType === 'izin') {
@@ -25284,36 +25405,11 @@ service cloud.firestore {
    const attendances = getWhDB(activeWarehouse, 'attendance', activeWarehouse === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE);
    const leaves = getWhDB(activeWarehouse, 'leaves', activeWarehouse === 'MBI' ? SEED_MBI_LEAVES : []);
 
-   const attSet = new Set();
-   attendances.forEach(a => {
-    if (!a) return;
-    const opDate = a.date;
-    const localCheckInDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
-    const datesToRegister = [opDate];
-    if (localCheckInDate && localCheckInDate !== opDate) datesToRegister.push(localCheckInDate);
+   const copyIdentityIdx = buildEmployeeIdentityIndex(getWhDB(activeWarehouse, 'users', activeWarehouse === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS));
+    const attSet = buildMatrixAttendanceSet(attendances, copyIdentityIdx);
+    const leaveMap = buildMatrixLeaveMap(leaves, copyIdentityIdx);
 
-    datesToRegister.forEach(dVal => {
-     if (!dVal) return;
-     if (a.userNik) attSet.add(`${a.userNik.toUpperCase()}__${dVal}`);
-     if (a.userName) attSet.add(`${cleanStr(a.userName)}__${dVal}`);
-     if (a.userId) attSet.add(`${a.userId}__${dVal}`);
-    });
-   });
-
-   const leaveMap = new Map();
-   leaves.forEach(l => {
-    if (!l || l.status !== 'approved' || !l.startDate || !l.endDate) return;
-    const lDates = getDatesInRange(l.startDate, l.endDate);
-    lDates.forEach(ld => {
-     const ldStr = getLocalDateString(ld);
-     const type = l.type;
-     if (l.userNik) leaveMap.set(`${l.userNik.toUpperCase()}__${ldStr}`, type);
-     if (l.userName) leaveMap.set(`${cleanStr(l.userName)}__${ldStr}`, type);
-     if (l.userId) leaveMap.set(`${l.userId}__${ldStr}`, type);
-    });
-   });
-
-   // 1. Format TSV (Tab-Separated Values) - Nomor, Nama Karyawan, NIK, dan Outsourcing
+    // 1. Format TSV (Tab-Separated Values) - Nomor, Nama Karyawan, NIK, dan Outsourcing
    const headerRow = ['No', 'Nama Karyawan', 'NIK', 'Outsourcing'];
    dateList.forEach(d => {
     const dayNum = d.getDate();
@@ -25333,17 +25429,13 @@ service cloud.firestore {
     const uId = user.id || '';
 
     dateKeys.forEach(dStr => {
-     const isAtt = (uNik && attSet.has(`${uNik}__${dStr}`)) ||
-            (uCleanName && attSet.has(`${uCleanName}__${dStr}`)) ||
-            (uId && attSet.has(`${uId}__${dStr}`));
+     const isAtt = attSet.has(`${matrixKeyForUser(user)}__${dStr}`);
 
      if (isAtt) {
       totalHariKerja += 1;
       row.push('1');
      } else {
-      const leaveType = (uNik && leaveMap.get(`${uNik}__${dStr}`)) ||
-               (uCleanName && leaveMap.get(`${uCleanName}__${dStr}`)) ||
-               (uId && leaveMap.get(`${uId}__${dStr}`));
+      const leaveType = leaveMap.get(`${matrixKeyForUser(user)}__${dStr}`);
       if (leaveType === 'sakit') {
        row.push('S');
       } else if (leaveType === 'izin') {
