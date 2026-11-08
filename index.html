@@ -1036,9 +1036,8 @@
    if (savedSession) {
     const userObj = JSON.parse(savedSession);
     if (userObj && (userObj.nik || userObj.id)) {
-     const isScanner = (userObj.role === 'scanner');
      const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
-     const isExpired = !isScanner && lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
+     const isExpired = lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
      if (!isExpired) {
       window.loginUserSession(userObj);
      }
@@ -11439,7 +11438,9 @@ service cloud.firestore {
     // Sesi yang eksplisit ditandai Miss Scan
     const isExplicitMissScan = (rec.notes && rec.notes.toLowerCase().includes('miss scan')) ||
                   rec.checkInStatus === 'miss_scan' ||
-                  rec.status === 'Miss Scan';
+                  rec.checkOutStatus === 'miss_scan' ||
+                  rec.status === 'Miss Scan' ||
+                  (typeof rec.checkOutTime === 'string' && (rec.checkOutTime.toLowerCase().includes('miss') || rec.checkOutTime === '-' || rec.checkOutTime === ''));
 
     if (rec.checkOutTime && !isExplicitMissScan) {
      const inMs = parseSafeTimeMs(rec.checkInTime, rec.date) || new Date(rec.checkInTime).getTime();
@@ -16305,8 +16306,8 @@ service cloud.firestore {
 
   function startInactivityTracker() {
    stopInactivityTracker();
-   if (!currentUser || isUserScanner(currentUser)) {
-    return; // Pos Scanner Presensi Bebas Auto-Logout (Standby 24 Jam Penuh)
+   if (!currentUser) {
+    return;
    }
    recordUserInteraction();
 
@@ -16317,7 +16318,7 @@ service cloud.firestore {
    window.addEventListener('scroll', recordUserInteraction, { passive: true });
 
    inactivityTimer = setInterval(() => {
-    if (!currentUser || isUserScanner(currentUser)) {
+    if (!currentUser) {
      stopInactivityTracker();
      return;
     }
@@ -17949,6 +17950,7 @@ service cloud.firestore {
   }
 
   async function processAttendanceScan(nikCode) {
+   if (typeof recordUserInteraction === 'function') recordUserInteraction();
    const now = new Date();
    const todayStr = getLocalDateString(now);
    const currentWh = (activeWarehouse || 'MBI').toUpperCase();
@@ -24991,15 +24993,14 @@ service cloud.firestore {
     const recWh = r.warehouse || (emp ? emp.warehouse : activeWarehouse) || 'MBI';
 
     const durInfo = getAttendanceDurationInfo(r);
-    const isAutoClosedMissScan = r.notes && (r.notes.includes('Miss Scan') || r.notes.includes('Selesai Otomatis'));
     const checkInDate = new Date(r.checkInTime);
     const minute = checkInDate.getMinutes();
     const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
     const statusMasuk = isLate ? 'Late In' : 'Normal';
-    const statusPulang = isAutoClosedMissScan ? 'Miss Scan (Tutup Otomatis)' : durInfo.statusOut;
-    const jamPulangStr = r.checkOutTime 
-     ? formatDisplayTimeWIB(r.checkOutTime) 
-     : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan');
+    const statusPulang = durInfo.isMissScan ? 'Miss Scan' : durInfo.statusOut;
+    const jamPulangStr = durInfo.isMissScan 
+     ? 'Miss Scan' 
+     : (r.checkOutTime ? formatDisplayTimeWIB(r.checkOutTime) : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan'));
 
     return {
      "No": i + 1,
@@ -27183,12 +27184,14 @@ function testManualSync() {
      const finalDept = emp ? emp.dept : (r.dept || '');
 
      const durInfo = getAttendanceDurationInfo(r);
-     const durationStr = durInfo.durationStr;
      const checkInDate = new Date(r.checkInTime);
      const minute = checkInDate.getMinutes();
      const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
      const statusMasuk = isLate ? 'Late In' : 'Normal';
-     const statusPulang = durInfo.statusOut;
+     const statusPulang = durInfo.isMissScan ? 'Miss Scan' : durInfo.statusOut;
+     const finalJamPulang = durInfo.isMissScan ? 'Miss Scan' : (r.checkOutTime ? formatDisplayTimeWIB(r.checkOutTime) : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan'));
+     const finalDuration = durInfo.isMissScan ? '7 Jam (Miss Scan)' : durInfo.durationStr;
+     const finalKeterangan = durInfo.isMissScan ? `${statusMasuk} - Miss Scan` : `${statusMasuk} - ${statusPulang}${r.notes && r.notes !== '-' ? ` (${r.notes})` : ''}`;
 
      rows.push([
       rowIdx++,
@@ -27197,11 +27200,11 @@ function testManualSync() {
       finalName,
       (finalDept || 'STAFF').toUpperCase(),
       r.checkInTime ? formatDisplayTimeWIB(r.checkInTime) : '-',
-      r.checkOutTime ? formatDisplayTimeWIB(r.checkOutTime) : (durInfo.isMissScan ? 'Miss Scan' : 'Sedang Shift'),
-      durationStr,
+      finalJamPulang,
+      finalDuration,
       statusMasuk,
       statusPulang,
-      `${statusMasuk} - ${statusPulang}${r.notes && r.notes !== '-' ? ` (${r.notes})` : ''}`,
+      finalKeterangan,
       wh
      ]);
     });
@@ -28166,9 +28169,8 @@ function testManualSync() {
     try {
      const userObj = JSON.parse(savedSession);
      if (userObj && (userObj.nik || userObj.id)) {
-      const isScanner = isUserScanner(userObj);
       const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
-      const isExpired = !isScanner && lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
+      const isExpired = lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
       if (isExpired) {
        localStorage.removeItem('wfm_active_session');
        localStorage.removeItem('wfm_last_user_interaction');
