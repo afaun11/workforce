@@ -1167,7 +1167,7 @@
  <!-- ========================================================= -->
  <div id="app-container" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
   <script>
-   // Fast First-Paint Screen Switcher (Zero Blank Screen pada refresh & Anti-Zombie Frozen UI)
+   // Self-Healing Session Sentinel: Pastikan container aplikasi tidak pernah muncul membeku/kosong
    try {
     const rawSession = localStorage.getItem('wfm_active_session');
     const authEl = document.getElementById('auth-container');
@@ -1180,15 +1180,6 @@
       localStorage.removeItem('wfm_last_user_interaction');
       if (authEl) { authEl.classList.remove('hidden'); authEl.style.display = 'flex'; }
       if (appEl) { appEl.classList.add('hidden'); appEl.style.display = 'none'; }
-     } else {
-      const u = JSON.parse(rawSession);
-      if (u && (u.nik || u.id)) {
-       if (authEl) { authEl.classList.add('hidden'); authEl.style.display = 'none'; }
-       if (appEl) { appEl.classList.remove('hidden'); appEl.classList.add('flex'); appEl.style.display = 'flex'; }
-      } else {
-       if (authEl) { authEl.classList.remove('hidden'); authEl.style.display = 'flex'; }
-       if (appEl) { appEl.classList.add('hidden'); appEl.style.display = 'none'; }
-      }
      }
     } else {
      if (authEl) { authEl.classList.remove('hidden'); authEl.style.display = 'flex'; }
@@ -10455,16 +10446,14 @@
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    try {
     const seedUsers = targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
-     const seedUsers = targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
-     let cloudUsers = snapshot.users;
-     if (cloudUsers.length === 0) {
-      cloudUsers = mergeUserArrays(seedUsers, cloudUsers, targetWh);
-     }
-     const localUsers = getWhDB(targetWh, 'users', seedUsers);
-     let merged = mergeUserArrays(localUsers, cloudUsers, targetWh, snapshot.updatedAt);
-     if (merged.length === 0) {
-      merged = mergeUserArrays(seedUsers, merged, targetWh);
-     }
+    let users = getWhDB(targetWh, 'users', seedUsers);
+
+    // Baseline Master Init: Hanya inisialisasi baseline jika database benar-benar kosong pertama kali
+    if (!users || users.length === 0) {
+     users = ensureMasterBaseline(users || [], targetWh);
+     setWhDB(targetWh, 'users', users, true);
+    }
+
     const isUserAdminAuthorized = isExplicitAdminAction || (typeof currentUser !== 'undefined' && currentUser && (isUserAdmin(currentUser) || isUserManager(currentUser) || hasPermission('perm_emp_edit') || hasPermission('perm_emp_add')));
     if (!isUserAdminAuthorized && (!users || users.length === 0)) {
      users = ensureMasterBaseline(users, targetWh);
@@ -11128,24 +11117,24 @@
 
   async function pullUsersFromFirestore(wh = null, alertOnComplete = false) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const seedUsers = targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS;
    try {
     // 1. Coba unduh master snapshot (1 Read)
     const snapshot = await getDocFromFirestore(targetWh, '_metadata', 'master_snapshot');
     if (snapshot && Array.isArray(snapshot.users) && snapshot.users.length > 0) {
-     const minMasterCount = targetWh === 'MBI' ? 130 : 54;
      let cloudUsers = snapshot.users;
-     if (cloudUsers.length < minMasterCount) {
+     if (cloudUsers.length === 0) {
       cloudUsers = mergeUserArrays(seedUsers, cloudUsers, targetWh);
      }
      const localUsers = getWhDB(targetWh, 'users', seedUsers);
      let merged = mergeUserArrays(localUsers, cloudUsers, targetWh, snapshot.updatedAt);
-     if (merged.length < minMasterCount) {
+     if (merged.length === 0) {
       merged = mergeUserArrays(seedUsers, merged, targetWh);
      }
      setWhDB(targetWh, 'users', merged, true);
      renderAllLiveScreens();
      if (alertOnComplete) {
-      alert(`Å“â€¦ Berhasil menarik data master ${merged.length} karyawan dari Cloud Firestore Gudang ${targetWh}!`);
+      alert(`Berhasil menarik data master ${merged.length} karyawan dari Cloud Firestore Gudang ${targetWh}!`);
      }
      return true;
     }
@@ -16215,7 +16204,8 @@ service cloud.firestore {
     const userRole = (currentUser.role || 'staff').toLowerCase();
     const isManagement = ['coordinator', 'supervisor', 'admin', 'manager'].includes(userRole) || isUserManager(currentUser) || isUserAdmin(currentUser) || isUserSupervisor(currentUser) || isUserCoordinator(currentUser);
 
-    // Terapkan visibility & hak akses tombol / menu sesuai role
+    // Terapkan jam digital real-time & visibility hak akses seketika
+    try { updateRealtimeDashboardDate(); if (!window._globalClockInterval) window._globalClockInterval = setInterval(updateRealtimeDashboardDate, 1000); } catch(e) {}
     try { applyRolePermissions(); } catch (e) { console.warn('applyRolePermissions error:', e); }
     try { updateNavbarBrand(currentUser.warehouse); } catch (e) { console.warn('updateNavbarBrand error:', e); }
 
