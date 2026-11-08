@@ -9771,7 +9771,6 @@
       // Ambil data check-in pertama sebagai dasar
       const primary = { ...group[0] };
       // Cari checkOutTime paling valid (terakhir) di antara rekaman
-      const outRecords = group.filter(x => x.checkOutTime);
        const outRecords = group.filter(x => x.checkOutTime && x.checkOutTime !== '-' && x.checkOutTime !== '');
        if (outRecords.length > 0) {
         outRecords.sort((x, y) => new Date(y.checkOutTime).getTime() - new Date(x.checkOutTime).getTime());
