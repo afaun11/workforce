@@ -1010,24 +1010,32 @@
     return;
    }
 
-   // Validasi password toleran (adminmbi123, adminmai123, medika123, manager123, admin123)
-   const inputPassLower = inputPass.toLowerCase();
-   const validPasswords = ['medika123', 'admin123', 'adminmbi123', 'adminmai123', 'manager123', 'admin', 'manager'];
-   if (foundUser.password) validPasswords.push(foundUser.password.toLowerCase());
-
    if (!inputPass) {
     if (alertEl) {
      alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-     alertEl.innerHTML = '<span>Silakan masukkan password akun Anda.</span>';
+     alertEl.innerHTML = '<span>Silakan masukkan kata sandi akun Anda.</span>';
      alertEl.classList.remove('hidden');
     }
     return;
    }
 
-   if (!validPasswords.includes(inputPassLower)) {
+   let storedPass = (foundUser.password || '').trim();
+   if (!storedPass) {
+    if (foundUser.role === 'admin' || (foundUser.nik && String(foundUser.nik).toUpperCase().startsWith('ADM'))) {
+     storedPass = (selectedWh === 'MAI') ? 'adminmai123' : 'adminmbi123';
+    } else {
+     storedPass = 'medika123';
+    }
+   }
+
+   const inputPassLower = inputPass.toLowerCase();
+   const storedLower = storedPass.toLowerCase();
+   const isPasswordMatch = (inputPass === storedPass || inputPassLower === storedLower);
+
+   if (!isPasswordMatch) {
     if (alertEl) {
      alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-     alertEl.innerHTML = '<span>Password salah! Gunakan password akun Anda atau default: <b>medika123</b>.</span>';
+     alertEl.innerHTML = '<span>Kata sandi salah! Silakan periksa kembali kata sandi akun Anda.</span>';
      alertEl.classList.remove('hidden');
     }
     return;
@@ -15851,7 +15859,7 @@ service cloud.firestore {
     // Pastikan gudang user sesuai dengan pilihan aktif saat login
     user.warehouse = isUserManager(user) || canAccessMultiWarehouse(user) ? selectedWh : (user.warehouse || selectedWh);
 
-    // VALIDASI PASSWORD FLEKSIBEL, AMAN & TOLERAN:
+    // VALIDASI PASSWORD KETAT & AMAN:
     let storedPass = (user.password || '').trim();
     if (!storedPass) {
      if (isUserAdmin(user)) {
@@ -15867,7 +15875,7 @@ service cloud.firestore {
     if (!inputPass) {
      if (alertEl) {
       alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-      alertEl.innerHTML = `<span>Password wajib diisi untuk login akun <b>${escapeHTML(user.name)}</b>!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan kata sandi akun Anda.</span>`;
+      alertEl.innerHTML = `<span>Kata sandi wajib diisi untuk login akun <b>${escapeHTML(user.name)}</b>!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan masukkan kata sandi akun Anda.</span>`;
       alertEl.classList.remove('hidden');
      }
      return;
@@ -15876,41 +15884,15 @@ service cloud.firestore {
     const inputLower = inputPass.toLowerCase();
     const storedLower = storedPass.toLowerCase();
 
-    // 1. Pencocokan langsung (case-sensitive) atau case-insensitive (mengatasi auto-kapitalisasi pada keyboard HP)
+    // Pencocokan ketat terhadap kata sandi akun yang sah
     if (inputPass === storedPass || inputLower === storedLower) {
      isPasswordCorrect = true;
-    }
-
-    // 2. Toleransi multi-password untuk Admin (MBI & MAI)
-    if (!isPasswordCorrect && isUserAdmin(user)) {
-     const validAdmin = ['adminmbi123', 'adminmai123', 'admin123', 'medika123', 'admin'];
-     if (validAdmin.includes(inputLower)) {
-      isPasswordCorrect = true;
-     }
-    }
-
-    // 3. Toleransi multi-password untuk Manager
-    if (!isPasswordCorrect && isUserManager(user)) {
-     const validMgr = ['medika123', 'manager123', 'admin123', 'manager', 'eko123'];
-     if (validMgr.includes(inputLower)) {
-      isPasswordCorrect = true;
-     }
-    }
-
-    // 4. Toleransi password default sistem 'medika123' untuk seluruh akun manajemen/staff
-    if (!isPasswordCorrect) {
-     if (inputLower === 'medika123' || inputLower === 'admin123') {
-      isPasswordCorrect = true;
-     }
     }
 
     if (!isPasswordCorrect) {
      if (alertEl) {
       alertEl.className = 'mx-6 mt-4 p-3.5 rounded-2xl text-xs bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-center';
-      let hint = "Gunakan sandi default 'medika123'";
-      if (isUserAdmin(user)) hint = "Gunakan sandi Admin: 'adminmbi123' atau 'admin123' atau 'medika123'";
-      else if (isUserManager(user)) hint = "Gunakan sandi Manager: 'medika123'";
-      alertEl.innerHTML = `<span>Password untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">${hint}.</span>`;
+      alertEl.innerHTML = `<span>Kata sandi untuk <b>${escapeHTML(user.name)}</b> salah!</span><br><span class="text-[11px] text-slate-600 font-normal">Silakan periksa kembali kata sandi akun Anda.</span>`;
       alertEl.classList.remove('hidden');
      }
      return;
@@ -16049,7 +16031,8 @@ service cloud.firestore {
     div.className = 'p-3 hover:bg-slate-50 flex items-center justify-between cursor-pointer transition border-b border-slate-100 last:border-b-0';
     div.onclick = () => {
      document.getElementById('login-identifier').value = u.nik || u.name;
-     document.getElementById('login-password').value = (u.isFirstLogin === false) ? '' : (u.password || '');
+     const pwdInput = document.getElementById('login-password');
+     if (pwdInput) { pwdInput.value = ''; pwdInput.focus(); }
      closeAccountLookupModal();
     };
     const roleLabel = (u.role || 'Staff').toUpperCase();
