@@ -9094,6 +9094,44 @@
      clearWhDBCache();
      console.log(`[WarehouseSeparation] Data berhasil dipisahkan! MBI: ${cleanMbi.length} akun, MAI: ${cleanMai.length} akun.`);
     }
+
+    // 3. Pindahkan absensi MAI yang tersasar masuk ke database MBI (misal saat scan tanggal 1-4 Nov)
+    try {
+     const rawMbiAtt = localStorage.getItem('wfm_mbi_attendance');
+     if (rawMbiAtt) {
+      let mbiAttList = JSON.parse(rawMbiAtt);
+      if (Array.isArray(mbiAttList) && mbiAttList.length > 0) {
+       const maiAttForeign = mbiAttList.filter(a => {
+        if (!a) return false;
+        const uNik = (a.userNik || '').toUpperCase().trim();
+        const uWh = (a.warehouse || '').toUpperCase().trim();
+        const uId = (a.userId || '').toLowerCase().trim();
+        return uWh === 'MAI' || uNik.startsWith('MAI') || uId.startsWith('mai-');
+       });
+       if (maiAttForeign.length > 0) {
+        const rawMaiAtt = localStorage.getItem('wfm_mai_attendance');
+        let maiAttList = rawMaiAtt ? JSON.parse(rawMaiAtt) : [];
+        maiAttForeign.forEach(fa => {
+         fa.warehouse = 'MAI';
+         if (!fa.id) fa.id = `att-mai-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+        });
+        maiAttList = mergeAttendanceArrays(maiAttList, maiAttForeign);
+        localStorage.setItem('wfm_mai_attendance', JSON.stringify(maiAttList));
+        mbiAttList = mbiAttList.filter(a => {
+         if (!a) return false;
+         const uNik = (a.userNik || '').toUpperCase().trim();
+         const uWh = (a.warehouse || '').toUpperCase().trim();
+         const uId = (a.userId || '').toLowerCase().trim();
+         return !(uWh === 'MAI' || uNik.startsWith('MAI') || uId.startsWith('mai-'));
+        });
+        localStorage.setItem('wfm_mbi_attendance', JSON.stringify(mbiAttList));
+        whDBCache.set('wfm_mai_attendance', maiAttList);
+        whDBCache.set('wfm_mbi_attendance', mbiAttList);
+        console.log(`[AttendanceSeparation] Berhasil memindahkan ${maiAttForeign.length} rekor absen MAI yang tersimpan di MBI.`);
+       }
+      }
+     }
+    } catch (eAttSep) {}
    } catch (err) {
     console.warn('[WarehouseSeparation Error]:', err);
    }
@@ -11041,8 +11079,8 @@
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    try {
     const archiveDoc = await getDocFromFirestore(targetWh, '_metadata', 'attendance_archive');
-    if (archiveDoc && archiveDoc.payload) {
-     const archiveRecords = JSON.parse(archiveDoc.payload);
+    if (archiveDoc && (archiveDoc.payload || archiveDoc.records)) {
+     const archiveRecords = Array.isArray(archiveDoc.records) ? archiveDoc.records : (typeof archiveDoc.payload === 'string' ? JSON.parse(archiveDoc.payload) : (archiveDoc.payload || []));
      if (Array.isArray(archiveRecords) && archiveRecords.length > 0) {
       let localAtt = getWhDB(targetWh, 'attendance', []);
       const merged = mergeAttendanceArrays(localAtt, archiveRecords);
@@ -11079,8 +11117,8 @@
     if (!hasArchiveLoaded || localAtt.length < 1000 || alertOnComplete) {
      try {
       const archiveDoc = await getDocFromFirestore(targetWh, '_metadata', 'attendance_archive');
-      if (archiveDoc && archiveDoc.payload) {
-       const archiveRecords = JSON.parse(archiveDoc.payload);
+      if (archiveDoc && (archiveDoc.payload || archiveDoc.records)) {
+       const archiveRecords = Array.isArray(archiveDoc.records) ? archiveDoc.records : (typeof archiveDoc.payload === 'string' ? JSON.parse(archiveDoc.payload) : (archiveDoc.payload || []));
        if (Array.isArray(archiveRecords) && archiveRecords.length > 0) {
         localAtt = mergeAttendanceArrays(localAtt, archiveRecords);
         setWhDB(targetWh, 'attendance', localAtt, true);
@@ -18218,62 +18256,33 @@ service cloud.firestore {
     } catch (eRescue) {}
    }
 
-   // SMART AUTO-SWITCH TO CHECK-OUT:
-   // Jika karyawan sudah absen masuk sebelumnya (termasuk pagi/siang tadi > 15 menit lalu),
-   // dan saat ini tombol scanner masih terpilih "Absen Masuk":
-   // Otomatis arahkan ke "Absen Pulang" agar jam pulang langsung tercatat tanpa miss scan!
-   if (selectedAttendanceType === 'check_in' && activeOpenSession) {
-    const inMs = parseSafeTimeMs(activeOpenSession.checkInTime, activeOpenSession.date) || new Date(activeOpenSession.checkInTime).getTime();
-    const diffMs = Math.max(0, now.getTime() - inMs);
-    if (diffMs >= 15 * 60 * 1000) {
-     selectedAttendanceType = 'check_out';
-     if (typeof setAttendanceType === 'function') {
-      try { setAttendanceType('check_out'); } catch (eType) {}
-     }
-    }
-   }
+   // PROTEKSI ANTI-BERPINDAH KE ABSEN PULANG:
+   // Tombol Absen Masuk dilarang keras otomatis berubah menjadi Absen Pulang.
+   // Karyawan yang ter-scan 2 kali saat Absen Masuk akan langsung diberi notifikasi bahwa mereka sudah absen masuk.
 
    if (selectedAttendanceType === 'check_in') {
     // ==========================================
     // MODE ABSEN MASUK (CHECK_IN) - 24 JAM PENUH
     // ==========================================
 
-    // 1. PROTEKSI MUTLAK SHIFT LINTAS HARI & SHIFT NORMAL:
-    // Karyawan yang MASIH MEMILIKI SHIFT AKTIF (termasuk Shift Malam Lintas Hari kemarin)
-    // DILARANG KERAS ABSEN MASUK LAGI sebelum melakukan absen pulang!
+    // 1. PROTEKSI MUTLAK SCAN MASUK GANDA (DOUBLE SCAN / TAP 2 KALI):
+    // Karyawan yang SUDAH ABSEN MASUK dilarang absen masuk ulang dan TIDAK BOLEH dialihkan menjadi absen pulang.
+    // Berikan notifikasi peringatan bahwa presensi masuk sudah tersimpan.
     if (activeOpenSession) {
      const inTimeStr = formatDisplayTimeWIB(activeOpenSession.checkInTime).replace(/\./g, ':') + ' WIB';
      const shiftDateStr = activeOpenSession.date || getLocalDateString(new Date(activeOpenSession.checkInTime));
-     const inMs = parseSafeTimeMs(activeOpenSession.checkInTime, activeOpenSession.date) || new Date(activeOpenSession.checkInTime).getTime();
-     const diffMs = Math.max(0, now.getTime() - inMs);
 
-     if (diffMs < 3 * 60 * 1000) {
-      // Anti-Double Tap: Scan masuk ganda dalam 3 menit pertama
-      showProfessionalAttendanceToast({
-       isWarning: true,
-       title: 'Sudah Absen Masuk!',
-       subtitle: `Presensi masuk ${matchedUser.name} sudah berhasil dicatat baru saja pada jam ${inTimeStr}.`,
-       name: matchedUser.name,
-       nik: matchedUser.nik,
-       dept: matchedUser.dept || 'Staff',
-       warehouse: targetWh,
-       time: inTimeStr,
-       statusText: 'Sudah Masuk'
-      });
-     } else {
-      // Peringatan Tegas: Masih dalam shift aktif dan belum absen pulang
-      showProfessionalAttendanceToast({
-       isWarning: true,
-       title: 'Belum Absen Pulang!',
-       subtitle: `${matchedUser.name} masih tercatat aktif pada Shift ${shiftDateStr} (Jam Masuk: ${inTimeStr}). Tidak bisa absen masuk jika belum melakukan absen pulang. Silakan ganti ke tombol [Absen Pulang]!`,
-       name: matchedUser.name,
-       nik: matchedUser.nik,
-       dept: matchedUser.dept || 'Staff',
-       warehouse: targetWh,
-       time: inTimeStr,
-       statusText: 'Wajib Absen Pulang'
-      });
-     }
+     showProfessionalAttendanceToast({
+      isWarning: true,
+      title: 'Sudah Absen Masuk!',
+      subtitle: `${matchedUser.name} (${matchedUser.nik || matchedUser.id}) sudah berhasil tercatat absen masuk pada jam ${inTimeStr} (Shift ${shiftDateStr}). Scan masuk tidak dapat diulang. Untuk absen pulang, silakan pilih tombol [Absen Keluar].`,
+      name: matchedUser.name,
+      nik: matchedUser.nik || matchedUser.id,
+      dept: matchedUser.dept || 'Staff',
+      warehouse: targetWh,
+      time: inTimeStr,
+      statusText: 'Sudah Absen Masuk'
+     });
      playAttendanceErrorSound('Sudah absen masuk');
      setTimeout(() => { isScanProcessing = false; }, 2000);
      return;
