@@ -785,7 +785,17 @@
    if (whBadge) whBadge.innerText = 'GUDANG ' + (user.warehouse || 'MBI');
    if (roleBadge) roleBadge.innerText = (user.role || 'STAFF').toUpperCase();
    if (compName) compName.innerText = (user.warehouse === 'MAI') ? 'Medika Akses Investama' : 'Medika Bina Investama';
-   if (navLogo) navLogo.innerHTML = (user.warehouse === 'MAI') ? window.getMAIIconHTML(34) : window.getMBIIconHTML(34);
+   if (navLogo && typeof window.getMAIIconHTML === 'function') {
+    navLogo.innerHTML = (user.warehouse === 'MAI') ? window.getMAIIconHTML(34) : window.getMBIIconHTML(34);
+   }
+
+   // Jalankan jam seketika agar tidak macet di 00:00:00 WIB
+   try {
+    if (typeof updateRealtimeDashboardDate === 'function') {
+     updateRealtimeDashboardDate();
+     if (!window._globalClockInterval) window._globalClockInterval = setInterval(updateRealtimeDashboardDate, 1000);
+    }
+   } catch(eClock) {}
 
    const isScanner = (user.role === 'scanner' || (user.nik && String(user.nik).startsWith('ABSEN')));
    
@@ -1030,23 +1040,31 @@
   // Jalankan styling radio & logo seketika
   try { window.updateLoginWhStyle(); } catch(e) {}
 
-  // Auto-login jika sesi aktif masih berlaku
-  try {
-   const savedSession = localStorage.getItem('wfm_active_session');
-   if (savedSession) {
+  // Fast First-Paint auto-login: Jalankan dengan proteksi DOM aman
+  function triggerFastAutoLogin() {
+   try {
+    const savedSession = localStorage.getItem('wfm_active_session');
+    if (!savedSession) return;
     const userObj = JSON.parse(savedSession);
-    if (userObj && (userObj.nik || userObj.id)) {
-     const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
-     const isExpired = lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
-     if (isExpired) {
-      localStorage.removeItem('wfm_active_session');
-      localStorage.removeItem('wfm_last_user_interaction');
-     } else {
-      window.loginUserSession(userObj);
-     }
+    if (!userObj || (!userObj.nik && !userObj.id)) return;
+    const lastSaved = parseInt(localStorage.getItem('wfm_last_user_interaction') || '0', 10);
+    const isExpired = lastSaved > 0 && (Date.now() - lastSaved >= 45 * 60 * 1000);
+    if (isExpired) {
+     localStorage.removeItem('wfm_active_session');
+     localStorage.removeItem('wfm_last_user_interaction');
+     return;
     }
-   }
-  } catch(e) {}
+    const appEl = document.getElementById('app-container');
+    if (appEl && typeof window.loginUserSession === 'function') {
+     window.loginUserSession(userObj);
+    }
+   } catch(e) {}
+  }
+  if (document.readyState === 'loading') {
+   document.addEventListener('DOMContentLoaded', triggerFastAutoLogin);
+  } else {
+   triggerFastAutoLogin();
+  }
  </script>
 
  <!-- ========================================================= -->
@@ -1165,7 +1183,7 @@
  <!-- ========================================================= -->
  <!-- 2. MAIN APPLICATION DASHBOARD SCREEN -->
  <!-- ========================================================= -->
- <div id="app-container" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
+ <div id="app-container" style="display: none;" class="hidden flex-1 flex flex-col h-screen max-h-screen overflow-hidden">
   <script>
    // Self-Healing Session Sentinel: Pastikan container aplikasi tidak pernah muncul membeku/kosong
    try {
@@ -1670,7 +1688,7 @@
      <!-- ========================================================= -->
      <!-- VIEW 3: ABSENSI BARCODE KAMERA + GPS RADIUS GUDANG -->
      <!-- ========================================================= -->
-     <div id="view-attendance" class="view-panel space-y-6">
+     <div id="view-attendance" class="view-panel hidden space-y-6">
       <div class="flex items-center justify-between flex-wrap gap-3">
        <div>
         <h2 class="text-xl font-black text-slate-900 tracking-tight">
@@ -11620,23 +11638,19 @@ service cloud.firestore {
     const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.startTime || ''}`;
     map.set(key, item);
    });
-   const cloudHasRecords = (cloudList && cloudList.length > 0);
    (localList || []).forEach(localItem => {
     if (!localItem || isOvertimeMarkedDeleted(localItem)) return;
     const key = localItem.id || `${(localItem.userNik || '').toUpperCase()}_${localItem.date || ''}_${localItem.startTime || ''}`;
     if (!map.has(key)) {
-     const createdTime = (localItem.createdAt && !isNaN(new Date(localItem.createdAt).getTime())) ? new Date(localItem.createdAt).getTime() : 0;
-     const isRecentlyCreatedOffline = (Date.now() - createdTime < 86400000 || localItem._pendingSync);
-     if (!cloudHasRecords || isRecentlyCreatedOffline) {
-      map.set(key, localItem);
-     }
+     // Pastikan data lembur lokal baru TIDAK PERNAH terhapus saat sinkronisasi cloud
+     map.set(key, localItem);
     } else {
      const cloudItem = map.get(key);
      const statusPriority = { approved: 3, rejected: 3, pending_manager: 2, pending: 1 };
      const cloudPrio = statusPriority[cloudItem.status] || 0;
      const localPrio = statusPriority[localItem.status] || 0;
      const status = cloudPrio >= localPrio ? cloudItem.status : localItem.status;
-     map.set(key, { ...localItem, ...cloudItem, status });
+     map.set(key, { ...cloudItem, ...localItem, status });
     }
    });
    return Array.from(map.values());
@@ -13052,9 +13066,9 @@ service cloud.firestore {
   // Otomatis menggabungkan data absensi live dari Google Sheet & Cloud Firebase
   // Membersihkan seluruh 229 tombstone palsu dan menyamakan data di semua laptop/HP
   // =========================================================
-  function parseGSheetAttendanceRow(col, users) {
-   if (!Array.isArray(col) || col.length < 6) return null;
-   const dateStr = (col[1] || '').trim();
+  function parseGSheetAttendanceRow(col, users, fallbackWh = 'MBI') {
+   if (!Array.isArray(col) || col.length < 5) return null;
+   let rawDate = (col[1] || '').trim();
    const rawNik = (col[2] || '').trim().toUpperCase();
    const rawName = (col[3] || '').trim();
    const rawDept = (col[4] || '').trim();
@@ -13064,7 +13078,30 @@ service cloud.firestore {
    const rawStatusIn = (col[8] || '').trim();
    const rawStatusOut = (col[9] || '').trim();
    const rawNotes = (col[10] || '').trim();
-   const rawWh = (col[11] || 'MBI').trim().toUpperCase();
+   const rawWh = (col[11] || fallbackWh || 'MBI').trim().toUpperCase();
+
+   // Standardisasi format tanggal fleksibel (YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, angka serial)
+   let dateStr = '';
+   if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+    dateStr = rawDate;
+   } else if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(rawDate)) {
+    const parts = rawDate.split(/[\/\-]/);
+    const p0 = parseInt(parts[0], 10);
+    const p1 = parseInt(parts[1], 10);
+    const p2 = parseInt(parts[2], 10);
+    if (p0 <= 31 && p1 <= 12) {
+     dateStr = `${p2}-${String(p1).padStart(2, '0')}-${String(p0).padStart(2, '0')}`;
+    } else {
+     dateStr = `${p2}-${String(p0).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+    }
+   } else if (/^\d{5}(\.\d+)?$/.test(rawDate)) {
+    const serial = parseFloat(rawDate);
+    const dt = new Date((serial - 25569) * 86400 * 1000);
+    if (!isNaN(dt.getTime())) dateStr = dt.toISOString().split('T')[0];
+   } else {
+    const parsedDt = new Date(rawDate);
+    if (!isNaN(parsedDt.getTime())) dateStr = parsedDt.toISOString().split('T')[0];
+   }
 
    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
    if (!rawNik && !rawName) return null;
@@ -13191,7 +13228,7 @@ service cloud.firestore {
 
     for (let i = 1; i < rawLines.length; i++) {
      const cols = parseCsvLine(rawLines[i]).map(c => c.replace(/^"|"$/g, '').trim());
-     const rec = parseGSheetAttendanceRow(cols, users);
+     const rec = parseGSheetAttendanceRow(cols, users, wh);
      if (rec) parsedGSheetRecords.push(rec);
     }
 
@@ -16428,6 +16465,12 @@ service cloud.firestore {
    latestCachedGPS = null;
    updateRegisteredCoordsDisplay();
    try { syncGPSCoordsFromFirestore(targetWh).then(() => updateRegisteredCoordsDisplay()).catch(() => {}); } catch(e) {}
+   try {
+    const curAttWh = getWhDB(targetWh, 'attendance', []);
+    if (curAttWh.length < 50) {
+     syncAttendanceFromGoogleSheetMaster(false, targetWh);
+    }
+   } catch(eAutoGs) {}
    resetVerificationState();
    try { updateFirebaseUrlUI(); } catch(e) {}
    lucide.createIcons();
@@ -26150,6 +26193,7 @@ service cloud.firestore {
    checkboxes.forEach(cb => {
     const emp = users.find(u => u.nik === cb.value);
     if (emp) {
+     const nowIso = new Date().toISOString();
      overtimes.unshift({
       id: `ot-${activeWarehouse.toLowerCase()}-${Date.now()}-${countAdded}`,
       userId: emp.id,
@@ -26166,12 +26210,16 @@ service cloud.firestore {
       effectiveHours: calc.effectiveHours,
       nominal: calc.nominal,
       reason,
-      status: 'pending'
+      status: 'pending',
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      _pendingSync: true
      });
      countAdded++;
     }
    });
 
+   setWhDB(activeWarehouse, 'overtime', overtimes, true);
    untrackDeletedOvertime(overtimes);
    syncOvertimeToCloud(activeWarehouse, overtimes);
    document.getElementById('ot-reason-select').value = 'Menyelesaikan Orderan';
