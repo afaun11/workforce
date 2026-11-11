@@ -1923,9 +1923,9 @@
 
       <div id="leave-alert" class="hidden p-4 rounded-2xl text-xs font-bold shadow-xs"></div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
        <!-- Form Pengajuan -->
-       <div id="card-leave-form" class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
+       <div id="card-leave-form" class="lg:col-span-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-4 shadow-xs">
         <h3 class="font-extrabold text-sm text-slate-900">Buat Pengajuan Baru</h3>
 
         <form onsubmit="handleLeaveSubmit(event)" class="space-y-3.5">
@@ -1968,30 +1968,32 @@
        </div>
 
        <!-- List Pengajuan Sakit/Cuti -->
-       <div id="card-leave-table" class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 overflow-hidden flex flex-col">
-        <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
-         <div class="flex items-center gap-2 flex-wrap">
+       <div id="card-leave-table" class="lg:col-span-8 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 overflow-hidden flex flex-col shadow-xs">
+        <div class="space-y-3 mb-4">
+         <div class="flex items-center justify-between gap-3 flex-wrap">
           <h3 class="font-extrabold text-sm text-slate-900">Daftar Riwayat Sakit / Cuti</h3>
-          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs shrink-0 flex-wrap">
            <button type="button" onclick="filterLeaveTypeTab('all')" id="btn-leave-tab-all" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-900 text-white shadow-2xs transition">Semua</button>
            <button type="button" onclick="filterLeaveTypeTab('cuti')" id="btn-leave-tab-cuti" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">Cuti</button>
            <button type="button" onclick="filterLeaveTypeTab('sakit')" id="btn-leave-tab-sakit" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">Sakit</button>
            <button type="button" onclick="filterLeaveTypeTab('pending')" id="btn-leave-tab-pending" class="px-2.5 py-1 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">Perlu Review</button>
           </div>
          </div>
-         <input type="text" id="leave-table-search" oninput="renderLeavesTable()" placeholder="Cari nama / NIK pengajuan..." class="h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none min-w-[200px]">
+         <div class="flex items-center justify-between gap-3 flex-wrap">
+          <input type="text" id="leave-table-search" oninput="renderLeavesTable()" placeholder="Cari nama / NIK / alasan pengajuan..." class="w-full sm:w-72 h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-slate-900 focus:outline-none">
+         </div>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto rounded-2xl border border-slate-100">
          <table class="w-full text-left text-xs">
-          <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b">
+          <thead class="bg-slate-50 text-slate-600 text-[11px] font-bold uppercase tracking-wide border-b border-slate-200">
            <tr>
-            <th class="p-3">Karyawan</th>
-            <th class="p-3">Outsourcing</th>
-            <th class="p-3">Jenis</th>
-            <th class="p-3">Rentang Tanggal</th>
-            <th class="p-3">Keterangan</th>
-            <th class="p-3">Status</th>
-            <th class="p-3 text-right">Aksi</th>
+            <th class="px-2.5 py-2.5">Karyawan</th>
+            <th class="px-2.5 py-2.5">Outsourcing</th>
+            <th class="px-2.5 py-2.5">Jenis</th>
+            <th class="px-2.5 py-2.5 whitespace-nowrap">Tanggal</th>
+            <th class="px-2.5 py-2.5">Keterangan</th>
+            <th class="px-2.5 py-2.5">Status</th>
+            <th class="px-2.5 py-2.5 text-right">Aksi</th>
            </tr>
           </thead>
           <tbody id="leave-table-body" class="divide-y divide-slate-100">
@@ -8403,6 +8405,21 @@
    return `${nik}_${date}_${checkIn}`.toLowerCase();
   }
 
+  function getAttendanceMinuteKey(item) {
+   if (!item) return '';
+   const nik = (item.userNik || item.nik || '').toUpperCase().trim();
+   const date = (item.date || '').trim();
+   if (!nik || !date || !item.checkInTime) return '';
+   try {
+    const dt = new Date(item.checkInTime);
+    if (isNaN(dt.getTime())) return '';
+    const hhmm = dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' });
+    return `${nik}__${date}__${hhmm}`.toLowerCase();
+   } catch (e) {
+    return '';
+   }
+  }
+
   function trackDeletedAttendance(itemsOrIds) {
    if (!itemsOrIds) return;
    const keys = getDeletedAttendanceIds();
@@ -8412,16 +8429,37 @@
     if (typeof item === 'string') {
      keys.add(item.trim().toLowerCase());
     } else if (typeof item === 'object') {
-     if (item.id) {
-      keys.add(String(item.id).trim().toLowerCase());
-     }
+     if (item.id) keys.add(String(item.id).trim().toLowerCase());
+     if (item._firestoreDocId) keys.add(String(item._firestoreDocId).trim().toLowerCase());
      const compKey = getAttendanceCompositeKey(item);
-     if (compKey) {
-      keys.add(compKey);
-     }
+     if (compKey) keys.add(compKey);
+     const minKey = getAttendanceMinuteKey(item);
+     if (minKey) keys.add(minKey);
     }
    });
    saveDeletedAttendanceIds(keys);
+  }
+
+  function untrackDeletedAttendance(itemsOrIds) {
+   if (!itemsOrIds) return;
+   const keys = getDeletedAttendanceIds();
+   if (keys.size === 0) return;
+   const list = Array.isArray(itemsOrIds) ? itemsOrIds : [itemsOrIds];
+   let changed = false;
+   list.forEach(item => {
+    if (!item) return;
+    if (typeof item === 'string') {
+     if (keys.delete(item.trim().toLowerCase())) changed = true;
+    } else if (typeof item === 'object') {
+     if (item.id && keys.delete(String(item.id).trim().toLowerCase())) changed = true;
+     if (item._firestoreDocId && keys.delete(String(item._firestoreDocId).trim().toLowerCase())) changed = true;
+     const compKey = getAttendanceCompositeKey(item);
+     if (compKey && keys.delete(compKey)) changed = true;
+     const minKey = getAttendanceMinuteKey(item);
+     if (minKey && keys.delete(minKey)) changed = true;
+    }
+   });
+   if (changed) saveDeletedAttendanceIds(keys);
   }
 
   function isAttendanceMarkedDeleted(item, deletedIds = null) {
@@ -8432,8 +8470,11 @@
    const delSet = deletedIds || getDeletedAttendanceIds();
    if (delSet && delSet.size > 0) {
     if (item.id && delSet.has(String(item.id).trim().toLowerCase())) return true;
+    if (item._firestoreDocId && delSet.has(String(item._firestoreDocId).trim().toLowerCase())) return true;
     const compKey = getAttendanceCompositeKey(item);
     if (compKey && delSet.has(compKey)) return true;
+    const minKey = getAttendanceMinuteKey(item);
+    if (minKey && delSet.has(minKey)) return true;
    }
    return false;
   }
@@ -10035,6 +10076,18 @@
    try {
     const doc = await getDocFromFirestore(wh, '_metadata', 'inactive_registry');
     if (doc && Array.isArray(doc.niks)) {
+     let localUpdatedMs = 0;
+     try {
+      const localRegRaw = localStorage.getItem(`wfm_${wh.toLowerCase()}_inactive_registry`);
+      if (localRegRaw) {
+       const parsed = JSON.parse(localRegRaw);
+       if (parsed && parsed.updatedAt) localUpdatedMs = new Date(parsed.updatedAt).getTime() || 0;
+      }
+     } catch(eRegParse) {}
+     const cloudUpdatedMs = doc.updatedAt ? (new Date(doc.updatedAt).getTime() || 0) : 0;
+     if (localUpdatedMs > 0 && cloudUpdatedMs > 0 && localUpdatedMs > cloudUpdatedMs) {
+      return false;
+     }
      localStorage.setItem(`wfm_${wh.toLowerCase()}_inactive_registry`, JSON.stringify({ niks: doc.niks, updatedAt: doc.updatedAt || '' }));
      clearWhDBCache();
      const users = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
@@ -10649,10 +10702,14 @@
      users: users,
      leaves: leaves,
      overtime: overtime,
-     coords: coords || null
+     coords: coords || null,
+     deleted_user_keys: typeof getDeletedUserKeys === 'function' ? Array.from(getDeletedUserKeys()) : [],
+     deleted_attendance_ids: typeof getDeletedAttendanceIds === 'function' ? Array.from(getDeletedAttendanceIds()) : [],
+     deleted_leave_ids: typeof getDeletedLeaveIds === 'function' ? Array.from(getDeletedLeaveIds()) : [],
+     deleted_overtime_ids: typeof getDeletedOvertimeIds === 'function' ? Array.from(getDeletedOvertimeIds()) : []
     };
 
-    saveDocToFirestore(targetWh, '_metadata', 'master_snapshot', snapshot).catch(() => {});
+    await saveDocToFirestore(targetWh, '_metadata', 'master_snapshot', snapshot).catch(() => {});
     saveDocToFirestore(targetWh, '_metadata', 'live_signal', {
      type: 'master_update',
      warehouse: targetWh,
@@ -10661,6 +10718,48 @@
    } catch (e) {
     console.warn('saveMasterSnapshotToFirestore notice:', e);
    }
+  }
+
+  async function scrubDeletedAttendanceFromCloud(wh = null) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const deletedIds = getDeletedAttendanceIds();
+   const nowIso = new Date().toISOString();
+   try {
+    const todayDoc = await getDocFromFirestore(targetWh, '_metadata', 'today_attendance');
+    if (todayDoc && Array.isArray(todayDoc.records)) {
+     const filteredToday = todayDoc.records.filter(a => a && !isAttendanceMarkedDeleted(a, deletedIds));
+     if (filteredToday.length !== todayDoc.records.length) {
+      await saveDocToFirestore(targetWh, '_metadata', 'today_attendance', {
+       ...todayDoc,
+       count: filteredToday.length,
+       updatedAt: nowIso,
+       warehouse: targetWh,
+       records: filteredToday
+      }).catch(() => {});
+      try {
+       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_today_attendance`, JSON.stringify(filteredToday));
+      } catch(e) {}
+     }
+    }
+   } catch(eTodayScrub) {}
+   try {
+    const archDoc = await getDocFromFirestore(targetWh, '_metadata', 'attendance_archive');
+    if (archDoc && (Array.isArray(archDoc.records) || typeof archDoc.payload === 'string' || Array.isArray(archDoc.payload))) {
+     const rawArch = Array.isArray(archDoc.records)
+      ? archDoc.records
+      : (typeof archDoc.payload === 'string' ? JSON.parse(archDoc.payload) : (archDoc.payload || []));
+     if (Array.isArray(rawArch)) {
+      const filteredArch = rawArch.filter(a => a && !isAttendanceMarkedDeleted(a, deletedIds));
+      if (filteredArch.length !== rawArch.length) {
+       const updatedArch = { ...archDoc, updatedAt: nowIso, warehouse: targetWh };
+       if (Array.isArray(archDoc.records)) updatedArch.records = filteredArch;
+       else if (typeof archDoc.payload === 'string') updatedArch.payload = JSON.stringify(filteredArch);
+       else updatedArch.payload = filteredArch;
+       await saveDocToFirestore(targetWh, '_metadata', 'attendance_archive', updatedArch).catch(() => {});
+      }
+     }
+    }
+   } catch(eArchScrub) {}
   }
 
   // =========================================================
@@ -11317,6 +11416,15 @@
     // 1. Coba unduh master snapshot (1 Read)
     const snapshot = await getDocFromFirestore(targetWh, '_metadata', 'master_snapshot');
     if (snapshot && Array.isArray(snapshot.users) && snapshot.users.length > 0) {
+     if (Array.isArray(snapshot.deleted_attendance_ids) && snapshot.deleted_attendance_ids.length > 0 && typeof trackDeletedAttendance === 'function') {
+      trackDeletedAttendance(snapshot.deleted_attendance_ids);
+     }
+     if (Array.isArray(snapshot.deleted_leave_ids) && snapshot.deleted_leave_ids.length > 0 && typeof trackDeletedLeaves === 'function') {
+      trackDeletedLeaves(snapshot.deleted_leave_ids);
+     }
+     if (Array.isArray(snapshot.deleted_overtime_ids) && snapshot.deleted_overtime_ids.length > 0 && typeof trackDeletedOvertime === 'function') {
+      trackDeletedOvertime(snapshot.deleted_overtime_ids);
+     }
      let cloudUsers = snapshot.users;
      if (cloudUsers.length === 0) {
       cloudUsers = mergeUserArrays(seedUsers, cloudUsers, targetWh);
@@ -11327,6 +11435,7 @@
       merged = mergeUserArrays(seedUsers, merged, targetWh);
      }
      setWhDB(targetWh, 'users', merged, true);
+     try { localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(merged)); } catch(eBak) {}
      renderAllLiveScreens();
      if (alertOnComplete) {
       alert(`Berhasil menarik data master ${merged.length} karyawan dari Cloud Firestore Gudang ${targetWh}!`);
@@ -11338,18 +11447,25 @@
     const res = await listDocsFromFirestore(targetWh, 'users', 300);
     if (res && res.docs && res.docs.length > 0) {
      const localUsers = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+     const deletedKeys = typeof getDeletedUserKeys === 'function' ? getDeletedUserKeys() : null;
      let changed = false;
      res.docs.forEach(cUser => {
-      if (!cUser) return;
+      if (!cUser || (typeof isUserMarkedDeleted === 'function' && isUserMarkedDeleted(cUser, deletedKeys))) return;
       const cNik = (cUser.nik || cUser.id || '').toUpperCase().trim();
       const idx = localUsers.findIndex(u => (u.nik && u.nik.toUpperCase() === cNik) || (u.id && u.id === cUser.id) || (u.name && cleanStr(u.name) === cleanStr(cUser.name)));
       if (idx !== -1) {
+       const lTime = (localUsers[idx].updatedAt && !isNaN(new Date(localUsers[idx].updatedAt).getTime())) ? new Date(localUsers[idx].updatedAt).getTime() : 0;
+       const cTime = (cUser.updatedAt && !isNaN(new Date(cUser.updatedAt).getTime())) ? new Date(cUser.updatedAt).getTime() : 0;
+       if (lTime > cTime) return;
        if (cUser.role && localUsers[idx].role !== cUser.role) { localUsers[idx].role = cUser.role; changed = true; }
-       if (cUser.dept && localUsers[idx].dept !== cUser.dept) { localUsers[idx].dept = cUser.dept; changed = true; }
+       if (cUser.dept && localUsers[idx].dept !== cUser.dept) { localUsers[idx].dept = cUser.dept; localUsers[idx].department = cUser.dept; changed = true; }
        if (cUser.permissions) { localUsers[idx].permissions = { ...(localUsers[idx].permissions || {}), ...cUser.permissions }; changed = true; }
        if (cUser.name && localUsers[idx].name !== cUser.name) { localUsers[idx].name = cUser.name; changed = true; }
-       if (cUser.phone && localUsers[idx].phone !== cUser.phone) { localUsers[idx].phone = cUser.phone; changed = true; }
-       if (cUser.status && localUsers[idx].status !== cUser.status) { localUsers[idx].status = cUser.status; changed = true; }
+       if (cUser.phone !== undefined && localUsers[idx].phone !== cUser.phone) { localUsers[idx].phone = cUser.phone; changed = true; }
+       if (cUser.email !== undefined && localUsers[idx].email !== cUser.email) { localUsers[idx].email = cUser.email; changed = true; }
+       if (cUser.outsource && localUsers[idx].outsource !== cUser.outsource) { localUsers[idx].outsource = cUser.outsource; changed = true; }
+       if (cUser.status && localUsers[idx].status !== cUser.status) { localUsers[idx].status = cUser.status; localUsers[idx].isActive = (cUser.status !== 'inactive'); changed = true; }
+       if (cUser.updatedAt) localUsers[idx].updatedAt = cUser.updatedAt;
       } else {
        localUsers.push(cUser);
        changed = true;
@@ -11797,25 +11913,39 @@ service cloud.firestore {
      map.set(key, localItem);
      if (dayK) dayMap.set(dayK, key);
     } else {
-     // CLOUD FIRST AUTHORITATIVE: Utamakan data Cloud sebagai SSOT
+     // SMART AUTHORITATIVE MERGE: Prioritaskan data dengan updatedAt lebih baru / koreksi Admin sah
      const cloudItem = map.get(matchedKey);
      const hasOutLocal = !!(localItem.checkOutTime && localItem.checkOutTime !== '-' && localItem.checkOutTime !== '');
      const hasOutCloud = !!(cloudItem.checkOutTime && cloudItem.checkOutTime !== '-' && cloudItem.checkOutTime !== '');
 
-     // Data Cloud menimpa atribut lokal ({ ...localItem, ...cloudItem }) agar koreksi nama, NIK, status, keterangan dari Cloud tidak tertimpa data lokal usang!
-     const merged = { ...localItem, ...cloudItem };
+     const tUpdA = (localItem.updatedAt && !isNaN(new Date(localItem.updatedAt).getTime())) ? new Date(localItem.updatedAt).getTime() : 0;
+     const tUpdB = (cloudItem.updatedAt && !isNaN(new Date(cloudItem.updatedAt).getTime())) ? new Date(cloudItem.updatedAt).getTime() : 0;
+     const isLocalAdminEdit = !!(localItem.correctedByAdmin || localItem.manualInput);
+     const isCloudAdminEdit = !!(cloudItem.correctedByAdmin || cloudItem.manualInput);
 
-     // Jam pulang diutamakan dari yang memiliki jam pulang sah (jika salah satu sudah tap pulang, JANGAN ditimpa kosong)
-     if (hasOutCloud && hasOutLocal) {
-      const tOutA = new Date(localItem.checkOutTime).getTime() || 0;
-      const tOutB = new Date(cloudItem.checkOutTime).getTime() || 0;
-      const tUpdA = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
-      const tUpdB = cloudItem.updatedAt ? new Date(cloudItem.updatedAt).getTime() : 0;
-      merged.checkOutTime = (tUpdA > tUpdB && tOutA > 0) ? localItem.checkOutTime : cloudItem.checkOutTime;
-     } else if (hasOutCloud) {
-      merged.checkOutTime = cloudItem.checkOutTime;
-     } else if (hasOutLocal) {
-      merged.checkOutTime = localItem.checkOutTime;
+     const localWins = (tUpdA > tUpdB) || (isLocalAdminEdit && !isCloudAdminEdit && tUpdB === 0);
+     const merged = localWins ? { ...cloudItem, ...localItem } : { ...localItem, ...cloudItem };
+
+     if (localWins) {
+      merged.checkInTime = localItem.checkInTime;
+      merged.date = localItem.date || cloudItem.date;
+      if (hasOutLocal) {
+       merged.checkOutTime = localItem.checkOutTime;
+      } else if (hasOutCloud && !localItem.correctedByAdmin) {
+       merged.checkOutTime = cloudItem.checkOutTime;
+      } else {
+       merged.checkOutTime = localItem.checkOutTime || null;
+      }
+     } else {
+      if (hasOutCloud && hasOutLocal) {
+       merged.checkOutTime = cloudItem.checkOutTime;
+      } else if (hasOutCloud) {
+       merged.checkOutTime = cloudItem.checkOutTime;
+      } else if (hasOutLocal && !cloudItem.correctedByAdmin) {
+       merged.checkOutTime = localItem.checkOutTime;
+      } else {
+       merged.checkOutTime = cloudItem.checkOutTime || null;
+      }
      }
 
      // Jika record hasil gabungan memiliki jam pulang yang sah, bersihkan label Miss Scan usang dari keterangan/status
@@ -11987,8 +12117,8 @@ service cloud.firestore {
 
      const locTime = (loc.updatedAt && !isNaN(new Date(loc.updatedAt).getTime())) ? new Date(loc.updatedAt).getTime() : 0;
      const cloudTime = (cloudMatch.updatedAt && !isNaN(new Date(cloudMatch.updatedAt).getTime())) ? new Date(cloudMatch.updatedAt).getTime() : 0;
-     const isLocalNewer = (locTime > 0 && cloudTime > 0 && locTime > cloudTime);
-     const isCloudNewer = (cloudTime > 0 && locTime > 0 && cloudTime > locTime);
+     const isLocalNewer = (locTime > cloudTime);
+     const isCloudNewer = (cloudTime > locTime);
      const isLocalExplicitlyNewer = isLocalNewer;
 
      const merged = isLocalExplicitlyNewer ? { ...cloudMatch, ...loc } : { ...loc, ...cloudMatch };
@@ -11999,8 +12129,8 @@ service cloud.firestore {
       merged.department = merged.dept;
       merged.outsource = loc.outsource !== undefined ? loc.outsource : cloudMatch.outsource;
       merged.role = loc.role || cloudMatch.role;
-      merged.phone = loc.phone || cloudMatch.phone;
-      merged.email = loc.email || cloudMatch.email;
+      merged.phone = loc.phone !== undefined ? loc.phone : cloudMatch.phone;
+      merged.email = loc.email !== undefined ? loc.email : cloudMatch.email;
       if (loc.password) merged.password = loc.password;
       merged.updatedAt = loc.updatedAt;
      } else {
@@ -12013,15 +12143,20 @@ service cloud.firestore {
       merged.dept = cloudMatch.dept || cloudMatch.department || loc.dept || loc.department;
       merged.department = merged.dept;
       if (cloudMatch.outsource !== undefined) {
-       if (cloudMatch.outsource === 'Internal' && (loc.outsource === 'Staffinc' || loc.outsource === 'ADP')) {
+       if (cloudMatch.outsource === 'Internal' && (loc.outsource === 'Staffinc' || loc.outsource === 'ADP') && !isCloudNewer) {
         merged.outsource = loc.outsource;
        } else {
         merged.outsource = cloudMatch.outsource;
        }
       }
       if (cloudMatch.role) merged.role = cloudMatch.role;
-      if (cloudMatch.phone) merged.phone = cloudMatch.phone;
-      if (cloudMatch.email) merged.email = cloudMatch.email;
+      if (isCloudNewer) {
+       if (cloudMatch.phone !== undefined) merged.phone = cloudMatch.phone;
+       if (cloudMatch.email !== undefined) merged.email = cloudMatch.email;
+      } else {
+       if (cloudMatch.phone) merged.phone = cloudMatch.phone;
+       if (cloudMatch.email) merged.email = cloudMatch.email;
+      }
       if (cloudMatch.password) merged.password = cloudMatch.password;
       merged.updatedAt = cloudMatch.updatedAt || loc.updatedAt || new Date().toISOString();
      }
@@ -12165,6 +12300,10 @@ service cloud.firestore {
    clearWhDBCache();
    isApplyingFromCloud = true;
    try {
+    let hasUsersChanged = false;
+    let hasAttChanged = false;
+    let hasOtChanged = false;
+    let hasLeavesChanged = false;
     if (db.app_version && typeof db.app_version === 'string') {
      if (isNewerVersion(db.app_version, CURRENT_APP_VERSION)) {
       showAppUpdateBanner(db.app_version);
@@ -12237,11 +12376,6 @@ service cloud.firestore {
    const currMbiLeaves = localStorage.getItem('wfm_mbi_leaves') || '';
    const currMaiLeaves = localStorage.getItem('wfm_mai_leaves') || '';
 
-   let hasUsersChanged = false;
-   let hasAttChanged = false;
-   let hasOtChanged = false;
-   let hasLeavesChanged = false;
-
    // PROSES DATA GUDANG MBI (JIKA DIKIRIM DARI SERVER MBI ATAU DATABASE MBI)
    const rawMbiUsers = db.mbi_users !== undefined ? db.mbi_users : ((sourceWh === 'MBI' || !sourceWh) ? db.users : undefined);
    const rawMbiAtt = db.mbi_attendance !== undefined ? db.mbi_attendance : ((sourceWh === 'MBI' || !sourceWh) ? db.attendance : undefined);
@@ -12254,7 +12388,8 @@ service cloud.firestore {
      let cloudMbiRaw = normalizeFirebaseArray(rawMbiUsers);
       if (Array.isArray(cloudMbiRaw) && cloudMbiRaw.length > 0) {
        cloudMbiRaw = ensureMasterBaseline(cloudMbiRaw, 'MBI');
-       let cleanMbiUsers = ensureMasterBaseline(mergeUserArrays(SEED_MBI_USERS, cloudMbiRaw, 'MBI', db.updatedAt), 'MBI');
+       const localMbiUsers = getWhDB('MBI', 'users', SEED_MBI_USERS);
+       let cleanMbiUsers = ensureMasterBaseline(mergeUserArrays(localMbiUsers, cloudMbiRaw, 'MBI', db.updatedAt), 'MBI');
       cleanMbiUsers.forEach(u => {
        if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
         u.name = 'Scanner Presensi Gudang';
@@ -12282,9 +12417,6 @@ service cloud.firestore {
     }
     if (rawMbiOt !== undefined) {
      const rawCloudOt = normalizeFirebaseArray(rawMbiOt);
-     if (typeof untrackDeletedOvertime === 'function') {
-      untrackDeletedOvertime(rawCloudOt);
-     }
      const mergedMbiOt = mergeOvertimeArrays(getWhDB('MBI', 'overtime', []), rawCloudOt);
      const newMbiOt = JSON.stringify(mergedMbiOt);
      if (currMbiOt !== newMbiOt) {
@@ -12295,9 +12427,6 @@ service cloud.firestore {
     }
     if (rawMbiLeaves !== undefined) {
      const rawCloudLeaves = normalizeFirebaseArray(rawMbiLeaves);
-     if (typeof untrackDeletedLeaves === 'function') {
-      untrackDeletedLeaves(rawCloudLeaves);
-     }
      const mergedMbiLeaves = mergeLeaveArrays(getWhDB('MBI', 'leaves', []), rawCloudLeaves);
      const newMbiLeaves = JSON.stringify(mergedMbiLeaves);
      if (currMbiLeaves !== newMbiLeaves) {
@@ -12320,7 +12449,8 @@ service cloud.firestore {
      let cloudMaiRaw = normalizeFirebaseArray(rawMaiUsers);
       if (Array.isArray(cloudMaiRaw) && cloudMaiRaw.length > 0) {
        cloudMaiRaw = ensureMasterBaseline(cloudMaiRaw, 'MAI');
-       const cleanMaiUsers = ensureMasterBaseline(mergeUserArrays(SEED_MAI_USERS, cloudMaiRaw, 'MAI', db.updatedAt), 'MAI');
+       const localMaiUsers = getWhDB('MAI', 'users', SEED_MAI_USERS);
+       const cleanMaiUsers = ensureMasterBaseline(mergeUserArrays(localMaiUsers, cloudMaiRaw, 'MAI', db.updatedAt), 'MAI');
       cleanMaiUsers.forEach(u => {
        if (u && (u.role === 'scanner' || (u.nik && u.nik.startsWith('ABSEN-')) || (u.id && u.id.includes('scanner')))) {
         u.name = 'Scanner Presensi Gudang';
@@ -12348,9 +12478,6 @@ service cloud.firestore {
     }
     if (rawMaiOt !== undefined) {
      const rawCloudOt = normalizeFirebaseArray(rawMaiOt);
-     if (typeof untrackDeletedOvertime === 'function') {
-      untrackDeletedOvertime(rawCloudOt);
-     }
      const mergedMaiOt = mergeOvertimeArrays(getWhDB('MAI', 'overtime', []), rawCloudOt);
      const newMaiOt = JSON.stringify(mergedMaiOt);
      if (currMaiOt !== newMaiOt) {
@@ -12361,9 +12488,6 @@ service cloud.firestore {
     }
     if (rawMaiLeaves !== undefined) {
      const rawCloudLeaves = normalizeFirebaseArray(rawMaiLeaves);
-     if (typeof untrackDeletedLeaves === 'function') {
-      untrackDeletedLeaves(rawCloudLeaves);
-     }
      const mergedMaiLeaves = mergeLeaveArrays(getWhDB('MAI', 'leaves', []), rawCloudLeaves);
      const newMaiLeaves = JSON.stringify(mergedMaiLeaves);
      if (currMaiLeaves !== newMaiLeaves) {
@@ -12498,6 +12622,7 @@ service cloud.firestore {
      else if (activeReportTab === 'leaves') renderReportLeavesTable();
      else if (activeReportTab === 'overtime') renderReportOvertimeTable();
     } else if (activeViewId === 'view-leaves') {
+     try { filterLeaveEmployeeDropdown(document.getElementById('leave-emp-search-input')?.value || ''); } catch(eLvDd) {}
      renderLeavesTable();
     } else if (activeViewId === 'view-overtime') {
      renderOvertimeEmployeeGrid();
@@ -13463,24 +13588,25 @@ service cloud.firestore {
     for (let i = 1; i < rawLines.length; i++) {
      const cols = parseCsvLine(rawLines[i]).map(c => c.replace(/^"|"$/g, '').trim());
      const rec = parseGSheetAttendanceRow(cols, users, wh);
-     if (rec) parsedGSheetRecords.push(rec);
+     if (rec && !isAttendanceMarkedDeleted(rec)) parsedGSheetRecords.push(rec);
     }
 
-    // Ambil riwayat lokal yang ada sekarang
+    // Ambil riwayat lokal yang ada sekarang (saring yang sudah dihapus)
     const localAtt = getWhDB(wh, 'attendance', []);
     const attMap = new Map();
 
     // 1. Masukkan data lokal terlebih dahulu (kunci primer NIK + Tanggal)
     (localAtt || []).forEach(item => {
-     if (!item) return;
+     if (!item || isAttendanceMarkedDeleted(item)) return;
      const k = (item.userNik && item.date)
       ? `${(item.userNik || '').toUpperCase().trim()}__${item.date}`
       : (item.id || `${(item.userNik || '').toUpperCase()}__${item.date || ''}__${item.checkInTime || ''}`);
      attMap.set(k, item);
     });
 
-    // 2. Padukan data resmi dari Google Sheet (SSOT Live & Rekonsiliasi Jam Pulang)
+    // 2. Padukan data resmi dari Google Sheet (SSOT Live & Rekonsiliasi Jam Pulang) tanpa menimpa koreksi/input manual Admin
     parsedGSheetRecords.forEach(gsRec => {
+     if (isAttendanceMarkedDeleted(gsRec)) return;
      const k = (gsRec.userNik && gsRec.date)
       ? `${gsRec.userNik.toUpperCase().trim()}__${gsRec.date}`
       : (gsRec.id || `${gsRec.userNik.toUpperCase().trim()}__${gsRec.date}__${gsRec.checkInTime || ''}`);
@@ -13488,7 +13614,13 @@ service cloud.firestore {
       attMap.set(k, gsRec);
      } else {
       const existing = attMap.get(k);
+      if (existing.correctedByAdmin || existing.manualInput) {
+       attMap.set(k, existing);
+       return;
+      }
       const merged = { ...existing, ...gsRec };
+      if (existing.id) merged.id = existing.id;
+      if (existing._firestoreDocId) merged._firestoreDocId = existing._firestoreDocId;
       // Pertahankan jam tap keluar jika salah satu sudah memiliki record pulang yang sah
       if (gsRec.checkOutTime && gsRec.checkOutTime !== '-' && gsRec.checkOutTime !== '') {
        merged.checkOutTime = gsRec.checkOutTime;
@@ -13585,6 +13717,16 @@ service cloud.firestore {
         applyIncomingDatabase(fsMaster, wh);
         localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, cloudTs);
         hasNewDataApplied = true;
+       } else {
+        if (Array.isArray(fsMaster.deleted_attendance_ids) && fsMaster.deleted_attendance_ids.length > 0 && typeof trackDeletedAttendance === 'function') {
+         trackDeletedAttendance(fsMaster.deleted_attendance_ids);
+        }
+        if (Array.isArray(fsMaster.deleted_leave_ids) && fsMaster.deleted_leave_ids.length > 0 && typeof trackDeletedLeaves === 'function') {
+         trackDeletedLeaves(fsMaster.deleted_leave_ids);
+        }
+        if (Array.isArray(fsMaster.deleted_overtime_ids) && fsMaster.deleted_overtime_ids.length > 0 && typeof trackDeletedOvertime === 'function') {
+         trackDeletedOvertime(fsMaster.deleted_overtime_ids);
+        }
        }
        loaded = true;
       }
@@ -16994,6 +17136,7 @@ service cloud.firestore {
      } catch(e) {}
     }
     if (viewName === 'leaves') {
+     try { filterLeaveEmployeeDropdown(document.getElementById('leave-emp-search-input')?.value || ''); } catch(e) {}
      try { renderLeavesTable(); } catch(e) {}
     }
     if (viewName === 'overtime') {
@@ -19685,14 +19828,28 @@ service cloud.firestore {
     return;
    }
 
-   filtered.forEach(u => {
+   const hasCurrentInFiltered = currentVal && filtered.some(u => u.nik === currentVal);
+   const hasSelfInFiltered = !currentVal && currentUser && filtered.some(u => u.nik === currentUser.nik);
+   if (filtered.length > 1 || (!hasCurrentInFiltered && !hasSelfInFiltered)) {
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.innerText = `-- Pilih Karyawan (${filtered.length}) --`;
+    if (!hasCurrentInFiltered && !hasSelfInFiltered && !(q && filtered.length === 1)) {
+     ph.selected = true;
+    }
+    leaveSelect.appendChild(ph);
+   }
+
+   filtered.forEach((u, idx) => {
     const opt = document.createElement('option');
     opt.value = u.nik;
     const uDept = (u.dept || 'STAFF').trim().toUpperCase();
     opt.innerText = `${u.name} (${u.nik}) - ${uDept}`;
-    if (currentVal && u.nik === currentVal) {
+    if (hasCurrentInFiltered && u.nik === currentVal) {
      opt.selected = true;
-    } else if (!currentVal && currentUser && u.nik === currentUser.nik) {
+    } else if (hasSelfInFiltered && currentUser && u.nik === currentUser.nik) {
+     opt.selected = true;
+    } else if (q && filtered.length === 1 && idx === 0) {
      opt.selected = true;
     }
     leaveSelect.appendChild(opt);
@@ -21004,14 +21161,17 @@ service cloud.firestore {
    user.isActive = isActivating;
    user.updatedAt = new Date().toISOString();
 
-   const registryPublishPromise = publishInactiveRegistryToCloud(actualWh, users);
-    setWhDB(actualWh, 'users', users);
+   setWhDB(actualWh, 'users', users, true);
    localStorage.setItem(`wfm_${actualWh.toLowerCase()}_users_backup`, JSON.stringify(users));
    const nowIso = new Date().toISOString();
    localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
    localStorage.setItem('wfm_master_updated_at', nowIso);
 
-   await saveFullDatabaseToCloud(false, true, true);
+   await publishInactiveRegistryToCloud(actualWh, users);
+   if (typeof saveUserDocToFirestore === 'function') {
+    await saveUserDocToFirestore(actualWh, user).catch(() => {});
+   }
+   await saveFullDatabaseToCloud(false, true, true, actualWh);
 
    renderEmployeeTable();
    populateDropdownEmployees();
@@ -21054,12 +21214,17 @@ service cloud.firestore {
     }
    });
 
-   const bulkRegistryPromise = publishInactiveRegistryToCloud(targetWh, users);
-    setWhDB(targetWh, 'users', users);
+   setWhDB(targetWh, 'users', users, true);
    localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(users));
    const nowIso = new Date().toISOString();
    localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
    localStorage.setItem('wfm_master_updated_at', nowIso);
+
+   await publishInactiveRegistryToCloud(targetWh, users);
+   if (typeof saveUserDocToFirestore === 'function') {
+    const touched = users.filter(u => u && u.nik && selectedNiks.has(u.nik.toUpperCase().trim()) && !isManagementSystemAccount(u));
+    await Promise.allSettled(touched.map(u => saveUserDocToFirestore(targetWh, u)));
+   }
    await saveFullDatabaseToCloud(false, true, true, targetWh, true);
 
    window.selectedEmployeeNiks.clear();
@@ -21366,6 +21531,7 @@ service cloud.firestore {
     if (oldNik) unmarkDeletedUser(oldNik);
     if (finalId) unmarkDeletedUser(finalId);
 
+    const wasInactive = !isManagementSystemAccount(users[idx]) && (users[idx].status === 'inactive' || users[idx].isActive === false);
     const isManagementRole = (finalRole === 'supervisor' || finalRole === 'coordinator' || finalRole === 'admin');
     users[idx].id = finalId;
     users[idx].name = name;
@@ -21373,17 +21539,23 @@ service cloud.firestore {
     users[idx].barcodeValue = nik;
     users[idx].role = finalRole;
     users[idx].dept = finalDept;
+    users[idx].department = finalDept;
     users[idx].outsource = outsource;
     users[idx].phone = phone;
     users[idx].email = email;
     users[idx].joinDate = joinDate;
     users[idx].warehouse = currentWh;
     users[idx].updatedAt = nowIso;
-    delete users[idx].resignedAt;
-    delete users[idx].isInactive;
-    delete users[idx].isResign;
-    users[idx].status = 'active';
-    users[idx].isActive = true;
+    if (!wasInactive) {
+     delete users[idx].resignedAt;
+     delete users[idx].isInactive;
+     delete users[idx].isResign;
+     users[idx].status = 'active';
+     users[idx].isActive = true;
+    } else {
+     users[idx].status = 'inactive';
+     users[idx].isActive = false;
+    }
     
     // 1. Tangani Akun Login & Password
     if (isManagementRole) {
@@ -21505,8 +21677,9 @@ service cloud.firestore {
      } catch(e) {}
     }
 
-    // SIMPAN KE DATABASE LOKAL & CADANGAN BACKUP
+    // SIMPAN KE DATABASE LOKAL, CACHE MEMORI & CADANGAN BACKUP
     const storageKey = `wfm_${currentWh.toLowerCase()}_users`;
+    whDBCache.set(storageKey, users);
     localStorage.setItem(storageKey, JSON.stringify(users));
     localStorage.setItem(`wfm_${currentWh.toLowerCase()}_users_backup`, JSON.stringify(users));
 
@@ -21555,14 +21728,17 @@ service cloud.firestore {
      if (otsChanged) localStorage.setItem(`wfm_${currentWh.toLowerCase()}_overtime`, JSON.stringify(ots));
     }
 
-    // Simpan langsung ke Firebase Cloud 24/7 seketika (Master Force Upload tanpa tertimpa data lama)
-    await saveFullDatabaseToCloud(false, true, true);
+    // Simpan langsung ke Firebase Cloud 24/7 seketika (Master Force Upload + dokumen individu + registry)
+    if (typeof publishInactiveRegistryToCloud === 'function') {
+     await publishInactiveRegistryToCloud(currentWh, users);
+    }
     if (typeof saveUserDocToFirestore === 'function') {
-     saveUserDocToFirestore(currentWh, users[idx]);
+     await saveUserDocToFirestore(currentWh, users[idx]).catch(() => {});
      if (oldNik && oldNik !== nik && typeof deleteDocFromFirestore === 'function') {
-      deleteDocFromFirestore(currentWh, 'users', oldNik);
+      await deleteDocFromFirestore(currentWh, 'users', oldNik).catch(() => {});
      }
     }
+    await saveFullDatabaseToCloud(false, true, true, currentWh);
 
     // Jika user yang diedit adalah akun yang sedang aktif/login, update sesi dan navbar seketika!
     const isEditingCurrent = currentUser && (
@@ -24801,13 +24977,13 @@ service cloud.firestore {
 
    const selectedIds = Array.from(window.selectedRecordIds);
 
-   // Catat ke tombstone
+   // Catat ke tombstone & kumpulkan semua doc ID Firestore yang terkait
    trackDeletedAttendance(selectedIds);
+   const docIdsToDelete = new Set(selectedIds.filter(Boolean).map(String));
 
-   // Filter dari kedua gudang lokal
-   const remainingMbi = [];
-   const remainingMai = [];
+   // Filter dari kedua gudang lokal dan cadangan backup + today_attendance
    ['MBI', 'MAI'].forEach(w => {
+    const wLower = w.toLowerCase();
     let list = getWhDB(w, 'attendance', []);
     const filtered = list.filter(a => {
      if (!a) return false;
@@ -24818,33 +24994,50 @@ service cloud.firestore {
       return (kId && kId === s) || (kComp && kComp === s);
      })) {
       trackDeletedAttendance(a);
+      if (a.id) docIdsToDelete.add(String(a.id));
+      if (a._firestoreDocId) docIdsToDelete.add(String(a._firestoreDocId));
       return false;
      }
-     if (isAttendanceMarkedDeleted(a)) return false;
+     if (isAttendanceMarkedDeleted(a)) {
+      if (a.id) docIdsToDelete.add(String(a.id));
+      if (a._firestoreDocId) docIdsToDelete.add(String(a._firestoreDocId));
+      return false;
+     }
      return true;
     });
-    setWhDB(w, 'attendance', filtered);
-    if (w === 'MBI') remainingMbi.push(...filtered);
-    else remainingMai.push(...filtered);
+    setWhDB(w, 'attendance', filtered, true);
+    try { localStorage.setItem(`wfm_${wLower}_attendance_backup`, JSON.stringify(filtered)); } catch(eBak) {}
+    try {
+     const tdRaw = localStorage.getItem(`wfm_${wLower}_today_attendance`);
+     if (tdRaw) {
+      const tdList = JSON.parse(tdRaw);
+      if (Array.isArray(tdList)) {
+       localStorage.setItem(`wfm_${wLower}_today_attendance`, JSON.stringify(tdList.filter(a => a && !isAttendanceMarkedDeleted(a))));
+      }
+     }
+    } catch(eTd) {}
    });
 
-   // Hapus dokumen fisik langsung dari Cloud Firestore attendance collection
+   // Hapus dokumen fisik langsung dari Cloud Firestore attendance collection + scrub snapshot hari ini/arsip
    try {
-    if (typeof id !== 'undefined' && id) {
-     deleteDocFromFirestore(wh, 'attendance', id).catch(() => {});
-    }
-    if (typeof selectedIds !== 'undefined' && Array.isArray(selectedIds)) {
-     selectedIds.forEach(sId => {
-      deleteDocFromFirestore('MBI', 'attendance', sId).catch(() => {});
-      deleteDocFromFirestore('MAI', 'attendance', sId).catch(() => {});
-     });
-    }
+    const delPromises = [];
+    docIdsToDelete.forEach(sId => {
+     delPromises.push(deleteDocFromFirestore('MBI', 'attendance', sId).catch(() => {}));
+     delPromises.push(deleteDocFromFirestore('MAI', 'attendance', sId).catch(() => {}));
+    });
+    await Promise.allSettled(delPromises);
+    await Promise.allSettled([
+     scrubDeletedAttendanceFromCloud('MBI'),
+     scrubDeletedAttendanceFromCloud('MAI')
+    ]);
    } catch(eAttDoc) {}
 
-   // Sinkronkan ke Cloud Firestore
+   // Sinkronkan ke Cloud Firestore (termasuk tombstone deleted_attendance_ids)
    await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
-   if (typeof triggerGoogleSheetAutoSync === 'function') {
+   if (typeof syncGoogleSheetDirectly === 'function') {
+    syncGoogleSheetDirectly(true);
+   } else if (typeof triggerGoogleSheetAutoSync === 'function') {
     triggerGoogleSheetAutoSync(true);
    }
    try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
@@ -24865,42 +25058,56 @@ service cloud.firestore {
    const attendances = getWhDB(wh, 'attendance', []);
    const toDelete = attendances.find(a => a && (a.id === id || getAttendanceCompositeKey(a) === String(id).toLowerCase()));
    
-   // Catat ke tombstone agar tidak pernah bangkit lagi dari Cloud
+   // Catat ke tombstone agar tidak pernah bangkit lagi dari Cloud/Sheet
+   const docIdsToDelete = new Set();
+   if (id) docIdsToDelete.add(String(id));
    if (toDelete) {
     trackDeletedAttendance(toDelete);
+    if (toDelete.id) docIdsToDelete.add(String(toDelete.id));
+    if (toDelete._firestoreDocId) docIdsToDelete.add(String(toDelete._firestoreDocId));
    } else {
     trackDeletedAttendance(id);
    }
 
-   // Bersihkan dari kedua gudang jika record ada
-   const remainingMbi = [];
-   const remainingMai = [];
+   // Bersihkan dari kedua gudang beserta cadangan backup & today_attendance
    ['MBI', 'MAI'].forEach(w => {
+    const wLower = w.toLowerCase();
     let list = getWhDB(w, 'attendance', []);
     const filtered = list.filter(a => a && !isAttendanceMarkedDeleted(a));
-    setWhDB(w, 'attendance', filtered);
-    if (w === 'MBI') remainingMbi.push(...filtered);
-    else remainingMai.push(...filtered);
+    setWhDB(w, 'attendance', filtered, true);
+    try { localStorage.setItem(`wfm_${wLower}_attendance_backup`, JSON.stringify(filtered)); } catch(eBak) {}
+    try {
+     const tdRaw = localStorage.getItem(`wfm_${wLower}_today_attendance`);
+     if (tdRaw) {
+      const tdList = JSON.parse(tdRaw);
+      if (Array.isArray(tdList)) {
+       localStorage.setItem(`wfm_${wLower}_today_attendance`, JSON.stringify(tdList.filter(a => a && !isAttendanceMarkedDeleted(a))));
+      }
+     }
+    } catch(eTd) {}
    });
 
-   // Hapus dokumen fisik langsung dari Cloud Firestore attendance collection
+   // Hapus dokumen fisik langsung dari Cloud Firestore attendance collection & bersihkan today/archive snapshot
    try {
-    if (typeof id !== 'undefined' && id) {
-     deleteDocFromFirestore(wh, 'attendance', id).catch(() => {});
-    }
-    if (typeof selectedIds !== 'undefined' && Array.isArray(selectedIds)) {
-     selectedIds.forEach(sId => {
-      deleteDocFromFirestore('MBI', 'attendance', sId).catch(() => {});
-      deleteDocFromFirestore('MAI', 'attendance', sId).catch(() => {});
-     });
-    }
+    const delPromises = [];
+    docIdsToDelete.forEach(dId => {
+     delPromises.push(deleteDocFromFirestore('MBI', 'attendance', dId).catch(() => {}));
+     delPromises.push(deleteDocFromFirestore('MAI', 'attendance', dId).catch(() => {}));
+    });
+    await Promise.allSettled(delPromises);
+    await Promise.allSettled([
+     scrubDeletedAttendanceFromCloud('MBI'),
+     scrubDeletedAttendanceFromCloud('MAI')
+    ]);
    } catch(eAttDoc) {}
 
-   // Sinkronkan ke Cloud Firestore
+   // Sinkronkan ke Cloud Firestore (beserta tombstone deleted_attendance_ids)
    await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
    // Langsung update Google Spreadsheet seketika
-   if (typeof triggerGoogleSheetAutoSync === 'function') {
+   if (typeof syncGoogleSheetDirectly === 'function') {
+    syncGoogleSheetDirectly(true);
+   } else if (typeof triggerGoogleSheetAutoSync === 'function') {
     triggerGoogleSheetAutoSync(true);
    }
    try { if (typeof BroadcastChannel !== 'undefined') new BroadcastChannel('wfm_firebase_live_sync').postMessage('update'); } catch(e) {}
@@ -25066,13 +25273,23 @@ service cloud.firestore {
     updatedAt: new Date().toISOString()
    };
 
+   if (typeof untrackDeletedAttendance === 'function') {
+    untrackDeletedAttendance(newRec);
+   }
    const attendances = getWhDB(wh, 'attendance', []);
    attendances.unshift(newRec);
-   setWhDB(wh, 'attendance', attendances);
+   setWhDB(wh, 'attendance', attendances, true);
+   try { localStorage.setItem(`wfm_${wh.toLowerCase()}_attendance_backup`, JSON.stringify(attendances)); } catch(eBak) {}
 
    if (outIso) cleanStaleMissScanFlags(newRec);
-   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet via Outbox anti-hilang
+   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
    await syncAttendanceToCloud(wh, attendances, newRec);
+   if (typeof saveAttendanceDocToFirestore === 'function') {
+    await saveAttendanceDocToFirestore(wh, newRec).catch(() => {});
+   }
+   if (typeof syncGoogleSheetDirectly === 'function') {
+    syncGoogleSheetDirectly(true);
+   }
 
    closeManualAttendanceModal();
    renderRecordsTable(true);
@@ -25226,12 +25443,25 @@ service cloud.firestore {
    if (outIso) {
     cleanStaleMissScanFlags(existingRec);
    }
+   if (typeof untrackDeletedAttendance === 'function') {
+    untrackDeletedAttendance(existingRec);
+   }
 
    attendances[idx] = existingRec;
    setWhDB(targetWh, 'attendance', attendances, true);
+   try { localStorage.setItem(`wfm_${targetWh.toLowerCase()}_attendance_backup`, JSON.stringify(attendances)); } catch(eBak) {}
 
-   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet via Outbox anti-hilang
+   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
    await syncAttendanceToCloud(targetWh, attendances, existingRec);
+   if (typeof saveAttendanceDocToFirestore === 'function') {
+    await saveAttendanceDocToFirestore(targetWh, existingRec).catch(() => {});
+    if (existingRec._firestoreDocId && existingRec._firestoreDocId !== existingRec.id && typeof saveDocToFirestore === 'function') {
+     await saveDocToFirestore(targetWh, 'attendance', existingRec._firestoreDocId, { ...existingRec, warehouse: targetWh }).catch(() => {});
+    }
+   }
+   if (typeof syncGoogleSheetDirectly === 'function') {
+    syncGoogleSheetDirectly(true);
+   }
 
    closeEditAttendanceModal();
    renderRecordsTable(true);
@@ -26198,13 +26428,13 @@ service cloud.firestore {
     }
 
     tr.innerHTML = `
-     <td class="p-3 font-bold">${lv.userName}<br><span class="font-mono text-[10px] text-slate-400">${lv.userNik}</span></td>
-     <td class="p-3"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-800">${osVal}</span></td>
-     <td class="p-3">${typeBadge}</td>
-     <td class="p-3 font-mono text-[11px] text-slate-700">${lv.startDate} s/d ${lv.endDate}</td>
-     <td class="p-3 text-slate-600 max-w-xs truncate">${lv.reason}</td>
-     <td class="p-3">${statusBadge}</td>
-     <td class="p-3 text-right">
+     <td class="px-2.5 py-2.5 font-bold leading-tight">${lv.userName}<br><span class="font-mono text-[10px] font-normal text-slate-400">${lv.userNik}</span></td>
+     <td class="px-2.5 py-2.5 whitespace-nowrap"><span class="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-800">${osVal}</span></td>
+     <td class="px-2.5 py-2.5 whitespace-nowrap">${typeBadge}</td>
+     <td class="px-2.5 py-2.5 font-mono text-[11px] text-slate-700 whitespace-nowrap tabular-nums">${lv.startDate}<br><span class="text-[10px] text-slate-400">s/d ${lv.endDate}</span></td>
+     <td class="px-2.5 py-2.5 text-slate-600 max-w-[150px] truncate" title="${(lv.reason || '').replace(/"/g, '&quot;')}">${lv.reason}</td>
+     <td class="px-2.5 py-2.5 whitespace-nowrap">${statusBadge}</td>
+     <td class="px-2.5 py-2.5 text-right whitespace-nowrap">
       ${actionCellHtml}
      </td>
     `;
