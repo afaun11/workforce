@@ -9776,11 +9776,18 @@
       hasChanges = true;
      }
 
-     // Jika sesi belum lewat 14 jam (masih aktif, seperti shift malam lintas hari), bersihkan flag Miss Scan palsu
-     if (!a.checkOutTime && a.checkInTime) {
-      const inMs = new Date(a.checkInTime).getTime();
+     // Auto-heal: Jika sudah punya jam pulang yang sah, bersihkan flag Miss Scan usang di catatan/status
+     if (hasValidCheckOut(a)) {
+      if (cleanStaleMissScanFlags(a)) {
+       hasChanges = true;
+      }
+     }
+
+     // Jika sesi belum lewat 18 jam (masih aktif, seperti shift malam lintas hari/lembur), bersihkan flag Miss Scan palsu
+     if (!hasValidCheckOut(a) && a.checkInTime) {
+      const inMs = parseSafeTimeMs(a.checkInTime, a.date) || new Date(a.checkInTime).getTime();
       const elapsedMs = (!isNaN(inMs) && inMs > 0) ? (Date.now() - inMs) : 0;
-      if (elapsedMs > 0 && elapsedMs < (14 * 60 * 60 * 1000)) {
+      if (elapsedMs >= 0 && elapsedMs < MAX_SHIFT_MS) {
        if (a.notes && a.notes.includes('Miss Scan')) {
         a.notes = a.notes.replace(/Miss Scan/gi, '').replace(/\(\s*\)/g, '').replace(/\|\s*\|/g, '|').trim();
         if (a.notes === '|' || a.notes === '-') a.notes = '';
@@ -9919,6 +9926,12 @@
        }
       }
       healedAtts.push(cur);
+     }
+    });
+
+    healedAtts.forEach(a => {
+     if (a && hasValidCheckOut(a) && cleanStaleMissScanFlags(a)) {
+      hasChanges = true;
      }
     });
 
@@ -10439,6 +10452,62 @@
    }
   }
 
+  async function listAllDocsFromFirestore(wh, collection, maxPages = 60) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const allDocs = [];
+   let pageToken = '';
+   let page = 0;
+   while (page < maxPages) {
+    if (isFirestoreSuspended(targetWh)) break;
+    const res = await listDocsFromFirestore(targetWh, collection, 300, pageToken);
+    if (res && Array.isArray(res.docs) && res.docs.length > 0) {
+     allDocs.push(...res.docs);
+    }
+    if (!res || !res.nextPageToken) break;
+    pageToken = res.nextPageToken;
+    page++;
+   }
+   return allDocs;
+  }
+
+  async function queryFirestoreAttendanceByField(wh, fieldPath, stringValue) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   if (!stringValue || isFirestoreSuspended(targetWh)) return [];
+   try {
+    const projectId = getFirestoreProjectId(targetWh);
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+    const body = {
+     structuredQuery: {
+      from: [{ collectionId: 'attendance' }],
+      where: {
+       fieldFilter: {
+        field: { fieldPath: fieldPath },
+        op: 'EQUAL',
+        value: { stringValue: String(stringValue) }
+       }
+      },
+      limit: 40
+     }
+    };
+    const res = await fetch(url, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+     body: JSON.stringify(body)
+    });
+    if (res.status === 429 || res.status === 403) {
+     suspendFirestoreQuota(targetWh);
+     return [];
+    }
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!Array.isArray(json)) return [];
+    return json.map(row => (row && row.document ? fromFirestoreDoc(row.document) : null)).filter(Boolean);
+   } catch (err) {
+    console.warn(`[Firestore] Query attendance by ${fieldPath} error (${targetWh}):`, err);
+    return [];
+   }
+  }
+
   async function deleteDocFromFirestore(wh, collection, docId) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    if (isFirestoreSuspended(targetWh)) return false;
@@ -10459,41 +10528,74 @@
   }
 
   async function saveAttendanceDocToFirestore(wh, attRec) {
-   if (!attRec) return;
+   if (!attRec) return false;
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    const docId = attRec.id || `att-${targetWh.toLowerCase()}-${Date.now()}`;
-   
+   let primaryOk = false;
+
    try {
     const cleanPayload = {
      ...attRec,
      warehouse: targetWh,
      updatedAt: attRec.updatedAt || new Date().toISOString()
     };
-    // 1. Simpan dokumen transaksi presensi ke koleksi Firestore
-    saveDocToFirestore(targetWh, 'attendance', docId, cleanPayload).catch(() => {});
+    // 1. Simpan dokumen transaksi presensi ke koleksi Firestore (WAJIB cek keberhasilan untuk outbox retry)
+    primaryOk = await saveDocToFirestore(targetWh, 'attendance', docId, cleanPayload);
 
-    // 2. Siarkan beacon live Firestore agar seluruh perangkat mendeteksi perubahan seketika
-    saveDocToFirestore(targetWh, '_metadata', 'live_beacon', {
-     type: 'attendance_scan',
-     lastDocId: docId,
-     userNik: attRec.userNik || '',
-     userName: attRec.userName || '',
-     checkInStatus: attRec.checkInStatus || '',
-     updatedAt: cleanPayload.updatedAt,
-     warehouse: targetWh
-    }).catch(() => {});
+    if (primaryOk) {
+     // 2. Siarkan beacon live Firestore agar seluruh perangkat mendeteksi perubahan seketika
+     saveDocToFirestore(targetWh, '_metadata', 'live_beacon', {
+      type: 'attendance_scan',
+      lastDocId: docId,
+      userNik: attRec.userNik || '',
+      userName: attRec.userName || '',
+      checkInStatus: attRec.checkInStatus || '',
+      updatedAt: cleanPayload.updatedAt,
+      warehouse: targetWh
+     }).catch(() => {});
 
-    // 3. Simpan ringkasan snapshot hari ini (_metadata/today_attendance) untuk efisiensi kuota (1 Read)
-    const todayStr = attRec.date || getLocalDateString(new Date());
-    const allAtt = getWhDB(targetWh, 'attendance', []);
-    const todayList = allAtt.filter(a => a && (a.date === todayStr || (a.checkInTime && a.checkInTime.startsWith(todayStr))));
-    saveDocToFirestore(targetWh, '_metadata', 'today_attendance', {
-     date: todayStr,
-     count: todayList.length,
-     updatedAt: cleanPayload.updatedAt,
-     warehouse: targetWh,
-     records: todayList.slice(0, 150)
-    }).catch(() => {});
+     // 3. Perbarui ringkasan snapshot hari ini (_metadata/today_attendance) DENGAN MERGE AMAN (tidak pernah menimpa scan perangkat lain & tanpa batas 150)
+     (async () => {
+      try {
+       const todayStr = getLocalDateString(new Date());
+       const nowMs = Date.now();
+       const isRelevantForLiveSummary = (a) => {
+        if (!a || isAttendanceMarkedDeleted(a)) return false;
+        const inLocal = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : '';
+        const outLocal = a.checkOutTime ? getLocalDateString(new Date(a.checkOutTime)) : '';
+        if (a.date === todayStr || inLocal === todayStr || outLocal === todayStr) return true;
+        if (!hasValidCheckOut(a) && a.checkInTime) {
+         const inMs = parseSafeTimeMs(a.checkInTime, a.date) || new Date(a.checkInTime).getTime();
+         if (!isNaN(inMs) && (nowMs - inMs) >= 0 && (nowMs - inMs) < MAX_SHIFT_MS) return true;
+        }
+        return false;
+       };
+
+       const existingCloudToday = await getDocFromFirestore(targetWh, '_metadata', 'today_attendance');
+       const existingRecords = (existingCloudToday && Array.isArray(existingCloudToday.records))
+        ? existingCloudToday.records.filter(isRelevantForLiveSummary)
+        : [];
+
+       const allAtt = getWhDB(targetWh, 'attendance', []);
+       const localRelevant = allAtt.filter(isRelevantForLiveSummary);
+       const mergedSummary = mergeAttendanceArrays(localRelevant, existingRecords)
+        .filter(a => a && !isAttendanceMarkedDeleted(a));
+
+       // Pastikan record terbaru yang baru saja disimpan pasti masuk
+       const finalSummary = mergeAttendanceArrays(mergedSummary, [cleanPayload])
+        .filter(a => a && !isAttendanceMarkedDeleted(a))
+        .slice(0, 1000);
+
+       await saveDocToFirestore(targetWh, '_metadata', 'today_attendance', {
+        date: todayStr,
+        count: finalSummary.length,
+        updatedAt: cleanPayload.updatedAt,
+        warehouse: targetWh,
+        records: finalSummary
+       });
+      } catch (eTodayMerge) {}
+     })();
+    }
    } catch (eFs) {
     console.warn('saveAttendanceDocToFirestore notice:', eFs);
    }
@@ -10504,6 +10606,8 @@
      new BroadcastChannel('wfm_firebase_live_sync').postMessage({ targetWh, docId });
     }
    } catch(e) {}
+
+   return primaryOk;
   }
 
   async function saveMasterSnapshotToFirestore(wh = null, isExplicitAdminAction = false) {
@@ -10596,9 +10700,9 @@
    if (!rec) return true;
    try {
     if (typeof saveAttendanceDocToFirestore === 'function') {
-     await saveAttendanceDocToFirestore(wh, rec);
+     return await saveAttendanceDocToFirestore(wh, rec);
     }
-    return true;
+    return false;
    } catch (e) {
     return false;
    }
@@ -11115,14 +11219,20 @@
    }
   }
 
-  async function pullAttendanceFromFirestore(wh = null, alertOnComplete = false) {
+  window._fsFullAttPulled = window._fsFullAttPulled || {};
+  window._cloudAttInitialSyncDone = window._cloudAttInitialSyncDone || {};
+
+  async function pullAttendanceFromFirestore(wh = null, alertOnComplete = false, forceFullCollectionPull = false) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   let pulledAnything = false;
+   let todayCount = 0;
+   let collectionCount = 0;
    try {
     let localAtt = getWhDB(targetWh, 'attendance', []);
     const hasArchiveLoaded = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_attendance_archive_loaded`) === 'true';
 
-    // 1. Cek & muat arsip riwayat jika belum ada di lokal atau data presensi lokal masih sedikit (< 1000 record)
-    if (!hasArchiveLoaded || localAtt.length < 1000 || alertOnComplete) {
+    // 1. Cek & muat arsip riwayat historis jika belum ada di lokal atau data presensi lokal masih sedikit (< 1000 record)
+    if (!hasArchiveLoaded || localAtt.length < 1000 || alertOnComplete || forceFullCollectionPull) {
      try {
       const archiveDoc = await getDocFromFirestore(targetWh, '_metadata', 'attendance_archive');
       if (archiveDoc && (archiveDoc.payload || archiveDoc.records)) {
@@ -11131,6 +11241,7 @@
         localAtt = mergeAttendanceArrays(localAtt, archiveRecords);
         setWhDB(targetWh, 'attendance', localAtt, true);
         localStorage.setItem(`wfm_${targetWh.toLowerCase()}_attendance_archive_loaded`, 'true');
+        pulledAnything = true;
        }
       }
      } catch(eArch) {
@@ -11138,42 +11249,62 @@
      }
     }
 
-    // 2. Unduh ringkasan absensi hari ini (1 Read)
-    const todayDoc = await getDocFromFirestore(targetWh, '_metadata', 'today_attendance');
-    if (todayDoc && Array.isArray(todayDoc.records) && todayDoc.records.length > 0) {
-     localAtt = getWhDB(targetWh, 'attendance', []);
-     const merged = mergeAttendanceArrays(localAtt, todayDoc.records);
-     setWhDB(targetWh, 'attendance', merged, true);
+    // 2. Unduh ringkasan absensi hari ini (1 Read) dan gabungkan (JANGAN return lebih awal agar transaksi harian di koleksi tetap tertarik!)
+    try {
+     const todayDoc = await getDocFromFirestore(targetWh, '_metadata', 'today_attendance');
+     if (todayDoc && Array.isArray(todayDoc.records) && todayDoc.records.length > 0) {
+      localAtt = getWhDB(targetWh, 'attendance', []);
+      const mergedToday = mergeAttendanceArrays(localAtt, todayDoc.records);
+      setWhDB(targetWh, 'attendance', mergedToday, true);
+      todayCount = todayDoc.records.length;
+      pulledAnything = true;
+      try {
+       localStorage.setItem('wfm_' + targetWh.toLowerCase() + '_today_attendance', JSON.stringify(todayDoc.records));
+      } catch(e) {}
+     }
+    } catch(eToday) {
+     console.warn('[Firestore] pull today_attendance notice:', eToday);
+    }
+
+    // 3. Tarik SELURUH halaman koleksi dokumen presensi individual (attendance/*) agar data kemarin/tgl 10/dll yang belum masuk arsip tetap ketarik utuh!
+    const shouldPullAllCollection = forceFullCollectionPull || alertOnComplete || !window._fsFullAttPulled[targetWh];
+    if (shouldPullAllCollection && typeof listAllDocsFromFirestore === 'function') {
+     const allDocs = await listAllDocsFromFirestore(targetWh, 'attendance', 60);
+     if (allDocs && allDocs.length > 0) {
+      localAtt = getWhDB(targetWh, 'attendance', []);
+      const mergedAll = mergeAttendanceArrays(localAtt, allDocs);
+      setWhDB(targetWh, 'attendance', mergedAll, true);
+      collectionCount = allDocs.length;
+      pulledAnything = true;
+     }
+     window._fsFullAttPulled[targetWh] = true;
+    }
+
+    // 4. Sanitasi & auto-heal catatan Miss Scan palsu pada record yang sudah punya jam pulang sah
+    try { sanitizeAttendanceDatabase(targetWh); } catch(eSan) {}
+
+    window._cloudAttInitialSyncDone[targetWh] = true;
+
+    if (pulledAnything) {
+     const finalAtt = getWhDB(targetWh, 'attendance', []);
      try {
-      localStorage.setItem('wfm_' + targetWh.toLowerCase() + '_today_attendance', JSON.stringify(todayDoc.records));
-     } catch(e) {}
+      localStorage.setItem(`wfm_${targetWh.toLowerCase()}_attendance_backup`, JSON.stringify(finalAtt));
+     } catch(eBak) {}
      renderAllLiveScreens();
      if (alertOnComplete) {
-      alert(`Å“â€¦ Berhasil menarik absensi hari ini (${todayDoc.records.length} record) & total ${merged.length} riwayat dari Cloud Firestore Gudang ${targetWh}!`);
+      alert(`Berhasil menarik data absensi lengkap Gudang ${targetWh}!\n- Hari Ini: ${todayCount} record\n- Transaksi Cloud: ${collectionCount} dokumen\n- Total Riwayat Tersinkron: ${finalAtt.length} presensi`);
      }
      return true;
     }
 
-    // 3. Fallback: unduh dari koleksi dokumen presensi
-    const res = await listDocsFromFirestore(targetWh, 'attendance', 300);
-    if (res.docs && res.docs.length > 0) {
-     localAtt = getWhDB(targetWh, 'attendance', []);
-     const merged = mergeAttendanceArrays(localAtt, res.docs);
-     setWhDB(targetWh, 'attendance', merged, true);
-     renderAllLiveScreens();
-     if (alertOnComplete) {
-      alert(`Å“â€¦ Berhasil menarik ${res.docs.length} data absensi langsung dari Cloud Firestore Gudang ${targetWh}!`);
-     }
-     return true;
-    }
     if (alertOnComplete) {
-     alert(`Belum ada data absensi yang tersimpan di Cloud Firestore Gudang ${targetWh}. Silakan lakukan migrasi terlebih dahulu.`);
+     alert(`Belum ada data absensi tambahan di Cloud Firestore Gudang ${targetWh}.`);
     }
     return false;
    } catch (e) {
     console.warn('[Firestore] pull attendance error:', e);
     if (alertOnComplete) {
-     alert(`Å¡  Gagal menarik data absensi dari Firestore: ` + e.message);
+     alert('Gagal menarik data absensi dari Firestore: ' + e.message);
     }
     return false;
    }
@@ -11471,7 +11602,45 @@ service cloud.firestore {
   // Jika melewati 16 jam atau sesi hari kemarin yang sudah tidak aktif tanpa tap pulang:
   // Sesi otomatis berstatus "Miss Scan" & terhitung 7 jam kerja efektif di laporan.
   // =========================================================
-  const MAX_SHIFT_MS = 16 * 60 * 60 * 1000;
+  const MAX_SHIFT_MS = 18 * 60 * 60 * 1000;
+
+  function hasValidCheckOut(rec) {
+   if (!rec || !rec.checkOutTime) return false;
+   const s = String(rec.checkOutTime).trim();
+   if (!s || s === '-' || s.toLowerCase().includes('miss') || s.toLowerCase().includes('sedang')) return false;
+   const t = (typeof parseSafeTimeMs === 'function')
+    ? (parseSafeTimeMs(rec.checkOutTime, rec.date) || new Date(rec.checkOutTime).getTime())
+    : new Date(rec.checkOutTime).getTime();
+   return !isNaN(t) && t > 0;
+  }
+
+  function cleanStaleMissScanFlags(rec) {
+   if (!rec || typeof rec !== 'object') return false;
+   if (!hasValidCheckOut(rec)) return false;
+   let changed = false;
+   if (rec.notes && /miss\s*scan/i.test(rec.notes)) {
+    let cleaned = rec.notes
+     .replace(/\(?\s*miss\s*scan\s*\)?/gi, '')
+     .replace(/\|\s*\|/g, '|')
+     .replace(/^\s*[|\-]+\s*|\s*[|\-]+\s*$/g, '')
+     .trim();
+    rec.notes = cleaned;
+    changed = true;
+   }
+   if (rec.checkInStatus === 'miss_scan') {
+    rec.checkInStatus = 'on_time';
+    changed = true;
+   }
+   if (rec.checkOutStatus === 'miss_scan') {
+    rec.checkOutStatus = 'normal';
+    changed = true;
+   }
+   if (rec.status === 'Miss Scan' || rec.status === 'miss_scan') {
+    rec.status = rec.checkInStatus || 'on_time';
+    changed = true;
+   }
+   return changed;
+  }
 
    function parseSafeTimeMs(timeVal, dateVal) {
     if (!timeVal || timeVal === '-' || timeVal === '') return null;
@@ -11512,14 +11681,17 @@ service cloud.firestore {
      };
     }
 
-    // Sesi yang eksplisit ditandai Miss Scan
-    const isExplicitMissScan = (rec.notes && rec.notes.toLowerCase().includes('miss scan')) ||
-                  rec.checkInStatus === 'miss_scan' ||
-                  rec.checkOutStatus === 'miss_scan' ||
-                  rec.status === 'Miss Scan' ||
-                  (typeof rec.checkOutTime === 'string' && (rec.checkOutTime.toLowerCase().includes('miss') || rec.checkOutTime === '-' || rec.checkOutTime === ''));
+    const validOut = hasValidCheckOut(rec);
+    // Sesi yang eksplisit ditandai Miss Scan (HANYA berlaku jika benar-benar tidak punya jam pulang sah)
+    const isExplicitMissScan = !validOut && (
+     (rec.notes && rec.notes.toLowerCase().includes('miss scan')) ||
+     rec.checkInStatus === 'miss_scan' ||
+     rec.checkOutStatus === 'miss_scan' ||
+     rec.status === 'Miss Scan' ||
+     (typeof rec.checkOutTime === 'string' && (rec.checkOutTime.toLowerCase().includes('miss') || rec.checkOutTime === '-' || rec.checkOutTime === ''))
+    );
 
-    if (rec.checkOutTime && !isExplicitMissScan) {
+    if (validOut && !isExplicitMissScan) {
      const inMs = parseSafeTimeMs(rec.checkInTime, rec.date) || new Date(rec.checkInTime).getTime();
      let outMs = parseSafeTimeMs(rec.checkOutTime, rec.date) || new Date(rec.checkOutTime).getTime();
 
@@ -11633,11 +11805,22 @@ service cloud.firestore {
      // Data Cloud menimpa atribut lokal ({ ...localItem, ...cloudItem }) agar koreksi nama, NIK, status, keterangan dari Cloud tidak tertimpa data lokal usang!
      const merged = { ...localItem, ...cloudItem };
 
-     // Jam pulang diutamakan dari Cloud, kecuali Cloud belum ada dan lokal memiliki jam pulang yang sah
-     if (hasOutCloud) {
+     // Jam pulang diutamakan dari yang memiliki jam pulang sah (jika salah satu sudah tap pulang, JANGAN ditimpa kosong)
+     if (hasOutCloud && hasOutLocal) {
+      const tOutA = new Date(localItem.checkOutTime).getTime() || 0;
+      const tOutB = new Date(cloudItem.checkOutTime).getTime() || 0;
+      const tUpdA = localItem.updatedAt ? new Date(localItem.updatedAt).getTime() : 0;
+      const tUpdB = cloudItem.updatedAt ? new Date(cloudItem.updatedAt).getTime() : 0;
+      merged.checkOutTime = (tUpdA > tUpdB && tOutA > 0) ? localItem.checkOutTime : cloudItem.checkOutTime;
+     } else if (hasOutCloud) {
       merged.checkOutTime = cloudItem.checkOutTime;
      } else if (hasOutLocal) {
       merged.checkOutTime = localItem.checkOutTime;
+     }
+
+     // Jika record hasil gabungan memiliki jam pulang yang sah, bersihkan label Miss Scan usang dari keterangan/status
+     if (hasValidCheckOut(merged)) {
+      cleanStaleMissScanFlags(merged);
      }
 
      map.set(matchedKey, merged);
@@ -12627,9 +12810,13 @@ service cloud.firestore {
      localStorage.setItem(`wfm_${whLower}_attendance_backup`, JSON.stringify(finalPushList));
     } catch(eBackup) {}
 
-    // 2. Simpan seketika ke Cloud Firestore Dokumen Presensi (1 Write Super Hemat)
-    if (typeof saveAttendanceDocToFirestore === 'function' && record) {
-     saveAttendanceDocToFirestore(wh, record);
+    // 2. Masukkan ke Outbox Anti-Hilang & kirim ke Cloud Firestore (otomatis retry jika sinyal putus)
+    if (record) {
+     if (typeof queueAttendanceCloudPush === 'function') {
+      queueAttendanceCloudPush(wh, record);
+     } else if (typeof saveAttendanceDocToFirestore === 'function') {
+      saveAttendanceDocToFirestore(wh, record);
+     }
     }
    } catch (err) {
     console.warn('syncAttendanceToCloud notice:', err);
@@ -12642,7 +12829,7 @@ service cloud.firestore {
     }
    } catch(eBc) {}
 
-   // 4. Trigger Google Sheet Auto Sync secara langsung sebagai cadangan konsisten
+   // 4. Trigger Google Sheet Auto Sync dengan pengaman antrean
    if (typeof syncGoogleSheetDirectly === 'function') {
     syncGoogleSheetDirectly();
    }
@@ -13210,12 +13397,13 @@ service cloud.firestore {
     .replace(/[()|]/g, '')
     .trim();
 
-   if (isMissScan) {
+   // Hanya tandai Miss Scan jika memang tidak punya jam pulang yang sah
+   if (isMissScan && !outTimeIso) {
     notes = notes ? `${notes} (Miss Scan)` : 'Miss Scan';
    }
 
    return {
-    id: `att-mbi-gs-${dateStr}-${finalNik}-${String(inH).padStart(2, '0')}${String(inM).padStart(2, '0')}${String(inS).padStart(2, '0')}`,
+    id: `att-${rawWh.toLowerCase()}-gs-${dateStr}-${finalNik}-${String(inH).padStart(2, '0')}${String(inM).padStart(2, '0')}${String(inS).padStart(2, '0')}`,
     date: dateStr,
     userId: finalUserId,
     userNik: finalNik,
@@ -13315,6 +13503,10 @@ service cloud.firestore {
         merged.checkInTime = existing.checkInTime;
        }
       }
+      // Jika sudah memiliki jam pulang yang sah, bersihkan label Miss Scan usang dari hasil gabungan
+      if (hasValidCheckOut(merged)) {
+       cleanStaleMissScanFlags(merged);
+      }
       attMap.set(k, merged);
      }
     });
@@ -13391,18 +13583,19 @@ service cloud.firestore {
        const cloudTs = fsMaster.updatedAt || new Date().toISOString();
        if (isManualAlert || forceDownload || isLocalEmpty || cloudTs !== localUpdated) {
         applyIncomingDatabase(fsMaster, wh);
-        localStorage.setItem(wfm__master_updated_at, cloudTs);
+        localStorage.setItem(`wfm_${wh.toLowerCase()}_master_updated_at`, cloudTs);
         hasNewDataApplied = true;
        }
        loaded = true;
       }
 
       // 1b. Tarik daftar karyawan NONAKTIF resmi dari Cloud (sumber kebenaran tunggal status aktif/nonaktif)
-       try { await pullInactiveRegistryFromCloud(wh); } catch(eReg) {}
+      try { await pullInactiveRegistryFromCloud(wh); } catch(eReg) {}
 
-       // 2. Tarik juga presensi hari ini dari Firestore (_metadata/today_attendance) - 1 Read
+      // 2. Tarik juga presensi lengkap (arsip + hari ini + seluruh halaman transaksi Firestore)
       if (typeof pullAttendanceFromFirestore === 'function') {
-       const attPulled = await pullAttendanceFromFirestore(wh);
+       const shouldPullFull = Boolean(isManualAlert || forceDownload || isLocalEmpty);
+       const attPulled = await pullAttendanceFromFirestore(wh, false, shouldPullFull);
        if (attPulled) {
         loaded = true;
         hasNewDataApplied = true;
@@ -13475,8 +13668,18 @@ service cloud.firestore {
       const localTs = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`) || '';
       if (beacon.updatedAt !== localTs) {
        localStorage.setItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`, beacon.updatedAt);
+       if (beacon.lastDocId && typeof getDocFromFirestore === 'function') {
+        try {
+         const singleDoc = await getDocFromFirestore(targetWh, 'attendance', beacon.lastDocId);
+         if (singleDoc && !isAttendanceMarkedDeleted(singleDoc)) {
+          const curLocal = getWhDB(targetWh, 'attendance', []);
+          const mergedSingle = mergeAttendanceArrays(curLocal, [singleDoc]);
+          setWhDB(targetWh, 'attendance', mergedSingle, true);
+         }
+        } catch(eSingle) {}
+       }
        if (typeof pullAttendanceFromFirestore === 'function') {
-        await pullAttendanceFromFirestore(targetWh);
+        await pullAttendanceFromFirestore(targetWh, false, false);
        }
        if (typeof renderAllLiveScreens === 'function') {
         renderAllLiveScreens();
@@ -15574,8 +15777,6 @@ service cloud.firestore {
    try { updateWhSwitcherButtons(); } catch(e) {}
    const attLabel = document.getElementById('att-wh-label');
    if (attLabel) attLabel.innerText = `Gudang ${warehouse}`;
-   try { initFirebaseLiveStream(warehouse); } catch(e) {}
-   try { fetchFullDatabaseFromCloud(false, warehouse, true); } catch(e) {}
    loginUserSession(scannerUser);
   }
 
@@ -16280,11 +16481,25 @@ service cloud.firestore {
     if (isUserScanner(currentUser)) {
      // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
      try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
-     try { fetchFullDatabaseFromCloud(false, currentUser.warehouse, true); } catch(e) {}
-     try { syncAttendanceFromGoogleSheetMaster(false, currentUser.warehouse); } catch(e) {}
      try { switchView('attendance'); } catch (e) {}
      try { renderScannerTodayRecords(); } catch (e) {}
      try { stopScanner(); } catch (e) {}
+     const scanWh = (currentUser.warehouse || activeWarehouse || 'MBI').toUpperCase();
+     (async () => {
+      try {
+       await fetchFullDatabaseFromCloud(false, scanWh, true);
+       await pullAttendanceFromFirestore(scanWh, false, true);
+       try { await syncAttendanceFromGoogleSheetMaster(false, scanWh); } catch(eGs) {}
+       try { sanitizeAttendanceDatabase(scanWh); } catch(eSan) {}
+       window._cloudAttInitialSyncDone = window._cloudAttInitialSyncDone || {};
+       window._cloudAttInitialSyncDone[scanWh] = true;
+       renderScannerTodayRecords();
+       if (typeof flushAttendanceOutbox === 'function') flushAttendanceOutbox();
+       if (typeof flushPendingGSheetSync === 'function') flushPendingGSheetSync();
+      } catch(eScanSync) {
+       console.warn('Scanner initial cloud sync notice:', eScanSync);
+      }
+     })();
     } else if (isManagement) {
      // Akun Management (Coordinator, Supervisor, Admin, Manager)
      try { updateWhSwitcherButtons(); } catch (e) {}
@@ -16295,37 +16510,48 @@ service cloud.firestore {
      const wh = (currentUser.warehouse || activeWarehouse || 'MBI').toUpperCase();
      (async () => {
       try {
-       // 1. Tarik snapshot master dan presensi seketika dari Cloud Firestore
+       // 1. Tarik snapshot master dan presensi lengkap dari Cloud Firestore (seluruh halaman koleksi)
        await fetchFullDatabaseFromCloud(false, wh, true);
 
-       // 2. Jika riwayat presensi lokal masih kosong / sedikit (< 500), tarik arsip riwayat
+       // 2. Jika riwayat presensi lokal masih kosong / sedikit (< 1000), tarik arsip riwayat
        const localAtt = getWhDB(wh, 'attendance', []);
-       if (localAtt.length < 500) {
+       if (localAtt.length < 1000) {
         await syncAttendanceArchiveFromCloud(wh, false);
        }
 
-       // 3. Tarik presensi hari ini
-       await pullAttendanceFromFirestore(wh, false);
+       // 3. Tarik presensi lengkap hari ini + koleksi dokumen individual Firestore
+       await pullAttendanceFromFirestore(wh, false, true);
 
        // 4. Sinkronkan dengan master Google Sheet
        try { await syncAttendanceFromGoogleSheetMaster(false, wh); } catch(eGs) {}
 
-       // 5. Segarkan seluruh layar, statistik dashboard, dan tabel record/matriks
+       // 5. Bersihkan status Miss Scan palsu pada record yang sudah punya jam pulang sah
+       try { sanitizeAttendanceDatabase(wh); } catch(eSan) {}
+       window._cloudAttInitialSyncDone = window._cloudAttInitialSyncDone || {};
+       window._cloudAttInitialSyncDone[wh] = true;
+
+       // 6. Segarkan seluruh layar, statistik dashboard, dan tabel record/matriks
        renderAllLiveScreens();
        if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
        if (typeof renderRecordsTable === 'function') renderRecordsTable();
        if (typeof renderMatrixTable === 'function') renderMatrixTable();
+       if (typeof flushAttendanceOutbox === 'function') flushAttendanceOutbox();
+       if (typeof flushPendingGSheetSync === 'function') flushPendingGSheetSync();
 
-       // Jika Manager, tarik juga data gudang lainnya
+       // Jika Manager, tarik juga data lengkap gudang lainnya
        if (isUserManager(currentUser)) {
         const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
-        await fetchFullDatabaseFromCloud(false, otherWh, false);
+        await fetchFullDatabaseFromCloud(false, otherWh, true);
         const otherAtt = getWhDB(otherWh, 'attendance', []);
-        if (otherAtt.length < 500) {
+        if (otherAtt.length < 1000) {
          await syncAttendanceArchiveFromCloud(otherWh, false);
         }
-        await pullAttendanceFromFirestore(otherWh, false);
+        await pullAttendanceFromFirestore(otherWh, false, true);
         try { await syncAttendanceFromGoogleSheetMaster(false, otherWh); } catch(eOtherGs) {}
+        try { sanitizeAttendanceDatabase(otherWh); } catch(eOtherSan) {}
+        window._cloudAttInitialSyncDone[otherWh] = true;
+        renderAllLiveScreens();
+        if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
        }
       } catch(ePull) {
        console.warn('Cross-device management initial data pull notice:', ePull);
@@ -18010,6 +18236,30 @@ service cloud.firestore {
      }
     } catch (eFs) {}
 
+    // 2. Jaring Pengaman Shift Malam Lintas Hari & Beda Perangkat:
+    // Jika tidak ada di today_attendance (misal sudah berganti tanggal ke hari berikutnya atau tertimpa),
+    // query langsung ke koleksi dokumen 'attendance' di Firestore berdasarkan NIK & ID karyawan!
+    if (candidates.length === 0 && typeof queryFirestoreAttendanceByField === 'function') {
+     try {
+      if (matchedUser.nik) {
+       const byNik = await queryFirestoreAttendanceByField(wh, 'userNik', String(matchedUser.nik).trim());
+       byNik.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+      }
+      if (candidates.length === 0 && matchedUser.id) {
+       const byId = await queryFirestoreAttendanceByField(wh, 'userId', String(matchedUser.id).trim());
+       byId.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+      }
+     } catch (eQuery) {}
+    }
+
+    // 3. Fallback akhir bila query NIK belum menemukan (misal perbedaan kapitalisasi NIK)
+    if (candidates.length === 0 && typeof listAllDocsFromFirestore === 'function') {
+     try {
+      const docs = await listAllDocsFromFirestore(wh, 'attendance', 15);
+      docs.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+     } catch (eList) {}
+    }
+
     if (candidates.length > 0) {
      // Pilih kandidat dengan waktu checkIn terbaru
      candidates.sort((a, b) => {
@@ -18303,7 +18553,7 @@ service cloud.firestore {
     if (expiredOpenSession) {
      expiredOpenSession.checkOutTime = null;
      expiredOpenSession.notes = expiredOpenSession.notes ? (expiredOpenSession.notes.includes('Miss Scan') ? expiredOpenSession.notes : expiredOpenSession.notes + ' (Miss Scan)') : 'Miss Scan';
-     setWhDB(targetWh, 'attendance', attendances);
+     setWhDB(targetWh, 'attendance', attendances, true);
      try { syncAttendanceToCloud(targetWh, attendances, expiredOpenSession); } catch (ePush) {}
     }
 
@@ -18351,11 +18601,8 @@ service cloud.firestore {
 
     playAttendanceSuccessSound('check_in', matchedUser.name);
 
-    // 3. Sinkronisasi multi-cloud di latar belakang (non-blocking) agar kamera HP tetap 60 FPS
+    // 3. Sinkronisasi multi-cloud via Outbox anti-hilang di latar belakang (non-blocking) agar kamera HP tetap 60 FPS
     setTimeout(() => {
-     if (typeof saveAttendanceDocToFirestore === 'function') {
-      saveAttendanceDocToFirestore(targetWh, newlyAddedRecord);
-     }
      syncAttendanceToCloud(targetWh, attendances, newlyAddedRecord);
     }, 20);
    } else {
@@ -18394,6 +18641,7 @@ service cloud.firestore {
      activeOpenSession.userId = matchedUser.id;
      activeOpenSession.dept = matchedUser.dept;
      activeOpenSession.outsource = matchedUser.outsource || activeOpenSession.outsource || 'Internal';
+     cleanStaleMissScanFlags(activeOpenSession);
 
      // Sinkronisasi mutlak ke array attendances lokal untuk mencegah reference detached
      const existIdx = attendances.findIndex(x => x && (
@@ -18431,11 +18679,8 @@ service cloud.firestore {
 
      playAttendanceSuccessSound('check_out', matchedUser.name);
 
-     // 3. Sinkronisasi multi-cloud di latar belakang (non-blocking) agar kamera HP tetap 60 FPS
+     // 3. Sinkronisasi multi-cloud via Outbox anti-hilang di latar belakang (non-blocking) agar kamera HP tetap 60 FPS
      setTimeout(() => {
-      if (typeof saveAttendanceDocToFirestore === 'function') {
-       saveAttendanceDocToFirestore(targetWh, activeOpenSession);
-      }
       syncAttendanceToCloud(targetWh, attendances, activeOpenSession);
      }, 20);
     } else {
@@ -24825,11 +25070,9 @@ service cloud.firestore {
    attendances.unshift(newRec);
    setWhDB(wh, 'attendance', attendances);
 
-   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
+   if (outIso) cleanStaleMissScanFlags(newRec);
+   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet via Outbox anti-hilang
    await syncAttendanceToCloud(wh, attendances, newRec);
-   if (typeof saveAttendanceDocToFirestore === 'function') {
-    saveAttendanceDocToFirestore(wh, newRec);
-   }
 
    closeManualAttendanceModal();
    renderRecordsTable(true);
@@ -24980,15 +25223,15 @@ service cloud.firestore {
    existingRec.notes = notes || 'Koreksi Admin';
    existingRec.updatedAt = new Date().toISOString();
    existingRec.correctedByAdmin = true;
+   if (outIso) {
+    cleanStaleMissScanFlags(existingRec);
+   }
 
    attendances[idx] = existingRec;
-   setWhDB(targetWh, 'attendance', attendances);
+   setWhDB(targetWh, 'attendance', attendances, true);
 
-   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
+   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet via Outbox anti-hilang
    await syncAttendanceToCloud(targetWh, attendances, existingRec);
-   if (typeof saveAttendanceDocToFirestore === 'function') {
-    saveAttendanceDocToFirestore(targetWh, existingRec);
-   }
 
    closeEditAttendanceModal();
    renderRecordsTable(true);
@@ -26640,9 +26883,12 @@ function getTargetSpreadsheet() {
 
 function doPost(e) {
  var lock = LockService.getScriptLock();
- try {
-  lock.waitLock(15000);
- } catch (eLock) {}
+ if (!lock.tryLock(25000)) {
+  return ContentService.createTextOutput(JSON.stringify({
+   status: "busy",
+   message: "Antrean sinkronisasi sedang sibuk, silakan coba sesaat lagi."
+  })).setMimeType(ContentService.MimeType.JSON);
+ }
 
  try {
   var contents = "";
@@ -26711,10 +26957,7 @@ function doPost(e) {
   function normalizeDateStr(val) {
    if (!val) return "";
    if (val instanceof Date) {
-    var y = val.getFullYear();
-    var m = ("0" + (val.getMonth() + 1)).slice(-2);
-    var d = ("0" + val.getDate()).slice(-2);
-    return y + "-" + m + "-" + d;
+    return Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
    }
    var s = String(val).trim();
    if (/^\d{5}(\.\d+)?$/.test(s)) {
@@ -26772,15 +27015,39 @@ function doPost(e) {
     }
    } catch (eRead) {}
 
-   // 2. Gabungkan/perbarui dengan data baru dari payload (tanpa menghapus data lama)
+   // 2. Gabungkan/perbarui dengan data baru dari payload (tanpa menghapus data lama & lindungi Jam Pulang yang sudah sah!)
+   var isRecordSheet = sheetName.toUpperCase().indexOf("RECORD") !== -1;
    for (var inIdx = 0; inIdx < incomingDataRows.length; inIdx++) {
     var inRow = incomingDataRows[inIdx];
     var inKey = getRowKey(sheetName, inRow);
     if (inKey) {
      if (!mergedMap[inKey]) {
       orderedKeys.push(inKey);
+      mergedMap[inKey] = inRow;
+     } else if (isRecordSheet) {
+      var prevRow = mergedMap[inKey];
+      var prevOut = String(prevRow[6] || "").trim();
+      var prevStatusOut = String(prevRow[9] || "").trim().toLowerCase();
+      var prevHasValidOut = prevOut && prevOut !== "-" && prevOut.toLowerCase().indexOf("sedang") === -1 && prevOut.toLowerCase().indexOf("miss") === -1 && prevStatusOut.indexOf("miss") === -1;
+
+      var newOut = String(inRow[6] || "").trim();
+      var newStatusOut = String(inRow[9] || "").trim().toLowerCase();
+      var newHasValidOut = newOut && newOut !== "-" && newOut.toLowerCase().indexOf("sedang") === -1 && newOut.toLowerCase().indexOf("miss") === -1 && newStatusOut.indexOf("miss") === -1;
+
+      if (prevHasValidOut && !newHasValidOut) {
+       // Pertahankan jam pulang & durasi yang sudah tercatat agar perangkat belum sinkron tidak menimpanya menjadi Miss Scan/Sedang Shift
+       var keptRow = inRow.slice();
+       keptRow[6] = prevRow[6];
+       keptRow[7] = prevRow[7];
+       keptRow[9] = prevRow[9];
+       keptRow[10] = prevRow[10];
+       mergedMap[inKey] = keptRow;
+      } else {
+       mergedMap[inKey] = inRow;
+      }
+     } else {
+      mergedMap[inKey] = inRow;
      }
-     mergedMap[inKey] = inRow;
     }
    }
 
@@ -27039,9 +27306,48 @@ function testManualSync() {
   let isGSheetSyncing = false;
   let pendingGSheetSync = false;
 
-  async function syncGoogleSheetDirectly() {
+  function markGSheetSyncPending(wh) {
+   try {
+    const key = 'wfm_gsheet_pending_map';
+    const map = JSON.parse(localStorage.getItem(key) || '{}');
+    map[String(wh || activeWarehouse || 'MBI').toUpperCase()] = Date.now();
+    localStorage.setItem(key, JSON.stringify(map));
+   } catch(e) {}
+  }
+
+  function clearGSheetSyncPending(wh) {
+   try {
+    const key = 'wfm_gsheet_pending_map';
+    const map = JSON.parse(localStorage.getItem(key) || '{}');
+    delete map[String(wh).toUpperCase()];
+    localStorage.setItem(key, JSON.stringify(map));
+   } catch(e) {}
+  }
+
+  function flushPendingGSheetSync() {
+   try {
+    const map = JSON.parse(localStorage.getItem('wfm_gsheet_pending_map') || '{}');
+    if (Object.keys(map).length > 0 && navigator.onLine !== false) {
+     syncGoogleSheetDirectly();
+    }
+   } catch(e) {}
+  }
+
+  try {
+   window.addEventListener('online', () => { flushPendingGSheetSync(); });
+  } catch(eOnlineGs) {}
+
+  async function syncGoogleSheetDirectly(forceAllowPartial = false) {
+   const curActiveWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI').toUpperCase();
+   markGSheetSyncPending(curActiveWh);
+
    if (gsheetSyncTimeout) clearTimeout(gsheetSyncTimeout);
    gsheetSyncTimeout = setTimeout(async () => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+     updateGSheetSyncBadge('local');
+     return;
+    }
+
     if (isGSheetSyncing) {
      pendingGSheetSync = true;
      return;
@@ -27049,68 +27355,62 @@ function testManualSync() {
     isGSheetSyncing = true;
     updateGSheetSyncBadge('syncing');
 
-    const tasks = [];
+    const syncOneWhToSheet = async (wh) => {
+     const webhookUrl = getGoogleSheetWebhookUrl(wh);
+     if (!webhookUrl) return;
 
-    // 1. Sync Gudang MBI ke Google Sheet MBI
-    const webhookUrlMbi = getGoogleSheetWebhookUrl('MBI');
-    if (webhookUrlMbi) {
-     const payloadMbi = compileBackupPayload('MBI');
-     const targetUrlMbi = cleanGoogleScriptUrl(webhookUrlMbi) || webhookUrlMbi;
-     const lastRowsMbi = parseInt(localStorage.getItem('wfm_max_pushed_sheet_rows_MBI') || '0', 10);
-     const curRowsMbi = payloadMbi.sheets && payloadMbi.sheets["RECORD ABSEN"] ? payloadMbi.sheets["RECORD ABSEN"].length : 0;
+     // DataShield: Jangan dorong data ke Google Sheet dari perangkat yang baru dibuka sebelum sinkronisasi awal Cloud selesai!
+     const initDone = !!(window._cloudAttInitialSyncDone && window._cloudAttInitialSyncDone[wh]);
+     if (!forceAllowPartial && !initDone) {
+      markGSheetSyncPending(wh);
+      return;
+     }
 
-     const hasMbiData = payloadMbi.sheets && (
-      (payloadMbi.sheets["RECORD ABSEN"] && payloadMbi.sheets["RECORD ABSEN"].length > 1) ||
-      (payloadMbi.sheets["REKAP PENGAJUAN"] && payloadMbi.sheets["REKAP PENGAJUAN"].length > 1) ||
-      (payloadMbi.sheets["REKAP LEMBUR"] && payloadMbi.sheets["REKAP LEMBUR"].length > 1)
+     // Gabungkan cache backup agar payload tidak pernah menyusut akibat memori lokal parsial
+     try {
+      const localAtt = getWhDB(wh, 'attendance', []);
+      const bakRaw = localStorage.getItem(`wfm_${wh.toLowerCase()}_attendance_backup`);
+      if (bakRaw) {
+       const bakList = JSON.parse(bakRaw);
+       if (Array.isArray(bakList) && bakList.length > localAtt.length) {
+        const mergedSafe = mergeAttendanceArrays(localAtt, bakList);
+        setWhDB(wh, 'attendance', mergedSafe, true);
+       }
+      }
+     } catch(eMergeBak) {}
+
+     const payload = compileBackupPayload(wh);
+     const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+     const curRows = payload.sheets && payload.sheets["RECORD ABSEN"] ? payload.sheets["RECORD ABSEN"].length : 0;
+
+     const hasData = payload.sheets && (
+      (payload.sheets["RECORD ABSEN"] && payload.sheets["RECORD ABSEN"].length > 1) ||
+      (payload.sheets["REKAP PENGAJUAN"] && payload.sheets["REKAP PENGAJUAN"].length > 1) ||
+      (payload.sheets["REKAP LEMBUR"] && payload.sheets["REKAP LEMBUR"].length > 1)
      );
 
-     if (hasMbiData) {
-      if (curRowsMbi > 0) localStorage.setItem('wfm_max_pushed_sheet_rows_MBI', String(Math.max(lastRowsMbi, curRowsMbi)));
-      tasks.push(
-       fetch(targetUrlMbi, {
-        method: 'POST',
-        mode: 'no-cors',
-        cache: 'no-cache',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payloadMbi)
-       }).catch(e => console.warn('MBI GSheet sync notice:', e))
-      );
+     if (!hasData) return;
+
+     const lastRows = parseInt(localStorage.getItem(`wfm_max_pushed_sheet_rows_${wh}`) || '0', 10);
+     if (curRows > 0) localStorage.setItem(`wfm_max_pushed_sheet_rows_${wh}`, String(Math.max(lastRows, curRows)));
+
+     try {
+      await fetch(targetUrl, {
+       method: 'POST',
+       mode: 'no-cors',
+       cache: 'no-cache',
+       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+       body: JSON.stringify(payload)
+      });
+      clearGSheetSyncPending(wh);
+     } catch (e) {
+      markGSheetSyncPending(wh);
+      console.warn(`${wh} GSheet sync notice:`, e);
      }
-    }
-
-    // 2. Sync Gudang MAI ke Google Sheet MAI
-    const webhookUrlMai = getGoogleSheetWebhookUrl('MAI');
-    if (webhookUrlMai) {
-     const payloadMai = compileBackupPayload('MAI');
-     const targetUrlMai = cleanGoogleScriptUrl(webhookUrlMai) || webhookUrlMai;
-     const lastRowsMai = parseInt(localStorage.getItem('wfm_max_pushed_sheet_rows_MAI') || '0', 10);
-     const curRowsMai = payloadMai.sheets && payloadMai.sheets["RECORD ABSEN"] ? payloadMai.sheets["RECORD ABSEN"].length : 0;
-
-     const hasMaiData = payloadMai.sheets && (
-      (payloadMai.sheets["RECORD ABSEN"] && payloadMai.sheets["RECORD ABSEN"].length > 1) ||
-      (payloadMai.sheets["REKAP PENGAJUAN"] && payloadMai.sheets["REKAP PENGAJUAN"].length > 1) ||
-      (payloadMai.sheets["REKAP LEMBUR"] && payloadMai.sheets["REKAP LEMBUR"].length > 1)
-     );
-
-     if (hasMaiData) {
-      if (curRowsMai > 0) localStorage.setItem('wfm_max_pushed_sheet_rows_MAI', String(Math.max(lastRowsMai, curRowsMai)));
-      tasks.push(
-       fetch(targetUrlMai, {
-        method: 'POST',
-        mode: 'no-cors',
-        cache: 'no-cache',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payloadMai)
-       }).catch(e => console.warn('MAI GSheet sync notice:', e))
-      );
-     }
-    }
+    };
 
     try {
-     if (tasks.length > 0) {
-      await Promise.allSettled(tasks);
-     }
+     await Promise.allSettled([syncOneWhToSheet('MBI'), syncOneWhToSheet('MAI')]);
      updateGSheetSyncBadge('synced');
     } catch (err) {
      console.warn('Google Sheet cloud backup sync notice:', err);
@@ -27119,10 +27419,10 @@ function testManualSync() {
      isGSheetSyncing = false;
      if (pendingGSheetSync) {
       pendingGSheetSync = false;
-      syncGoogleSheetDirectly();
+      syncGoogleSheetDirectly(forceAllowPartial);
      }
     }
-   }, 350);
+   }, 3000);
   }
 
   function triggerGoogleSheetAutoSync(immediate = false) {
