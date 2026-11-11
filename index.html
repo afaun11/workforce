@@ -8228,17 +8228,132 @@
   let isLocationVerified = false;
 
   // =========================================================
-  // SYSTEM APP VERSION (NOTIFIKASI PEMBARUAN DINONAKTIFKAN PERMANEN ATAS PERMINTAAN USER)
+  // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261023_v1';
+  const CURRENT_APP_VERSION = '20261112_v1';
   window.__WFM_VERSION_OUTDATED = false;
+  let lastVersionCheckAt = 0;
+  let isCheckingAppVersion = false;
+  let snoozedUpdateInfo = { version: '', until: 0 };
 
-  function isNewerVersion() { return false; }
-  function hideAppUpdateBanner() {}
-  async function checkAppVersionUpdate() { return; }
+  function parseAppVersionTuple(verStr) {
+   if (!verStr || typeof verStr !== 'string') return null;
+   const m = verStr.trim().match(/^(\d{8})(?:[_.-]?v?(\d+))?$/i);
+   if (!m) return null;
+   return [parseInt(m[1], 10) || 0, parseInt(m[2] || '1', 10) || 1];
+  }
+
+  function isNewerVersion(remoteVer, localVer = CURRENT_APP_VERSION) {
+   const r = parseAppVersionTuple(remoteVer);
+   const l = parseAppVersionTuple(localVer);
+   if (!r || !l) return false;
+   if (r[0] !== l[0]) return r[0] > l[0];
+   return r[1] > l[1];
+  }
+
+  function hideAppUpdateBanner() {
+   try {
+    if (typeof document === 'undefined' || !document.getElementById) return;
+    const el = document.getElementById('app-update-banner');
+    if (el) el.remove();
+   } catch(e) {}
+  }
+
+  function dismissAppUpdateBanner(ver) {
+   snoozedUpdateInfo = { version: String(ver || ''), until: Date.now() + 15 * 60 * 1000 };
+   hideAppUpdateBanner();
+  }
+
+  function applyAppUpdateAndReload(targetVer) {
+   try {
+    const u = new URL(window.location.href);
+    u.searchParams.set('_v', String(targetVer || Date.now()));
+    window.location.replace(u.toString());
+   } catch(e) {
+    try { window.location.reload(); } catch(e2) {}
+   }
+  }
+
+  function showAppUpdateBanner(newVer, notes = '') {
+   try {
+    if (typeof document === 'undefined' || !document.body || typeof document.createElement !== 'function') return;
+    const verStr = String(newVer || '').trim();
+    if (!verStr || !isNewerVersion(verStr, CURRENT_APP_VERSION)) {
+     hideAppUpdateBanner();
+     return;
+    }
+    if (snoozedUpdateInfo.version === verStr && Date.now() < snoozedUpdateInfo.until) {
+     return;
+    }
+    let banner = document.getElementById('app-update-banner');
+    if (!banner) {
+     banner = document.createElement('div');
+     banner.id = 'app-update-banner';
+     banner.className = 'fixed bottom-4 right-4 z-[9999] max-w-sm w-[calc(100vw-2rem)] bg-slate-900 text-white border border-slate-700 rounded-2xl shadow-2xl p-4';
+     document.body.appendChild(banner);
+    }
+    const safeVer = typeof escapeHTML === 'function' ? escapeHTML(verStr) : verStr;
+    const safeNotes = notes ? (typeof escapeHTML === 'function' ? escapeHTML(String(notes)) : String(notes)) : 'Perbaikan & pembaruan sinkronisasi terbaru siap dipakai.';
+    banner.innerHTML = `
+     <div class="flex items-start gap-3">
+      <div class="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 flex items-center justify-center shrink-0 font-black text-xs">
+       NEW
+      </div>
+      <div class="flex-1 min-w-0">
+       <div class="flex items-center justify-between gap-2">
+        <p class="text-xs font-black text-white tracking-wide">Pembaruan Sistem Tersedia</p>
+        <span class="px-2 py-0.5 rounded-md bg-slate-800 text-emerald-300 font-mono text-[10px] font-bold">${safeVer}</span>
+       </div>
+       <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">${safeNotes} Data lokal &amp; antrean absen tetap aman.</p>
+       <div class="flex items-center gap-2 mt-3">
+        <button type="button" onclick="applyAppUpdateAndReload('${safeVer}')" class="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[11px] transition shadow-xs">
+         Muat Ulang Sekarang
+        </button>
+        <button type="button" onclick="dismissAppUpdateBanner('${safeVer}')" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-[11px] transition">
+         Nanti
+        </button>
+       </div>
+      </div>
+     </div>`;
+   } catch(e) {}
+  }
+
   async function publishAppVersionToCloud() { return; }
-  function showAppUpdateBanner() {}
-  function applyAppUpdateAndReload() {}
+
+  async function checkAppVersionUpdate(force = false) {
+   try {
+    if (typeof window === 'undefined' || !window.location || window.location.protocol === 'file:') return false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+    if (typeof fetch !== 'function') return false;
+    const now = Date.now();
+    if (!force && (now - lastVersionCheckAt < 60000)) return false;
+    if (isCheckingAppVersion) return false;
+    isCheckingAppVersion = true;
+    lastVersionCheckAt = now;
+
+    const res = await fetch(`./version.json?_vt=${now}`, { cache: 'no-store' });
+    if (!res || !res.ok) return false;
+    const ctype = (res.headers && res.headers.get) ? (res.headers.get('content-type') || '') : '';
+    if (ctype && !ctype.includes('json') && !ctype.includes('text/plain')) return false;
+    const data = await res.json();
+    const remoteVer = data && typeof data.version === 'string' ? data.version.trim() : '';
+    if (!remoteVer) return false;
+
+    if (isNewerVersion(remoteVer, CURRENT_APP_VERSION)) {
+     window.__WFM_VERSION_OUTDATED = true;
+     showAppUpdateBanner(remoteVer, data.notes || '');
+     return true;
+    } else {
+     window.__WFM_VERSION_OUTDATED = false;
+     hideAppUpdateBanner();
+     return false;
+    }
+   } catch(e) {
+    return false;
+   } finally {
+    isCheckingAppVersion = false;
+   }
+  }
 
   // =========================================================
   // MASTER DATA KARYAWAN: TOMBSTONE TRACKING & STRICT SORTING ENGINE
@@ -12319,13 +12434,7 @@ service cloud.firestore {
     let hasAttChanged = false;
     let hasOtChanged = false;
     let hasLeavesChanged = false;
-    if (db.app_version && typeof db.app_version === 'string') {
-     if (isNewerVersion(db.app_version, CURRENT_APP_VERSION)) {
-      showAppUpdateBanner(db.app_version);
-     } else {
-      hideAppUpdateBanner();
-     }
-    }
+    // Version banner hanya dicek dari version.json hosting agar tidak pernah loop akibat data cloud
     // Sinkronkan daftar user yang dihapus dari Cloud dan bersihkan seketika dari memori lokal
     if (Array.isArray(db.deleted_user_keys)) {
      const localKeys = getDeletedUserKeys();
@@ -14038,6 +14147,23 @@ service cloud.firestore {
     }
    }, 60000);
 
+   // Bersihkan parameter ?_v= setelah reload versi baru agar URL tetap rapi
+   try {
+    const curUrl = new URL(window.location.href);
+    if (curUrl.searchParams.has('_v')) {
+     curUrl.searchParams.delete('_v');
+     window.history.replaceState(null, '', curUrl.pathname + curUrl.search + curUrl.hash);
+    }
+   } catch(eUrlClean) {}
+
+   // Cek pembaruan ringan ke version.json (0 kuota Firestore)
+   setTimeout(() => { try { checkAppVersionUpdate(true); } catch(e) {} }, 8000);
+   setInterval(() => {
+    if (!document.hidden && document.visibilityState === 'visible') {
+     try { checkAppVersionUpdate(false); } catch(e) {}
+    }
+   }, 180000);
+
    // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 25 detik)
    let lastWakeupSyncTime = 0;
    const triggerWakeupSync = () => {
@@ -14046,6 +14172,7 @@ service cloud.firestore {
     lastWakeupSyncTime = now;
     fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
     try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
+    try { checkAppVersionUpdate(false); } catch(e) {}
    };
 
    document.addEventListener('visibilitychange', () => {
