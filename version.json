@@ -1,4 +1,4 @@
 {
-  "version": "20261113_v3",
-  "notes": "Integrasi Database Supabase 24/7 Bebas Limit Kuota (migrasi otomatis seluruh riwayat absensi masuk & pulang, antrean outbox, master karyawan, dan live sync antar-perangkat)."
+  "version": "20261113_v4",
+  "notes": "Pembaruan dialog konfirmasi & animasi tombol migrasi Supabase (dengan popup laporan sukses otomatis jumlah karyawan & riwayat absensi)."
 }

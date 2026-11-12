@@ -2951,7 +2951,7 @@
          </button>
 
           <!-- TOMBOL MIGRASI & SINKRONISASI SUPABASE (BEBAS LIMIT 24/7) -->
-          <button type="button" onclick="migrateAllDataToSupabase(null, true)" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+          <button type="button" id="btn-migrate-supabase" onclick="migrateAllDataToSupabase(null, true)" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
            <i data-lucide="zap" class="w-4 h-4 text-emerald-200"></i>
            <span>⚡ Migrasikan Seluruh Data (Gudang MBI & MAI) ke Supabase (Bebas Limit 24/7)</span>
           </button>
@@ -8241,7 +8241,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v3';
+  const CURRENT_APP_VERSION = '20261113_v4';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10724,6 +10724,25 @@
   }
 
   async function migrateAllDataToSupabase(targetWh = null, showFeedback = false) {
+   if (showFeedback) {
+    const ok = confirm('🚀 KONFIRMASI MIGRASI DATA KE SUPABASE 24/7\n\n' +
+     'Proses ini akan memindahkan SELURUH data:\n' +
+     '1. Master Karyawan Gudang MBI & MAI (184+ orang)\n' +
+     '2. Seluruh riwayat presensi masuk & pulang\n' +
+     '3. Data cuti, lembur, dan antrean scan yang tertahan\n\n' +
+     'Data di perangkat dan Google Sheet tetap aman 100%.\n\n' +
+     'Lanjutkan proses migrasi?');
+    if (!ok) return { success: false, cancelled: true };
+   }
+
+   const btn = (typeof document !== 'undefined' && document.getElementById) ? document.getElementById('btn-migrate-supabase') : null;
+   const origBtnHtml = btn ? btn.innerHTML : '';
+   if (btn) {
+    btn.disabled = true;
+    if (btn.style) btn.style.opacity = '0.75';
+    btn.innerHTML = '<span>⏳ Sedang Memindahkan Seluruh Data ke Supabase... Mohon Tunggu Sebentar</span>';
+   }
+
    const whs = targetWh ? [targetWh.toUpperCase()] : ['MBI', 'MAI'];
    let totalUsers = 0;
    let totalAtt = 0;
@@ -10830,14 +10849,29 @@
     localStorage.setItem('wfm_supabase_last_sync', Date.now().toString());
     localStorage.setItem('wfm_supabase_migrated_v3', 'true');
 
-    if (showFeedback && typeof showToast === 'function') {
-     showToast('✅ Migrasi Sukses ke Supabase!\n' + totalUsers + ' Karyawan, ' + totalAtt + ' Riwayat Absensi, dan ' + totalOutbox + ' Antrean Tersinkronisasi 100%.', 'success');
+    if (btn) {
+     btn.disabled = false;
+     if (btn.style) btn.style.opacity = '1';
+     btn.innerHTML = origBtnHtml || '<span>⚡ Migrasikan Seluruh Data (Gudang MBI & MAI) ke Supabase (Bebas Limit 24/7)</span>';
+    }
+
+    if (showFeedback) {
+     alert('✅ MIGRASI KE SUPABASE BERHASIL 100%!\n\n' +
+      '• Karyawan Gudang MBI & MAI: ' + totalUsers + ' orang\n' +
+      '• Riwayat Absensi Masuk & Pulang: ' + totalAtt + ' data\n' +
+      '• Antrean Scan yang Dikosongkan: ' + totalOutbox + ' data\n\n' +
+      'Seluruh data sekarang sudah resmi aktif di Supabase dan bebas dari batas kuota!');
     }
     return { success: true, totalUsers, totalAtt, totalOutbox };
    } catch (eMigrate) {
     console.error('migrateAllDataToSupabase error:', eMigrate);
-    if (showFeedback && typeof showToast === 'function') {
-     showToast('Gagal migrasi ke Supabase: ' + eMigrate.message, 'error');
+    if (btn) {
+     btn.disabled = false;
+     if (btn.style) btn.style.opacity = '1';
+     btn.innerHTML = origBtnHtml || '<span>⚡ Migrasikan Seluruh Data (Gudang MBI & MAI) ke Supabase (Bebas Limit 24/7)</span>';
+    }
+    if (showFeedback) {
+     alert('⚠️ Terjadi kendala saat migrasi ke Supabase: ' + eMigrate.message);
     }
     return { success: false, error: eMigrate.message };
    }
