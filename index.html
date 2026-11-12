@@ -2951,9 +2951,9 @@
          </button>
 
           <!-- TOMBOL MIGRASI & SINKRONISASI SUPABASE (BEBAS LIMIT 24/7) -->
-          <button type="button" onclick="migrateAllDataToSupabase(activeWarehouse, true)" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+          <button type="button" onclick="migrateAllDataToSupabase(null, true)" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
            <i data-lucide="zap" class="w-4 h-4 text-emerald-200"></i>
-           <span>⚡ Migrasikan Seluruh Data ke Supabase (Bebas Limit 24/7)</span>
+           <span>⚡ Migrasikan Seluruh Data (Gudang MBI & MAI) ke Supabase (Bebas Limit 24/7)</span>
           </button>
 
           <button type="button" onclick="pullAttendanceFromSupabase(activeWarehouse).then(() => { pullUsersFromSupabase(activeWarehouse); alert('✅ Data dari Supabase berhasil disinkronkan ke perangkat ini!'); });" class="w-full py-2.5 px-3 bg-white hover:bg-slate-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
@@ -10731,13 +10731,13 @@
 
    try {
     for (const w of whs) {
-     const users = getWhDB(w, 'users', []);
+     const users = getWhDB(w, 'users', w === 'MBI' ? (typeof SEED_MBI_USERS !== 'undefined' ? SEED_MBI_USERS : []) : (typeof SEED_MAI_USERS !== 'undefined' ? SEED_MAI_USERS : []));
      if (users.length > 0) {
       await saveUsersToSupabase(w, users);
       totalUsers += users.length;
      }
 
-     const atts = getWhDB(w, 'attendance', []);
+     const atts = getWhDB(w, 'attendance', w === 'MBI' ? (typeof SEED_MBI_ATTENDANCE !== 'undefined' ? SEED_MBI_ATTENDANCE : []) : (typeof SEED_MAI_ATTENDANCE !== 'undefined' ? SEED_MAI_ATTENDANCE : []));
      if (atts.length > 0) {
       for (let i = 0; i < atts.length; i += 50) {
        const chunk = atts.slice(i, i + 50);
@@ -10765,6 +10765,53 @@
       }
       totalAtt += atts.length;
      }
+
+     // 3. Data Pengajuan Cuti / Izin / Sakit
+     try {
+      const leaves = getWhDB(w, 'leaves', []);
+      if (leaves.length > 0) {
+       const leavesPayload = leaves.map(l => ({
+        id: l.id || ('leave-' + w.toLowerCase() + '-' + Date.now() + '-' + Math.random()),
+        warehouse: w,
+        user_nik: (l.userNik || l.nik || '').toUpperCase().trim(),
+        user_name: l.userName || l.name || '',
+        type: l.type || 'Cuti',
+        start_date: l.startDate || l.start_date || '',
+        end_date: l.endDate || l.end_date || '',
+        reason: l.reason || '',
+        status: l.status || 'pending',
+        raw_data: l,
+        updated_at: l.updatedAt || new Date().toISOString()
+       }));
+       await fetch(SUPABASE_PROJECT_URL + '/rest/v1/wfm_leaves?on_conflict=id', {
+        method: 'POST',
+        headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+        body: JSON.stringify(leavesPayload)
+       }).catch(() => {});
+      }
+     } catch(eLeaves) {}
+
+     // 4. Data Lembur
+     try {
+      const overtime = getWhDB(w, 'overtime', []);
+      if (overtime.length > 0) {
+       const otPayload = overtime.map(o => ({
+        id: o.id || ('ot-' + w.toLowerCase() + '-' + Date.now() + '-' + Math.random()),
+        warehouse: w,
+        user_nik: (o.userNik || o.nik || '').toUpperCase().trim(),
+        date: o.date || '',
+        hours: Number(o.hours) || 0,
+        status: o.status || 'pending',
+        raw_data: o,
+        updated_at: o.updatedAt || new Date().toISOString()
+       }));
+       await fetch(SUPABASE_PROJECT_URL + '/rest/v1/wfm_overtime?on_conflict=id', {
+        method: 'POST',
+        headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+        body: JSON.stringify(otPayload)
+       }).catch(() => {});
+      }
+     } catch(eOt) {}
     }
 
     const outbox = typeof readAttOutbox === 'function' ? readAttOutbox() : [];
