@@ -1,5 +1,5 @@
 {
-  "version": "20261112_v1",
-  "releasedAt": "2026-11-12T05:35:00+07:00",
-  "notes": "Isolasi sinkronisasi MBI-MAI, penghemat kuota Firestore, dan cek update versi otomatis"
+  "version": "20261112_v2",
+  "releasedAt": "2026-11-12T17:00:00+07:00",
+  "notes": "Scan langsung masuk ke Google Sheet tanpa tertahan antrean, aman scan bersamaan multi-HP, sinkronisasi role karyawan (users + master_snapshot), dan gap hari ini terisi otomatis"
 }

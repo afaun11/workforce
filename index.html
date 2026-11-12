@@ -8230,7 +8230,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261112_v1';
+  const CURRENT_APP_VERSION = '20261112_v2';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10638,7 +10638,7 @@
    return allDocs;
   }
 
-  async function queryFirestoreAttendanceByField(wh, fieldPath, stringValue) {
+  async function queryFirestoreAttendanceByField(wh, fieldPath, stringValue, limitCount = 250) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    if (!stringValue || isFirestoreSuspended(targetWh)) return [];
    try {
@@ -10654,7 +10654,7 @@
         value: { stringValue: String(stringValue) }
        }
       },
-      limit: 40
+      limit: limitCount
      }
     };
     const res = await fetch(url, {
@@ -10936,6 +10936,11 @@
      const item = list[0];
      const ok = await putAttendanceLiveRecord(item.wh, item.rec);
      if (!ok) { allOk = false; break; }
+     try {
+      if (typeof pushSingleScanToGoogleSheet === 'function') {
+       pushSingleScanToGoogleSheet(item.wh, item.rec);
+      }
+     } catch(eGsFlush) {}
      const cur = readAttOutbox();
      const idx = cur.findIndex(x => x.wh === item.wh && x.rec.id === item.rec.id && x.v === item.v);
      if (idx >= 0) cur.splice(idx, 1);
@@ -11444,9 +11449,10 @@
    try {
     let localAtt = getWhDB(targetWh, 'attendance', []);
     const hasArchiveLoaded = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_attendance_archive_loaded`) === 'true';
+    const isScannerMode = (typeof currentUser !== 'undefined' && currentUser && typeof isUserScanner === 'function' && isUserScanner(currentUser));
 
-    // 1. Cek & muat arsip riwayat historis jika belum ada di lokal atau data presensi lokal masih sedikit (< 1000 record)
-    if (!hasArchiveLoaded || localAtt.length < 1000 || alertOnComplete || forceFullCollectionPull) {
+    // 1. Cek & muat arsip riwayat historis (dilewati di HP Scanner agar kuota super irit)
+    if (!isScannerMode && (!hasArchiveLoaded || localAtt.length < 1000 || alertOnComplete || forceFullCollectionPull)) {
      try {
       const archiveDoc = await getDocFromFirestore(targetWh, '_metadata', 'attendance_archive');
       if (archiveDoc && (archiveDoc.payload || archiveDoc.records)) {
@@ -11463,7 +11469,7 @@
      }
     }
 
-    // 2. Unduh ringkasan absensi hari ini (1 Read) dan gabungkan (JANGAN return lebih awal agar transaksi harian di koleksi tetap tertarik!)
+    // 2. Unduh ringkasan absensi hari ini (1 Read) dan gabungkan
     try {
      const todayDoc = await getDocFromFirestore(targetWh, '_metadata', 'today_attendance');
      if (todayDoc && Array.isArray(todayDoc.records) && todayDoc.records.length > 0) {
@@ -11480,14 +11486,39 @@
      console.warn('[Firestore] pull today_attendance notice:', eToday);
     }
 
-    // 3. Tarik koleksi dokumen presensi individual (attendance/*) HANYA saat tombol manual, data lokal masih tipis (<20), atau cooldown 30 menit habis (hemat kuota baca Firestore)
+    // 2b. Tarik dokumen presensi HARI INI saja via query date == todayStr (hanya ~20-80 Read, mengatasi selisih seperti 20 vs 17 di MAI tanpa scan ribuan dokumen lama)
+    window._fsTodayQueryAt = window._fsTodayQueryAt || {};
+    const lastTodayQueryAt = window._fsTodayQueryAt[targetWh] || 0;
+    const shouldQueryToday = Boolean(
+     alertOnComplete ||
+     forceFullCollectionPull ||
+     (Date.now() - lastTodayQueryAt > 120000)
+    );
+    if (shouldQueryToday && typeof queryFirestoreAttendanceByField === 'function' && !(typeof isFirestoreSuspended === 'function' && isFirestoreSuspended(targetWh))) {
+     try {
+      const todayStr = getLocalDateString(new Date());
+      const todayDocs = await queryFirestoreAttendanceByField(targetWh, 'date', todayStr, 250);
+      window._fsTodayQueryAt[targetWh] = Date.now();
+      if (Array.isArray(todayDocs) && todayDocs.length > 0) {
+       localAtt = getWhDB(targetWh, 'attendance', []);
+       const mergedQ = mergeAttendanceArrays(localAtt, todayDocs);
+       setWhDB(targetWh, 'attendance', mergedQ, true);
+       todayCount = Math.max(todayCount, todayDocs.length);
+       pulledAnything = true;
+      }
+     } catch(eTodayQ) {
+      console.warn('[Firestore] today query notice:', eTodayQ);
+     }
+    }
+
+    // 3. Tarik koleksi dokumen presensi individual (attendance/*) HANYA saat tombol manual Admin atau data lokal masih kosong/minim (<20)
     const curAttAfterMeta = getWhDB(targetWh, 'attendance', []);
     let lastFullScanAt = 0;
     try {
      lastFullScanAt = parseInt(localStorage.getItem(`wfm_${targetWh.toLowerCase()}_fs_full_att_at`) || '0', 10) || 0;
     } catch(eLs) {}
     const isFullScanFresh = lastFullScanAt > 0 && (Date.now() - lastFullScanAt) < (30 * 60 * 1000) && curAttAfterMeta.length >= 20;
-    const shouldPullAllCollection = Boolean(
+    const shouldPullAllCollection = !isScannerMode && Boolean(
      alertOnComplete ||
      (curAttAfterMeta.length < 20 && !window._fsFullAttPulled[targetWh]) ||
      (forceFullCollectionPull && !window._fsFullAttPulled[targetWh] && !isFullScanFresh)
@@ -13072,6 +13103,10 @@ service cloud.firestore {
      } else if (typeof saveAttendanceDocToFirestore === 'function') {
       saveAttendanceDocToFirestore(wh, record);
      }
+     // 2b. Kirim 1 baris scan detik ini juga langsung ke Google Sheet (independen dari status kuota Firestore, aman scan bersamaan multi-HP via LockService)
+     if (typeof pushSingleScanToGoogleSheet === 'function') {
+      pushSingleScanToGoogleSheet(wh, record);
+     }
     }
    } catch (err) {
     console.warn('syncAttendanceToCloud notice:', err);
@@ -13084,8 +13119,9 @@ service cloud.firestore {
     }
    } catch(eBc) {}
 
-   // 4. Trigger Google Sheet Auto Sync dengan pengaman antrean (hanya gudang terkait)
-   if (typeof syncGoogleSheetDirectly === 'function') {
+   // 4. Trigger Google Sheet Auto Sync penuh (untuk Admin/non-scanner atau sinkronisasi susulan)
+   const isScannerAcc = (typeof currentUser !== 'undefined' && currentUser && typeof isUserScanner === 'function' && isUserScanner(currentUser));
+   if (!isScannerAcc && typeof syncGoogleSheetDirectly === 'function') {
     syncGoogleSheetDirectly(false, wh);
    }
   }
@@ -13861,7 +13897,37 @@ service cloud.firestore {
        loaded = true;
       }
 
-      // 1b. Tarik daftar karyawan NONAKTIF resmi dari Cloud (sumber kebenaran tunggal status aktif/nonaktif)
+      // 1b. Padukan koleksi users Firestore terbaru (mengatasi master_snapshot usang seperti perubahan role/jabatan karyawan, hemat dengan cooldown 5 menit)
+      try {
+       window._fsUsersColSyncAt = window._fsUsersColSyncAt || {};
+       const lastUsersColAt = window._fsUsersColSyncAt[wh] || 0;
+       const shouldCheckUsersCol = Boolean(isManualAlert || forceDownload || isLocalEmpty || (Date.now() - lastUsersColAt > 300000));
+       if (shouldCheckUsersCol && typeof listDocsFromFirestore === 'function' && !(typeof isFirestoreSuspended === 'function' && isFirestoreSuspended(wh))) {
+        const uRes = await listDocsFromFirestore(wh, 'users', 300);
+        window._fsUsersColSyncAt[wh] = Date.now();
+        if (uRes && Array.isArray(uRes.docs) && uRes.docs.length > 0) {
+         const deletedKeys = typeof getDeletedUserKeys === 'function' ? getDeletedUserKeys() : null;
+         const curLocalUsers = getWhDB(wh, 'users', wh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+         const beforeJson = JSON.stringify(curLocalUsers);
+         const reconciledUsers = mergeUserArrays(curLocalUsers, uRes.docs, wh);
+         const cleanReconciled = deletedKeys ? reconciledUsers.filter(u => u && !isUserMarkedDeleted(u, deletedKeys)) : reconciledUsers;
+         if (JSON.stringify(cleanReconciled) !== beforeJson) {
+          setWhDB(wh, 'users', cleanReconciled, true);
+          try { localStorage.setItem(`wfm_${wh.toLowerCase()}_users_backup`, JSON.stringify(cleanReconciled)); } catch(eBakU) {}
+          hasNewDataApplied = true;
+          loaded = true;
+          const isMgmtActive = (typeof currentUser !== 'undefined' && currentUser && ((typeof isUserAdmin === 'function' && isUserAdmin(currentUser)) || (typeof isUserManager === 'function' && isUserManager(currentUser))));
+          if (isMgmtActive && typeof saveMasterSnapshotToFirestore === 'function') {
+           saveMasterSnapshotToFirestore(wh, true).catch(() => {});
+          }
+         }
+        }
+       }
+      } catch(eUsersCol) {
+       console.warn(`Users collection reconcile notice for ${wh}:`, eUsersCol);
+      }
+
+      // 1c. Tarik daftar karyawan NONAKTIF resmi dari Cloud (sumber kebenaran tunggal status aktif/nonaktif)
       try { await pullInactiveRegistryFromCloud(wh); } catch(eReg) {}
 
       // 2. Tarik juga presensi (arsip + hari ini, dan full koleksi hanya jika manual atau lokal masih kosong/minim)
@@ -27735,6 +27801,81 @@ function testManualSync() {
   try {
    window.addEventListener('online', () => { flushPendingGSheetSync(); });
   } catch(eOnlineGs) {}
+
+  function buildSingleRecordAbsenRow(wh, r) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+   let emp = null;
+   if (r.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(r.userName));
+   if (!emp && r.userNik) emp = users.find(u => u.nik && u.nik.toUpperCase() === r.userNik.toUpperCase());
+   if (!emp && r.userId) emp = users.find(u => u.id === r.userId);
+
+   const finalName = emp ? emp.name : (r.userName || r.name || '-');
+   const finalNik = emp ? emp.nik : (r.userNik || r.nik || '-');
+   const finalDept = emp ? emp.dept : (r.dept || r.department || '');
+
+   const durInfo = typeof getAttendanceDurationInfo === 'function' ? getAttendanceDurationInfo(r) : { isMissScan: false, isOngoing: !r.checkOutTime, statusOut: r.checkOutTime ? 'Sudah Pulang' : 'Sedang Shift', durationStr: '-' };
+   const checkInDate = new Date(r.checkInTime);
+   const minute = checkInDate.getMinutes();
+   const isLate = r.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
+   const statusMasuk = isLate ? 'Late In' : 'Normal';
+   const statusPulang = durInfo.isMissScan ? 'Miss Scan' : durInfo.statusOut;
+   const finalJamPulang = durInfo.isMissScan ? 'Miss Scan' : (r.checkOutTime ? formatDisplayTimeWIB(r.checkOutTime) : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan'));
+   const finalDuration = durInfo.isMissScan ? '7 Jam (Miss Scan)' : durInfo.durationStr;
+   const finalKeterangan = durInfo.isMissScan ? `${statusMasuk} - Miss Scan` : `${statusMasuk} - ${statusPulang}${r.notes && r.notes !== '-' ? ` (${r.notes})` : ''}`;
+
+   return [
+    1,
+    r.date || '',
+    finalNik,
+    finalName,
+    (finalDept || 'STAFF').toUpperCase(),
+    r.checkInTime ? formatDisplayTimeWIB(r.checkInTime) : '-',
+    finalJamPulang,
+    finalDuration,
+    statusMasuk,
+    statusPulang,
+    finalKeterangan,
+    targetWh
+   ];
+  }
+
+  async function pushSingleScanToGoogleSheet(wh, rec) {
+   try {
+    if (!rec || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
+    const targetWh = (wh || rec.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+    window._recentSingleGsPush = window._recentSingleGsPush || {};
+    const pushKey = `${targetWh}::${rec.id || rec.userNik || ''}::${rec.checkOutTime || ''}::${rec.updatedAt || ''}`;
+    const lastPushAt = window._recentSingleGsPush[pushKey] || 0;
+    if (Date.now() - lastPushAt < 10000) return true;
+    window._recentSingleGsPush[pushKey] = Date.now();
+    const webhookUrl = getGoogleSheetWebhookUrl(targetWh);
+    if (!webhookUrl) return false;
+    const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+    const headers = [
+     "No", "Tanggal", "NIK", "Nama Karyawan", "Departemen",
+     "Jam Masuk", "Jam Pulang", "Durasi Kerja",
+     "Status Kehadiran", "Status Kepulangan", "Keterangan", "Gudang"
+    ];
+    const row = buildSingleRecordAbsenRow(targetWh, rec);
+    const payload = {
+     warehouse: targetWh,
+     generatedAt: new Date().toISOString(),
+     sheets: { "RECORD ABSEN": [headers, row] }
+    };
+    await fetch(targetUrl, {
+     method: 'POST',
+     mode: 'no-cors',
+     cache: 'no-cache',
+     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+     body: JSON.stringify(payload)
+    });
+    return true;
+   } catch (e) {
+    console.warn('pushSingleScanToGoogleSheet notice:', e);
+    return false;
+   }
+  }
 
   async function syncGoogleSheetDirectly(forceAllowPartial = false, targetWh = null) {
    const curActiveWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI').toUpperCase();
