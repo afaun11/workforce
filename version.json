@@ -1,4 +1,4 @@
 {
-  "version": "20261113_v2",
-  "notes": "Pembaruan brankas mandiri kata sandi Admin (kebal batas kuota Firebase, anti-tertimpa kata sandi lama, dan otomatis tersinkronisasi via outbox ke Cloud Firestore)."
+  "version": "20261113_v3",
+  "notes": "Integrasi Database Supabase 24/7 Bebas Limit Kuota (migrasi otomatis seluruh riwayat absensi masuk & pulang, antrean outbox, master karyawan, dan live sync antar-perangkat)."
 }

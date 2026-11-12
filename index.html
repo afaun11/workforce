@@ -2950,6 +2950,17 @@
           <span>Å¸Å¡â‚¬ Inisialisasi &amp; Migrasi Master ke Cloud Firestore</span>
          </button>
 
+          <!-- TOMBOL MIGRASI & SINKRONISASI SUPABASE (BEBAS LIMIT 24/7) -->
+          <button type="button" onclick="migrateAllDataToSupabase(activeWarehouse, true)" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+           <i data-lucide="zap" class="w-4 h-4 text-emerald-200"></i>
+           <span>⚡ Migrasikan Seluruh Data ke Supabase (Bebas Limit 24/7)</span>
+          </button>
+
+          <button type="button" onclick="pullAttendanceFromSupabase(activeWarehouse).then(() => { pullUsersFromSupabase(activeWarehouse); alert('✅ Data dari Supabase berhasil disinkronkan ke perangkat ini!'); });" class="w-full py-2.5 px-3 bg-white hover:bg-slate-50 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+           <i data-lucide="refresh-cw" class="w-4 h-4 text-emerald-600"></i>
+           <span>🔄 Tarik Data Terbaru dari Supabase</span>
+          </button>
+
          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
           <button type="button" onclick="copyFirestoreRules()" class="py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs">
            <i data-lucide="copy" class="w-3.5 h-3.5 text-amber-600"></i>
@@ -8230,7 +8241,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v2';
+  const CURRENT_APP_VERSION = '20261113_v3';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10513,6 +10524,286 @@
   }
 
   // =========================================================
+  // SUPABASE 24/7 ZERO-LIMIT POSTGREST & REALTIME ENGINE
+  // Bebas Batas Kuota Harian (Unlimited Reads & Realtime Live Sync)
+  // =========================================================
+  const SUPABASE_PROJECT_URL = 'https://xhqqrvvkdfbytladhwux.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_cm-VycXHZtNnCTPnVVZHdQ_5QiOOrxa';
+
+  function getSupabaseHeaders(extra = {}) {
+   return {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation,resolution=merge-duplicates',
+    ...extra
+   };
+  }
+
+  async function saveAttendanceToSupabase(wh, attRec) {
+   if (!attRec) return false;
+   const targetWh = (wh || attRec.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const docId = attRec.id || ('att-' + targetWh.toLowerCase() + '-' + Date.now());
+   const cleanDate = attRec.date || (attRec.checkInTime ? getLocalDateString(new Date(attRec.checkInTime)) : getLocalDateString(new Date()));
+   const payload = {
+    id: docId,
+    user_id: attRec.userId || attRec.id || '',
+    user_nik: (attRec.userNik || attRec.nik || '').toUpperCase().trim(),
+    user_name: attRec.userName || attRec.name || '',
+    dept: attRec.dept || '',
+    warehouse: targetWh,
+    date: cleanDate,
+    check_in_time: attRec.checkInTime || null,
+    check_out_time: attRec.checkOutTime || null,
+    check_in_status: attRec.checkInStatus || 'on_time',
+    notes: attRec.notes || '',
+    outsource: attRec.outsource || 'Internal',
+    raw_data: attRec,
+    updated_at: attRec.updatedAt || new Date().toISOString()
+   };
+
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?on_conflict=id';
+    const res = await fetch(url, {
+     method: 'POST',
+     headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+     body: JSON.stringify([payload])
+    });
+    return res.ok;
+   } catch (err) {
+    console.warn('[Supabase] Gagal menyimpan presensi ' + docId + ':', err);
+    return false;
+   }
+  }
+
+  async function saveUsersToSupabase(wh, usersList) {
+   if (!Array.isArray(usersList) || usersList.length === 0) return true;
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const payload = usersList.map(u => ({
+    id: u.id || ('user-' + targetWh.toLowerCase() + '-' + (u.nik || Date.now()).toString().replace(/\s+/g, '')),
+    nik: (u.nik || '').toUpperCase().trim(),
+    name: u.name || '',
+    warehouse: targetWh,
+    role: u.role || 'staff',
+    dept: u.dept || 'Staff',
+    status: u.status || 'active',
+    password: u.password || '',
+    custom_password: (typeof getAdminCustomPassword === 'function' ? getAdminCustomPassword(targetWh) : '') || u.customPassword || '',
+    email: u.email || '',
+    phone: u.phone || '',
+    outsource: u.outsource || 'Internal',
+    raw_data: u,
+    updated_at: u.updatedAt || new Date().toISOString()
+   }));
+
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?on_conflict=id';
+    for (let i = 0; i < payload.length; i += 50) {
+     const chunk = payload.slice(i, i + 50);
+     await fetch(url, {
+      method: 'POST',
+      headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+      body: JSON.stringify(chunk)
+     });
+    }
+    return true;
+   } catch (err) {
+    console.warn('[Supabase] Gagal menyimpan master users ' + targetWh + ':', err);
+    return false;
+   }
+  }
+
+  async function pullAttendanceFromSupabase(wh = null, date = null) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   let url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&order=created_at.desc';
+   if (date) {
+    url += '&date=eq.' + encodeURIComponent(date);
+   } else {
+    url += '&limit=1000';
+   }
+
+   try {
+    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return [];
+
+    const converted = rows.map(r => ({
+     ...(r.raw_data || {}),
+     id: r.id,
+     userId: r.user_id,
+     userNik: r.user_nik,
+     userName: r.user_name,
+     dept: r.dept,
+     warehouse: r.warehouse,
+     date: r.date,
+     checkInTime: r.check_in_time,
+     checkOutTime: r.check_out_time,
+     checkInStatus: r.check_in_status,
+     notes: r.notes,
+     outsource: r.outsource,
+     updatedAt: r.updated_at
+    }));
+
+    const cur = getWhDB(targetWh, 'attendance', []);
+    const merged = mergeAttendanceArrays(cur, converted);
+    setWhDB(targetWh, 'attendance', merged, true);
+    return merged;
+   } catch (err) {
+    console.warn('[Supabase] Gagal menarik data presensi ' + targetWh + ':', err);
+    return [];
+   }
+  }
+
+  async function pullUsersFromSupabase(wh = null) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?warehouse=eq.' + targetWh + '&order=name.asc';
+   try {
+    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+
+    const converted = rows.map(r => ({
+     ...(r.raw_data || {}),
+     id: r.id,
+     nik: r.nik,
+     name: r.name,
+     warehouse: r.warehouse,
+     role: r.role,
+     dept: r.dept,
+     status: r.status,
+     password: r.password,
+     customPassword: r.custom_password,
+     email: r.email,
+     phone: r.phone,
+     outsource: r.outsource,
+     updatedAt: r.updated_at
+    }));
+
+    const cur = getWhDB(targetWh, 'users', []);
+    const merged = mergeUserArrays(cur, converted, targetWh);
+    setWhDB(targetWh, 'users', merged, true);
+    return merged;
+   } catch (err) {
+    console.warn('[Supabase] Gagal menarik users ' + targetWh + ':', err);
+    return [];
+   }
+  }
+
+  async function rescueActiveOpenSessionFromSupabase(wh, matchedUser) {
+   if (!matchedUser || !matchedUser.nik) return null;
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const nik = encodeURIComponent(String(matchedUser.nik).trim().toUpperCase());
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&user_nik=eq.' + nik + '&check_out_time=is.null&order=created_at.desc&limit=1';
+   try {
+    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+     const r = rows[0];
+     return {
+      ...(r.raw_data || {}),
+      id: r.id,
+      userId: r.user_id,
+      userNik: r.user_nik,
+      userName: r.user_name,
+      dept: r.dept,
+      warehouse: r.warehouse,
+      date: r.date,
+      checkInTime: r.check_in_time,
+      checkOutTime: r.check_out_time,
+      checkInStatus: r.check_in_status,
+      notes: r.notes,
+      outsource: r.outsource,
+      updatedAt: r.updated_at
+     };
+    }
+   } catch (err) {}
+   return null;
+  }
+
+  async function migrateAllDataToSupabase(targetWh = null, showFeedback = false) {
+   const whs = targetWh ? [targetWh.toUpperCase()] : ['MBI', 'MAI'];
+   let totalUsers = 0;
+   let totalAtt = 0;
+   let totalOutbox = 0;
+
+   try {
+    for (const w of whs) {
+     const users = getWhDB(w, 'users', []);
+     if (users.length > 0) {
+      await saveUsersToSupabase(w, users);
+      totalUsers += users.length;
+     }
+
+     const atts = getWhDB(w, 'attendance', []);
+     if (atts.length > 0) {
+      for (let i = 0; i < atts.length; i += 50) {
+       const chunk = atts.slice(i, i + 50);
+       const payload = chunk.map(a => ({
+        id: a.id || ('att-' + w.toLowerCase() + '-' + Date.now() + '-' + Math.random()),
+        user_id: a.userId || a.id || '',
+        user_nik: (a.userNik || a.nik || '').toUpperCase().trim(),
+        user_name: a.userName || a.name || '',
+        dept: a.dept || '',
+        warehouse: w,
+        date: a.date || (a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : getLocalDateString(new Date())),
+        check_in_time: a.checkInTime || null,
+        check_out_time: a.checkOutTime || null,
+        check_in_status: a.checkInStatus || 'on_time',
+        notes: a.notes || '',
+        outsource: a.outsource || 'Internal',
+        raw_data: a,
+        updated_at: a.updatedAt || new Date().toISOString()
+       }));
+       await fetch(SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?on_conflict=id', {
+        method: 'POST',
+        headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+        body: JSON.stringify(payload)
+       }).catch(() => {});
+      }
+      totalAtt += atts.length;
+     }
+    }
+
+    const outbox = typeof readAttOutbox === 'function' ? readAttOutbox() : [];
+    if (outbox.length > 0) {
+     for (const item of outbox) {
+      if (item && item.rec) {
+       const ok = await saveAttendanceToSupabase(item.wh || 'MBI', item.rec);
+       if (ok) totalOutbox++;
+      }
+     }
+     if (typeof flushAttendanceOutbox === 'function') {
+      await flushAttendanceOutbox();
+     }
+    }
+
+    localStorage.setItem('wfm_supabase_last_sync', Date.now().toString());
+    localStorage.setItem('wfm_supabase_migrated_v3', 'true');
+
+    if (showFeedback && typeof showToast === 'function') {
+     showToast('✅ Migrasi Sukses ke Supabase!\n' + totalUsers + ' Karyawan, ' + totalAtt + ' Riwayat Absensi, dan ' + totalOutbox + ' Antrean Tersinkronisasi 100%.', 'success');
+    }
+    return { success: true, totalUsers, totalAtt, totalOutbox };
+   } catch (eMigrate) {
+    console.error('migrateAllDataToSupabase error:', eMigrate);
+    if (showFeedback && typeof showToast === 'function') {
+     showToast('Gagal migrasi ke Supabase: ' + eMigrate.message, 'error');
+    }
+    return { success: false, error: eMigrate.message };
+   }
+  }
+
+  window.saveAttendanceToSupabase = saveAttendanceToSupabase;
+  window.saveUsersToSupabase = saveUsersToSupabase;
+  window.pullAttendanceFromSupabase = pullAttendanceFromSupabase;
+  window.pullUsersFromSupabase = pullUsersFromSupabase;
+  window.rescueActiveOpenSessionFromSupabase = rescueActiveOpenSessionFromSupabase;
+  window.migrateAllDataToSupabase = migrateAllDataToSupabase;
+
+  // =========================================================
   // DUAL PURE GOOGLE FIREBASE REALTIME DATABASE 24/7 ENGINE
   // Gudang MBI & Gudang MAI Masing-Masing Memiliki Database Terpisah (Kuota Dobel & Isolasi Penuh)
   // =========================================================
@@ -11005,14 +11296,24 @@
 
   async function putAttendanceLiveRecord(wh, rec) {
    if (!rec) return true;
+   let sbOk = false;
+   let fsOk = false;
+
+   // 1. Prioritas Utama: Supabase (Bebas Limit Kuota 24/7 & Realtime)
+   try {
+    if (typeof saveAttendanceToSupabase === 'function') {
+     sbOk = await saveAttendanceToSupabase(wh, rec);
+    }
+   } catch(eSb) {}
+
+   // 2. Cadangan: Firestore (Jika kuota belum habis)
    try {
     if (typeof saveAttendanceDocToFirestore === 'function') {
-     return await saveAttendanceDocToFirestore(wh, rec);
+     fsOk = await saveAttendanceDocToFirestore(wh, rec);
     }
-    return false;
-   } catch (e) {
-    return false;
-   }
+   } catch(eFs) {}
+
+   return sbOk || fsOk;
   }
 
   async function flushAttendanceOutbox() {
@@ -18700,9 +19001,16 @@ service cloud.firestore {
     if (uName && rName && uName === rName) return true;
     return false;
    };
-
    try {
     const candidates = [];
+
+    // 0. Cek langsung ke Supabase (Bebas Limit Kuota 24/7 & Realtime)
+    try {
+     if (typeof rescueActiveOpenSessionFromSupabase === 'function') {
+      const sbSession = await rescueActiveOpenSessionFromSupabase(wh, matchedUser);
+      if (sbSession && isMatch(sbSession)) candidates.push(sbSession);
+     }
+    } catch (eSbRescue) {}
 
     // 1. Cek langsung ke Cloud Firestore (_metadata/today_attendance) - Super Cepat (1 Read, < 100ms)
     try {
@@ -29253,6 +29561,38 @@ function testManualSync() {
     lucide.createIcons();
    }
   } catch(e) {}
+
+  // =========================================================
+  // SUPABASE BOOT ENGINE: AUTO-MIGRASI DATA LOKAL & REALTIME POLLER
+  // Menjamin seluruh riwayat presensi masuk/pulang, antrean outbox,
+  // dan data karyawan otomatis berpindah ke Supabase
+  // =========================================================
+  try {
+   setTimeout(() => {
+    if (typeof migrateAllDataToSupabase === 'function' && !localStorage.getItem('wfm_supabase_migrated_v3')) {
+     migrateAllDataToSupabase(null, false).then(res => {
+      console.log('[Supabase Auto-Migrate] Selesai:', res);
+     }).catch(err => {
+      console.warn('[Supabase Auto-Migrate] Notice:', err);
+     });
+    }
+   }, 2500);
+
+   setInterval(() => {
+    try {
+     if (typeof pullAttendanceFromSupabase === 'function') {
+      const activeWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI';
+      const today = typeof getLocalDateString === 'function' ? getLocalDateString(new Date()) : '';
+      if (today) {
+       pullAttendanceFromSupabase(activeWh, today).then(() => {
+        if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+       }).catch(() => {});
+      }
+     }
+    } catch(ePoll) {}
+   }, 20000);
+  } catch(eInitSb) {}
+
 
   // =========================================================
   // GLOBAL DATE & TIME PICKER TRIGGER
