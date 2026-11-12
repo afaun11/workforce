@@ -8230,7 +8230,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261112_v2';
+  const CURRENT_APP_VERSION = '20261113_v1';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10620,7 +10620,7 @@
    }
   }
 
-  async function listAllDocsFromFirestore(wh, collection, maxPages = 60) {
+  async function listAllDocsFromFirestore(wh, collection, maxPages = 5) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    const allDocs = [];
    let pageToken = '';
@@ -11492,7 +11492,7 @@
     const shouldQueryToday = Boolean(
      alertOnComplete ||
      forceFullCollectionPull ||
-     (Date.now() - lastTodayQueryAt > 120000)
+     (!lastTodayQueryAt && !isScannerMode)
     );
     if (shouldQueryToday && typeof queryFirestoreAttendanceByField === 'function' && !(typeof isFirestoreSuspended === 'function' && isFirestoreSuspended(targetWh))) {
      try {
@@ -11524,7 +11524,7 @@
      (forceFullCollectionPull && !window._fsFullAttPulled[targetWh] && !isFullScanFresh)
     );
     if (shouldPullAllCollection && typeof listAllDocsFromFirestore === 'function' && !(typeof isFirestoreSuspended === 'function' && isFirestoreSuspended(targetWh))) {
-     const allDocs = await listAllDocsFromFirestore(targetWh, 'attendance', 60);
+     const allDocs = await listAllDocsFromFirestore(targetWh, 'attendance', 5);
      if (allDocs && allDocs.length > 0) {
       localAtt = getWhDB(targetWh, 'attendance', []);
       const mergedAll = mergeAttendanceArrays(localAtt, allDocs);
@@ -13901,7 +13901,7 @@ service cloud.firestore {
       try {
        window._fsUsersColSyncAt = window._fsUsersColSyncAt || {};
        const lastUsersColAt = window._fsUsersColSyncAt[wh] || 0;
-       const shouldCheckUsersCol = Boolean(isManualAlert || forceDownload || isLocalEmpty || (Date.now() - lastUsersColAt > 300000));
+       const shouldCheckUsersCol = Boolean(isManualAlert || forceDownload || isLocalEmpty);
        if (shouldCheckUsersCol && typeof listDocsFromFirestore === 'function' && !(typeof isFirestoreSuspended === 'function' && isFirestoreSuspended(wh))) {
         const uRes = await listDocsFromFirestore(wh, 'users', 300);
         window._fsUsersColSyncAt[wh] = Date.now();
@@ -14005,9 +14005,9 @@ service cloud.firestore {
     try {
      const beacon = await getDocFromFirestore(targetWh, '_metadata', 'live_beacon');
      if (beacon && beacon.updatedAt) {
-      const localTs = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`) || '';
+      const localTs = localStorage.getItem(`wfm_${targetWh.toLowerCase()}_beacon_updated_at`) || '';
       if (beacon.updatedAt !== localTs) {
-       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_master_updated_at`, beacon.updatedAt);
+       localStorage.setItem(`wfm_${targetWh.toLowerCase()}_beacon_updated_at`, beacon.updatedAt);
        if (beacon.lastDocId && typeof getDocFromFirestore === 'function') {
         try {
          const singleDoc = await getDocFromFirestore(targetWh, 'attendance', beacon.lastDocId);
@@ -14205,13 +14205,12 @@ service cloud.firestore {
     syncAttendanceFromGoogleSheetMaster(false, getActiveWhTarget());
    } catch(e) {}
 
-   // Smart Delta Check hemat kuota di latar belakang (Hanya memeriksa 30 bytes per menit)
+   // Smart Delta Check hemat kuota di latar belakang (3 menit sekali saat tab aktif, 0 pemborosan)
    setInterval(() => {
     if (!document.hidden && document.visibilityState === 'visible') {
      fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-     try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
     }
-   }, 60000);
+   }, 180000);
 
    // Bersihkan parameter ?_v= setelah reload versi baru agar URL tetap rapi
    try {
@@ -14230,14 +14229,13 @@ service cloud.firestore {
     }
    }, 180000);
 
-   // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 25 detik)
+   // Auto-wakeup hemat kuota: Cek perubahan saat layar/tab aktif kembali (Dibatasi minimal jeda 60 detik)
    let lastWakeupSyncTime = 0;
    const triggerWakeupSync = () => {
     const now = Date.now();
-    if (now - lastWakeupSyncTime < 25000) return; // Debounce 25s
+    if (now - lastWakeupSyncTime < 60000) return; // Debounce 60s
     lastWakeupSyncTime = now;
     fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
-    try { syncAttendanceLiveDelta(getActiveWhTarget()); } catch(e) {}
     try { checkAppVersionUpdate(false); } catch(e) {}
    };
 
@@ -18608,27 +18606,22 @@ service cloud.firestore {
 
     // 2. Jaring Pengaman Shift Malam Lintas Hari & Beda Perangkat:
     // Jika tidak ada di today_attendance (misal sudah berganti tanggal ke hari berikutnya atau tertimpa),
-    // query langsung ke koleksi dokumen 'attendance' di Firestore berdasarkan NIK & ID karyawan!
+    // query langsung ke koleksi dokumen 'attendance' di Firestore berdasarkan NIK & ID karyawan (maksimal 5 dokumen, super hemat)!
     if (candidates.length === 0 && typeof queryFirestoreAttendanceByField === 'function') {
      try {
       if (matchedUser.nik) {
-       const byNik = await queryFirestoreAttendanceByField(wh, 'userNik', String(matchedUser.nik).trim());
+       const byNik = await queryFirestoreAttendanceByField(wh, 'userNik', String(matchedUser.nik).trim(), 5);
        byNik.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
       }
       if (candidates.length === 0 && matchedUser.id) {
-       const byId = await queryFirestoreAttendanceByField(wh, 'userId', String(matchedUser.id).trim());
+       const byId = await queryFirestoreAttendanceByField(wh, 'userId', String(matchedUser.id).trim(), 5);
        byId.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
       }
      } catch (eQuery) {}
     }
 
-    // 3. Fallback akhir bila query NIK belum menemukan (misal perbedaan kapitalisasi NIK)
-    if (candidates.length === 0 && typeof listAllDocsFromFirestore === 'function') {
-     try {
-      const docs = await listAllDocsFromFirestore(wh, 'attendance', 15);
-      docs.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
-     } catch (eList) {}
-    }
+    // CATATAN PERLINDUNGAN KUOTA: listAllDocsFromFirestore DILARANG KERAS dipanggil di sini
+    // agar scan absen masuk biasa tidak menyedot ribuan dokumen riwayat presensi.
 
     if (candidates.length > 0) {
      // Pilih kandidat dengan waktu checkIn terbaru
