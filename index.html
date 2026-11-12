@@ -8230,7 +8230,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v1';
+  const CURRENT_APP_VERSION = '20261113_v2';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10320,6 +10320,99 @@
    return out;
   }
 
+  // =========================================================
+  // BRANKAS MANDIRI KATA SANDI ADMIN (Lokal Kebal Limit & Sinkronisasi Outbox Cloud)
+  // =========================================================
+  function getAdminCustomPassword(wh = 'MBI') {
+   try {
+    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+    const vaultKey = `wfm_vault_admin_pwd_${targetWh.toLowerCase()}`;
+    const val = localStorage.getItem(vaultKey);
+    if (val && val.trim()) return val.trim();
+
+    // Auto-adopsi jika tersimpan di memori pengguna lokal yang bukan password bawaan
+    const users = getWhDB(targetWh, 'users', []);
+    const admin = users.find(u => u && (u.role === 'admin' || (u.nik && (u.nik === 'ADM001' || u.nik === 'ADM-MAI'))));
+    if (admin && admin.password && admin.password.trim() && admin.password !== 'adminmbi123' && admin.password !== 'adminmai123') {
+     localStorage.setItem(vaultKey, admin.password.trim());
+     return admin.password.trim();
+    }
+    return null;
+   } catch(e) { return null; }
+  }
+
+  function setAdminCustomPassword(wh, pwd) {
+   try {
+    if (!pwd || typeof pwd !== 'string' || !pwd.trim()) return;
+    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+    const cleanPwd = pwd.trim();
+    localStorage.setItem(`wfm_vault_admin_pwd_${targetWh.toLowerCase()}`, cleanPwd);
+
+    // Kunci juga di objek pengguna memori aktif
+    const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+    const adminIdx = users.findIndex(u => u && (u.role === 'admin' || (u.nik && (u.nik === 'ADM001' || u.nik === 'ADM-MAI'))));
+    if (adminIdx !== -1) {
+     users[adminIdx].password = cleanPwd;
+     users[adminIdx].isPasswordChanged = true;
+     users[adminIdx].updatedAt = new Date().toISOString();
+     setWhDB(targetWh, 'users', users, true);
+    }
+    queueAdminPasswordCloudSync(targetWh, cleanPwd);
+   } catch(e) {}
+  }
+
+  function queueAdminPasswordCloudSync(wh, pwd) {
+   try {
+    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+    const nik = targetWh === 'MAI' ? 'ADM-MAI' : 'ADM001';
+    const entry = { wh: targetWh, nik, pwd, updatedAt: new Date().toISOString() };
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('wfm_admin_pwd_outbox') || '[]'); } catch(e) {}
+    list = list.filter(item => item.wh !== targetWh);
+    list.push(entry);
+    localStorage.setItem('wfm_admin_pwd_outbox', JSON.stringify(list));
+    flushAdminPasswordOutbox().catch(() => {});
+   } catch(e) {}
+  }
+
+  async function flushAdminPasswordOutbox() {
+   try {
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('wfm_admin_pwd_outbox') || '[]'); } catch(e) { return; }
+    if (!list.length) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
+    const remaining = [];
+    for (const item of list) {
+     if (typeof isFirestoreSuspended === 'function' && isFirestoreSuspended(item.wh)) {
+      remaining.push(item);
+      continue;
+     }
+     try {
+      const ok = await saveDocToFirestore(item.wh, 'users', item.nik, {
+       id: item.wh === 'MAI' ? 'mai-admin' : 'mbi-admin',
+       nik: item.nik,
+       name: item.wh === 'MAI' ? 'Admin Gudang MAI' : 'Admin Gudang MBI',
+       role: 'admin',
+       warehouse: item.wh,
+       password: item.pwd,
+       updatedAt: item.updatedAt
+      });
+      if (!ok) {
+       remaining.push(item);
+      } else {
+       if (typeof saveMasterSnapshotToFirestore === 'function') {
+        saveMasterSnapshotToFirestore(item.wh, true).catch(() => {});
+       }
+      }
+     } catch(err) {
+      remaining.push(item);
+     }
+    }
+    localStorage.setItem('wfm_admin_pwd_outbox', JSON.stringify(remaining));
+   } catch(e) {}
+  }
+
   function getWhDB(warehouse, key, defaultVal) {
    const storageKey = `wfm_${warehouse.toLowerCase()}_${key}`;
    if (whDBCache.has(storageKey)) {
@@ -10983,9 +11076,18 @@
 
   // Jaring pengaman: kirim ulang antrean yang tertunda saat internet kembali / tiap 15 detik / saat halaman dibuka
   try {
-   window.addEventListener('online', () => { flushAttendanceOutbox(); });
-   setInterval(() => { if (readAttOutbox().length) flushAttendanceOutbox(); }, 15000);
-   setTimeout(() => { flushAttendanceOutbox(); }, 3000);
+   window.addEventListener('online', () => {
+    flushAttendanceOutbox();
+    try { flushAdminPasswordOutbox(); } catch(e) {}
+   });
+   setInterval(() => {
+    if (readAttOutbox().length) flushAttendanceOutbox();
+    try { flushAdminPasswordOutbox(); } catch(e) {}
+   }, 15000);
+   setTimeout(() => {
+    flushAttendanceOutbox();
+    try { flushAdminPasswordOutbox(); } catch(e) {}
+   }, 3000);
   } catch (eOutbox) {}
 
   // Gabungkan arsip utama + node live dari cloud. Untuk id yang sama, prioritaskan record yang memiliki jam pulang (checkOutTime) atau data paling baru.
@@ -16176,6 +16278,9 @@ service cloud.firestore {
   window.quickLoginScannerAccount = quickLoginScannerAccount;
   window.quickLoginAdmin = quickLoginAdmin;
   window.quickLoginManager = quickLoginManager;
+  window.getAdminCustomPassword = getAdminCustomPassword;
+  window.setAdminCustomPassword = setAdminCustomPassword;
+  window.flushAdminPasswordOutbox = flushAdminPasswordOutbox;
 
   // =========================================================
   // SMART LOGIN DENGAN PENCARIAN FLEKSIBEL (NIK / NAMA / PHONE / EMAIL / USERNAME)
@@ -16495,6 +16600,9 @@ service cloud.firestore {
     users[idx].isFirstLogin = false;
     users[idx].isPasswordChanged = true;
     users[idx].updatedAt = nowIso;
+    if (isUserAdmin(users[idx]) && typeof setAdminCustomPassword === 'function') {
+     setAdminCustomPassword(warehouse, p1);
+    }
     setWhDB(warehouse, 'users', users);
     pendingUserForPasswordChange = users[idx];
     localStorage.setItem('wfm_last_master_change_time', Date.now().toString());
@@ -23805,6 +23913,9 @@ service cloud.firestore {
      users[idx].password = p1;
      users[idx].isFirstLogin = false;
      users[idx].isPasswordChanged = true;
+     if (isUserAdmin(users[idx]) && typeof setAdminCustomPassword === 'function') {
+      setAdminCustomPassword(wh, p1);
+     }
     }
 
     // Update currentUser session
