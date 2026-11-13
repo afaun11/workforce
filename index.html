@@ -85,6 +85,20 @@
  </script>
 
  <style>
+  /* Mobile Smooth Navigation & GPU Rendering Acceleration */
+  html, body {
+   -webkit-tap-highlight-color: transparent;
+   scroll-behavior: smooth;
+  }
+  .view-panel {
+   contain: content;
+   animation: fadeInQuick 0.12s ease-out;
+  }
+  @keyframes fadeInQuick {
+   from { opacity: 0.88; transform: translateY(2px); }
+   to { opacity: 1; transform: translateY(0); }
+  }
+
   /* Global Dynamic Typography */
   :root {
    --app-font: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -8269,7 +8283,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v7';
+  const CURRENT_APP_VERSION = '20261113_v8';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10675,13 +10689,147 @@
 
     const cur = getWhDB(targetWh, 'attendance', []);
     const merged = mergeAttendanceArrays(cur, converted);
-    setWhDB(targetWh, 'attendance', merged, true);
+    let hasChanged = (cur.length !== merged.length);
+    if (!hasChanged) {
+     for (let i = 0; i < Math.min(cur.length, 10); i++) {
+      if (cur[i]?.id !== merged[i]?.id || cur[i]?.checkOutTime !== merged[i]?.checkOutTime || cur[i]?.updatedAt !== merged[i]?.updatedAt) {
+       hasChanged = true;
+       break;
+      }
+     }
+    }
+    if (hasChanged) {
+     setWhDB(targetWh, 'attendance', merged, true);
+    }
+    merged._hasChanged = hasChanged;
     return merged;
    } catch (err) {
     console.warn('[Supabase] Gagal menarik data presensi ' + targetWh + ':', err);
     return [];
    }
   }
+
+  async function saveLeavesToSupabase(wh, leavesList) {
+   if (!Array.isArray(leavesList) || leavesList.length === 0) return true;
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const payload = leavesList.map(l => ({
+    id: l.id || ('leave-' + targetWh.toLowerCase() + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+    warehouse: targetWh,
+    user_nik: (l.userNik || l.nik || '').toUpperCase().trim(),
+    user_name: l.userName || l.name || '',
+    type: l.type || 'Cuti',
+    start_date: l.startDate || l.start_date || '',
+    end_date: l.endDate || l.end_date || '',
+    reason: l.reason || '',
+    status: l.status || 'pending',
+    raw_data: l,
+    updated_at: l.updatedAt || new Date().toISOString()
+   }));
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_leaves?on_conflict=id';
+    await fetch(url, {
+     method: 'POST',
+     headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+     body: JSON.stringify(payload)
+    });
+    return true;
+   } catch(e) {
+    console.warn('[Supabase] Gagal menyimpan leaves ' + targetWh + ':', e);
+    return false;
+   }
+  }
+  window.saveLeavesToSupabase = saveLeavesToSupabase;
+
+  async function saveOvertimeToSupabase(wh, overtimeList) {
+   if (!Array.isArray(overtimeList) || overtimeList.length === 0) return true;
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const payload = overtimeList.map(o => ({
+    id: o.id || ('ot-' + targetWh.toLowerCase() + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+    warehouse: targetWh,
+    user_nik: (o.userNik || o.nik || '').toUpperCase().trim(),
+    date: o.date || '',
+    hours: parseFloat(o.effectiveHours || o.totalHours || o.hours || 0) || 0,
+    status: o.status || 'pending',
+    raw_data: o,
+    updated_at: o.updatedAt || new Date().toISOString()
+   }));
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_overtime?on_conflict=id';
+    await fetch(url, {
+     method: 'POST',
+     headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+     body: JSON.stringify(payload)
+    });
+    return true;
+   } catch(e) {
+    console.warn('[Supabase] Gagal menyimpan overtime ' + targetWh + ':', e);
+    return false;
+   }
+  }
+  window.saveOvertimeToSupabase = saveOvertimeToSupabase;
+
+  async function pullLeavesFromSupabase(wh = null) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_leaves?warehouse=eq.' + targetWh + '&order=start_date.desc&limit=1000';
+   try {
+    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+    const converted = rows.map(r => ({
+     ...(r.raw_data || {}),
+     id: r.id,
+     warehouse: r.warehouse,
+     userNik: r.user_nik,
+     userName: r.user_name,
+     type: r.type,
+     startDate: r.start_date,
+     endDate: r.end_date,
+     reason: r.reason,
+     status: r.status,
+     updatedAt: r.updated_at
+    }));
+    const cur = getWhDB(targetWh, 'leaves', []);
+    const curMap = new Map(cur.map(x => [x.id, x]));
+    converted.forEach(x => curMap.set(x.id, { ...(curMap.get(x.id) || {}), ...x }));
+    const merged = Array.from(curMap.values());
+    setWhDB(targetWh, 'leaves', merged, true);
+    return merged;
+   } catch(e) {
+    return [];
+   }
+  }
+  window.pullLeavesFromSupabase = pullLeavesFromSupabase;
+
+  async function pullOvertimeFromSupabase(wh = null) {
+   const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_overtime?warehouse=eq.' + targetWh + '&order=date.desc&limit=1000';
+   try {
+    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!Array.isArray(rows) || rows.length === 0) return [];
+    const converted = rows.map(r => ({
+     ...(r.raw_data || {}),
+     id: r.id,
+     warehouse: r.warehouse,
+     userNik: r.user_nik,
+     date: r.date,
+     hours: r.hours,
+     status: r.status,
+     updatedAt: r.updated_at
+    }));
+    const cur = getWhDB(targetWh, 'overtime', []);
+    const curMap = new Map(cur.map(x => [x.id, x]));
+    converted.forEach(x => curMap.set(x.id, { ...(curMap.get(x.id) || {}), ...x }));
+    const merged = Array.from(curMap.values());
+    setWhDB(targetWh, 'overtime', merged, true);
+    return merged;
+   } catch(e) {
+    return [];
+   }
+  }
+  window.pullOvertimeFromSupabase = pullOvertimeFromSupabase;
 
   async function pullUsersFromSupabase(wh = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
@@ -11599,6 +11747,11 @@
   async function saveUserDocToFirestore(wh, userRec) {
    if (!userRec) return;
    const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+   try {
+    if (typeof saveUsersToSupabase === 'function') {
+     saveUsersToSupabase(targetWh, [userRec]).catch(() => {});
+    }
+   } catch(eSb) {}
    const docId = (userRec.nik && userRec.nik.trim()) ? userRec.nik.trim() : (userRec.id || `emp_${Date.now()}`);
    return saveDocToFirestore(targetWh, 'users', docId, {
     ...userRec,
@@ -13506,6 +13659,18 @@ service cloud.firestore {
     const safeMbiUsers = (finalMbiUsers || []).filter(u => u && !isUserMarkedDeleted(u, deletedKeys));
     const safeMaiUsers = (finalMaiUsers || []).filter(u => u && !isUserMarkedDeleted(u, deletedKeys));
 
+    // Sinkronisasi otomatis master data karyawan & akun ke Supabase SSOT
+    try {
+     if (typeof saveUsersToSupabase === 'function') {
+      if (!targetWarehouse || targetWarehouse === 'MBI') {
+       saveUsersToSupabase('MBI', safeMbiUsers).catch(() => {});
+      }
+      if (!targetWarehouse || targetWarehouse === 'MAI') {
+       saveUsersToSupabase('MAI', safeMaiUsers).catch(() => {});
+      }
+     }
+    } catch (eSbUsers) {}
+
     // PAYLOAD TERPISAH: MBI HANYA DATA MBI, MAI HANYA DATA MAI (STRUKTUR DATA MURNI UNTUK HASHING)
     const mbiDataPure = {
      mbi_users: safeMbiUsers,
@@ -13677,11 +13842,16 @@ service cloud.firestore {
     }
     setWhDB(wh, 'leaves', leavesList, true);
     
-    // Simpan langsung ke Cloud Firestore Koleksi Leaves (Isolasi data cuti murni)
-    if (Array.isArray(leavesList) && typeof saveDocToFirestore === 'function') {
-     leavesList.forEach(l => {
-      if (l && l.id) saveDocToFirestore(wh, 'leaves', l.id, { ...l, warehouse: wh }).catch(() => {});
-     });
+    // Simpan langsung ke Database Supabase & Cloud Firestore
+    if (Array.isArray(leavesList)) {
+     if (typeof saveLeavesToSupabase === 'function') {
+      saveLeavesToSupabase(wh, leavesList).catch(() => {});
+     }
+     if (typeof saveDocToFirestore === 'function') {
+      leavesList.forEach(l => {
+       if (l && l.id) saveDocToFirestore(wh, 'leaves', l.id, { ...l, warehouse: wh }).catch(() => {});
+      });
+     }
     }
    } catch (err) {
     console.warn('syncLeavesToCloud notice:', err);
@@ -13755,11 +13925,16 @@ service cloud.firestore {
      untrackDeletedOvertime(overtimeList);
     }
     setWhDB(wh, 'overtime', overtimeList, true);
-    // Simpan langsung ke Cloud Firestore Koleksi Overtime (Isolasi data lembur murni)
-    if (Array.isArray(overtimeList) && typeof saveDocToFirestore === 'function') {
-     overtimeList.forEach(o => {
-      if (o && o.id) saveDocToFirestore(wh, 'overtime', o.id, { ...o, warehouse: wh }).catch(() => {});
-     });
+    // Simpan langsung ke Database Supabase & Cloud Firestore
+    if (Array.isArray(overtimeList)) {
+     if (typeof saveOvertimeToSupabase === 'function') {
+      saveOvertimeToSupabase(wh, overtimeList).catch(() => {});
+     }
+     if (typeof saveDocToFirestore === 'function') {
+      overtimeList.forEach(o => {
+       if (o && o.id) saveDocToFirestore(wh, 'overtime', o.id, { ...o, warehouse: wh }).catch(() => {});
+      });
+     }
     }
    } catch (err) {
     console.warn('syncOvertimeToCloud notice:', err);
@@ -14506,6 +14681,20 @@ service cloud.firestore {
      } catch (eA) {
       console.warn('[Supabase] pullAttendance notice for ' + wh + ':', eA);
      }
+
+     try {
+      if (typeof pullLeavesFromSupabase === 'function') {
+       const lRes = await pullLeavesFromSupabase(wh);
+       if (Array.isArray(lRes) && lRes.length > 0) loaded = true;
+      }
+     } catch(eL) {}
+
+     try {
+      if (typeof pullOvertimeFromSupabase === 'function') {
+       const oRes = await pullOvertimeFromSupabase(wh);
+       if (Array.isArray(oRes) && oRes.length > 0) loaded = true;
+      }
+     } catch(eO) {}
     }
 
     if (loaded) {
@@ -14566,7 +14755,7 @@ service cloud.firestore {
      const todayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(new Date()) : '';
      if (typeof pullAttendanceFromSupabase === 'function' && todayStr) {
       const updated = await pullAttendanceFromSupabase(targetWh, todayStr);
-      if (updated && updated.length > 0 && typeof renderAllLiveScreens === 'function') {
+      if (updated && updated._hasChanged && typeof renderAllLiveScreens === 'function') {
        renderAllLiveScreens();
       }
      }
@@ -16145,10 +16334,13 @@ service cloud.firestore {
     if (typeof updateWhSwitcherButtons === 'function') updateWhSwitcherButtons();
    }
 
-   // Sync ke Firebase Cloud 24/7 dengan master force upload
+   // Sinkronisasi hak akses akun ke Supabase 24/7 & Master Cloud
+   if (typeof saveUsersToSupabase === 'function') {
+    await saveUsersToSupabase(actualWh, users).catch(() => {});
+   }
    await saveFullDatabaseToCloud(false, true, true);
 
-   alert(`Å“â€¦ Hak Akses Berhasil Disimpan!\n\nAkun: ${users[idx].name} (${users[idx].nik})\nGudang: ${actualWh}\n\nPengaturan hak akses telah aktif seketika dan tersinkronisasi 24/7 ke Cloud Firebase.`);
+   alert(`✅ Hak Akses Berhasil Disimpan!\n\nAkun: ${users[idx].name} (${users[idx].nik})\nGudang: ${actualWh}\n\nPengaturan hak akses telah aktif seketika dan tersinkronisasi 24/7 ke Database Supabase.`);
    renderPermissionEditor(users[idx].nik, actualWh);
   }
 
@@ -17116,6 +17308,18 @@ service cloud.firestore {
      }
     }
 
+    try {
+     if (typeof saveUsersToSupabase === 'function') {
+      const targetWh = (typeof warehouse !== 'undefined' ? warehouse : (pendingUserForPasswordChange?.warehouse || 'MBI'));
+      saveUsersToSupabase(targetWh, users).catch(() => {});
+      const targetUser = (typeof pendingUserForPasswordChange !== 'undefined' && pendingUserForPasswordChange ? pendingUserForPasswordChange : currentUser);
+      if (isUserManager(targetUser) || isUserAdmin(targetUser)) {
+       const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
+       const otherUsers = getWhDB(otherWh, 'users', []);
+       if (otherUsers.length > 0) saveUsersToSupabase(otherWh, otherUsers).catch(() => {});
+      }
+     }
+    } catch (eSb) {}
     try { saveFullDatabaseToCloud(false, true, true); } catch(e) {}
    }
 
@@ -17903,22 +18107,26 @@ service cloud.firestore {
      viewName = 'attendance';
     }
 
-    document.querySelectorAll('.view-panel').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.sidebar-link').forEach(el => {
-     el.classList.remove('is-active');
-     el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5';
-    });
-
+    // 1. Tampilkan Panel View Baru & Sembunyikan Panel Sebelumnya Seketika (0ms)
+    const prevActivePanel = document.querySelector('.view-panel:not(.hidden)');
+    if (prevActivePanel && prevActivePanel.id !== 'view-' + viewName) {
+     prevActivePanel.classList.add('hidden');
+    }
     const activeView = document.getElementById('view-' + viewName) || document.getElementById('view-dashboard') || document.getElementById('view-attendance');
     if (activeView) activeView.classList.remove('hidden');
 
+    // 2. Perbarui Tombol Sidebar Aktif Secara Efisien (Hanya elemen yang berubah)
+    document.querySelectorAll('.sidebar-link.is-active').forEach(el => {
+     el.classList.remove('is-active');
+     el.className = 'sidebar-link w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-2.5';
+    });
     const activeNav = document.getElementById('nav-' + viewName);
     if (activeNav) {
      activeNav.classList.add('is-active');
      activeNav.className = 'sidebar-link is-active w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition flex items-center gap-2.5';
     }
 
-    // Update Navigasi Bawah Layar HP (Mobile Bottom Nav) & Tutup Drawer Menu
+    // 3. Update Navigasi Bawah Layar HP (Mobile Bottom Nav) & Tutup Drawer Menu
     try {
      ['dashboard', 'attendance', 'leaves', 'overtime'].forEach(tab => {
       const btn = document.getElementById('mob-nav-' + tab);
@@ -17930,81 +18138,93 @@ service cloud.firestore {
        }
       }
      });
-     closeMobileSidebar();
+     if (typeof closeMobileSidebar === 'function') closeMobileSidebar();
     } catch(e) {}
 
-    try { applyRolePermissions(); } catch(e) {}
-
-    if (viewName === 'permissions') {
-     try { renderPermissionEditor(); } catch(e) {}
-    }
-    if (viewName === 'attendance') {
-     try {
-      const attLabel = document.getElementById('att-wh-label');
-      if (attLabel) attLabel.innerText = `Gudang ${activeWarehouse}`;
-     } catch(e) {}
-     try { setAttendanceType('check_in'); } catch(e) {}
-     try { renderScannerTodayRecords(); } catch(e) {}
-     try { switchScanMethod('camera'); } catch(e) {}
-     try { updateRegisteredCoordsDisplay(); } catch(e) {}
-     try { preloadGPSLocation(); } catch(e) {}
-    }
-    if (viewName === 'employees') { try { renderEmployeeTable(); } catch(e) {} }
-    if (viewName === 'reports-group') {
-     try {
-      const targetTab = activeReportTab || 'records';
-      const curAtt = getWhDB(activeWarehouse, 'attendance', []);
-      if (curAtt.length < 100 && typeof pullAttendanceFromFirestore === 'function') {
-       pullAttendanceFromFirestore(activeWarehouse, false).then(() => {
-        switchReportTab(targetTab);
-       });
-      } else {
-       switchReportTab(targetTab);
-      }
-     } catch(e) {}
-    }
-    if (viewName === 'leaves') {
-     try { filterLeaveEmployeeDropdown(document.getElementById('leave-emp-search-input')?.value || ''); } catch(e) {}
-     try { renderLeavesTable(); } catch(e) {}
-    }
-    if (viewName === 'overtime') {
-     try {
-      renderOvertimeEmployeeGrid();
-      renderOvertimeTable();
-      calculateOvertimeNominal();
-     } catch(e) {}
-    }
-    if (viewName === 'idcard') {
-     try {
-      populateDropdownEmployees();
-      renderSelectedIDCard();
-      updateRegisteredCoordsDisplay();
-     } catch(e) {}
-    }
-    if (viewName === 'settings') { try { renderAccountSettingsForm(); } catch(e) {} }
-    if (viewName === 'github') { try { renderGitHubConfig(); } catch(e) {} try { updateFirebaseUrlUI(); } catch(e) {} }
-    if (viewName === 'attendance') { try { resetVerificationState(); } catch(e) {} }
-
+    // 4. Bebaskan Hardware Kamera Scanner di Latar Belakang (Non-blocking)
     if (viewName !== 'attendance') {
-     try { stopScanner(); } catch(e) {}
-    }
-
-    if (viewName === 'dashboard') {
      try {
-      const curAtt = getWhDB(activeWarehouse, 'attendance', []);
-      if (curAtt.length === 0 && typeof pullAttendanceFromFirestore === 'function') {
-       pullAttendanceFromFirestore(activeWarehouse, false).then(() => {
-        refreshAllDashboardData();
-       });
-      } else {
-       refreshAllDashboardData();
+      if (typeof stopScanner === 'function') {
+       setTimeout(() => { stopScanner().catch(() => {}); }, 0);
       }
      } catch(e) {}
     }
-    try {
-     if (typeof safeCreateIcons === 'function') safeCreateIcons({ root: activeView });
-     else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
-    } catch(e) {}
+
+    // 5. Jadwalkan Komputasi Render Data Berat di Frame Berikutnya (60 FPS Smooth Navigation)
+    const runViewRender = () => {
+     try { applyRolePermissions(); } catch(e) {}
+
+     if (viewName === 'permissions') {
+      try { renderPermissionEditor(); } catch(e) {}
+     } else if (viewName === 'attendance') {
+      try {
+       const attLabel = document.getElementById('att-wh-label');
+       if (attLabel) attLabel.innerText = `Gudang ${activeWarehouse}`;
+      } catch(e) {}
+      try { setAttendanceType('check_in'); } catch(e) {}
+      try { renderScannerTodayRecords(); } catch(e) {}
+      try { switchScanMethod('camera'); } catch(e) {}
+      try { updateRegisteredCoordsDisplay(); } catch(e) {}
+      try { preloadGPSLocation(); } catch(e) {}
+      try { resetVerificationState(); } catch(e) {}
+     } else if (viewName === 'employees') {
+      try { renderEmployeeTable(); } catch(e) {}
+     } else if (viewName === 'reports-group') {
+      try {
+       const targetTab = activeReportTab || 'records';
+       const curAtt = getWhDB(activeWarehouse, 'attendance', []);
+       if (curAtt.length < 100 && typeof pullAttendanceFromFirestore === 'function') {
+        pullAttendanceFromFirestore(activeWarehouse, false).then(() => {
+         switchReportTab(targetTab);
+        });
+       } else {
+        switchReportTab(targetTab);
+       }
+      } catch(e) {}
+     } else if (viewName === 'leaves') {
+      try { filterLeaveEmployeeDropdown(document.getElementById('leave-emp-search-input')?.value || ''); } catch(e) {}
+      try { renderLeavesTable(); } catch(e) {}
+     } else if (viewName === 'overtime') {
+      try {
+       renderOvertimeEmployeeGrid();
+       renderOvertimeTable();
+       calculateOvertimeNominal();
+      } catch(e) {}
+     } else if (viewName === 'idcard') {
+      try {
+       populateDropdownEmployees();
+       renderSelectedIDCard();
+       updateRegisteredCoordsDisplay();
+      } catch(e) {}
+     } else if (viewName === 'settings') {
+      try { renderAccountSettingsForm(); } catch(e) {}
+     } else if (viewName === 'github') {
+      try { renderGitHubConfig(); } catch(e) {}
+      try { updateFirebaseUrlUI(); } catch(e) {}
+     } else if (viewName === 'dashboard') {
+      try {
+       const curAtt = getWhDB(activeWarehouse, 'attendance', []);
+       if (curAtt.length === 0 && typeof pullAttendanceFromFirestore === 'function') {
+        pullAttendanceFromFirestore(activeWarehouse, false).then(() => {
+         refreshAllDashboardData();
+        });
+       } else {
+        refreshAllDashboardData();
+       }
+      } catch(e) {}
+     }
+
+     try {
+      if (typeof safeCreateIcons === 'function') safeCreateIcons({ root: activeView });
+      else if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons({ root: activeView });
+     } catch(e) {}
+    };
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+     requestAnimationFrame(runViewRender);
+    } else {
+     runViewRender();
+    }
    } catch (err) {
     console.warn('switchView error:', err);
     const fallbackView = document.getElementById('view-' + viewName) || document.getElementById('view-dashboard') || document.getElementById('view-attendance');
@@ -22925,6 +23145,11 @@ service cloud.firestore {
    switchView('settings');
   }
 
+  function closeChangePasswordSettingModal() {
+   const m = document.getElementById('change-password-modal') || document.getElementById('change-pwd-modal');
+   if (m) m.classList.add('hidden');
+  }
+
   function handleSaveSelfPassword(e) {
    e.preventDefault();
    const p1 = document.getElementById('self-new-pwd-1').value.trim();
@@ -22975,6 +23200,18 @@ service cloud.firestore {
      }
     }
 
+    try {
+     if (typeof saveUsersToSupabase === 'function') {
+      const targetWh = (typeof warehouse !== 'undefined' ? warehouse : (pendingUserForPasswordChange?.warehouse || 'MBI'));
+      saveUsersToSupabase(targetWh, users).catch(() => {});
+      const targetUser = (typeof pendingUserForPasswordChange !== 'undefined' && pendingUserForPasswordChange ? pendingUserForPasswordChange : currentUser);
+      if (isUserManager(targetUser) || isUserAdmin(targetUser)) {
+       const otherWh = targetWh === 'MBI' ? 'MAI' : 'MBI';
+       const otherUsers = getWhDB(otherWh, 'users', []);
+       if (otherUsers.length > 0) saveUsersToSupabase(otherWh, otherUsers).catch(() => {});
+      }
+     }
+    } catch (eSb) {}
     try { saveFullDatabaseToCloud(false, true, true); } catch(e) {}
     closeChangePasswordSettingModal();
     alert('Kata sandi akun Anda berhasil diubah!\nUntuk login berikutnya, wajib gunakan kata sandi baru ini.');
@@ -24502,7 +24739,17 @@ service cloud.firestore {
      if (otsChanged) setWhDB(wh, 'overtime', ots);
     }
 
-    // Simpan langsung ke Firebase Cloud seketika dengan status Master Force Upload
+    // Simpan langsung ke Supabase 24/7 & Master Cloud
+    try {
+     if (typeof saveUsersToSupabase === 'function') {
+      await saveUsersToSupabase(wh, users).catch(() => {});
+      if (isUserManager(currentUser) || isUserAdmin(currentUser)) {
+       const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
+       const otherUsers = getWhDB(otherWh, 'users', []);
+       if (otherUsers.length > 0) await saveUsersToSupabase(otherWh, otherUsers).catch(() => {});
+      }
+     }
+    } catch (eSb) {}
     await saveFullDatabaseToCloud(false, true, true);
 
     // Update DOM Top Navbar
@@ -26119,7 +26366,10 @@ service cloud.firestore {
    try { localStorage.setItem(`wfm_${wh.toLowerCase()}_attendance_backup`, JSON.stringify(attendances)); } catch(eBak) {}
 
    if (outIso) cleanStaleMissScanFlags(newRec);
-   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
+   // Sinkronisasi permanen ke Supabase 24/7, Cloud & Google Sheet
+   if (typeof saveAttendanceToSupabase === 'function') {
+    await saveAttendanceToSupabase(wh, newRec).catch(() => {});
+   }
    await syncAttendanceToCloud(wh, attendances, newRec);
    if (typeof saveAttendanceDocToFirestore === 'function') {
     await saveAttendanceDocToFirestore(wh, newRec).catch(() => {});
@@ -26288,7 +26538,10 @@ service cloud.firestore {
    setWhDB(targetWh, 'attendance', attendances, true);
    try { localStorage.setItem(`wfm_${targetWh.toLowerCase()}_attendance_backup`, JSON.stringify(attendances)); } catch(eBak) {}
 
-   // Sinkronisasi permanen ke Cloud Firebase & Google Sheet
+   // Sinkronisasi permanen ke Supabase 24/7, Cloud & Google Sheet
+   if (typeof saveAttendanceToSupabase === 'function') {
+    await saveAttendanceToSupabase(targetWh, existingRec).catch(() => {});
+   }
    await syncAttendanceToCloud(targetWh, attendances, existingRec);
    if (typeof saveAttendanceDocToFirestore === 'function') {
     await saveAttendanceDocToFirestore(targetWh, existingRec).catch(() => {});
@@ -29775,8 +30028,8 @@ function testManualSync() {
       const activeWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI';
       const today = typeof getLocalDateString === 'function' ? getLocalDateString(new Date()) : '';
       if (today) {
-       pullAttendanceFromSupabase(activeWh, today).then(() => {
-        if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+       pullAttendanceFromSupabase(activeWh, today).then((res) => {
+        if (res && res._hasChanged && typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
        }).catch(() => {});
       }
      }

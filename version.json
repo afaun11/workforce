@@ -1,5 +1,5 @@
 {
-  "version": "20261113_v7",
-  "updatedAt": "2026-11-13T07:53:04.248Z",
-  "notes": "Eliminate all Firestore/Firebase remnants, Supabase 24/7 SSOT cloud database, Admin MBI resilient authentication & full permission guarantee"
+  "version": "20261113_v8",
+  "updatedAt": "2026-11-13T09:46:00.000Z",
+  "notes": "Smooth navigation optimization: instant 0ms view switching, requestAnimationFrame deferred rendering, non-blocking camera shutdown, delta polling change detector"
 }
