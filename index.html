@@ -2123,15 +2123,9 @@
           </div>
 
           <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-           <div class="flex items-center gap-2">
-            <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-             Cari Data
-            </button>
-            <button id="btn-sync-date-filter" type="button" onclick="syncRecordsForCurrentDateFilter()" class="h-9 px-3.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Tarik data segar langsung dari Supabase untuk tanggal yang dipilih">
-             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-             <span>Sinkron Tanggal Ini</span>
-            </button>
-           </div>
+           <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
+            Cari Data
+           </button>
 
            <div class="flex items-center gap-2 flex-wrap">
             <button id="btn-delete-selected-records" type="button" onclick="deleteSelectedRecords()" class="hidden h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5 opacity-50 pointer-events-none" title="Hapus Catatan Presensi Terpilih (Khusus Admin)">
@@ -8280,7 +8274,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261114_v12';
+  const CURRENT_APP_VERSION = '20261114_v13';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -8539,6 +8533,13 @@
   // Mencegah record absen yang dihapus bangkit kembali dari Cloud & sinkronisasi Google Sheet
   // =========================================================
   function getDeletedAttendanceIds() {
+   // Otomatis bersihkan tombstone kadaluwarsa agar seluruh data resmi Supabase pulih utuh
+   if (!localStorage.getItem('wfm_v13_cleaned_tombstones')) {
+    try {
+     localStorage.removeItem('wfm_deleted_attendance_ids');
+     localStorage.setItem('wfm_v13_cleaned_tombstones', 'true');
+    } catch(e) {}
+   }
    const setKeys = new Set();
    try {
     const raw = localStorage.getItem('wfm_deleted_attendance_ids');
@@ -8629,17 +8630,11 @@
 
   function isAttendanceMarkedDeleted(item, deletedIds = null) {
    if (!item) return false;
-   if (item.__userDeletedExplicitly === true || item.__isDeletedGhost === true) {
-    return true;
-   }
+   if (item.__userDeletedExplicitly === true) return true;
    const delSet = deletedIds || getDeletedAttendanceIds();
    if (delSet && delSet.size > 0) {
     if (item.id && delSet.has(String(item.id).trim().toLowerCase())) return true;
     if (item._firestoreDocId && delSet.has(String(item._firestoreDocId).trim().toLowerCase())) return true;
-    const compKey = getAttendanceCompositeKey(item);
-    if (compKey && delSet.has(compKey)) return true;
-    const minKey = getAttendanceMinuteKey(item);
-    if (minKey && delSet.has(minKey)) return true;
    }
    return false;
   }
@@ -10699,18 +10694,35 @@
 
   async function pullAttendanceFromSupabase(wh = null, date = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-   let url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&order=date.desc,check_in_time.desc';
-   if (date) {
-    url += '&date=eq.' + encodeURIComponent(date);
-   } else {
-    url += '&limit=3000';
-   }
+   const baseUrl = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&order=date.desc,check_in_time.desc';
 
    try {
-    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
-    if (!res.ok) return [];
-    const rows = await res.json();
-    if (!Array.isArray(rows)) return [];
+    let rows = [];
+    if (date) {
+     // Tarik data spesifik tanggal tertentu (misal hari ini atau filter tanggal tertentu)
+     const singleUrl = baseUrl + '&date=eq.' + encodeURIComponent(date);
+     const res = await fetch(singleUrl, { headers: getSupabaseHeaders(), cache: 'no-store' });
+     if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) rows = data;
+     }
+    } else {
+     // Tarik SEMUA data lengkap menggunakan Range Pagination (1000 per batch sampai selesai)
+     let offset = 0;
+     const batchSize = 1000;
+     while (offset < 15000) {
+      const rangeHeaders = { ...getSupabaseHeaders(), 'Range': `${offset}-${offset + batchSize - 1}` };
+      const res = await fetch(baseUrl, { headers: rangeHeaders, cache: 'no-store' });
+      if (!res.ok) break;
+      const batch = await res.json();
+      if (!Array.isArray(batch) || batch.length === 0) break;
+      rows.push(...batch);
+      if (batch.length < batchSize) break; // Sudah semua data tersedot
+      offset += batchSize;
+     }
+    }
+
+    if (rows.length === 0 && !date) return getWhDB(targetWh, 'attendance', []);
 
     const converted = rows.map(r => ({
      ...(r.raw_data || {}),
@@ -10729,38 +10741,15 @@
      updatedAt: r.updated_at
     }));
 
-    // Pulihkan semua data Cloud dari daftar hapus lokal agar tidak terfilter
+    // Pulihkan status data yang sah dari database Cloud agar tidak terblokir
     if (typeof untrackDeletedAttendance === 'function' && Array.isArray(converted)) {
      untrackDeletedAttendance(converted);
     }
 
+    // PENGGABUNGAN AMAN TANPA PENGHAPUSAN OTOMATIS:
+    // Menarik dari Cloud HANYA menambah dan memperbarui data lokal, TIDAK BOLEH menghapus data.
     const cur = getWhDB(targetWh, 'attendance', []);
-
-    // SINKRONISASI PENGHAPUSAN MULTI-PERANGKAT (CROSS-DEVICE DE-SYNC):
-    // Jika Cloud mengembalikan daftar untuk tanggal tertentu (misal hari ini),
-    // data lokal yang TIDAK ADA di Cloud dan TIDAK ADA di antrean offline outbox
-    // berarti TELAH DIHAPUS OLEH ADMIN di perangkat lain! Buang dari memori lokal agar tidak bangkit lagi.
-    const outboxIds = new Set();
-    try {
-     if (typeof readAttOutbox === 'function') {
-      readAttOutbox().forEach(x => { if (x && x.rec && x.rec.id) outboxIds.add(String(x.rec.id)); });
-     }
-    } catch(e) {}
-
-    const cloudIdSet = new Set(converted.map(c => String(c.id)));
-    const purgedCur = cur.filter(item => {
-     if (!item) return false;
-     if (isAttendanceMarkedDeleted(item)) return false;
-     if (date && item.date === date) {
-      if (!cloudIdSet.has(String(item.id)) && !outboxIds.has(String(item.id))) {
-       trackDeletedAttendance(item);
-       return false; // Hapus dari memori lokal perangkat ini!
-      }
-     }
-     return true;
-    });
-
-    const merged = mergeAttendanceArrays(purgedCur, converted);
+    const merged = mergeAttendanceArrays(cur, converted);
     let hasChanged = (cur.length !== merged.length);
     if (!hasChanged) {
      for (let i = 0; i < Math.min(cur.length, 10); i++) {
@@ -10779,14 +10768,12 @@
     }
     merged._hasChanged = hasChanged;
     try {
-     if (typeof renderRecordsTable === 'function') renderRecordsTable();
-     if (typeof renderMatrixTable === 'function') renderMatrixTable();
      if (typeof renderScannerTodayRecords === 'function') renderScannerTodayRecords();
     } catch(eRnd) {}
     return merged;
    } catch (err) {
     console.warn('[Supabase] Gagal menarik data presensi ' + targetWh + ':', err);
-    return [];
+    return getWhDB(targetWh, 'attendance', []);
    }
   }
 
@@ -12896,12 +12883,6 @@ service cloud.firestore {
     const matchedKey = map.has(key) ? key : (dayK && dayMap.has(dayK) ? dayMap.get(dayK) : null);
 
     if (!matchedKey) {
-     const isPendingOffline = localItem.id && outboxIds.has(String(localItem.id));
-     const isDateCoveredByCloud = localItem.date && cloudDates.has(localItem.date);
-     if (cloudHasRecords && isDateCoveredByCloud && !isPendingOffline) {
-      trackDeletedAttendance(localItem);
-      return; // Data ini telah dihapus oleh Admin di Cloud!
-     }
      map.set(key, localItem);
      if (dayK) dayMap.set(dayK, key);
     } else {
@@ -25751,43 +25732,6 @@ service cloud.firestore {
    renderRecordsTable(true);
   }
 
-  async function syncRecordsForCurrentDateFilter() {
-   const btn = document.getElementById('btn-sync-date-filter');
-   const origHTML = btn ? btn.innerHTML : '';
-   if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Menarik...</span>';
-   }
-   try {
-    const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
-    const sInput = document.getElementById('record-start-date')?.value || '';
-    const eInput = document.getElementById('record-end-date')?.value || '';
-    const targetDate = (sInput && eInput && sInput === eInput) ? sInput : null;
-    
-    // Tarik data resmi dari Supabase
-    const pulled = await pullAttendanceFromSupabase(currentWh, targetDate);
-    
-    // Pastikan tombstone dibersihkan untuk data yang ditarik
-    if (typeof untrackDeletedAttendance === 'function' && Array.isArray(pulled)) {
-     untrackDeletedAttendance(pulled);
-    }
-    
-    // Render ulang tabel
-    renderRecordsTable(true);
-    
-    const countOnDate = (sInput) ? (pulled || []).filter(a => a.date === sInput).length : (pulled || []).length;
-    alert(`✅ Sinkronisasi Cloud Supabase Berhasil!\n\nDitemukan ${countOnDate} data absensi untuk Gudang ${currentWh} pada tanggal yang dipilih.`);
-   } catch (err) {
-    alert('Gagal menyinkronkan data: ' + err.message);
-   } finally {
-    if (btn) {
-     btn.disabled = false;
-     btn.innerHTML = origHTML || '<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i><span>Sinkron Tanggal Ini</span>';
-     if (typeof lucide !== 'undefined') lucide.createIcons();
-    }
-   }
-  }
-
   function renderRecordsTable(resetPage = false) {
    lastRecordsRenderTime = Date.now();
    if (resetPage) recordsCurrentPage = 1;
@@ -25805,6 +25749,21 @@ service cloud.firestore {
      sInput.value = startStr;
      eInput.value = endStr;
     }
+   }
+
+   const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+
+   // SINKRONISASI OTOMATIS BACKGROUND (TANPA TOMBOL MANUAL):
+   // Jika admin membuka tanggal tertentu (misal 2026-11-13), otomatis sedot data resmi dari Cloud
+   // dan pastikan Google Sheet langsung tersinkronkan utuh tanpa ada yang hilang
+   if (startStr && startStr === endStr && !window[`_autoPulled_${currentWh}_${startStr}`]) {
+    window[`_autoPulled_${currentWh}_${startStr}`] = true;
+    pullAttendanceFromSupabase(currentWh, startStr).then(() => {
+     renderRecordsTable();
+     if (typeof triggerGoogleSheetAutoSync === 'function') {
+      triggerGoogleSheetAutoSync(true, currentWh);
+     }
+    });
    }
 
    const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();

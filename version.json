@@ -1,5 +1,5 @@
 {
-  "version": "20261114_v12",
-  "updatedAt": "2026-11-14T05:07:00.000Z",
-  "description": "Perbaikan sinkronisasi cloud: pemulihan otomatis data sah Supabase, tombol sinkron langsung per tanggal, dan re-render otomatis."
+  "version": "20261114_v13",
+  "updatedAt": "2026-11-14T05:40:00.000Z",
+  "description": "Perbaikan sinkronisasi cloud: penarikan aman tanpa auto-delete, auto-sync otomatis tanpa tombol manual, dan sinkronisasi utuh ke Google Spreadsheet."
 }
