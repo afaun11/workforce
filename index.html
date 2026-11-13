@@ -8241,7 +8241,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v5';
+  const CURRENT_APP_VERSION = '20261113_v6';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10615,11 +10615,11 @@
 
   async function pullAttendanceFromSupabase(wh = null, date = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-   let url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&order=created_at.desc';
+   let url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&order=date.desc,check_in_time.desc';
    if (date) {
     url += '&date=eq.' + encodeURIComponent(date);
    } else {
-    url += '&limit=1000';
+    url += '&limit=3000';
    }
 
    try {
@@ -12587,11 +12587,9 @@ service cloud.firestore {
     const matchedKey = map.has(key) ? key : (dayK && dayMap.has(dayK) ? dayMap.get(dayK) : null);
 
     if (!matchedKey) {
-     // PERTAHANKAN SELURUH RECORD PRESENSI HISTORIS LOKAL (JANGAN PERNAH DIHAPUS)
      map.set(key, localItem);
      if (dayK) dayMap.set(dayK, key);
     } else {
-     // SMART AUTHORITATIVE MERGE: Prioritaskan data dengan updatedAt lebih baru / koreksi Admin sah
      const cloudItem = map.get(matchedKey);
      const hasOutLocal = !!(localItem.checkOutTime && localItem.checkOutTime !== '-' && localItem.checkOutTime !== '');
      const hasOutCloud = !!(cloudItem.checkOutTime && cloudItem.checkOutTime !== '-' && cloudItem.checkOutTime !== '');
@@ -12601,8 +12599,17 @@ service cloud.firestore {
      const isLocalAdminEdit = !!(localItem.correctedByAdmin || localItem.manualInput);
      const isCloudAdminEdit = !!(cloudItem.correctedByAdmin || cloudItem.manualInput);
 
-     const localWins = (tUpdA > tUpdB) || (isLocalAdminEdit && !isCloudAdminEdit && tUpdB === 0);
+     const isLocalGs = !!(localItem.id && localItem.id.includes('-gs-'));
+     const isCloudGs = !!(cloudItem.id && cloudItem.id.includes('-gs-'));
+     const localWins = (!isLocalGs && isCloudGs) || (tUpdA > tUpdB) || (isLocalAdminEdit && !isCloudAdminEdit && tUpdB === 0);
      const merged = localWins ? { ...cloudItem, ...localItem } : { ...localItem, ...cloudItem };
+
+     // Pertahankan ID scanner asli (jangan gunakan ID buatan -gs-)
+     if (cloudItem.id && !cloudItem.id.includes('-gs-')) {
+      merged.id = cloudItem.id;
+     } else if (localItem.id && !localItem.id.includes('-gs-')) {
+      merged.id = localItem.id;
+     }
 
      if (localWins) {
       merged.checkInTime = localItem.checkInTime;
@@ -12626,7 +12633,6 @@ service cloud.firestore {
       }
      }
 
-     // Jika record hasil gabungan memiliki jam pulang yang sah, bersihkan label Miss Scan usang dari keterangan/status
      if (hasValidCheckOut(merged)) {
       cleanStaleMissScanFlags(merged);
      }
@@ -12634,7 +12640,38 @@ service cloud.firestore {
      map.set(matchedKey, merged);
     }
    });
-   return Array.from(map.values());
+
+   // DEDUPLIKASI KETAT: Bersihkan data ganda untuk NIK + Tanggal yang sama dalam shift
+   const dedupMap = new Map();
+   for (const item of map.values()) {
+    if (!item || isAttendanceMarkedDeleted(item)) continue;
+    const nik = (item.userNik || '').toUpperCase().trim();
+    const dt = item.date || '';
+    if (!nik || !dt) {
+     dedupMap.set(item.id || Math.random().toString(), item);
+     continue;
+    }
+    const dKey = `${nik}__${dt}`;
+    if (!dedupMap.has(dKey)) {
+     dedupMap.set(dKey, item);
+    } else {
+     const ex = dedupMap.get(dKey);
+     let keepOut = ex.checkOutTime;
+      if (!keepOut || keepOut === '-' || keepOut === '') {
+       keepOut = item.checkOutTime;
+      } else if (item.checkOutTime && item.checkOutTime !== '-' && item.checkOutTime !== '') {
+       if (item.checkOutTime.includes('.') && !keepOut.includes('.')) {
+        keepOut = item.checkOutTime;
+       }
+      }
+     const keepId = (!ex.id || ex.id.includes('-gs-')) && (item.id && !item.id.includes('-gs-')) ? item.id : ex.id;
+     const keepNotes = (item.notes && item.notes !== '-') ? item.notes : ex.notes;
+     const unified = { ...ex, ...item, id: keepId, checkOutTime: keepOut, notes: keepNotes };
+     if (hasValidCheckOut(unified)) cleanStaleMissScanFlags(unified);
+     dedupMap.set(dKey, unified);
+    }
+   }
+   return Array.from(dedupMap.values());
   }
 
   // 2. SMART MERGE PENGAJUAN SAKIT / CUTI (Kunci ID / NIK+TglMulai+Jenis)
@@ -14298,6 +14335,8 @@ service cloud.firestore {
       attMap.set(k, gsRec);
      } else {
       const existing = attMap.get(k);
+      // Selalu pertahankan ID asli scanner agar tidak terbuat ID duplikat baru
+      gsRec.id = existing.id || gsRec.id;
       if (existing.correctedByAdmin || existing.manualInput) {
        attMap.set(k, existing);
        return;
@@ -28355,32 +28394,11 @@ function testManualSync() {
    try {
     if (!rec || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
     const targetWh = (wh || rec.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-    window._recentSingleGsPush = window._recentSingleGsPush || {};
-    const pushKey = `${targetWh}::${rec.id || rec.userNik || ''}::${rec.checkOutTime || ''}::${rec.updatedAt || ''}`;
-    const lastPushAt = window._recentSingleGsPush[pushKey] || 0;
-    if (Date.now() - lastPushAt < 10000) return true;
-    window._recentSingleGsPush[pushKey] = Date.now();
-    const webhookUrl = getGoogleSheetWebhookUrl(targetWh);
-    if (!webhookUrl) return false;
-    const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
-    const headers = [
-     "No", "Tanggal", "NIK", "Nama Karyawan", "Departemen",
-     "Jam Masuk", "Jam Pulang", "Durasi Kerja",
-     "Status Kehadiran", "Status Kepulangan", "Keterangan", "Gudang"
-    ];
-    const row = buildSingleRecordAbsenRow(targetWh, rec);
-    const payload = {
-     warehouse: targetWh,
-     generatedAt: new Date().toISOString(),
-     sheets: { "RECORD ABSEN": [headers, row] }
-    };
-    await fetch(targetUrl, {
-     method: 'POST',
-     mode: 'no-cors',
-     cache: 'no-cache',
-     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-     body: JSON.stringify(payload)
-    });
+    // PERLINDUNGAN GOOGLE SHEET ANTI-HAPUS: Dilarang keras mengirim payload 1 baris { "RECORD ABSEN": [headers, row] }
+    // Pemicu otomatis memanggil syncGoogleSheetDirectly dengan debounce agar mengirim data master lengkap dari Supabase.
+    if (typeof syncGoogleSheetDirectly === 'function') {
+     syncGoogleSheetDirectly(false, targetWh);
+    }
     return true;
    } catch (e) {
     console.warn('pushSingleScanToGoogleSheet notice:', e);
@@ -28455,6 +28473,11 @@ function testManualSync() {
      if (!hasData) return;
 
      const lastRows = parseInt(localStorage.getItem(`wfm_max_pushed_sheet_rows_${wh}`) || '0', 10);
+     // ANTI-SHRINK MUTLAK: Jangan pernah menimpa Google Sheet jika baris data menyusut drastis atau kosong
+     if (lastRows > 10 && curRows < (lastRows * 0.5)) {
+      console.warn(`[GSheet Protect] Menolak mengirim payload ke ${wh}: jumlah baris menyusut (${curRows} vs ${lastRows}).`);
+      return;
+     }
      if (!allowPartial && curRows <= 1 && lastRows > 1) {
       return;
      }
@@ -29677,6 +29700,19 @@ function testManualSync() {
     }
    }, 2500);
 
+   // Tarik seluruh data riwayat terkini (termasuk tanggal 12 & hari sebelumnya) dari Supabase saat awal buka
+   try {
+    if (typeof pullAttendanceFromSupabase === 'function') {
+     const initWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI';
+     pullAttendanceFromSupabase(initWh).then(() => {
+      const otherWh = initWh === 'MBI' ? 'MAI' : 'MBI';
+      pullAttendanceFromSupabase(otherWh);
+      if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+     }).catch(() => {});
+    }
+   } catch(eInitPull) {}
+
+   // Poller ringan: Setiap 20 detik sinkronkan scan hari ini dari Supabase
    setInterval(() => {
     try {
      if (typeof pullAttendanceFromSupabase === 'function') {

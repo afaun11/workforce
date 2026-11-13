@@ -1,4 +1,5 @@
 {
-  "version": "20261113_v5",
-  "notes": "Sistem resmi dialihkan 100% menggunakan Database Supabase 24/7 untuk Gudang MBI & MAI (pemulihan otomatis data absen 12 November dari Google Sheet, brankas kata sandi baru, dan sinkronisasi realtime ultra-irit kuota)."
+  "version": "20261113_v6",
+  "updatedAt": "2026-11-13T01:31:22.409Z",
+  "notes": "Google Sheet anti-wipe fix, Supabase master attendance sync, zero duplicates deduplication engine, full Nov 12 historical data restore"
 }
