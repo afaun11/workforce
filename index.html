@@ -8274,7 +8274,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v10';
+  const CURRENT_APP_VERSION = '20261114_v11';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10609,6 +10609,51 @@
    }
   }
 
+  async function deleteAttendanceFromSupabase(idsOrSet, targetWh = null, userNik = null, date = null) {
+   if (!idsOrSet && !userNik) return false;
+   const idList = (Array.isArray(idsOrSet) ? idsOrSet : (idsOrSet instanceof Set ? Array.from(idsOrSet) : [idsOrSet])).filter(Boolean).map(String);
+   let success = false;
+   try {
+    if (idList.length > 0) {
+     const encodedIds = idList.map(id => encodeURIComponent(id)).join(',');
+     const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?id=in.(' + encodedIds + ')';
+     const res = await fetch(url, {
+      method: 'DELETE',
+      headers: getSupabaseHeaders({ 'Prefer': 'return=representation' })
+     });
+     if (res.ok) success = true;
+    }
+    // Jika ada NIK dan tanggal, pastikan juga dihapus berdasarkan NIK + date untuk proteksi mutlak
+    if (userNik && date) {
+     const whFilter = targetWh ? `&warehouse=eq.${encodeURIComponent(targetWh.toUpperCase())}` : '';
+     const urlNik = SUPABASE_PROJECT_URL + `/rest/v1/wfm_attendance?user_nik=eq.${encodeURIComponent(String(userNik).toUpperCase().trim())}&date=eq.${encodeURIComponent(date)}${whFilter}`;
+     const resNik = await fetch(urlNik, {
+      method: 'DELETE',
+      headers: getSupabaseHeaders()
+     });
+     if (resNik.ok) success = true;
+    }
+   } catch (err) {
+    console.warn('[Supabase] Gagal menghapus attendance dari Supabase:', err);
+   }
+   return success;
+  }
+
+  async function deleteAllAttendanceFromSupabase(warehouse) {
+   if (!warehouse) return false;
+   const wh = warehouse.toUpperCase();
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + wh;
+    const res = await fetch(url, {
+     method: 'DELETE',
+     headers: getSupabaseHeaders()
+    });
+    return res.ok;
+   } catch(e) {
+    return false;
+   }
+  }
+
   async function saveUsersToSupabase(wh, usersList) {
    if (!Array.isArray(usersList) || usersList.length === 0) return true;
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
@@ -10679,7 +10724,32 @@
     }));
 
     const cur = getWhDB(targetWh, 'attendance', []);
-    const merged = mergeAttendanceArrays(cur, converted);
+
+    // SINKRONISASI PENGHAPUSAN MULTI-PERANGKAT (CROSS-DEVICE DE-SYNC):
+    // Jika Cloud mengembalikan daftar untuk tanggal tertentu (misal hari ini),
+    // data lokal yang TIDAK ADA di Cloud dan TIDAK ADA di antrean offline outbox
+    // berarti TELAH DIHAPUS OLEH ADMIN di perangkat lain! Buang dari memori lokal agar tidak bangkit lagi.
+    const outboxIds = new Set();
+    try {
+     if (typeof readAttOutbox === 'function') {
+      readAttOutbox().forEach(x => { if (x && x.rec && x.rec.id) outboxIds.add(String(x.rec.id)); });
+     }
+    } catch(e) {}
+
+    const cloudIdSet = new Set(converted.map(c => String(c.id)));
+    const purgedCur = cur.filter(item => {
+     if (!item) return false;
+     if (isAttendanceMarkedDeleted(item)) return false;
+     if (date && item.date === date) {
+      if (!cloudIdSet.has(String(item.id)) && !outboxIds.has(String(item.id))) {
+       trackDeletedAttendance(item);
+       return false; // Hapus dari memori lokal perangkat ini!
+      }
+     }
+     return true;
+    });
+
+    const merged = mergeAttendanceArrays(purgedCur, converted);
     let hasChanged = (cur.length !== merged.length);
     if (!hasChanged) {
      for (let i = 0; i < Math.min(cur.length, 10); i++) {
@@ -10691,6 +10761,10 @@
     }
     if (hasChanged) {
      setWhDB(targetWh, 'attendance', merged, true);
+     try {
+      const todayKey = 'wfm_' + targetWh.toLowerCase() + '_today_attendance';
+      localStorage.setItem(todayKey, JSON.stringify(merged.filter(a => a && !isAttendanceMarkedDeleted(a))));
+     } catch(eTd) {}
     }
     merged._hasChanged = hasChanged;
     return merged;
@@ -12766,6 +12840,7 @@ service cloud.firestore {
   function mergeAttendanceArrays(localList, cloudList) {
    const map = new Map();
    const dayMap = new Map();
+   const cloudDates = new Set();
 
    (cloudList || []).forEach(item => {
     if (!item || isAttendanceMarkedDeleted(item)) return;
@@ -12774,6 +12849,7 @@ service cloud.firestore {
     if (item.userNik && item.date) {
      dayMap.set(`${item.userNik.toUpperCase().trim()}__${item.date}`, key);
     }
+    if (item.date) cloudDates.add(item.date);
    });
 
    // Ambil daftar ID yang sedang dalam antrean upload offline (Outbox)
@@ -12799,6 +12875,12 @@ service cloud.firestore {
     const matchedKey = map.has(key) ? key : (dayK && dayMap.has(dayK) ? dayMap.get(dayK) : null);
 
     if (!matchedKey) {
+     const isPendingOffline = localItem.id && outboxIds.has(String(localItem.id));
+     const isDateCoveredByCloud = localItem.date && cloudDates.has(localItem.date);
+     if (cloudHasRecords && isDateCoveredByCloud && !isPendingOffline) {
+      trackDeletedAttendance(localItem);
+      return; // Data ini telah dihapus oleh Admin di Cloud!
+     }
      map.set(key, localItem);
      if (dayK) dayMap.set(dayK, key);
     } else {
@@ -19619,9 +19701,11 @@ service cloud.firestore {
 
    // 1. FILTER & URUTKAN SELURUH RIWAYAT PRESENSI KARYAWAN SECARA KRONOLOGIS TERBARU (DESCENDING)
    const findUserAtts = (list) => (list || []).filter(a => 
-    (a.userId && a.userId === matchedUser.id) ||
-    (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
-    (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase() && (!a.userName || cleanStr(a.userName) === cleanStr(matchedUser.name)))
+    a && !isAttendanceMarkedDeleted(a) && (
+     (a.userId && a.userId === matchedUser.id) ||
+     (a.userName && cleanStr(a.userName) === cleanStr(matchedUser.name)) ||
+     (a.userNik && a.userNik.toUpperCase() === matchedUser.nik.toUpperCase() && (!a.userName || cleanStr(a.userName) === cleanStr(matchedUser.name)))
+    )
    ).sort((a, b) => {
     const tA = a.checkInTime ? new Date(a.checkInTime).getTime() : 0;
     const tB = b.checkInTime ? new Date(b.checkInTime).getTime() : 0;
@@ -19634,7 +19718,7 @@ service cloud.firestore {
    const MAX_ACTIVE_SHIFT_MS = 18 * 60 * 60 * 1000;
    
    const findOpenSession = (atts) => (atts || []).find(a => {
-    if (!a || !a.checkInTime) return false;
+    if (!a || !a.checkInTime || isAttendanceMarkedDeleted(a)) return false;
     if (a.checkOutTime && a.checkOutTime !== '-' && a.checkOutTime !== '') return false;
     const inMs = parseSafeTimeMs(a.checkInTime, a.date) || new Date(a.checkInTime).getTime();
     if (isNaN(inMs) || inMs <= 0) return false;
@@ -19693,7 +19777,7 @@ service cloud.firestore {
     // 2. CEK APAKAH SUDAH MENYELESAIKAN SHIFT HARI INI (SUDAH ABSEN MASUK & PULANG DI HARI YANG SAMA)
     // Mencegah karyawan absen masuk ulang setelah pulang di hari yang sama yang menyebabkan data ganda/lonjakan data
     const todayCompletedSession = userAtts.find(a => {
-     if (!a || !a.checkOutTime) return false;
+     if (!a || !a.checkOutTime || isAttendanceMarkedDeleted(a)) return false;
      const aLocalDate = a.checkInTime ? getLocalDateString(new Date(a.checkInTime)) : a.date;
      return (a.date === todayStr || aLocalDate === todayStr);
     });
@@ -23065,6 +23149,13 @@ service cloud.firestore {
 
    // Kosongkan attendance di database lokal
    setWhDB(targetWh, 'attendance', []);
+
+   // Kosongkan seluruh presensi di Supabase Database (SSOT Utama)
+   try {
+    if (typeof deleteAllAttendanceFromSupabase === 'function') {
+     await deleteAllAttendanceFromSupabase(targetWh);
+    }
+   } catch(eSbReset) {}
    
    // Kirim langsung payload bersih ke Firebase
    await saveFullDatabaseToCloud(false, true, false, targetWh, false, true);
@@ -26056,6 +26147,23 @@ service cloud.firestore {
     ]);
    } catch(eAttDoc) {}
 
+   // HAPUS FISIK LANGSUNG DARI DATABASE SUPABASE (SSOT UTAMA)
+   try {
+    if (typeof deleteAttendanceFromSupabase === 'function') {
+     await deleteAttendanceFromSupabase(Array.from(docIdsToDelete), touchedDeleteWhs.size === 1 ? Array.from(touchedDeleteWhs)[0] : null);
+    }
+   } catch(eSbBulk) {
+    console.warn('[Supabase] Gagal bulk delete attendance:', eSbBulk);
+   }
+
+   // Bersihkan dari outbox offline jika ada
+   try {
+    if (typeof readAttOutbox === 'function') {
+     let ob = readAttOutbox().filter(x => !(x.rec && docIdsToDelete.has(String(x.rec.id))));
+     localStorage.setItem('wfm_attendance_outbox', JSON.stringify(ob));
+    }
+   } catch(eOb) {}
+
    // Sinkronkan ke Cloud Firestore (termasuk tombstone deleted_attendance_ids)
    await saveFullDatabaseToCloud(false, true, true, null, false, true);
 
@@ -26086,10 +26194,14 @@ service cloud.firestore {
    // Catat ke tombstone agar tidak pernah bangkit lagi dari Cloud/Sheet
    const docIdsToDelete = new Set();
    if (id) docIdsToDelete.add(String(id));
+   let userNikToDelete = '';
+   let dateToDelete = '';
    if (toDelete) {
     trackDeletedAttendance(toDelete);
     if (toDelete.id) docIdsToDelete.add(String(toDelete.id));
     if (toDelete._firestoreDocId) docIdsToDelete.add(String(toDelete._firestoreDocId));
+    userNikToDelete = toDelete.userNik || toDelete.nik || '';
+    dateToDelete = toDelete.date || '';
    } else {
     trackDeletedAttendance(id);
    }
@@ -26125,6 +26237,23 @@ service cloud.firestore {
      scrubDeletedAttendanceFromCloud('MAI')
     ]);
    } catch(eAttDoc) {}
+
+   // HAPUS FISIK LANGSUNG DARI DATABASE SUPABASE (SSOT UTAMA)
+   try {
+    if (typeof deleteAttendanceFromSupabase === 'function') {
+     await deleteAttendanceFromSupabase(Array.from(docIdsToDelete), wh, userNikToDelete, dateToDelete);
+    }
+   } catch(eSbDel) {
+    console.warn('[Supabase] Gagal delete single attendance:', eSbDel);
+   }
+
+   // Bersihkan dari outbox offline jika ada
+   try {
+    if (typeof readAttOutbox === 'function') {
+     let ob = readAttOutbox().filter(x => !(x.rec && (docIdsToDelete.has(String(x.rec.id)) || (x.rec.userNik && String(x.rec.userNik).toUpperCase() === String(userNikToDelete).toUpperCase() && x.rec.date === dateToDelete))));
+     localStorage.setItem('wfm_attendance_outbox', JSON.stringify(ob));
+    }
+   } catch(eOb) {}
 
    // Sinkronkan ke Cloud Firestore (beserta tombstone deleted_attendance_ids)
    await saveFullDatabaseToCloud(false, true, true, null, false, true);
@@ -28723,15 +28852,21 @@ function testManualSync() {
      if (!hasData) return;
 
      const lastRows = parseInt(localStorage.getItem(`wfm_max_pushed_sheet_rows_${wh}`) || '0', 10);
-     // ANTI-SHRINK MUTLAK: Jangan pernah menimpa Google Sheet jika baris data menyusut drastis atau kosong
-     if (lastRows > 10 && curRows < (lastRows * 0.5)) {
+     // ANTI-SHRINK MUTLAK: Jangan pernah menimpa Google Sheet jika baris data menyusut drastis atau kosong (kecuali penghapusan resmi admin)
+     if (!allowPartial && lastRows > 10 && curRows < (lastRows * 0.5)) {
       console.warn(`[GSheet Protect] Menolak mengirim payload ke ${wh}: jumlah baris menyusut (${curRows} vs ${lastRows}).`);
       return;
      }
      if (!allowPartial && curRows <= 1 && lastRows > 1) {
       return;
      }
-     if (curRows > 0) localStorage.setItem(`wfm_max_pushed_sheet_rows_${wh}`, String(Math.max(lastRows, curRows)));
+     if (curRows > 0) {
+      if (allowPartial) {
+       localStorage.setItem(`wfm_max_pushed_sheet_rows_${wh}`, String(curRows));
+      } else {
+       localStorage.setItem(`wfm_max_pushed_sheet_rows_${wh}`, String(Math.max(lastRows, curRows)));
+      }
+     }
 
      try {
       await fetch(targetUrl, {

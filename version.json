@@ -1,5 +1,5 @@
 {
-  "version": "20261113_v10",
-  "updatedAt": "2026-11-13T10:40:00.000Z",
-  "notes": "Emergency mobile freeze fix: eliminated boot migration loop, removed heavy 6000-record historical pull, removed background matrix table rendering on login, removed layout containment"
+  "version": "20261114_v11",
+  "updatedAt": "2026-11-13T21:00:00.000Z",
+  "notes": "Synchronized attendance deletion across Supabase, Google Sheet, and multi-device local storage. Allowed premature scan deletion so employees can re-scan at their actual shift time without false 'already checked in' blocks."
 }
