@@ -1,4 +1,4 @@
 {
-  "version": "20261113_v4",
-  "notes": "Pembaruan dialog konfirmasi & animasi tombol migrasi Supabase (dengan popup laporan sukses otomatis jumlah karyawan & riwayat absensi)."
+  "version": "20261113_v5",
+  "notes": "Sistem resmi dialihkan 100% menggunakan Database Supabase 24/7 untuk Gudang MBI & MAI (pemulihan otomatis data absen 12 November dari Google Sheet, brankas kata sandi baru, dan sinkronisasi realtime ultra-irit kuota)."
 }
