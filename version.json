@@ -1,5 +1,5 @@
 {
-  "version": "20261114_v11",
-  "updatedAt": "2026-11-13T21:00:00.000Z",
-  "notes": "Synchronized attendance deletion across Supabase, Google Sheet, and multi-device local storage. Allowed premature scan deletion so employees can re-scan at their actual shift time without false 'already checked in' blocks."
+  "version": "20261114_v12",
+  "updatedAt": "2026-11-14T05:07:00.000Z",
+  "description": "Perbaikan sinkronisasi cloud: pemulihan otomatis data sah Supabase, tombol sinkron langsung per tanggal, dan re-render otomatis."
 }

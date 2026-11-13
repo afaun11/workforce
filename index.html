@@ -2123,9 +2123,15 @@
           </div>
 
           <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-200 flex-wrap">
-           <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
-            Cari Data
-           </button>
+           <div class="flex items-center gap-2">
+            <button onclick="renderRecordsTable(true)" class="h-9 px-5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center">
+             Cari Data
+            </button>
+            <button id="btn-sync-date-filter" type="button" onclick="syncRecordsForCurrentDateFilter()" class="h-9 px-3.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition shadow-xs inline-flex items-center gap-1.5" title="Tarik data segar langsung dari Supabase untuk tanggal yang dipilih">
+             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+             <span>Sinkron Tanggal Ini</span>
+            </button>
+           </div>
 
            <div class="flex items-center gap-2 flex-wrap">
             <button id="btn-delete-selected-records" type="button" onclick="deleteSelectedRecords()" class="hidden h-9 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition shadow-xs items-center gap-1.5 opacity-50 pointer-events-none" title="Hapus Catatan Presensi Terpilih (Khusus Admin)">
@@ -2957,13 +2963,13 @@
            <span>Uji Respon Supabase</span>
           </button>
 
-          <button type="button" onclick="pullUsersFromSupabase(activeWarehouse); pullAttendanceFromSupabase(activeWarehouse, null); alert('✅ Data Supabase berhasil disinkronkan ke perangkat ini!');" class="py-3 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+          <button type="button" onclick="const b=this; b.disabled=true; b.classList.add('opacity-50'); pullUsersFromSupabase(activeWarehouse).then(() => pullAttendanceFromSupabase(activeWarehouse, null)).then((res) => { b.disabled=false; b.classList.remove('opacity-50'); if (typeof renderRecordsTable==='function') renderRecordsTable(); alert('✅ Berhasil menyinkronkan data Supabase! Total ' + (res?.length || 0) + ' record absensi dimuat.'); }).catch(e => { b.disabled=false; b.classList.remove('opacity-50'); alert('Gagal sinkron: ' + e.message); });" class="py-3 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
            <i data-lucide="download-cloud" class="w-4 h-4 text-emerald-600"></i>
            <span>Tarik Data Terbaru Supabase</span>
           </button>
          </div>
 
-         <button type="button" onclick="pullAttendanceFromSupabase(activeWarehouse, null).then(() => { alert('✅ Seluruh data riwayat absensi Supabase berhasil dimuat!'); });" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+         <button type="button" onclick="const b=this; b.disabled=true; b.classList.add('opacity-50'); pullAttendanceFromSupabase(activeWarehouse, null).then((res) => { b.disabled=false; b.classList.remove('opacity-50'); if (typeof renderRecordsTable==='function') renderRecordsTable(); alert('✅ Seluruh data riwayat absensi Supabase berhasil dimuat (' + (res?.length || 0) + ' record)!'); }).catch(e => { b.disabled=false; b.classList.remove('opacity-50'); alert('Gagal memuat: ' + e.message); });" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
           <i data-lucide="database" class="w-4 h-4 text-emerald-100"></i>
           <span>Tarik &amp; Lengkapi Seluruh Riwayat Absensi (Data Supabase)</span>
          </button>
@@ -8274,7 +8280,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261114_v11';
+  const CURRENT_APP_VERSION = '20261114_v12';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10723,6 +10729,11 @@
      updatedAt: r.updated_at
     }));
 
+    // Pulihkan semua data Cloud dari daftar hapus lokal agar tidak terfilter
+    if (typeof untrackDeletedAttendance === 'function' && Array.isArray(converted)) {
+     untrackDeletedAttendance(converted);
+    }
+
     const cur = getWhDB(targetWh, 'attendance', []);
 
     // SINKRONISASI PENGHAPUSAN MULTI-PERANGKAT (CROSS-DEVICE DE-SYNC):
@@ -10767,6 +10778,11 @@
      } catch(eTd) {}
     }
     merged._hasChanged = hasChanged;
+    try {
+     if (typeof renderRecordsTable === 'function') renderRecordsTable();
+     if (typeof renderMatrixTable === 'function') renderMatrixTable();
+     if (typeof renderScannerTodayRecords === 'function') renderScannerTodayRecords();
+    } catch(eRnd) {}
     return merged;
    } catch (err) {
     console.warn('[Supabase] Gagal menarik data presensi ' + targetWh + ':', err);
@@ -12843,7 +12859,12 @@ service cloud.firestore {
    const cloudDates = new Set();
 
    (cloudList || []).forEach(item => {
-    if (!item || isAttendanceMarkedDeleted(item)) return;
+    if (!item) return;
+    // Data yang datang dari Cloud Supabase adalah data resmi (SSOT) yang sah dan aktif.
+    // Pulihkan dari tombstone lokal agar data tidak hilang di layar.
+    if (typeof untrackDeletedAttendance === 'function') {
+     untrackDeletedAttendance(item);
+    }
     const key = item.id || `${(item.userNik || '').toUpperCase()}_${item.date || ''}_${item.checkInTime || ''}`;
     map.set(key, item);
     if (item.userNik && item.date) {
@@ -25728,6 +25749,43 @@ service cloud.firestore {
     eInput.value = '';
    }
    renderRecordsTable(true);
+  }
+
+  async function syncRecordsForCurrentDateFilter() {
+   const btn = document.getElementById('btn-sync-date-filter');
+   const origHTML = btn ? btn.innerHTML : '';
+   if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span><span>Menarik...</span>';
+   }
+   try {
+    const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
+    const sInput = document.getElementById('record-start-date')?.value || '';
+    const eInput = document.getElementById('record-end-date')?.value || '';
+    const targetDate = (sInput && eInput && sInput === eInput) ? sInput : null;
+    
+    // Tarik data resmi dari Supabase
+    const pulled = await pullAttendanceFromSupabase(currentWh, targetDate);
+    
+    // Pastikan tombstone dibersihkan untuk data yang ditarik
+    if (typeof untrackDeletedAttendance === 'function' && Array.isArray(pulled)) {
+     untrackDeletedAttendance(pulled);
+    }
+    
+    // Render ulang tabel
+    renderRecordsTable(true);
+    
+    const countOnDate = (sInput) ? (pulled || []).filter(a => a.date === sInput).length : (pulled || []).length;
+    alert(`✅ Sinkronisasi Cloud Supabase Berhasil!\n\nDitemukan ${countOnDate} data absensi untuk Gudang ${currentWh} pada tanggal yang dipilih.`);
+   } catch (err) {
+    alert('Gagal menyinkronkan data: ' + err.message);
+   } finally {
+    if (btn) {
+     btn.disabled = false;
+     btn.innerHTML = origHTML || '<i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i><span>Sinkron Tanggal Ini</span>';
+     if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+   }
   }
 
   function renderRecordsTable(resetPage = false) {
