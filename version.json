@@ -1,5 +1,5 @@
 {
-  "version": "20261113_v8",
-  "updatedAt": "2026-11-13T09:46:00.000Z",
-  "notes": "Smooth navigation optimization: instant 0ms view switching, requestAnimationFrame deferred rendering, non-blocking camera shutdown, delta polling change detector"
+  "version": "20261113_v9",
+  "updatedAt": "2026-11-13T10:24:00.000Z",
+  "notes": "Mobile performance & camera startup optimization: deferred heavy Excel/ZIP scripts, instant environment camera stream, disabled blocking barcode detector, non-blocking GPS initialization"
 }
