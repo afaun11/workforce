@@ -8274,7 +8274,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261114_v13';
+  const CURRENT_APP_VERSION = '20261114_v14';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -25769,7 +25769,6 @@ service cloud.firestore {
    const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
    const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
 
-   const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
    const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
    const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
 
@@ -26662,7 +26661,6 @@ service cloud.firestore {
    const searchQ = (document.getElementById('record-search-input')?.value || '').toLowerCase().trim();
    const sortOrder = document.getElementById('record-sort-order')?.value || 'time_desc';
 
-   const currentWh = (activeWarehouse || (currentUser && currentUser.warehouse) || 'MBI').toUpperCase();
    const users = getWhDB(currentWh, 'users', currentWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
    const attendances = getWhDB(currentWh, 'attendance', currentWh === 'MBI' ? SEED_MBI_ATTENDANCE : SEED_MAI_ATTENDANCE).map(a => ({ ...a, warehouse: a.warehouse || currentWh }));
 
