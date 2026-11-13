@@ -1,5 +1,5 @@
 {
-  "version": "20261113_v9",
-  "updatedAt": "2026-11-13T10:24:00.000Z",
-  "notes": "Mobile performance & camera startup optimization: deferred heavy Excel/ZIP scripts, instant environment camera stream, disabled blocking barcode detector, non-blocking GPS initialization"
+  "version": "20261113_v10",
+  "updatedAt": "2026-11-13T10:40:00.000Z",
+  "notes": "Emergency mobile freeze fix: eliminated boot migration loop, removed heavy 6000-record historical pull, removed background matrix table rendering on login, removed layout containment"
 }

@@ -85,18 +85,9 @@
  </script>
 
  <style>
-  /* Mobile Smooth Navigation & GPU Rendering Acceleration */
+  /* Mobile Smooth Navigation */
   html, body {
    -webkit-tap-highlight-color: transparent;
-   scroll-behavior: smooth;
-  }
-  .view-panel {
-   contain: content;
-   animation: fadeInQuick 0.12s ease-out;
-  }
-  @keyframes fadeInQuick {
-   from { opacity: 0.88; transform: translateY(2px); }
-   to { opacity: 1; transform: translateY(0); }
   }
 
   /* Global Dynamic Typography */
@@ -8283,7 +8274,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261113_v9';
+  const CURRENT_APP_VERSION = '20261113_v10';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -17681,35 +17672,20 @@ service cloud.firestore {
         await syncAttendanceArchiveFromCloud(wh, false);
        }
 
-       // 3. Sinkronkan & rekonsiliasi dengan master Google Sheet
-       try { await syncAttendanceFromGoogleSheetMaster(false, wh); } catch(eGs) {}
-
        // 4. Bersihkan status Miss Scan palsu pada record yang sudah punya jam pulang sah
        try { sanitizeAttendanceDatabase(wh); } catch(eSan) {}
        window._cloudAttInitialSyncDone = window._cloudAttInitialSyncDone || {};
        window._cloudAttInitialSyncDone[wh] = true;
 
-       // 5. Segarkan seluruh layar, statistik dashboard, dan tabel record/matriks
-       renderAllLiveScreens();
+       // 5. Segarkan ringkasan dashboard aktif (tanpa merender tabel berat yang tersembunyi)
        if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
-       if (typeof renderRecordsTable === 'function') renderRecordsTable();
-       if (typeof renderMatrixTable === 'function') renderMatrixTable();
-       if (typeof flushAttendanceOutbox === 'function') flushAttendanceOutbox();
-       if (typeof flushPendingGSheetSync === 'function') flushPendingGSheetSync();
+       if (typeof flushAttendanceOutbox === 'function') setTimeout(flushAttendanceOutbox, 3000);
 
-       // Jika Manager, tarik juga data gudang lainnya (hemat kuota + master Google Sheet)
+       // Jika Manager, tarik snapshot gudang lainnya di latar belakang
        if (isUserManager(currentUser)) {
         const otherWh = wh === 'MBI' ? 'MAI' : 'MBI';
-        await fetchFullDatabaseFromCloud(false, otherWh, true);
-        const otherAtt = getWhDB(otherWh, 'attendance', []);
-        if (otherAtt.length < 50) {
-         await syncAttendanceArchiveFromCloud(otherWh, false);
-        }
-        try { await syncAttendanceFromGoogleSheetMaster(false, otherWh); } catch(eOtherGs) {}
-        try { sanitizeAttendanceDatabase(otherWh); } catch(eOtherSan) {}
+        fetchFullDatabaseFromCloud(false, otherWh, false).catch(() => {});
         window._cloudAttInitialSyncDone[otherWh] = true;
-        renderAllLiveScreens();
-        if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
        }
       } catch(ePull) {
        console.warn('Cross-device management initial data pull notice:', ePull);
@@ -29963,42 +29939,16 @@ function testManualSync() {
   // dan data karyawan otomatis berpindah ke Supabase
   // =========================================================
   try {
-   setTimeout(() => {
-    if (typeof migrateAllDataToSupabase === 'function' && !localStorage.getItem('wfm_supabase_migrated_v3')) {
-     migrateAllDataToSupabase(null, false).then(res => {
-      console.log('[Supabase Auto-Migrate] Selesai:', res);
-     }).catch(err => {
-      console.warn('[Supabase Auto-Migrate] Notice:', err);
-     });
-    }
-   }, 2500);
-
-   // Tarik seluruh data riwayat terkini (termasuk tanggal 12 & hari sebelumnya) dari Supabase saat awal buka
+   // Tarik ringkas data presensi hari ini secara instan saat awal buka
    try {
-    if (typeof pullAttendanceFromSupabase === 'function') {
+    const todayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(new Date()) : '';
+    if (typeof pullAttendanceFromSupabase === 'function' && todayStr) {
      const initWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI';
-     pullAttendanceFromSupabase(initWh).then(() => {
-      const otherWh = initWh === 'MBI' ? 'MAI' : 'MBI';
-      pullAttendanceFromSupabase(otherWh);
-      if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+     pullAttendanceFromSupabase(initWh, todayStr).then(() => {
+      if (typeof renderScannerTodayRecords === 'function') renderScannerTodayRecords();
      }).catch(() => {});
     }
    } catch(eInitPull) {}
-
-   // Poller ringan: Setiap 20 detik sinkronkan scan hari ini dari Supabase
-   setInterval(() => {
-    try {
-     if (typeof pullAttendanceFromSupabase === 'function') {
-      const activeWh = (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI';
-      const today = typeof getLocalDateString === 'function' ? getLocalDateString(new Date()) : '';
-      if (today) {
-       pullAttendanceFromSupabase(activeWh, today).then((res) => {
-        if (res && res._hasChanged && typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
-       }).catch(() => {});
-      }
-     }
-    } catch(ePoll) {}
-   }, 20000);
   } catch(eInitSb) {}
 
 
