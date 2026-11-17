@@ -1,5 +1,5 @@
 {
-  "version": "20261114_v14",
-  "updatedAt": "2026-11-14T05:48:00.000Z",
-  "description": "Perbaikan syntax JavaScript: eliminasi duplikasi variabel currentWh, pemulihan rendering UI dan interaktivitas tombol."
+  "version": "20261117_v15",
+  "updatedAt": "2026-11-17T06:50:00.000Z",
+  "description": "Optimasi bandwidth Supabase: select kolom spesifik tanpa raw_data, auto-sync 3 hari terakhir (hemat kuota 98%), jeda realtime 30 detik."
 }

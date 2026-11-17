@@ -2957,13 +2957,13 @@
            <span>Uji Respon Supabase</span>
           </button>
 
-          <button type="button" onclick="const b=this; b.disabled=true; b.classList.add('opacity-50'); pullUsersFromSupabase(activeWarehouse).then(() => pullAttendanceFromSupabase(activeWarehouse, null)).then((res) => { b.disabled=false; b.classList.remove('opacity-50'); if (typeof renderRecordsTable==='function') renderRecordsTable(); alert('✅ Berhasil menyinkronkan data Supabase! Total ' + (res?.length || 0) + ' record absensi dimuat.'); }).catch(e => { b.disabled=false; b.classList.remove('opacity-50'); alert('Gagal sinkron: ' + e.message); });" class="py-3 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
+          <button type="button" onclick="const b=this; b.disabled=true; b.classList.add('opacity-50'); pullUsersFromSupabase(activeWarehouse).then(() => pullAttendanceFromSupabase(activeWarehouse, null, true)).then((res) => { b.disabled=false; b.classList.remove('opacity-50'); if (typeof renderRecordsTable==='function') renderRecordsTable(); alert('✅ Berhasil menyinkronkan data Supabase! Total ' + (res?.length || 0) + ' record absensi dimuat.'); }).catch(e => { b.disabled=false; b.classList.remove('opacity-50'); alert('Gagal sinkron: ' + e.message); });" class="py-3 px-3 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer">
            <i data-lucide="download-cloud" class="w-4 h-4 text-emerald-600"></i>
            <span>Tarik Data Terbaru Supabase</span>
           </button>
          </div>
 
-         <button type="button" onclick="const b=this; b.disabled=true; b.classList.add('opacity-50'); pullAttendanceFromSupabase(activeWarehouse, null).then((res) => { b.disabled=false; b.classList.remove('opacity-50'); if (typeof renderRecordsTable==='function') renderRecordsTable(); alert('✅ Seluruh data riwayat absensi Supabase berhasil dimuat (' + (res?.length || 0) + ' record)!'); }).catch(e => { b.disabled=false; b.classList.remove('opacity-50'); alert('Gagal memuat: ' + e.message); });" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+         <button type="button" onclick="const b=this; b.disabled=true; b.classList.add('opacity-50'); pullAttendanceFromSupabase(activeWarehouse, null, true).then((res) => { b.disabled=false; b.classList.remove('opacity-50'); if (typeof renderRecordsTable==='function') renderRecordsTable(); alert('✅ Seluruh data riwayat absensi Supabase berhasil dimuat (' + (res?.length || 0) + ' record)!'); }).catch(e => { b.disabled=false; b.classList.remove('opacity-50'); alert('Gagal memuat: ' + e.message); });" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-xs cursor-pointer">
           <i data-lucide="database" class="w-4 h-4 text-emerald-100"></i>
           <span>Tarik &amp; Lengkapi Seluruh Riwayat Absensi (Data Supabase)</span>
          </button>
@@ -8274,7 +8274,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261114_v14';
+  const CURRENT_APP_VERSION = '20261117_v15';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10692,9 +10692,11 @@
    }
   }
 
-  async function pullAttendanceFromSupabase(wh = null, date = null) {
+  async function pullAttendanceFromSupabase(wh = null, date = null, forceFull = false) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-   const baseUrl = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?warehouse=eq.' + targetWh + '&order=date.desc,check_in_time.desc';
+   // OPTIMASI BANDWIDTH: Ambil kolom spesifik saja untuk memangkas duplikasi raw_data
+   const selectCols = 'id,user_id,user_nik,user_name,dept,warehouse,date,check_in_time,check_out_time,check_in_status,notes,outsource,updated_at';
+   const baseUrl = SUPABASE_PROJECT_URL + '/rest/v1/wfm_attendance?select=' + selectCols + '&warehouse=eq.' + targetWh + '&order=date.desc,check_in_time.desc';
 
    try {
     let rows = [];
@@ -10706,8 +10708,8 @@
       const data = await res.json();
       if (Array.isArray(data)) rows = data;
      }
-    } else {
-     // Tarik SEMUA data lengkap menggunakan Range Pagination (1000 per batch sampai selesai)
+    } else if (forceFull) {
+     // Tarik SEMUA riwayat lengkap HANYA saat tombol manual ditekan (forceFull === true)
      let offset = 0;
      const batchSize = 1000;
      while (offset < 15000) {
@@ -10720,9 +10722,25 @@
       if (batch.length < batchSize) break; // Sudah semua data tersedot
       offset += batchSize;
      }
+    } else {
+     // SINKRONISASI OTOMATIS HEMAT BANDWIDTH (HEMAT 98% KUOTA):
+     // Hanya tarik data 3 hari terakhir (hari ini, kemarin, lusa lalu).
+     // Riwayat bulan lalu tetap aman tersimpan di LocalStorage perangkat.
+     const today = new Date();
+     const pastDate = new Date(today.getTime() - (3 * 24 * 60 * 60 * 1000));
+     const minDateStr = (typeof getLocalDateString === 'function') 
+       ? getLocalDateString(pastDate) 
+       : pastDate.toISOString().split('T')[0];
+     
+     const recentUrl = baseUrl + '&date=gte.' + encodeURIComponent(minDateStr) + '&limit=500';
+     const res = await fetch(recentUrl, { headers: getSupabaseHeaders(), cache: 'no-store' });
+     if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) rows = data;
+     }
     }
 
-    if (rows.length === 0 && !date) return getWhDB(targetWh, 'attendance', []);
+    if (rows.length === 0 && !date && forceFull) return getWhDB(targetWh, 'attendance', []);
 
     const converted = rows.map(r => ({
      ...(r.raw_data || {}),
@@ -10838,7 +10856,8 @@
 
   async function pullLeavesFromSupabase(wh = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_leaves?warehouse=eq.' + targetWh + '&order=start_date.desc&limit=1000';
+   const selectLeaves = 'id,warehouse,user_nik,user_name,type,start_date,end_date,reason,status,updated_at';
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_leaves?select=' + selectLeaves + '&warehouse=eq.' + targetWh + '&order=start_date.desc&limit=500';
    try {
     const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
     if (!res.ok) return [];
@@ -10871,7 +10890,8 @@
 
   async function pullOvertimeFromSupabase(wh = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_overtime?warehouse=eq.' + targetWh + '&order=date.desc&limit=1000';
+   const selectOt = 'id,warehouse,user_nik,date,hours,status,updated_at';
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_overtime?select=' + selectOt + '&warehouse=eq.' + targetWh + '&order=date.desc&limit=500';
    try {
     const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
     if (!res.ok) return [];
@@ -10901,7 +10921,8 @@
 
   async function pullUsersFromSupabase(wh = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?warehouse=eq.' + targetWh + '&order=name.asc';
+   const selectUser = 'id,nik,name,warehouse,role,dept,status,password,custom_password,email,phone,outsource,updated_at';
+   const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?select=' + selectUser + '&warehouse=eq.' + targetWh + '&order=name.asc';
    try {
     const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
     if (!res.ok) return [];
@@ -14748,7 +14769,7 @@ service cloud.firestore {
      }
 
      try {
-      const aRes = await pullAttendanceFromSupabase(wh, null);
+      const aRes = await pullAttendanceFromSupabase(wh, null, isManualAlert || forceDownload);
       if (Array.isArray(aRes) && aRes.length > 0) {
        loaded = true;
        hasNewDataApplied = true;
@@ -14822,7 +14843,7 @@ service cloud.firestore {
    updateCloudSyncStatusBadge('synced');
 
    // SUPABASE 24/7 REALTIME ENGINE:
-   // Cepat (10s), hemat bandwidth (< 3KB), dan tanpa batasan kuota harian!
+   // Responsif (30s) & Super Hemat Bandwidth (< 1KB per request)
    if (supabaseLivePollTimer) clearInterval(supabaseLivePollTimer);
    supabaseLivePollTimer = setInterval(async () => {
     if (document.hidden || document.visibilityState !== 'visible') return;
@@ -14835,7 +14856,7 @@ service cloud.firestore {
       }
      }
     } catch (eSbPoll) {}
-   }, 10000);
+   }, 30000);
   }
 
   function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
