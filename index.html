@@ -8278,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261125_v20';
+  const CURRENT_APP_VERSION = '20261125_v21';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -11307,9 +11307,7 @@
     updateCloudSyncStatusBadge('synced');
 
     if (showFeedback) {
-     alert('✅ Rekonsiliasi Absen Selesai!
-Seluruh data presensi Gudang MBI & MAI telah disinkronkan dan diselaraskan dengan Google Sheet & Cloud.
-Status Miss Scan palsu telah dibersihkan secara otomatis.');
+     alert('✅ Rekonsiliasi Absen Selesai!\nSeluruh data presensi Gudang MBI & MAI telah disinkronkan dan diselaraskan dengan Google Sheet & Cloud.\nStatus Miss Scan palsu telah dibersihkan secara otomatis.');
     }
    } catch(e) {
     console.error('[Reconcile] Error:', e);
