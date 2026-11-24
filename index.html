@@ -18,6 +18,8 @@
  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet">
  
  <!-- Tailwind CSS CDN -->
+ <!-- Supabase Client Library for Realtime WebSocket (Ultra Hemat Bandwidth) -->
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
  <script src="https://cdn.tailwindcss.com"></script>
  <!-- Lucide Icons (Fast Global CDN) -->
  <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -8274,7 +8276,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261117_v15';
+  const CURRENT_APP_VERSION = '20261124_v16';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10561,8 +10563,9 @@
   // SUPABASE 24/7 ZERO-LIMIT POSTGREST & REALTIME ENGINE
   // Bebas Batas Kuota Harian (Unlimited Reads & Realtime Live Sync)
   // =========================================================
-  const SUPABASE_PROJECT_URL = 'https://xhqqrvvkdfbytladhwux.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_cm-VycXHZtNnCTPnVVZHdQ_5QiOOrxa';
+  // Database Supabase 24/7 (Proyek Baru Kuota Segar 5.5 GB + WebSocket Realtime Aktif)
+  const SUPABASE_PROJECT_URL = 'https://tyflwmxdwfvmymocymfp.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_EMxLXmTV_Xo2mLFEwOAqzg_d2bFlV-k';
 
   function getSupabaseHeaders(extra = {}) {
    return {
@@ -14829,6 +14832,152 @@ service cloud.firestore {
 
   let firestoreBeaconPollTimer = null;
   let supabaseLivePollTimer = null;
+
+  // ==============================================================================
+  // SUPABASE REALTIME WEBSOCKET ENGINE (HEMAT BANDWIDTH 99.9% / BEBAS KUOTA)
+  // ==============================================================================
+  let supabaseWsClient = null;
+  let supabaseWsChannel = null;
+
+  function initSupabaseRealtimeWebSocket() {
+   try {
+    const sbLib = (typeof window !== 'undefined' && window.supabase) ? window.supabase : null;
+    if (!sbLib || typeof sbLib.createClient !== 'function') {
+     console.log('[Supabase WS] Library @supabase/supabase-js sedang dimuat...');
+     setTimeout(initSupabaseRealtimeWebSocket, 1500);
+     return;
+    }
+    if (supabaseWsChannel) {
+     try { supabaseWsChannel.unsubscribe(); } catch(e) {}
+     supabaseWsChannel = null;
+    }
+
+    supabaseWsClient = sbLib.createClient(SUPABASE_PROJECT_URL, SUPABASE_ANON_KEY);
+    supabaseWsChannel = supabaseWsClient
+     .channel('wfm_medika_realtime_stream')
+     .on('postgres_changes', { event: '*', schema: 'public', table: 'wfm_attendance' }, (payload) => {
+      handleRealtimeAttendancePush(payload);
+     })
+     .on('postgres_changes', { event: '*', schema: 'public', table: 'wfm_users' }, (payload) => {
+      handleRealtimeUserPush(payload);
+     })
+     .on('postgres_changes', { event: '*', schema: 'public', table: 'wfm_leaves' }, () => {
+      if (typeof pullLeavesFromSupabase === 'function') pullLeavesFromSupabase(activeWarehouse);
+     })
+     .on('postgres_changes', { event: '*', schema: 'public', table: 'wfm_overtime' }, () => {
+      if (typeof pullOvertimeFromSupabase === 'function') pullOvertimeFromSupabase(activeWarehouse);
+     })
+     .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+       console.log('[Supabase WS] Terhubung ke WebSocket Realtime! Sinyal aktif (0 KB Polling).');
+       updateCloudSyncStatusBadge('synced');
+      }
+     });
+   } catch(err) {
+    console.warn('[Supabase WS] Notice inisialisasi WebSocket:', err);
+   }
+  }
+
+  function handleRealtimeAttendancePush(payload) {
+   if (!payload || !payload.eventType) return;
+   const evType = payload.eventType;
+   const newRow = payload.new;
+   const oldRow = payload.old;
+   const targetWh = (newRow?.warehouse || oldRow?.warehouse || activeWarehouse || 'MBI').toUpperCase();
+
+   if (evType === 'INSERT' || evType === 'UPDATE') {
+    if (!newRow || !newRow.id) return;
+    const item = {
+     ...(newRow.raw_data || {}),
+     id: newRow.id,
+     userId: newRow.user_id,
+     userNik: newRow.user_nik,
+     userName: newRow.user_name,
+     dept: newRow.dept,
+     warehouse: newRow.warehouse,
+     date: newRow.date,
+     checkInTime: newRow.check_in_time,
+     checkOutTime: newRow.check_out_time,
+     checkInStatus: newRow.check_in_status,
+     notes: newRow.notes,
+     outsource: newRow.outsource,
+     updatedAt: newRow.updated_at
+    };
+
+    const cur = getWhDB(targetWh, 'attendance', []);
+    const merged = mergeAttendanceArrays(cur, [item]);
+    setWhDB(targetWh, 'attendance', merged, true);
+
+    if (typeof untrackDeletedAttendance === 'function') {
+     untrackDeletedAttendance([item]);
+    }
+    if (typeof renderAllLiveScreens === 'function') {
+     renderAllLiveScreens();
+    }
+   } else if (evType === 'DELETE') {
+    if (!oldRow || !oldRow.id) return;
+    const cur = getWhDB(targetWh, 'attendance', []);
+    const filtered = cur.filter(x => x.id !== oldRow.id);
+    setWhDB(targetWh, 'attendance', filtered, true);
+
+    if (typeof trackDeletedAttendance === 'function') {
+     trackDeletedAttendance([oldRow.id]);
+    }
+    if (typeof renderAllLiveScreens === 'function') {
+     renderAllLiveScreens();
+    }
+   }
+  }
+
+  function handleRealtimeUserPush(payload) {
+   if (!payload || !payload.eventType) return;
+   const newRow = payload.new;
+   const targetWh = (newRow?.warehouse || activeWarehouse || 'MBI').toUpperCase();
+   if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+    if (!newRow || !newRow.nik) return;
+    const user = {
+     ...(newRow.raw_data || {}),
+     id: newRow.id,
+     nik: newRow.nik,
+     name: newRow.name,
+     warehouse: newRow.warehouse,
+     role: newRow.role,
+     dept: newRow.dept,
+     status: newRow.status,
+     password: newRow.password,
+     customPassword: newRow.custom_password,
+     email: newRow.email,
+     phone: newRow.phone,
+     outsource: newRow.outsource,
+     permissions: newRow.permissions || {},
+     updatedAt: newRow.updated_at
+    };
+    const cur = getWhDB(targetWh, 'users', []);
+    const merged = mergeUserArrays(cur, [user], targetWh);
+    setWhDB(targetWh, 'users', merged, true);
+    if (typeof renderAccountLookupList === 'function') renderAccountLookupList();
+   }
+  }
+
+  // Otomatis pindahkan seluruh data jika database baru masih kosong (0 Karyawan)
+  async function autoMigrateIfDatabaseEmpty() {
+   try {
+    const res = await fetch(SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?select=id&limit=1', {
+     headers: getSupabaseHeaders(),
+     cache: 'no-store'
+    });
+    if (res.ok) {
+     const data = await res.json();
+     if (Array.isArray(data) && data.length === 0) {
+      console.log('[Supabase Auto-Setup] Database baru terdeteksi kosong. Memulai migrasi otomatis master data...');
+      if (typeof migrateAllDataToSupabase === 'function') {
+       await migrateAllDataToSupabase(null, false);
+       console.log('[Supabase Auto-Setup] Migrasi data awal berhasil!');
+      }
+     }
+    }
+   } catch(e) {}
+  }
   function initFirebaseLiveStream(wh = null) {
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
    currentLiveStreamWh = targetWh;
@@ -14842,8 +14991,10 @@ service cloud.firestore {
 
    updateCloudSyncStatusBadge('synced');
 
-   // SUPABASE 24/7 REALTIME ENGINE:
-   // Responsif (30s) & Super Hemat Bandwidth (< 1KB per request)
+   // SUPABASE REALTIME WEBSOCKET (0 KB Idle / Instan):
+   initSupabaseRealtimeWebSocket();
+
+   // Fallback safety interval (hanya cek ringan tiap 60 detik jika WebSocket terputus):
    if (supabaseLivePollTimer) clearInterval(supabaseLivePollTimer);
    supabaseLivePollTimer = setInterval(async () => {
     if (document.hidden || document.visibilityState !== 'visible') return;
@@ -14856,7 +15007,7 @@ service cloud.firestore {
       }
      }
     } catch (eSbPoll) {}
-   }, 30000);
+   }, 60000);
   }
 
   function generateUniqueNIK(warehouse = 'MBI', name = '', existingUsersArray = null) {
@@ -15029,6 +15180,7 @@ service cloud.firestore {
    try {
     syncGPSCoordsFromFirestore('MBI').catch(() => {});
     syncGPSCoordsFromFirestore('MAI').catch(() => {});
+    autoMigrateIfDatabaseEmpty();
     fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
     initFirebaseLiveStream(getActiveWhTarget());
     syncAttendanceFromGoogleSheetMaster(false, getActiveWhTarget());
