@@ -8278,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261124_v17';
+  const CURRENT_APP_VERSION = '20261124_v18';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -20574,9 +20574,11 @@ service cloud.firestore {
    // Evaluasi apakah input berasal dari Alat Scanner Fisik Asli (PDA / Barcode Gun)
    const isHardware = checkIsHardwareScanner(inputVal);
 
-   // Cek apakah akun aktif adalah Administrator (memiliki hak dispensasi uji coba)
+   // Cek apakah akun aktif adalah Administrator atau Akun Scanner Terminal Pos Gudang
    const isUserAdminCurrent = isUserAdmin(currentUser) || (currentUser && (currentUser.role === 'admin' || currentUser.role === 'superadmin' || (currentUser.nik && currentUser.nik.startsWith('ADM'))));
    const isScannedAdmin = inputVal.toUpperCase().startsWith('ADM') || inputVal.toUpperCase().includes('ADMIN');
+   const isScannerTerminal = isUserScanner(currentUser) || (currentUser && (currentUser.role === 'scanner' || (currentUser.nik && currentUser.nik.startsWith('ABSEN'))));
+   const isInstantScanMode = isUserAdminCurrent || isScannedAdmin || isScannerTerminal || isHardware;
    const isAdminTestMode = isUserAdminCurrent || isScannedAdmin;
 
    // KOSONGKAN INPUT & RESET TRACKER SEKETIKA
@@ -20606,29 +20608,34 @@ service cloud.firestore {
     return;
    }
 
-   // VERIFIKASI GPS KETAT UNTUK SCANNER EXTERNAL (Berlaku jika bukan mode uji coba Admin)
-   if (!isAdminTestMode) {
-    const targetWhCoords = getWarehouseCoords(activeWarehouse);
-    const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
+   // MODE CEPAT SEKETIKA & POS SCANNER RESMI:
+   // Untuk Akun Pos Scanner, Admin, atau Alat Scanner Barcode Wireless Hardware Fisik Resmi:
+   // Menghilangkan false-positive "Di Luar Radius" akibat PC/Laptop tanpa GPS atau atap seng gudang yang menghalangi satelit
+   if (!isInstantScanMode) {
+    const isDesktop = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    if (!isDesktop) {
+     const targetWhCoords = getWarehouseCoords(activeWarehouse);
+     const curRad = Number(targetWhCoords.radius) > 0 ? Number(targetWhCoords.radius) : (Number(localStorage.getItem('wfm_gps_radius')) || 100);
 
-    const gpsCheck = await verifyGPSLocation(activeWarehouse);
-    if (!gpsCheck.valid) {
-     showProfessionalAttendanceToast({
-      isError: true,
-      title: 'Di Luar Radius Gudang',
-      subtitle: gpsCheck.error || `Anda berada di luar batas ${curRad} meter dari titik lokasi gudang.`,
-      statusText: 'GPS Tidak Valid'
-     });
-     playAttendanceErrorSound('Di luar lokasi');
+     const gpsCheck = await verifyGPSLocation(activeWarehouse);
+     if (!gpsCheck.valid) {
+      showProfessionalAttendanceToast({
+       isError: true,
+       title: 'Di Luar Radius Gudang',
+       subtitle: gpsCheck.error || `Anda berada di luar batas ${curRad} meter dari titik lokasi gudang.`,
+       statusText: 'GPS Tidak Valid'
+      });
+      playAttendanceErrorSound('Di luar lokasi');
 
-     setTimeout(() => {
-      isExternalBarcodeProcessing = false;
-      const el = document.getElementById('external-barcode-input');
-      if (el && activeScanMethod === 'gun') {
-       el.focus();
-      }
-     }, 800);
-     return;
+      setTimeout(() => {
+       isExternalBarcodeProcessing = false;
+       const el = document.getElementById('external-barcode-input');
+       if (el && activeScanMethod === 'gun') {
+        el.focus();
+       }
+      }, 800);
+      return;
+     }
     }
    }
 

@@ -1,5 +1,4 @@
 {
-  "version": "20261124_v17",
-  "updatedAt": "2026-11-24T13:40:00.000Z",
-  "description": "Perbaikan sinkronisasi penambahan karyawan realtime antar perangkat (on_conflict=nik), sinkronisasi dinamis radius GPS via Supabase wfm_coords, dan penegakan batas radius ketat saat presensi."
+  "version": "20261124_v18",
+  "date": "2026-11-24"
 }
