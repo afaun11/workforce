@@ -8278,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261125_v21';
+  const CURRENT_APP_VERSION = '20261125_v22';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -20098,6 +20098,21 @@ service cloud.firestore {
    // PROTEKSI ANTI-BERPINDAH KE ABSEN PULANG:
    // Tombol Absen Masuk dilarang keras otomatis berubah menjadi Absen Pulang.
    // Karyawan yang ter-scan 2 kali saat Absen Masuk akan langsung diberi notifikasi bahwa mereka sudah absen masuk.
+
+   // SMART AUTO-SWITCH KE ABSEN PULANG (MENCEGAH MISS SCAN MASSAL DI GUDANG MBI & MAI):
+   // Jika karyawan sudah memiliki sesi masuk aktif dan sudah bertugas >= 15 menit,
+   // maka tap kartu ini adalah niat Absen Pulang!
+   // Otomatis alihkan ke mode Absen Pulang agar karyawan TIDAK TERKENA MISS SCAN akibat pos scanner masih di tab 'Masuk'.
+   if (selectedAttendanceType === 'check_in' && activeOpenSession) {
+    const inMs = (typeof parseSafeTimeMs === 'function') 
+      ? (parseSafeTimeMs(activeOpenSession.checkInTime, activeOpenSession.date) || new Date(activeOpenSession.checkInTime).getTime())
+      : new Date(activeOpenSession.checkInTime).getTime();
+    const diffMs = Math.max(0, now.getTime() - inMs);
+    if (diffMs >= 15 * 60 * 1000) {
+     selectedAttendanceType = 'check_out';
+     try { setAttendanceType('check_out'); } catch(eType) {}
+    }
+   }
 
    if (selectedAttendanceType === 'check_in') {
     // ==========================================
