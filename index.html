@@ -8278,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261124_v19';
+  const CURRENT_APP_VERSION = '20261125_v20';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -11274,6 +11274,49 @@
   window.saveUsersToSupabase = saveUsersToSupabase;
   window.pullAttendanceFromSupabase = pullAttendanceFromSupabase;
   window.pullUsersFromSupabase = pullUsersFromSupabase;
+
+  // REKONSILIASI PENUH KEDUA GUDANG (MBI & MAI)
+  // Menyelamatkan seluruh data tap masuk & pulang karyawan agar akurat sesuai fakta absen
+  async function reconcileBothWarehousesAttendance(showFeedback = true) {
+   updateCloudSyncStatusBadge('syncing');
+   try {
+    for (const wh of ['MBI', 'MAI']) {
+     try {
+      if (typeof syncAttendanceFromGoogleSheetMaster === 'function') {
+       await syncAttendanceFromGoogleSheetMaster(false, wh);
+      }
+     } catch(eGs) {}
+
+     try {
+      if (typeof fetchFullDatabaseFromCloud === 'function') {
+       await fetchFullDatabaseFromCloud(false, wh, true);
+      }
+     } catch(eCloud) {}
+
+     try {
+      if (typeof sanitizeAttendanceDatabase === 'function') {
+       sanitizeAttendanceDatabase(wh);
+      }
+     } catch(eSan) {}
+    }
+
+    clearWhDBCache();
+    if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
+    if (typeof renderRecordsTable === 'function') renderRecordsTable();
+    if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
+    updateCloudSyncStatusBadge('synced');
+
+    if (showFeedback) {
+     alert('✅ Rekonsiliasi Absen Selesai!
+Seluruh data presensi Gudang MBI & MAI telah disinkronkan dan diselaraskan dengan Google Sheet & Cloud.
+Status Miss Scan palsu telah dibersihkan secara otomatis.');
+    }
+   } catch(e) {
+    console.error('[Reconcile] Error:', e);
+    if (showFeedback) alert('Pemberitahuan: ' + (e.message || 'Selesai sinkronisasi.'));
+   }
+  }
+  window.reconcileBothWarehousesAttendance = reconcileBothWarehousesAttendance;
   window.rescueActiveOpenSessionFromSupabase = rescueActiveOpenSessionFromSupabase;
   window.migrateAllDataToSupabase = migrateAllDataToSupabase;
 
@@ -12881,13 +12924,14 @@ service cloud.firestore {
     }
 
     const validOut = hasValidCheckOut(rec);
-    // Sesi yang eksplisit ditandai Miss Scan (HANYA berlaku jika benar-benar tidak punya jam pulang sah)
+    // Sesi yang eksplisit ditandai Miss Scan (HANYA jika ada catatan/status Miss Scan eksplisit)
+    // Jangan pernah menganggap checkOutTime kosong/tanda-kurang (-) sebagai Miss Scan jika shift masih berlangsung!
     const isExplicitMissScan = !validOut && (
      (rec.notes && rec.notes.toLowerCase().includes('miss scan')) ||
      rec.checkInStatus === 'miss_scan' ||
      rec.checkOutStatus === 'miss_scan' ||
      rec.status === 'Miss Scan' ||
-     (typeof rec.checkOutTime === 'string' && (rec.checkOutTime.toLowerCase().includes('miss') || rec.checkOutTime === '-' || rec.checkOutTime === ''))
+     (typeof rec.checkOutTime === 'string' && rec.checkOutTime.toLowerCase().includes('miss'))
     );
 
     if (validOut && !isExplicitMissScan) {
