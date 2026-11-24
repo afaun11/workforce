@@ -4573,6 +4573,8 @@
    const updated = setWarehouseCoords(currentWh, c.lat, c.lng, r);
 
    updateRegisteredCoordsDisplay();
+   latestCachedGPS = null;
+   await saveGPSCoordsToSupabase(currentWh, updated);
    await saveGPSCoordsToFirestore(currentWh, updated);
    await saveFullDatabaseToCloud(false, true, true);
 
@@ -8276,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261124_v16';
+  const CURRENT_APP_VERSION = '20261124_v17';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -10658,6 +10660,95 @@
    }
   }
 
+  async function pushUserToSupabase(user) {
+   if (!user || !user.nik) return false;
+   const targetWh = (user.warehouse || activeWarehouse || 'MBI').toUpperCase();
+   const payload = [{
+    id: user.id || ('user-' + targetWh.toLowerCase() + '-' + user.nik.toString().replace(/[^a-zA-Z0-9]/g, '')),
+    nik: (user.nik || '').toUpperCase().trim(),
+    name: user.name || '',
+    warehouse: targetWh,
+    role: user.role || 'staff',
+    dept: user.dept || 'Warehouse Staff',
+    status: user.status || 'active',
+    password: user.password || '',
+    custom_password: user.customPassword || '',
+    email: user.email || '',
+    phone: user.phone || '',
+    outsource: user.outsource || 'Internal',
+    permissions: user.permissions || {},
+    raw_data: user,
+    updated_at: user.updatedAt || new Date().toISOString()
+   }];
+
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?on_conflict=nik';
+    const res = await fetch(url, {
+     method: 'POST',
+     headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+     body: JSON.stringify(payload)
+    });
+    return res.ok;
+   } catch(err) {
+    console.warn('[Supabase] Gagal push user ke Supabase:', err);
+    return false;
+   }
+  }
+
+  async function saveGPSCoordsToSupabase(wh, coords) {
+   if (!coords) return false;
+   const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+   const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398, radius: 100 } : { lat: -6.263295, lng: 106.877066, radius: 100 });
+   const validRad = Number(coords.radius) > 0 ? Number(coords.radius) : 100;
+   const payload = [{
+    warehouse: targetWh,
+    lat: def.lat,
+    lng: def.lng,
+    radius: validRad,
+    updated_at: new Date().toISOString()
+   }];
+
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_coords?on_conflict=warehouse';
+    const res = await fetch(url, {
+     method: 'POST',
+     headers: getSupabaseHeaders({ 'Prefer': 'return=minimal,resolution=merge-duplicates' }),
+     body: JSON.stringify(payload)
+    });
+    return res.ok;
+   } catch(err) {
+    console.warn('[Supabase] Gagal menyimpan coords/radius:', err);
+    return false;
+   }
+  }
+
+  async function pullGPSCoordsFromSupabase(wh = null) {
+   const targetWh = (wh || activeWarehouse || 'MBI').toUpperCase();
+   try {
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_coords?warehouse=eq.' + targetWh;
+    const res = await fetch(url, { headers: getSupabaseHeaders(), cache: 'no-store' });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+     const row = rows[0];
+     const rad = Number(row.radius) > 0 ? Number(row.radius) : 100;
+     const def = DEFAULT_COORDS[targetWh] || (targetWh === 'MAI' ? { lat: -6.217808, lng: 106.889398 } : { lat: -6.263295, lng: 106.877066 });
+     const coords = { lat: def.lat, lng: def.lng, radius: rad, name: `Gudang ${targetWh}` };
+     localStorage.setItem(`wfm_${targetWh.toLowerCase()}_coords`, JSON.stringify(coords));
+     localStorage.setItem(`wfm_gps_radius_${targetWh.toLowerCase()}`, String(rad));
+     if (activeWarehouse === targetWh) {
+      localStorage.setItem('wfm_gps_radius', String(rad));
+     }
+     latestCachedGPS = null;
+     if (typeof updateRegisteredCoordsDisplay === 'function') {
+      updateRegisteredCoordsDisplay();
+     }
+     return coords;
+    }
+   } catch(e) {}
+   return null;
+  }
+
   async function saveUsersToSupabase(wh, usersList) {
    if (!Array.isArray(usersList) || usersList.length === 0) return true;
    const targetWh = (wh || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
@@ -10674,12 +10765,13 @@
     email: u.email || '',
     phone: u.phone || '',
     outsource: u.outsource || 'Internal',
+    permissions: u.permissions || {},
     raw_data: u,
     updated_at: u.updatedAt || new Date().toISOString()
    }));
 
    try {
-    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?on_conflict=id';
+    const url = SUPABASE_PROJECT_URL + '/rest/v1/wfm_users?on_conflict=nik';
     for (let i = 0; i < payload.length; i += 50) {
      const chunk = payload.slice(i, i + 50);
      await fetch(url, {
@@ -14867,6 +14959,23 @@ service cloud.firestore {
      .on('postgres_changes', { event: '*', schema: 'public', table: 'wfm_overtime' }, () => {
       if (typeof pullOvertimeFromSupabase === 'function') pullOvertimeFromSupabase(activeWarehouse);
      })
+     .on('postgres_changes', { event: '*', schema: 'public', table: 'wfm_coords' }, (payload) => {
+      if (payload.new && payload.new.warehouse) {
+       const wh = payload.new.warehouse.toUpperCase();
+       const rad = Number(payload.new.radius) > 0 ? Number(payload.new.radius) : 100;
+       const def = DEFAULT_COORDS[wh] || (wh === 'MAI' ? { lat: -6.217808, lng: 106.889398 } : { lat: -6.263295, lng: 106.877066 });
+       const coords = { lat: def.lat, lng: def.lng, radius: rad, name: `Gudang ${wh}` };
+       localStorage.setItem(`wfm_${wh.toLowerCase()}_coords`, JSON.stringify(coords));
+       localStorage.setItem(`wfm_gps_radius_${wh.toLowerCase()}`, String(rad));
+       if (activeWarehouse === wh) {
+        localStorage.setItem('wfm_gps_radius', String(rad));
+       }
+       latestCachedGPS = null;
+       if (typeof updateRegisteredCoordsDisplay === 'function') {
+        updateRegisteredCoordsDisplay();
+       }
+      }
+     })
      .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
        console.log('[Supabase WS] Terhubung ke WebSocket Realtime! Sinyal aktif (0 KB Polling).');
@@ -14932,7 +15041,8 @@ service cloud.firestore {
   function handleRealtimeUserPush(payload) {
    if (!payload || !payload.eventType) return;
    const newRow = payload.new;
-   const targetWh = (newRow?.warehouse || activeWarehouse || 'MBI').toUpperCase();
+   const oldRow = payload.old;
+   const targetWh = (newRow?.warehouse || oldRow?.warehouse || activeWarehouse || 'MBI').toUpperCase();
    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
     if (!newRow || !newRow.nik) return;
     const user = {
@@ -14955,7 +15065,24 @@ service cloud.firestore {
     const cur = getWhDB(targetWh, 'users', []);
     const merged = mergeUserArrays(cur, [user], targetWh);
     setWhDB(targetWh, 'users', merged, true);
+    localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(merged));
+    
+    // Seketika render UI di perangkat lain
+    if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
+    if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
+    if (typeof renderOvertimeEmployeeGrid === 'function') renderOvertimeEmployeeGrid();
+    if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
     if (typeof renderAccountLookupList === 'function') renderAccountLookupList();
+   } else if (payload.eventType === 'DELETE') {
+    if (!oldRow || !oldRow.nik) return;
+    const cur = getWhDB(targetWh, 'users', []);
+    const filtered = cur.filter(u => u.nik !== oldRow.nik && u.id !== oldRow.id);
+    setWhDB(targetWh, 'users', filtered, true);
+    localStorage.setItem(`wfm_${targetWh.toLowerCase()}_users_backup`, JSON.stringify(filtered));
+    if (typeof renderEmployeeTable === 'function') renderEmployeeTable();
+    if (typeof populateDropdownEmployees === 'function') populateDropdownEmployees();
+    if (typeof renderAccountLookupList === 'function') renderAccountLookupList();
+    if (typeof refreshAllDashboardData === 'function') refreshAllDashboardData();
    }
   }
 
@@ -15180,6 +15307,10 @@ service cloud.firestore {
    try {
     syncGPSCoordsFromFirestore('MBI').catch(() => {});
     syncGPSCoordsFromFirestore('MAI').catch(() => {});
+    if (typeof pullGPSCoordsFromSupabase === 'function') {
+     pullGPSCoordsFromSupabase('MBI').catch(() => {});
+     pullGPSCoordsFromSupabase('MAI').catch(() => {});
+    }
     autoMigrateIfDatabaseEmpty();
     fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
     initFirebaseLiveStream(getActiveWhTarget());
@@ -18734,7 +18865,7 @@ service cloud.firestore {
      const accuracy = Math.round(pos.coords.accuracy || 0);
 
      const rawDistActive = getDistanceMeters(userLat, userLng, targetCoords.lat, targetCoords.lng);
-     const effectiveAllowedRadius = maxRadius + 10; // Toleransi Jarak Tetap +10 Meter
+     const effectiveAllowedRadius = maxRadius; // Strict: Mengikuti jarak radius yang dipilih tanpa toleransi berlebih
      const isValid = (rawDistActive <= effectiveAllowedRadius);
 
      if (isValid) {
@@ -18769,15 +18900,20 @@ service cloud.firestore {
     const targetCoords = getWarehouseCoords(whToUse);
     const globalRad = Number(localStorage.getItem('wfm_gps_radius')) || 100;
     const maxRadius = Number(targetCoords.radius) > 0 ? Number(targetCoords.radius) : globalRad;
-    const effectiveAllowedRadius = maxRadius + 10; // Toleransi Jarak Tetap +10 Meter
+    const effectiveAllowedRadius = maxRadius; // Strict: Batas mutlak sesuai radius gudang resmi
 
-    // 1. Jika ada cache GPS yang VALID dan radiusnya COCOK serta masih hangat (< 2 menit), gunakan seketika (0ms!)
+    // Reset cache jika radius telah berubah
+    if (latestCachedGPS && latestCachedGPS.maxRadius !== maxRadius) {
+     latestCachedGPS = null;
+    }
+
+    // 1. Jika ada cache GPS yang VALID dan radiusnya COCOK serta masih hangat (< 15 detik), gunakan
     if (latestCachedGPS && 
       latestCachedGPS.valid && 
       latestCachedGPS.wh === whToUse && 
       latestCachedGPS.maxRadius === maxRadius &&
       latestCachedGPS.distance <= effectiveAllowedRadius &&
-      (now - latestCachedGPS.timestamp < 120000)) {
+      (now - latestCachedGPS.timestamp < 15000)) {
      // Lakukan background refresh tanpa memblokir proses scan
      setTimeout(() => preloadGPSLocation(whToUse), 100);
      resolve(latestCachedGPS);
@@ -22988,6 +23124,12 @@ service cloud.firestore {
       await deleteDocFromFirestore(currentWh, 'users', oldNik).catch(() => {});
      }
     }
+    if (typeof pushUserToSupabase === 'function') {
+     await pushUserToSupabase(users[idx]);
+     if (isMultiWh && typeof mirroredUser !== 'undefined') {
+      await pushUserToSupabase(mirroredUser);
+     }
+    }
     await saveFullDatabaseToCloud(false, true, true, currentWh);
 
     // Jika user yang diedit adalah akun yang sedang aktif/login, update sesi dan navbar seketika!
@@ -23589,6 +23731,9 @@ service cloud.firestore {
    const finalEffectiveNik = matchedUser.nik;
    if (typeof saveUserDocToFirestore === 'function') {
     saveUserDocToFirestore(activeWarehouse, matchedUser);
+   }
+   if (typeof pushUserToSupabase === 'function') {
+    await pushUserToSupabase(matchedUser);
    }
 
    closeAddEmployeeModal();

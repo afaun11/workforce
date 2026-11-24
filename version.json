@@ -1,5 +1,5 @@
 {
-  "version": "20261124_v16",
-  "updatedAt": "2026-11-24T13:10:00.000Z",
-  "description": "Migrasi ke Database Supabase baru (tyflwmxdwfvmymocymfp), integrasi penuh Supabase Realtime WebSocket (hemat kuota 99.9%), dan auto-migrasi seluruh data."
+  "version": "20261124_v17",
+  "updatedAt": "2026-11-24T13:40:00.000Z",
+  "description": "Perbaikan sinkronisasi penambahan karyawan realtime antar perangkat (on_conflict=nik), sinkronisasi dinamis radius GPS via Supabase wfm_coords, dan penegakan batas radius ketat saat presensi."
 }
