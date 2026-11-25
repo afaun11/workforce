@@ -8278,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261125_v23';
+  const CURRENT_APP_VERSION = '20261125_v24';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -15272,7 +15272,7 @@ service cloud.firestore {
 
    // CLOUD-FIRST SSOT: Unduh master database terbaru dari Firebase Cloud secara asinkron tanpa memblokir render UI
    try {
-    fetchFullDatabaseFromCloud(false, null, true).catch(e => {
+    fetchFullDatabaseFromCloud(false, null, false).catch(e => {
      console.warn('Initial Cloud fetch error:', e);
     });
    } catch(e) {}
@@ -15354,7 +15354,7 @@ service cloud.firestore {
      pullGPSCoordsFromSupabase('MAI').catch(() => {});
     }
     autoMigrateIfDatabaseEmpty();
-    fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true);
+    fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false);
     initFirebaseLiveStream(getActiveWhTarget());
     syncAttendanceFromGoogleSheetMaster(false, getActiveWhTarget());
    } catch(e) {}
@@ -15413,7 +15413,7 @@ service cloud.firestore {
      const syncBc = new BroadcastChannel('wfm_firebase_live_sync');
      syncBc.onmessage = () => {
       try {
-       fetchFullDatabaseFromCloud(false, getActiveWhTarget(), true).then(() => {
+       fetchFullDatabaseFromCloud(false, getActiveWhTarget(), false).then(() => {
         if (typeof renderAllLiveScreens === 'function') renderAllLiveScreens();
        });
       } catch(e) {}
