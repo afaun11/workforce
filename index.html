@@ -8278,7 +8278,7 @@
   // =========================================================
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261125_v22';
+  const CURRENT_APP_VERSION = '20261125_v23';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;
@@ -28639,7 +28639,7 @@ service cloud.firestore {
    return clean;
   }
 
-  function getGoogleAppsScriptCode(wh = 'MBI') {
+    function getGoogleAppsScriptCode(wh = 'MBI') {
    const targetWh = (wh || 'MBI').toUpperCase();
    const sheetId = targetWh === 'MAI' ? GOOGLE_SPREADSHEET_ID_MAI : GOOGLE_SPREADSHEET_ID_MBI;
    const sheetUrl = targetWh === 'MAI' ? GOOGLE_SPREADSHEET_URL_MAI : GOOGLE_SPREADSHEET_URL_MBI;
@@ -28647,7 +28647,7 @@ service cloud.firestore {
    return `/**
  * =========================================================================
  * GOOGLE APPS SCRIPT WEBHOOK - WFM MEDIKA GUDANG ${targetWh}
- * Realtime Attendance, Leave & Overtime Backup
+ * Realtime Immutable Append-Only Backup Ledger
  * Spreadsheet Target: ${sheetUrl}
  * 3 Tab Sheet: RECORD ABSEN, REKAP PENGAJUAN, REKAP LEMBUR
  * =========================================================================
@@ -28656,298 +28656,417 @@ service cloud.firestore {
 var TARGET_SPREADSHEET_ID = "${sheetId}";
 
 function getTargetSpreadsheet() {
- var ss = null;
- try {
-  ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (ss) return ss;
- } catch(e) {}
- try {
-  ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
-  if (ss) return ss;
- } catch(e) {}
- return SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/" + TARGET_SPREADSHEET_ID + "/edit");
+  var ss = null;
+  try {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) return ss;
+  } catch(e) {}
+  try {
+    ss = SpreadsheetApp.openById(TARGET_SPREADSHEET_ID);
+    if (ss) return ss;
+  } catch(e) {}
+  return SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/" + TARGET_SPREADSHEET_ID + "/edit");
 }
 
-function doPost(e) {
- var lock = LockService.getScriptLock();
- if (!lock.tryLock(25000)) {
-  return ContentService.createTextOutput(JSON.stringify({
-   status: "busy",
-   message: "Antrean sinkronisasi sedang sibuk, silakan coba sesaat lagi."
-  })).setMimeType(ContentService.MimeType.JSON);
- }
-
- try {
-  var contents = "";
-  if (e && e.postData && e.postData.contents) {
-   contents = e.postData.contents;
-  } else if (e && e.parameter && e.parameter.data) {
-   contents = e.parameter.data;
-  } else if (e && e.parameters) {
-   for (var k in e.parameters) {
-    if (k && k.indexOf('{') !== -1) {
-     contents = k;
-     break;
-    }
-   }
-  }
-
-  if (!contents) {
-   return ContentService.createTextOutput(JSON.stringify({
-    status: "error",
-    message: "Data payload kosong. Pastikan request mengirimkan data JSON."
-   })).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  var data = JSON.parse(contents);
-  var ss = getTargetSpreadsheet();
-  if (!ss) {
-   throw new Error("Gagal membuka Spreadsheet target ID: " + TARGET_SPREADSHEET_ID);
-  }
-
-  var sheetsData = data.sheets || {};
-  var updatedList = [];
-  var existingSheets = ss.getSheets();
-
-  // Pencocokan nama sheet fleksibel & cerdas (menggunakan cache existingSheets)
-  function findTargetSheet(name) {
-   var targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-   // 1. Cek exact match
-   for (var i = 0; i < existingSheets.length; i++) {
-    var s = existingSheets[i];
-    if (s.getName().trim().toLowerCase() === name.trim().toLowerCase()) return s;
-   }
-
-   // 2. Cek cleaned match
-   for (var i = 0; i < existingSheets.length; i++) {
-    var s = existingSheets[i];
-    var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (sClean === targetClean) return s;
-   }
-
-   // 3. Cek keyword aliases khusus 3 Sheet Backup
-   for (var i = 0; i < existingSheets.length; i++) {
-    var s = existingSheets[i];
-    var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (targetClean.indexOf('record') !== -1 && sClean.indexOf('record') !== -1) return s;
-    if (targetClean.indexOf('pengajuan') !== -1 && sClean.indexOf('pengajuan') !== -1) return s;
-    if (targetClean.indexOf('lembur') !== -1 && sClean.indexOf('lembur') !== -1) return s;
-   }
-
-   // Jika belum ada, buat sheet baru dengan nama tersebut
-   var newSheet = ss.insertSheet(name);
-   existingSheets.push(newSheet);
-   return newSheet;
-  }
-
-  function normalizeDateStr(val) {
-   if (!val) return "";
-   if (val instanceof Date) {
+function normalizeDateStr(val) {
+  if (!val) return "";
+  if (val instanceof Date) {
     return Utilities.formatDate(val, "Asia/Jakarta", "yyyy-MM-dd");
-   }
-   var s = String(val).trim();
-   if (/^\d{5}(\.\d+)?$/.test(s)) {
+  }
+  var s = String(val).trim();
+  if (/^\\d{5}(\\.\\d+)?$/.test(s)) {
     var serial = parseFloat(s);
     var dt = new Date((serial - 25569) * 86400 * 1000);
     var y = dt.getFullYear();
     var m = ("0" + (dt.getMonth() + 1)).slice(-2);
     var d = ("0" + dt.getDate()).slice(-2);
     return y + "-" + m + "-" + d;
-   }
-   return s;
+  }
+  return s;
+}
+
+function findTargetSheet(ss, name) {
+  var existingSheets = ss.getSheets();
+  var targetClean = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  for (var i = 0; i < existingSheets.length; i++) {
+    var s = existingSheets[i];
+    if (s.getName().trim().toLowerCase() === name.trim().toLowerCase()) return s;
+  }
+  for (var i = 0; i < existingSheets.length; i++) {
+    var s = existingSheets[i];
+    var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (sClean === targetClean) return s;
+  }
+  for (var i = 0; i < existingSheets.length; i++) {
+    var s = existingSheets[i];
+    var sClean = s.getName().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (targetClean.indexOf('record') !== -1 && sClean.indexOf('record') !== -1) return s;
+    if (targetClean.indexOf('pengajuan') !== -1 && sClean.indexOf('pengajuan') !== -1) return s;
+    if (targetClean.indexOf('lembur') !== -1 && sClean.indexOf('lembur') !== -1) return s;
   }
 
-  function getRowKey(sheetName, row) {
-   if (!row || row.length < 3) return "";
-   var sn = sheetName.toUpperCase();
-   if (sn.indexOf("RECORD") !== -1) {
-    return (normalizeDateStr(row[1]) + "_" + String(row[2]).trim().toUpperCase()).replace(/\s+/g, "");
-   }
-   if (sn.indexOf("PENGAJUAN") !== -1) {
-    return (String(row[1]).trim().toUpperCase() + "_" + String(row[2]).trim().toUpperCase() + "_" + String(row[4]).trim().toUpperCase() + "_" + normalizeDateStr(row[5])).replace(/\s+/g, "");
-   }
-   if (sn.indexOf("LEMBUR") !== -1) {
-    return (String(row[2]).trim().toUpperCase() + "_" + normalizeDateStr(row[4]) + "_" + String(row[5]).trim()).replace(/\s+/g, "");
-   }
-   return String(row[1]).trim().toUpperCase() + "_" + String(row[2]).trim().toUpperCase();
-  }
+  var newSheet = ss.insertSheet(name);
+  return newSheet;
+}
 
-  for (var sheetName in sheetsData) {
-   var rows = sheetsData[sheetName];
-   if (!rows || rows.length === 0) continue;
-
-   var targetSheet = findTargetSheet(sheetName);
-   var headerRow = rows[0];
-   var incomingDataRows = rows.slice(1);
-
-   // BACKUP AMAN & PERMANEN: Membaca data yang sudah ada di spreadsheet agar TIDAK terhapus jika record dihapus di aplikasi
-   var mergedMap = {};
-   var orderedKeys = [];
-
-   // 1. Muat baris yang sudah ada di spreadsheet target ke memory
-   try {
-    var lastRow = targetSheet.getLastRow();
-    var lastCol = targetSheet.getLastColumn();
-    if (lastRow > 1 && lastCol > 0) {
-     var existingRangeVals = targetSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
-     for (var eIdx = 0; eIdx < existingRangeVals.length; eIdx++) {
-      var exRow = existingRangeVals[eIdx];
-      var eKey = getRowKey(sheetName, exRow);
-      if (eKey) {
-       mergedMap[eKey] = exRow;
-       orderedKeys.push(eKey);
-      }
-     }
-    }
-   } catch (eRead) {}
-
-   // 2. Gabungkan/perbarui dengan data baru dari payload (tanpa menghapus data lama & lindungi Jam Pulang yang sudah sah!)
-   var isRecordSheet = sheetName.toUpperCase().indexOf("RECORD") !== -1;
-   for (var inIdx = 0; inIdx < incomingDataRows.length; inIdx++) {
-    var inRow = incomingDataRows[inIdx];
-    var inKey = getRowKey(sheetName, inRow);
-    if (inKey) {
-     if (!mergedMap[inKey]) {
-      orderedKeys.push(inKey);
-      mergedMap[inKey] = inRow;
-     } else if (isRecordSheet) {
-      var prevRow = mergedMap[inKey];
-      var prevOut = String(prevRow[6] || "").trim();
-      var prevStatusOut = String(prevRow[9] || "").trim().toLowerCase();
-      var prevHasValidOut = prevOut && prevOut !== "-" && prevOut.toLowerCase().indexOf("sedang") === -1 && prevOut.toLowerCase().indexOf("miss") === -1 && prevStatusOut.indexOf("miss") === -1;
-
-      var newOut = String(inRow[6] || "").trim();
-      var newStatusOut = String(inRow[9] || "").trim().toLowerCase();
-      var newHasValidOut = newOut && newOut !== "-" && newOut.toLowerCase().indexOf("sedang") === -1 && newOut.toLowerCase().indexOf("miss") === -1 && newStatusOut.indexOf("miss") === -1;
-
-      if (prevHasValidOut && !newHasValidOut) {
-       // Pertahankan jam pulang & durasi yang sudah tercatat agar perangkat belum sinkron tidak menimpanya menjadi Miss Scan/Sedang Shift
-       var keptRow = inRow.slice();
-       keptRow[6] = prevRow[6];
-       keptRow[7] = prevRow[7];
-       keptRow[9] = prevRow[9];
-       keptRow[10] = prevRow[10];
-       mergedMap[inKey] = keptRow;
-      } else {
-       mergedMap[inKey] = inRow;
-      }
-     } else {
-      mergedMap[inKey] = inRow;
-     }
-    }
-   }
-
-   // 3. Konversi kembali ke array dan urutkan
-   var compiledData = [];
-   for (var kIdx = 0; kIdx < orderedKeys.length; kIdx++) {
-    var k = orderedKeys[kIdx];
-    if (mergedMap[k]) {
-     compiledData.push(mergedMap[k]);
-    }
-   }
-
-   // Urutkan data berdasarkan Tanggal descending agar rapi
-   compiledData.sort(function(a, b) {
-    var dateA = normalizeDateStr(a[1] || a[4] || "");
-    var dateB = normalizeDateStr(b[1] || b[4] || "");
-    return dateB.localeCompare(dateA);
-   });
-
-   var finalRows = [headerRow];
-   for (var fIdx = 0; fIdx < compiledData.length; fIdx++) {
-    var rData = compiledData[fIdx].slice();
-    rData[0] = fIdx + 1;
-    finalRows.push(rData);
-   }
-
-   var numRows = finalRows.length;
-   var numCols = 0;
-   for (var r = 0; r < finalRows.length; r++) {
-    if (finalRows[r] && finalRows[r].length > numCols) numCols = finalRows[r].length;
-   }
-
-   if (numRows > 0 && numCols > 0) {
-    var currentCols = targetSheet.getMaxColumns();
-    if (numCols > currentCols) {
-     targetSheet.insertColumnsAfter(currentCols, numCols - currentCols);
-    }
-    var currentRows = targetSheet.getMaxRows();
-    if (numRows > currentRows) {
-     targetSheet.insertRowsAfter(currentRows, numRows - currentRows);
-    }
-
-    var normalized = [];
-    for (var r = 0; r < numRows; r++) {
-     var row = finalRows[r] || [];
-     var nRow = [];
-     for (var c = 0; c < numCols; c++) {
-      nRow.push(row[c] !== undefined && row[c] !== null ? row[c] : "");
-     }
-     normalized.push(nRow);
-    }
-
-    targetSheet.clearContents();
-    targetSheet.getRange(1, 1, numRows, numCols).setValues(normalized);
-
+function ensureSheetHeader(sheet, headers) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
     try {
-     targetSheet.getRange(1, 1, 1, numCols)
-      .setFontWeight("bold")
-      .setBackground("#0f172a")
-      .setFontColor("#ffffff");
-     targetSheet.setFrozenRows(1);
-    } catch(eStyle) {}
-   }
+      sheet.getRange(1, 1, 1, headers.length)
+        .setFontWeight("bold")
+        .setBackground("#0f172a")
+        .setFontColor("#ffffff");
+      sheet.setFrozenRows(1);
+    } catch(e) {}
+  }
+}
 
-   updatedList.push(targetSheet.getName());
-   SpreadsheetApp.flush();
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "busy",
+      message: "Antrean sinkronisasi sedang sibuk, silakan coba sesaat lagi."
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 
-  return ContentService.createTextOutput(JSON.stringify({
-   status: "success",
-   warehouse: "${targetWh}",
-   message: "Data Gudang ${targetWh} berhasil disinkronkan ke 3 sheet: " + updatedList.join(", "),
-   updatedSheets: updatedList,
-   timestamp: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
+  try {
+    var contents = "";
+    if (e && e.postData && e.postData.contents) {
+      contents = e.postData.contents;
+    } else if (e && e.parameter && e.parameter.data) {
+      contents = e.parameter.data;
+    } else if (e && e.parameters) {
+      for (var k in e.parameters) {
+        if (k && k.indexOf('{') !== -1) {
+          contents = k;
+          break;
+        }
+      }
+    }
 
- } catch (err) {
-  console.error("Error in doPost: " + err.toString());
-  return ContentService.createTextOutput(JSON.stringify({
-   status: "error",
-   message: err.toString()
-  })).setMimeType(ContentService.MimeType.JSON);
- } finally {
-  try { lock.releaseLock(); } catch(e) {}
- }
+    if (!contents) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error",
+        message: "Data payload kosong."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = JSON.parse(contents);
+    var ss = getTargetSpreadsheet();
+    if (!ss) {
+      throw new Error("Gagal membuka Spreadsheet target ID: " + TARGET_SPREADSHEET_ID);
+    }
+
+    // =========================================================================
+    // 1. EVENT SINGLE SCAN (Presensi Masuk / Pulang Realtime)
+    // =========================================================================
+    if (data.action === "scan" && data.data) {
+      var item = data.data;
+      var sheet = findTargetSheet(ss, "RECORD ABSEN");
+      var headers = ["No", "Tanggal", "NIK", "Nama Karyawan", "Departemen", "Jam Masuk", "Jam Pulang", "Durasi Kerja", "Status Kehadiran", "Status Kepulangan", "Keterangan", "Gudang"];
+      ensureSheetHeader(sheet, headers);
+
+      var scanDate = normalizeDateStr(item.date);
+      var scanNik = String(item.nik || "").trim().toUpperCase();
+      var targetKey = (scanDate + "_" + scanNik).replace(/\\s+/g, "");
+
+      var lastRow = sheet.getLastRow();
+      var foundRow = 0;
+
+      if (lastRow > 1) {
+        var keyVals = sheet.getRange(2, 2, lastRow - 1, 2).getValues();
+        for (var i = keyVals.length - 1; i >= 0; i--) {
+          var rowKey = (normalizeDateStr(keyVals[i][0]) + "_" + String(keyVals[i][1]).trim().toUpperCase()).replace(/\\s+/g, "");
+          if (rowKey === targetKey) {
+            foundRow = i + 2;
+            break;
+          }
+        }
+      }
+
+      var hasValidOut = item.checkOut && item.checkOut !== "-" && item.checkOut.toLowerCase().indexOf("sedang") === -1 && item.checkOut.toLowerCase().indexOf("miss") === -1;
+
+      if (foundRow > 0) {
+        if (hasValidOut) {
+          sheet.getRange(foundRow, 7, 1, 5).setValues([[
+            item.checkOut,
+            item.duration || "-",
+            item.statusMasuk || "Normal",
+            item.statusPulang || "Normal",
+            item.keterangan || "-"
+          ]]);
+        }
+        var curIn = sheet.getRange(foundRow, 6).getValue();
+        if ((!curIn || curIn === "-") && item.checkIn && item.checkIn !== "-") {
+          sheet.getRange(foundRow, 6).setValue(item.checkIn);
+        }
+      } else {
+        var nextNo = lastRow;
+        var newRow = [
+          nextNo,
+          item.date || "",
+          item.nik || "",
+          item.name || "-",
+          item.dept || "STAFF",
+          item.checkIn || "-",
+          item.checkOut || (hasValidOut ? item.checkOut : "Sedang Shift"),
+          item.duration || "-",
+          item.statusMasuk || "Normal",
+          item.statusPulang || "-",
+          item.keterangan || "-",
+          item.warehouse || "${targetWh}"
+        ];
+        sheet.appendRow(newRow);
+      }
+
+      SpreadsheetApp.flush();
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        action: "scan",
+        warehouse: "${targetWh}",
+        targetKey: targetKey,
+        mode: foundRow > 0 ? "updated_row_" + foundRow : "appended_new_row"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // =========================================================================
+    // 2. EVENT SINGLE PENGAJUAN (Cuti / Izin / Sakit)
+    // =========================================================================
+    if (data.action === "pengajuan" && data.data) {
+      var itemP = data.data;
+      var sheetP = findTargetSheet(ss, "REKAP PENGAJUAN");
+      var headersP = ["No", "Nama Karyawan", "NIK", "Departemen", "Jenis Pengajuan", "Dari Tanggal", "Sampai Tanggal", "Alasan", "Status", "Gudang"];
+      ensureSheetHeader(sheetP, headersP);
+
+      var pNik = String(itemP.nik || "").trim().toUpperCase();
+      var pType = String(itemP.type || "").trim().toUpperCase();
+      var pDate = normalizeDateStr(itemP.startDate);
+      var pKey = (pNik + "_" + pType + "_" + pDate).replace(/\\s+/g, "");
+
+      var lastRowP = sheetP.getLastRow();
+      var foundRowP = 0;
+      if (lastRowP > 1) {
+        var valsP = sheetP.getRange(2, 1, lastRowP - 1, 10).getValues();
+        for (var i = valsP.length - 1; i >= 0; i--) {
+          var curKeyP = (String(valsP[i][2]).trim().toUpperCase() + "_" + String(valsP[i][4]).trim().toUpperCase() + "_" + normalizeDateStr(valsP[i][5])).replace(/\\s+/g, "");
+          if (curKeyP === pKey) {
+            foundRowP = i + 2;
+            break;
+          }
+        }
+      }
+
+      if (foundRowP > 0) {
+        sheetP.getRange(foundRowP, 9).setValue(itemP.status || "Pending");
+      } else {
+        sheetP.appendRow([
+          lastRowP,
+          itemP.name || "-",
+          itemP.nik || "-",
+          itemP.dept || "-",
+          itemP.type || "-",
+          itemP.startDate || "",
+          itemP.endDate || "",
+          itemP.reason || "",
+          itemP.status || "Pending",
+          itemP.warehouse || "${targetWh}"
+        ]);
+      }
+
+      SpreadsheetApp.flush();
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "pengajuan" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // =========================================================================
+    // 3. EVENT SINGLE LEMBUR
+    // =========================================================================
+    if (data.action === "lembur" && data.data) {
+      var itemL = data.data;
+      var sheetL = findTargetSheet(ss, "REKAP LEMBUR");
+      var headersL = ["No", "Nama Karyawan", "NIK", "Departemen", "Tanggal Lembur", "Jam Mulai", "Jam Selesai", "Total Jam", "Kompensasi/Jam", "Estimasi Upah", "Keterangan Tugas", "Status Approval", "Gudang"];
+      ensureSheetHeader(sheetL, headersL);
+
+      var lNik = String(itemL.nik || "").trim().toUpperCase();
+      var lDate = normalizeDateStr(itemL.date);
+      var lTime = String(itemL.startTime || "").trim();
+      var lKey = (lNik + "_" + lDate + "_" + lTime).replace(/\\s+/g, "");
+
+      var lastRowL = sheetL.getLastRow();
+      var foundRowL = 0;
+      if (lastRowL > 1) {
+        var valsL = sheetL.getRange(2, 1, lastRowL - 1, 13).getValues();
+        for (var i = valsL.length - 1; i >= 0; i--) {
+          var curKeyL = (String(valsL[i][2]).trim().toUpperCase() + "_" + normalizeDateStr(valsL[i][4]) + "_" + String(valsL[i][5]).trim()).replace(/\\s+/g, "");
+          if (curKeyL === lKey) {
+            foundRowL = i + 2;
+            break;
+          }
+        }
+      }
+
+      if (foundRowL > 0) {
+        sheetL.getRange(foundRowL, 7, 1, 6).setValues([[
+          itemL.endTime || "-",
+          itemL.totalHours || 0,
+          itemL.rate || 0,
+          itemL.nominal || 0,
+          itemL.task || "",
+          itemL.status || "APPROVED"
+        ]]);
+      } else {
+        sheetL.appendRow([
+          lastRowL,
+          itemL.name || "-",
+          itemL.nik || "-",
+          itemL.dept || "STAFF",
+          itemL.date || "",
+          itemL.startTime || "-",
+          itemL.endTime || "-",
+          itemL.totalHours || 0,
+          itemL.rate || 0,
+          itemL.nominal || 0,
+          itemL.task || "",
+          itemL.status || "APPROVED",
+          itemL.warehouse || "${targetWh}"
+        ]);
+      }
+
+      SpreadsheetApp.flush();
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", action: "lembur" })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // =========================================================================
+    // 4. BATCH / FULL BACKUP SYNC (Smart Append & In-Place Update, NEVER Clear!)
+    // =========================================================================
+    var sheetsData = data.sheets || {};
+    var updatedList = [];
+
+    function getRowKey(sheetName, row) {
+      if (!row || row.length < 3) return "";
+      var sn = sheetName.toUpperCase();
+      if (sn.indexOf("RECORD") !== -1) {
+        return (normalizeDateStr(row[1]) + "_" + String(row[2]).trim().toUpperCase()).replace(/\\s+/g, "");
+      }
+      if (sn.indexOf("PENGAJUAN") !== -1) {
+        return (String(row[1]).trim().toUpperCase() + "_" + String(row[2]).trim().toUpperCase() + "_" + String(row[4]).trim().toUpperCase() + "_" + normalizeDateStr(row[5])).replace(/\\s+/g, "");
+      }
+      if (sn.indexOf("LEMBUR") !== -1) {
+        return (String(row[2]).trim().toUpperCase() + "_" + normalizeDateStr(row[4]) + "_" + String(row[5]).trim()).replace(/\\s+/g, "");
+      }
+      return (String(row[1]).trim().toUpperCase() + "_" + String(row[2]).trim().toUpperCase()).replace(/\\s+/g, "");
+    }
+
+    for (var sheetName in sheetsData) {
+      var rows = sheetsData[sheetName];
+      if (!rows || rows.length === 0) continue;
+
+      var targetSheet = findTargetSheet(ss, sheetName);
+      var headerRow = rows[0];
+      var incomingDataRows = rows.slice(1);
+
+      ensureSheetHeader(targetSheet, headerRow);
+
+      var lastRow = targetSheet.getLastRow();
+      var lastCol = targetSheet.getLastColumn();
+      var existingKeyMap = {};
+
+      if (lastRow > 1 && lastCol > 0) {
+        var exVals = targetSheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+        for (var eIdx = 0; eIdx < exVals.length; eIdx++) {
+          var exRow = exVals[eIdx];
+          var eKey = getRowKey(sheetName, exRow);
+          if (eKey && !existingKeyMap[eKey]) {
+            existingKeyMap[eKey] = {
+              rowNum: eIdx + 2,
+              data: exRow
+            };
+          }
+        }
+      }
+
+      var isRecordSheet = sheetName.toUpperCase().indexOf("RECORD") !== -1;
+      var rowsToAppend = [];
+      var nextAutoNo = lastRow;
+
+      for (var inIdx = 0; inIdx < incomingDataRows.length; inIdx++) {
+        var inRow = incomingDataRows[inIdx];
+        var inKey = getRowKey(sheetName, inRow);
+        if (!inKey) continue;
+
+        if (existingKeyMap[inKey]) {
+          if (isRecordSheet) {
+            var existingEntry = existingKeyMap[inKey];
+            var prevOut = String(existingEntry.data[6] || "").trim();
+            var prevHasValidOut = prevOut && prevOut !== "-" && prevOut.toLowerCase().indexOf("sedang") === -1 && prevOut.toLowerCase().indexOf("miss") === -1;
+
+            var newOut = String(inRow[6] || "").trim();
+            var newHasValidOut = newOut && newOut !== "-" && newOut.toLowerCase().indexOf("sedang") === -1 && newOut.toLowerCase().indexOf("miss") === -1;
+
+            if (newHasValidOut && !prevHasValidOut) {
+              targetSheet.getRange(existingEntry.rowNum, 7, 1, 5).setValues([[
+                inRow[6], inRow[7], inRow[8], inRow[9], inRow[10]
+              ]]);
+              existingEntry.data[6] = inRow[6];
+            }
+          }
+        } else {
+          nextAutoNo++;
+          var appendCopy = inRow.slice();
+          appendCopy[0] = nextAutoNo;
+          rowsToAppend.push(appendCopy);
+          existingKeyMap[inKey] = { rowNum: nextAutoNo, data: appendCopy };
+        }
+      }
+
+      if (rowsToAppend.length > 0) {
+        var startAppendRow = targetSheet.getLastRow() + 1;
+        var colsToWrite = rowsToAppend[0].length;
+        targetSheet.getRange(startAppendRow, 1, rowsToAppend.length, colsToWrite).setValues(rowsToAppend);
+      }
+
+      updatedList.push(targetSheet.getName() + " (+" + rowsToAppend.length + " baru)");
+      SpreadsheetApp.flush();
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      warehouse: "${targetWh}",
+      message: "Data Gudang ${targetWh} berhasil disinkronkan tanpa menimpa baris lama: " + updatedList.join(", "),
+      updatedSheets: updatedList,
+      timestamp: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    console.error("Error in doPost: " + err.toString());
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
 }
 
 function doGet(e) {
- try {
-  var ss = getTargetSpreadsheet();
-  return ContentService.createTextOutput(JSON.stringify({
-   status: "online",
-   warehouse: "${targetWh}",
-   name: "WFM Medika Realtime Auto-Sync Webhook - Gudang ${targetWh}",
-   spreadsheetTitle: ss ? ss.getName() : "Unknown",
-   spreadsheetId: TARGET_SPREADSHEET_ID,
-   time: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
- } catch(err) {
-  return ContentService.createTextOutput(JSON.stringify({
-   status: "error",
-   message: err.toString()
-  })).setMimeType(ContentService.MimeType.JSON);
- }
-}
-
-function testManualSync() {
- var ss = getTargetSpreadsheet();
- Logger.log("Terhubung ke Spreadsheet Gudang ${targetWh}: " + ss.getName());
- var sheet = ss.getSheetByName("RECORD ABSEN") || ss.getSheets()[0];
- sheet.getRange("A1").setValue("TEST KONEKSI WFM MEDIKA GUDANG ${targetWh} BERHASIL");
- SpreadsheetApp.flush();
- Logger.log("Å“â€¦ Berhasil menulis test ke sheet: " + sheet.getName());
+  try {
+    var ss = getTargetSpreadsheet();
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "online",
+      warehouse: "${targetWh}",
+      name: "WFM Medika Realtime Auto-Sync Webhook - Gudang ${targetWh}",
+      spreadsheetTitle: ss ? ss.getName() : "Unknown",
+      spreadsheetId: TARGET_SPREADSHEET_ID,
+      time: new Date().toISOString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 `;
   }
@@ -29170,14 +29289,139 @@ function testManualSync() {
    try {
     if (!rec || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
     const targetWh = (wh || rec.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
-    // PERLINDUNGAN GOOGLE SHEET ANTI-HAPUS: Dilarang keras mengirim payload 1 baris { "RECORD ABSEN": [headers, row] }
-    // Pemicu otomatis memanggil syncGoogleSheetDirectly dengan debounce agar mengirim data master lengkap dari Supabase.
-    if (typeof syncGoogleSheetDirectly === 'function') {
-     syncGoogleSheetDirectly(false, targetWh);
-    }
+    const webhookUrl = getGoogleSheetWebhookUrl(targetWh);
+    if (!webhookUrl) return false;
+
+    const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+    let emp = null;
+    if (rec.userName) emp = users.find(u => cleanStr(u.name) === cleanStr(rec.userName));
+    if (!emp && rec.userNik) emp = users.find(u => u.nik && u.nik.toUpperCase() === rec.userNik.toUpperCase());
+    if (!emp && rec.userId) emp = users.find(u => u.id === rec.userId);
+
+    const finalName = emp ? emp.name : (rec.userName || '-');
+    const finalNik = emp ? emp.nik : (rec.userNik || '-');
+    const finalDept = emp ? emp.dept : (rec.dept || '');
+
+    const durInfo = getAttendanceDurationInfo(rec);
+    const checkInDate = rec.checkInTime ? new Date(rec.checkInTime) : null;
+    const minute = checkInDate ? checkInDate.getMinutes() : 0;
+    const isLate = rec.checkInStatus === 'late' || (minute >= 1 && minute <= 30);
+    const statusMasuk = isLate ? 'Late In' : 'Normal';
+    const statusPulang = durInfo.isMissScan ? 'Miss Scan' : durInfo.statusOut;
+    const finalJamPulang = durInfo.isMissScan ? 'Miss Scan' : (rec.checkOutTime ? formatDisplayTimeWIB(rec.checkOutTime) : (durInfo.isOngoing ? 'Sedang Shift' : 'Miss Scan'));
+    const finalDuration = durInfo.isMissScan ? '7 Jam (Miss Scan)' : durInfo.durationStr;
+    const finalKeterangan = durInfo.isMissScan ? `${statusMasuk} - Miss Scan` : `${statusMasuk} - ${statusPulang}${rec.notes && rec.notes !== '-' ? ` (${rec.notes})` : ''}`;
+
+    const singlePayload = {
+      action: 'scan',
+      warehouse: targetWh,
+      data: {
+        date: rec.date || '',
+        nik: finalNik,
+        name: finalName,
+        dept: (finalDept || 'STAFF').toUpperCase(),
+        checkIn: rec.checkInTime ? formatDisplayTimeWIB(rec.checkInTime) : '-',
+        checkOut: finalJamPulang,
+        duration: finalDuration,
+        statusMasuk: statusMasuk,
+        statusPulang: statusPulang,
+        keterangan: finalKeterangan,
+        warehouse: targetWh
+      }
+    };
+
+    const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+    fetch(targetUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(singlePayload)
+    }).catch(e => console.warn('Single scan gsheet notice:', e));
+
     return true;
    } catch (e) {
     console.warn('pushSingleScanToGoogleSheet notice:', e);
+    return false;
+   }
+  }
+
+  async function pushSinglePengajuanToGoogleSheet(wh, lv) {
+   try {
+    if (!lv || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
+    const targetWh = (wh || lv.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+    const webhookUrl = getGoogleSheetWebhookUrl(targetWh);
+    if (!webhookUrl) return false;
+
+    const users = getWhDB(targetWh, 'users', targetWh === 'MBI' ? SEED_MBI_USERS : SEED_MAI_USERS);
+    const emp = users.find(u => u.nik === lv.userNik);
+
+    const payload = {
+      action: 'pengajuan',
+      warehouse: targetWh,
+      data: {
+        name: lv.userName || '-',
+        nik: lv.userNik || '-',
+        dept: emp ? (emp.dept || '').toUpperCase() : '-',
+        type: (lv.type || '').toUpperCase(),
+        startDate: lv.startDate || '',
+        endDate: lv.endDate || '',
+        reason: lv.reason || '',
+        status: lv.status === 'approved' ? 'Disetujui' : (lv.status === 'rejected' ? 'Ditolak' : 'Pending'),
+        warehouse: targetWh
+      }
+    };
+
+    const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+    fetch(targetUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).catch(e => console.warn('Single pengajuan gsheet notice:', e));
+    return true;
+   } catch(e) {
+    return false;
+   }
+  }
+
+  async function pushSingleOvertimeToGoogleSheet(wh, o) {
+   try {
+    if (!o || (typeof navigator !== 'undefined' && navigator.onLine === false)) return false;
+    const targetWh = (wh || o.warehouse || (typeof activeWarehouse !== 'undefined' ? activeWarehouse : 'MBI') || 'MBI').toUpperCase();
+    const webhookUrl = getGoogleSheetWebhookUrl(targetWh);
+    if (!webhookUrl) return false;
+
+    const payload = {
+      action: 'lembur',
+      warehouse: targetWh,
+      data: {
+        name: o.userName || '-',
+        nik: o.userNik || '-',
+        dept: (o.dept || 'STAFF').toUpperCase(),
+        date: o.date || '',
+        startTime: o.startTime || '-',
+        endTime: o.endTime || '-',
+        totalHours: Number(o.effectiveHours) || Number(o.totalHours) || 0,
+        rate: Number(o.ratePerHour) || 0,
+        nominal: Number(o.nominal) || 0,
+        task: o.task || '',
+        status: (o.status || 'approved').toUpperCase(),
+        warehouse: targetWh
+      }
+    };
+
+    const targetUrl = cleanGoogleScriptUrl(webhookUrl) || webhookUrl;
+    fetch(targetUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      cache: 'no-cache',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    }).catch(e => console.warn('Single overtime gsheet notice:', e));
+    return true;
+   } catch(e) {
     return false;
    }
   }
