@@ -10803,8 +10803,8 @@
       const data = await res.json();
       if (Array.isArray(data)) rows = data;
      }
-    } else if (forceFull) {
-     // Tarik SEMUA riwayat lengkap HANYA saat tombol manual ditekan (forceFull === true)
+    } else if (forceFull || ((!getWhDB(targetWh, 'attendance', []) || getWhDB(targetWh, 'attendance', []).length < 50) && !date)) {
+     // Tarik SEMUA riwayat lengkap jika tombol ditekan atau memori lokal perangkat masih kosong
      let offset = 0;
      const batchSize = 1000;
      while (offset < 15000) {
