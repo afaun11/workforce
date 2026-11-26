@@ -1,7 +1,7 @@
 // === WFM MEDIKA CONFIG & FOUNDATION ===
   // SYSTEM APP VERSION CHECKER (OPSI 1: BERBASIS version.json HOSTING, 0 KUOTA FIRESTORE)
   // =========================================================
-  const CURRENT_APP_VERSION = '20261125_v24';
+  const CURRENT_APP_VERSION = '20261126_v1';
   window.__WFM_VERSION_OUTDATED = false;
   let lastVersionCheckAt = 0;
   let isCheckingAppVersion = false;

@@ -2057,16 +2057,21 @@
 
    try {
     for (const wh of whList) {
-     try {
-      const uRes = await pullUsersFromSupabase(wh);
-      if (Array.isArray(uRes) && uRes.length > 0) {
-       loaded = true;
-       hasNewDataApplied = true;
+     // 1. Tarik Data Karyawan: Hanya saat awal (jika memori kosong < 50) atau saat tombol refresh manual ditekan
+     const curUsers = getWhDB(wh, 'users', []);
+     if (isManualAlert || forceDownload || !curUsers || curUsers.length < 50) {
+      try {
+       const uRes = await pullUsersFromSupabase(wh);
+       if (Array.isArray(uRes) && uRes.length > 0) {
+        loaded = true;
+        hasNewDataApplied = true;
+       }
+      } catch (eU) {
+       console.warn('[Supabase] pullUsers notice for ' + wh + ':', eU);
       }
-     } catch (eU) {
-      console.warn('[Supabase] pullUsers notice for ' + wh + ':', eU);
      }
 
+     // 2. Tarik Data Presensi: Selalu tarik delta 3 hari terakhir (Melindungi 100% Shift Malam & Lintas Hari)
      try {
       const aRes = await pullAttendanceFromSupabase(wh, null, isManualAlert || forceDownload);
       if (Array.isArray(aRes) && aRes.length > 0) {
@@ -2077,19 +2082,23 @@
       console.warn('[Supabase] pullAttendance notice for ' + wh + ':', eA);
      }
 
-     try {
-      if (typeof pullLeavesFromSupabase === 'function') {
-       const lRes = await pullLeavesFromSupabase(wh);
-       if (Array.isArray(lRes) && lRes.length > 0) loaded = true;
-      }
-     } catch(eL) {}
+     // 3. Tarik Cuti & Lembur: Hanya jika manual refresh atau sedang berada di tab pengajuan/lembur
+     const curView = typeof currentView !== 'undefined' ? currentView : '';
+     if (isManualAlert || forceDownload || curView === 'leaves' || curView === 'overtime') {
+      try {
+       if (typeof pullLeavesFromSupabase === 'function') {
+        const lRes = await pullLeavesFromSupabase(wh);
+        if (Array.isArray(lRes) && lRes.length > 0) loaded = true;
+       }
+      } catch(eL) {}
 
-     try {
-      if (typeof pullOvertimeFromSupabase === 'function') {
-       const oRes = await pullOvertimeFromSupabase(wh);
-       if (Array.isArray(oRes) && oRes.length > 0) loaded = true;
-      }
-     } catch(eO) {}
+      try {
+       if (typeof pullOvertimeFromSupabase === 'function') {
+        const oRes = await pullOvertimeFromSupabase(wh);
+        if (Array.isArray(oRes) && oRes.length > 0) loaded = true;
+       }
+      } catch(eO) {}
+     }
     }
 
     if (loaded) {
@@ -2330,6 +2339,8 @@
    supabaseLivePollTimer = setInterval(async () => {
     if (document.hidden || document.visibilityState !== 'visible') return;
     try {
+     // Jika WebSocket Realtime aktif terhubung, tidak perlu polling HTTP (hemat 100% kuota polling)
+     if (supabaseWsChannel && supabaseWsChannel.state === 'joined') return;
      const todayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(new Date()) : '';
      if (typeof pullAttendanceFromSupabase === 'function' && todayStr) {
       const updated = await pullAttendanceFromSupabase(targetWh, todayStr);
