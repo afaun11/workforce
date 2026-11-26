@@ -964,13 +964,15 @@
      }
     } catch (eSbRescue) {}
 
-    // 1. Cek langsung ke Cloud Firestore (_metadata/today_attendance) - Super Cepat (1 Read, < 100ms)
-    try {
-     const fsToday = await getDocFromFirestore(wh, '_metadata', 'today_attendance');
-     if (fsToday && Array.isArray(fsToday.records)) {
-      fsToday.records.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
-     }
-    } catch (eFs) {}
+    // 1. Cek Cloud Firestore HANYA jika di Supabase belum ditemukan (Fallback cadangan)
+    if (candidates.length === 0) {
+     try {
+      const fsToday = await getDocFromFirestore(wh, '_metadata', 'today_attendance');
+      if (fsToday && Array.isArray(fsToday.records)) {
+       fsToday.records.forEach(item => { if (item && isMatch(item)) candidates.push(item); });
+      }
+     } catch (eFs) {}
+    }
 
     // 2. Jaring Pengaman Shift Malam Lintas Hari & Beda Perangkat:
     // Jika tidak ada di today_attendance (misal sudah berganti tanggal ke hari berikutnya atau tertimpa),
