@@ -240,7 +240,9 @@
       const data = await res.json();
       if (Array.isArray(data)) rows = data;
      }
-    } else if (forceFull || ((!getWhDB(targetWh, 'attendance', []) || getWhDB(targetWh, 'attendance', []).length < 50) && !date)) {
+    } else if (forceFull === true) {
+     // Tarik SEMUA riwayat lengkap HANYA jika tombol manual ditekan oleh Admin (forceFull === true).
+     // DILARANG KERAS auto-pull riwayat ribuan baris hanya karena memori HP karyawan masih kosong!
      // Tarik SEMUA riwayat lengkap jika tombol ditekan atau memori lokal perangkat masih kosong
      let offset = 0;
      const batchSize = 1000;

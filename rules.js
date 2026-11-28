@@ -2146,6 +2146,11 @@
 
   function initSupabaseRealtimeWebSocket() {
    try {
+    // PROTEKSI KUOTA WEBSOCKET: Jangan buka koneksi WebSocket broadcast 24/7 di HP Karyawan/Scanner biasa!
+    // WebSocket siaran realtime hanya untuk Admin & Manager di kantor.
+    if (typeof currentUser !== 'undefined' && currentUser && !isUserAdmin(currentUser) && !isUserManager(currentUser)) {
+     return;
+    }
     const sbLib = (typeof window !== 'undefined' && window.supabase) ? window.supabase : null;
     if (!sbLib || typeof sbLib.createClient !== 'function') {
      console.log('[Supabase WS] Library @supabase/supabase-js sedang dimuat...');

@@ -724,24 +724,24 @@
     }
 
     if (isUserScanner(currentUser)) {
-     // Akun Scanner Absensi (MBI & MAI): HANYA TAMPILKAN SCANNER ABSENSI
-     try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
+     // Akun Scanner Absensi (MBI & MAI): ZERO EGRESS MODE (Hemat 99.9% Kuota)
      try { switchView('attendance'); } catch (e) {}
      try { renderScannerTodayRecords(); } catch (e) {}
      try { stopScanner(); } catch (e) {}
      const scanWh = (currentUser.warehouse || activeWarehouse || 'MBI').toUpperCase();
      (async () => {
       try {
-       await fetchFullDatabaseFromCloud(false, scanWh, true);
-       try { await syncAttendanceFromGoogleSheetMaster(false, scanWh); } catch(eGs) {}
-       try { sanitizeAttendanceDatabase(scanWh); } catch(eSan) {}
+       // HP Scanner HANYA tarik data hari ini (hanya 1-2 KB, BUKAN 2.5 MB riwayat lama!)
+       const todayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(new Date()) : '';
+       if (typeof pullAttendanceFromSupabase === 'function' && todayStr) {
+        await pullAttendanceFromSupabase(scanWh, todayStr);
+       }
        window._cloudAttInitialSyncDone = window._cloudAttInitialSyncDone || {};
        window._cloudAttInitialSyncDone[scanWh] = true;
        renderScannerTodayRecords();
        if (typeof flushAttendanceOutbox === 'function') flushAttendanceOutbox();
-       if (typeof flushPendingGSheetSync === 'function') flushPendingGSheetSync();
       } catch(eScanSync) {
-       console.warn('Scanner initial cloud sync notice:', eScanSync);
+       console.warn('Scanner lightweight cloud sync notice:', eScanSync);
       }
      })();
     } else if (isManagement) {
@@ -755,7 +755,7 @@
      (async () => {
       try {
        // 1. Tarik snapshot master, arsip, dan presensi hari ini dari Cloud Firestore (1x terpadu hemat kuota)
-       await fetchFullDatabaseFromCloud(false, wh, true);
+       await fetchFullDatabaseFromCloud(false, wh, false);
 
        // 2. Fallback arsip hanya jika riwayat lokal masih kosong / minim (< 50)
        const localAtt = getWhDB(wh, 'attendance', []);
@@ -783,10 +783,12 @@
       }
      })();
     } else {
-     // Akun Karyawan Biasa
-     try { initFirebaseLiveStream(currentUser.warehouse); } catch(e) {}
-     try { fetchFullDatabaseFromCloud(false, currentUser.warehouse, true); } catch(e) {}
+     // Akun Karyawan Biasa: ZERO EGRESS MODE (Hanya tarik data hari ini jika diperlukan)
      try { switchView('attendance'); } catch (e) {}
+     const todayStr = (typeof getLocalDateString === 'function') ? getLocalDateString(new Date()) : '';
+     if (typeof pullAttendanceFromSupabase === 'function' && todayStr) {
+      pullAttendanceFromSupabase(currentUser.warehouse, todayStr).catch(() => {});
+     }
     }
 
     try { resetVerificationState(); } catch (e) {}
